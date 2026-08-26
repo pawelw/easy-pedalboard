@@ -15,7 +15,7 @@ target_sources(ee_ui INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/Knob.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/FootSwitch.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/PedalEditor.cpp)
-target_link_libraries(ee_ui INTERFACE juce::juce_audio_utils juce::juce_gui_basics)
+target_link_libraries(ee_ui INTERFACE juce::juce_audio_utils juce::juce_gui_basics ee_assets)
 
 add_library(ee_shared INTERFACE)
 target_link_libraries(ee_shared INTERFACE ee_dsp ee_ui)

@@ -66,6 +66,11 @@ constexpr float kDiffusion = 0.80f;
 constexpr float kTankDiffusion = 0.76f;
 constexpr float kTankStage2 = 0.70f;
 
+// How far the top half of the Resonance range backs the diffusers off. Once
+// movement has already reached zero there is nothing left to make the tail ring
+// harder, so the last of the sweep thins the diffusion instead.
+constexpr float kResonanceDiffusionDrop = 0.30f;
+
 // ============================================================================
 // STEREO
 // ============================================================================

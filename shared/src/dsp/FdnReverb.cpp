@@ -76,6 +76,13 @@ namespace
         return onePoleCoeff (hz, sampleRate);
     }
 
+    /** Diffusion is only thinned once the top half of the sweep is reached. */
+    inline float tankScaleFor (float resonance) noexcept
+    {
+        const float top = juce::jlimit (0.0f, 1.0f, (resonance - 0.5f) * 2.0f);
+        return 1.0f - config::kResonanceDiffusionDrop * top;
+    }
+
     // Damping the low and high bands takes broadband energy out of the tail, so
     // a -60 dB measurement lands short of the nominal time. Empirical fit against
     // the offline harness; retune it there if the voicing above changes a lot.
@@ -137,11 +144,11 @@ void FdnReverb::prepare (double sampleRate)
         dampers[idx].prepare (sampleRate, config::kLowCornerHz, config::kHighCornerHz);
         tank[idx].prepare (sampleRate, (kTankMs[idx] + 5.0f) * 0.001f);
         tank[idx].setDelaySamples (static_cast<float> (kTankMs[idx] * 0.001 * sampleRate));
-        tank[idx].setCoefficient (config::kTankDiffusion);
+        tank[idx].setCoefficient (config::kTankDiffusion * tankScaleFor (resonance));
 
         tank2[idx].prepare (sampleRate, (kTank2Ms[idx] + 5.0f) * 0.001f);
         tank2[idx].setDelaySamples (static_cast<float> (kTank2Ms[idx] * 0.001 * sampleRate));
-        tank2[idx].setCoefficient (config::kTankStage2);
+        tank2[idx].setCoefficient (config::kTankStage2 * tankScaleFor (resonance));
         delaySmooth[idx].reset (sampleRate, kDelayRampSeconds);
         lfoPhase[idx] = static_cast<float> (i) / static_cast<float> (kLines);
     }
@@ -214,12 +221,19 @@ void FdnReverb::setLowCut (float hz) noexcept
     lowCutCoeff.setTargetValue (lowCutCoeffFor (lowCutHz, sr));
 }
 
-void FdnReverb::setMovement (float amount01) noexcept
+void FdnReverb::setResonance (float amount01) noexcept
 {
     amount01 = juce::jlimit (0.0f, 1.0f, amount01);
-    if (! juce::approximatelyEqual (amount01, movement))
+    if (! juce::approximatelyEqual (amount01, resonance))
     {
-        movement = amount01;
+        resonance = amount01;
+
+        const float thin = tankScaleFor (resonance);
+        for (auto& ap : tank)
+            ap.setCoefficient (config::kTankDiffusion * thin);
+        for (auto& ap : tank2)
+            ap.setCoefficient (config::kTankStage2 * thin);
+
         dirty = true;
     }
 }
@@ -248,7 +262,7 @@ void FdnReverb::updateDerived() noexcept
     outputScale.setTargetValue (std::pow (kGainReferenceSeconds / decaySeconds, kGainExponent));
 
     // Scaled off 44.1k so the modulation depth is the same musical amount at any rate.
-    modDepthSamples = static_cast<float> (config::kModDepthSamples * movement * sr / 44100.0);
+    modDepthSamples = static_cast<float> (config::kModDepthSamples * (1.0f - resonance) * sr / 44100.0);
 
     for (int i = 0; i < kLines; ++i)
     {

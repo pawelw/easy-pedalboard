@@ -26,7 +26,9 @@ struct PedalTheme
 
     juce::Colour accent          { 0xffc8e06a };
     juce::Colour accentDim       { 0xff5e6b34 };
-    juce::Colour accentGlow      { 0xffc8e06a };
+
+    /** Halo colour for the value arcs and the lamp. */
+    juce::Colour glow            { 0xffc8e06a };
 
     juce::Colour title           { 0xfff2f2ea };
     juce::Colour ledRing         { 0xff2a2724 };
@@ -44,6 +46,9 @@ struct PedalTheme
 
     juce::String titleTypeface;  // empty = JUCE default
     juce::String bodyTypeface;
+
+    /** Set to use an embedded face for the title, in preference to a name. */
+    juce::Typeface::Ptr titleTypefacePtr;
 
     /** Optional artwork. Leave empty to use the vector drawing.
 
@@ -70,6 +75,7 @@ struct PedalTheme
 
     static PedalTheme dark();
     static PedalTheme cream();
+    static PedalTheme blue();
 
     /** First installed name from the list, or empty for the JUCE default. */
     static juce::String pickTypeface (const juce::StringArray& preferred);

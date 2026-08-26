@@ -66,7 +66,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyReverbProcessor::createP
     decayRange.setSkewForCentre (2.0f);
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kDecayID, 1 }, "Decay Time", decayRange, 2.0f,
+        juce::ParameterID { kDecayID, 1 }, "Decay Time", decayRange, 3.2f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (secondsToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -85,7 +85,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyReverbProcessor::createP
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kResonanceID, 1 }, "Resonance",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f,
+        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 50.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (
@@ -112,7 +112,7 @@ void EasyReverbProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
     const bool engaged = onParam->load() > 0.5f;
 
     reverb.setLowCut (lowCutParam->load());
-    reverb.setMovement (1.0f - resonanceParam->load() * 0.01f);
+    reverb.setResonance (resonanceParam->load() * 0.01f);
 
     dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
     wetGain.setCurrentAndTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi) * kWetTrim);
@@ -166,7 +166,7 @@ void EasyReverbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     reverb.setDecayTime (decayParam->load());
     reverb.setLowCut (lowCutParam->load());
-    reverb.setMovement (1.0f - resonanceParam->load() * 0.01f);
+    reverb.setResonance (resonanceParam->load() * 0.01f);
 
     // Trails: bypassing stops feeding the network but leaves the wet path open,
     // so the existing tail rings out instead of being cut off.
@@ -229,7 +229,7 @@ juce::AudioProcessorEditor* EasyReverbProcessor::createEditor()
     spec.knobsPerRow = 2;
     spec.height = 500;
 
-    return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::cream());
+    return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::blue());
 }
 
 void EasyReverbProcessor::getStateInformation (juce::MemoryBlock& destData)

@@ -6,7 +6,7 @@ namespace
 {
     constexpr int kMargin = 18;
     constexpr int kTopPad = 6;
-    constexpr int kTitleHeight = 46;
+    constexpr int kTitleHeight = 64;
     constexpr int kKnobRowHeight = 132;
     constexpr int kFootSwitchHeight = 92;
     constexpr int kFootSwitchBottomPad = 22;
@@ -86,11 +86,11 @@ void PedalEditor::paint (juce::Graphics& g)
             g.drawImageAt (grain, 0, 0, true);
         }
 
-        // Two lines: the enamel edge and the screened border inside it.
+        // Heavy enamel edge, with a lighter screened line set inside it.
         g.setColour (theme.outline);
-        g.drawRoundedRectangle (face, theme.cornerRadius, 2.0f);
-        g.setColour (theme.outline.withAlpha (0.45f));
-        g.drawRoundedRectangle (face.reduced (7.0f), theme.cornerRadius * 0.75f, 1.2f);
+        g.drawRoundedRectangle (face, theme.cornerRadius, 6.0f);
+        g.setColour (theme.textPrimary.withAlpha (0.4f));
+        g.drawRoundedRectangle (face.reduced (9.0f), theme.cornerRadius * 0.7f, 1.4f);
     }
 
     // Name sits under the knobs, the way it is screened onto a real pedal.
@@ -100,7 +100,7 @@ void PedalEditor::paint (juce::Graphics& g)
                    .withY (getHeight() - kMargin - kFootSwitchBottomPad - kFootSwitchHeight - kTitleHeight);
 
     g.setColour (theme.title);
-    g.setFont (theme.titleFont (34.0f).boldened().withExtraKerningFactor (0.01f));
+    g.setFont (theme.titleFont (58.0f));
     g.drawText (spec.name, footer, juce::Justification::centred, false);
 
     if (spec.version.isNotEmpty())

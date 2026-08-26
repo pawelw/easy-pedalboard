@@ -43,14 +43,14 @@ public:
     void setLowCut (float hz) noexcept;
 
     /** Scoops the midrange out of the wet output. 0 leaves it flat. */
-    /** Movement in the tail: 0 leaves the delay lines still, 1 is the most
-        wobble the network takes before it turns into chorus.
+    /** How much the tail is allowed to ring: 0 is fully smeared, 1 rings hardest.
 
-        This is the only thing that audibly changes how settled the tail is.
-        In-loop diffusion was tried here and measured flat: an allpass moves
-        energy around in phase but does not stop it sloshing between lines.
+        Two stages, because moving the delay lines is the only thing that
+        smooths the tail but it bottoms out at zero. Below halfway this backs
+        the movement off; above halfway, with the lines already still, it thins
+        the in-loop diffusion so the modes stand out further.
     */
-    void setMovement (float amount01) noexcept;
+    void setResonance (float amount01) noexcept;
 
     /** Fixed voicing knobs. Not exposed on the pedal, but future effects can use them.
         Both are fractions of the mid-band decay and are clamped to 1.0, so no
@@ -69,7 +69,7 @@ private:
     bool dirty = true;
 
     float decaySeconds = 2.0f;
-    float movement = 0.0f;
+    float resonance = 0.5f;
     float lowCutHz = kMinLowCutHz;
     float lowRatio = config::kLowDecayRatio;
     float highRatio = config::kHighDecayRatio;
