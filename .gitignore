@@ -1,5 +1,6 @@
-build/
+build*/
 cmake-build-*/
+dist/
 .cache/
 .DS_Store
 compile_commands.json

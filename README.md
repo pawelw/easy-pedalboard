@@ -28,6 +28,23 @@ longer, highs die faster) so the tail sits behind a guitar without getting fizzy
 - macOS with Xcode Command Line Tools
 - CMake and Ninja: `brew install cmake ninja`
 
+## Setting up on another Mac
+
+The repo carries no dependencies — JUCE is fetched by CMake at configure time
+against a pinned tag, so the first configure needs an internet connection.
+
+```bash
+xcode-select --install          # if you have never installed the CLT
+brew install cmake ninja
+git clone <this repo> easy-effects && cd easy-effects
+cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+```
+
+Building on the machine you play on is the path of least resistance: the binary
+matches that Mac's architecture, and locally built files carry no quarantine
+flag, so Gatekeeper stays out of the way.
+
 ## Build
 
 ```bash
@@ -48,6 +65,24 @@ cmake --build build-universal
 
 An Apple Silicon-only build will not appear in a Live instance running under
 Rosetta.
+
+## Moving a build to another Mac
+
+```bash
+./scripts/package-macos.sh      # universal build, ad-hoc signed, zipped into dist/
+```
+
+Builds without a paid Apple Developer ID can only be ad-hoc signed, never
+notarised. macOS flags anything transferred by AirDrop, download or iCloud with
+`com.apple.quarantine` and refuses to load it — *"Apple could not verify ... is
+free of malware"*. Clear it on the receiving machine:
+
+```bash
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Easy Reverb.vst3"
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Easy Reverb.component"
+```
+
+Cloning the source and building there avoids the whole problem.
 
 ## Verifying
 
