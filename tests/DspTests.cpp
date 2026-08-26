@@ -37,7 +37,7 @@ ImpulseResult measureImpulse (float decaySeconds, float modulation)
     reverb.prepare (kSampleRate);
     reverb.reset();
     reverb.setDecayTime (decaySeconds);
-    reverb.setModulation (modulation);
+    reverb.setMovement (modulation);
 
     // Let the smoothed delay lengths settle before the impulse goes in.
     std::vector<float> silence (kBlock, 0.0f);
@@ -120,7 +120,7 @@ void testStabilityUnderLoad()
     reverb.prepare (kSampleRate);
     reverb.reset();
     reverb.setDecayTime (ee::dsp::FdnReverb::kMaxDecay);
-    reverb.setModulation (1.0f);
+    reverb.setMovement (1.0f);
 
     std::mt19937 rng (1234);
     std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
@@ -157,7 +157,7 @@ void testDecaySweepIsQuiet()
     ee::dsp::FdnReverb reverb;
     reverb.prepare (kSampleRate);
     reverb.reset();
-    reverb.setModulation (0.5f);
+    reverb.setMovement (0.5f);
 
     std::mt19937 rng (99);
     std::uniform_real_distribution<float> dist (-0.25f, 0.25f);
@@ -208,7 +208,7 @@ void testWetLevelConsistency()
         reverb.prepare (kSampleRate);
         reverb.reset();
         reverb.setDecayTime (decay);
-        reverb.setModulation (0.25f);
+        reverb.setMovement (0.75f);
 
         std::mt19937 rng (7);
         std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
@@ -259,7 +259,7 @@ void testSilenceInSilenceOut()
     reverb.prepare (kSampleRate);
     reverb.reset();
     reverb.setDecayTime (4.0f);
-    reverb.setModulation (0.5f);
+    reverb.setMovement (0.5f);
 
     std::vector<float> in (kBlock, 0.0f), l (kBlock), r (kBlock);
     float peak = 0.0f;

@@ -21,6 +21,8 @@ struct PedalSpec
     std::vector<KnobSpec> knobs;
     juce::String bypassParameterID;
 
+    int knobsPerRow = 3;
+
     int width = 340;
     int height = 440;
 };

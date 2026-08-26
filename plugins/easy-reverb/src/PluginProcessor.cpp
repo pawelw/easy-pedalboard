@@ -6,7 +6,8 @@ namespace
 {
     constexpr const char* kDecayID  = "decay";
     constexpr const char* kMixID    = "mix";
-    constexpr const char* kHighCutID = "hicut";
+    constexpr const char* kLowCutID = "locut";
+    constexpr const char* kResonanceID = "res";
     constexpr const char* kOnID     = "on";
 
     // The network is normalised to ~0.42 RMS gain. Trimmed against a reference
@@ -17,10 +18,6 @@ namespace
     // useful part of the range is not squeezed into the first third of travel.
     constexpr float kMixCurve = 1.3f;
 
-    // Modulation is no longer a knob. It rides the mix instead: dry-heavy
-    // settings keep the tail still, and as the wet takes over the extra
-    // movement smears the modes that would otherwise ring through.
-    constexpr float kModAtFullWet = 0.45f;
 
     constexpr float kGainRampSeconds = 0.02f;
 
@@ -36,10 +33,8 @@ namespace
 
     juce::String hertzToText (float value, int)
     {
-        if (value >= ee::dsp::FdnReverb::kMaxHighCutHz - 1.0f)
+        if (value <= ee::dsp::FdnReverb::kMinLowCutHz + 0.5f)
             return "off";
-        if (value >= 1000.0f)
-            return juce::String (value / 1000.0f, 1) + " k";
         return juce::String (juce::roundToInt (value)) + " Hz";
     }
 
@@ -57,7 +52,8 @@ EasyReverbProcessor::EasyReverbProcessor()
 {
     decayParam  = apvts.getRawParameterValue (kDecayID);
     mixParam    = apvts.getRawParameterValue (kMixID);
-    highCutParam = apvts.getRawParameterValue (kHighCutID);
+    lowCutParam = apvts.getRawParameterValue (kLowCutID);
+    resonanceParam = apvts.getRawParameterValue (kResonanceID);
     onParam     = apvts.getRawParameterValue (kOnID);
 }
 
@@ -78,14 +74,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyReverbProcessor::createP
         juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 30.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
-    auto highCutRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinHighCutHz,
-                                                        ee::dsp::FdnReverb::kMaxHighCutHz);
-    highCutRange.setSkewForCentre (4000.0f);
+    auto lowCutRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz,
+                                                       ee::dsp::FdnReverb::kMaxLowCutHz);
+    lowCutRange.setSkewForCentre (180.0f);
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kHighCutID, 1 }, "High Cut", highCutRange,
-        ee::dsp::FdnReverb::kMaxHighCutHz,
+        juce::ParameterID { kLowCutID, 1 }, "Low Cut", lowCutRange,
+        ee::dsp::FdnReverb::kMinLowCutHz,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (hertzToText)));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kResonanceID, 1 }, "Resonance",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (
         juce::ParameterID { kOnID, 1 }, "On", true));
@@ -110,8 +111,8 @@ void EasyReverbProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
     const float mix = shapedMix (mixParam->load());
     const bool engaged = onParam->load() > 0.5f;
 
-    reverb.setHighCut (highCutParam->load());
-    reverb.setModulation (mix * kModAtFullWet);
+    reverb.setLowCut (lowCutParam->load());
+    reverb.setMovement (1.0f - resonanceParam->load() * 0.01f);
 
     dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
     wetGain.setCurrentAndTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi) * kWetTrim);
@@ -164,11 +165,8 @@ void EasyReverbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     const bool engaged = onParam->load() > 0.5f;
 
     reverb.setDecayTime (decayParam->load());
-    reverb.setHighCut (highCutParam->load());
-
-    // More wet on the bus means less dry masking the tail, so lean harder on
-    // modulation to keep modes from ringing through.
-    reverb.setModulation (mix * kModAtFullWet);
+    reverb.setLowCut (lowCutParam->load());
+    reverb.setMovement (1.0f - resonanceParam->load() * 0.01f);
 
     // Trails: bypassing stops feeding the network but leaves the wet path open,
     // so the existing tail rings out instead of being cut off.
@@ -225,10 +223,13 @@ juce::AudioProcessorEditor* EasyReverbProcessor::createEditor()
     spec.knobs = {
         { kDecayID, "Decay" },
         { kMixID,   "Mix" },
-        { kHighCutID, "High Cut" }
+        { kResonanceID, "Resonance" },
+        { kLowCutID, "Low Cut" }
     };
+    spec.knobsPerRow = 2;
+    spec.height = 500;
 
-    return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::dark());
+    return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::cream());
 }
 
 void EasyReverbProcessor::getStateInformation (juce::MemoryBlock& destData)

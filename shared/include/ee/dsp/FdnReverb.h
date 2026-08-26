@@ -31,17 +31,26 @@ public:
     // could not be delivered and the knob would be lying.
     static constexpr float kMinDecay = 0.5f;
     static constexpr float kMaxDecay = 8.0f;
-    static constexpr float kMinHighCutHz = 800.0f;
-    static constexpr float kMaxHighCutHz = 20000.0f;
+    static constexpr float kMinLowCutHz = 20.0f;
+    static constexpr float kMaxLowCutHz = 800.0f;
 
     void prepare (double sampleRate);
     void reset();
 
     void setDecayTime (float seconds) noexcept;
-    void setModulation (float amount01) noexcept;
 
-    /** Two-pole lowpass across the wet output. kMaxHighCutHz is effectively off. */
-    void setHighCut (float hz) noexcept;
+    /** Two-pole highpass across the wet output. kMinLowCutHz is effectively off. */
+    void setLowCut (float hz) noexcept;
+
+    /** Scoops the midrange out of the wet output. 0 leaves it flat. */
+    /** Movement in the tail: 0 leaves the delay lines still, 1 is the most
+        wobble the network takes before it turns into chorus.
+
+        This is the only thing that audibly changes how settled the tail is.
+        In-loop diffusion was tried here and measured flat: an allpass moves
+        energy around in phase but does not stop it sloshing between lines.
+    */
+    void setMovement (float amount01) noexcept;
 
     /** Fixed voicing knobs. Not exposed on the pedal, but future effects can use them.
         Both are fractions of the mid-band decay and are clamped to 1.0, so no
@@ -60,14 +69,15 @@ private:
     bool dirty = true;
 
     float decaySeconds = 2.0f;
-    float modAmount = 0.25f;
-    float highCutHz = kMaxHighCutHz;
+    float movement = 0.0f;
+    float lowCutHz = kMinLowCutHz;
     float lowRatio = config::kLowDecayRatio;
     float highRatio = config::kHighDecayRatio;
 
     std::array<ModDelayLine, kLines> lines;
     std::array<LoopDamper, kLines> dampers;
     std::array<Allpass, kLines> tank;
+    std::array<Allpass, kLines> tank2;
     std::array<juce::SmoothedValue<float>, kLines> delaySmooth;
     std::array<float, kLines> lfoPhase {};
     std::array<float, kLines> lfoInc {};
@@ -80,8 +90,8 @@ private:
     ModDelayLine predelayLine;
     juce::SmoothedValue<float> predelaySmooth;
     juce::SmoothedValue<float> outputScale;
-    juce::SmoothedValue<float> highCutCoeff;
-    std::array<float, 4> highCutState {};
+    juce::SmoothedValue<float> lowCutCoeff;
+    std::array<float, 4> lowCutState {};
 };
 
 } // namespace ee::dsp

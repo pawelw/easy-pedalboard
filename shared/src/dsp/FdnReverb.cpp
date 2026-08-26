@@ -21,6 +21,11 @@ namespace
         { 3.11f, 3.89f, 4.51f, 5.23f, 5.87f, 6.53f, 7.19f, 7.83f,
           8.41f, 9.07f, 9.73f, 10.31f, 10.97f, 11.59f, 12.23f, 12.89f };
 
+    // Second stage, kept clear of the first so the pair does not comb.
+    constexpr std::array<float, FdnReverb::kLines> kTank2Ms
+        { 1.73f, 2.11f, 2.53f, 2.89f, 3.31f, 3.67f, 4.09f, 4.43f,
+          4.87f, 5.21f, 5.59f, 5.93f, 6.37f, 6.71f, 7.13f, 7.49f };
+
     // Dattorro-style input ladder: short pairs first to build density fast, then
     // longer pairs to stretch it out. Coefficients taper hard towards the end,
     // because the ladder sits outside the feedback loop and its own ring is what
@@ -58,12 +63,17 @@ namespace
         return (1.0f - std::sqrt (1.0f - c * c)) / c;
     }
 
-    inline float highCutCoeffFor (float hz, double sampleRate) noexcept
+    inline float onePoleCoeff (float hz, double sampleRate) noexcept
     {
-        if (hz >= FdnReverb::kMaxHighCutHz)
-            return 1.0f; // exact pass-through, so "off" really is off
         const float w = 2.0f * juce::MathConstants<float>::pi * hz / static_cast<float> (sampleRate);
         return juce::jlimit (0.0f, 1.0f, 1.0f - std::exp (-w));
+    }
+
+    inline float lowCutCoeffFor (float hz, double sampleRate) noexcept
+    {
+        if (hz <= FdnReverb::kMinLowCutHz)
+            return 0.0f; // exact pass-through, so "off" really is off
+        return onePoleCoeff (hz, sampleRate);
     }
 
     // Damping the low and high bands takes broadband energy out of the tail, so
@@ -127,7 +137,11 @@ void FdnReverb::prepare (double sampleRate)
         dampers[idx].prepare (sampleRate, config::kLowCornerHz, config::kHighCornerHz);
         tank[idx].prepare (sampleRate, (kTankMs[idx] + 5.0f) * 0.001f);
         tank[idx].setDelaySamples (static_cast<float> (kTankMs[idx] * 0.001 * sampleRate));
-        tank[idx].setCoefficient (juce::jlimit (0.0f, 0.85f, config::kTankDiffusion));
+        tank[idx].setCoefficient (config::kTankDiffusion);
+
+        tank2[idx].prepare (sampleRate, (kTank2Ms[idx] + 5.0f) * 0.001f);
+        tank2[idx].setDelaySamples (static_cast<float> (kTank2Ms[idx] * 0.001 * sampleRate));
+        tank2[idx].setCoefficient (config::kTankStage2);
         delaySmooth[idx].reset (sampleRate, kDelayRampSeconds);
         lfoPhase[idx] = static_cast<float> (i) / static_cast<float> (kLines);
     }
@@ -156,9 +170,9 @@ void FdnReverb::prepare (double sampleRate)
     predelayLine.prepare (sampleRate, (config::kPredelayMaxMs + 20.0f) * 0.001f);
     predelaySmooth.reset (sampleRate, kDelayRampSeconds);
     outputScale.reset (sampleRate, kDelayRampSeconds);
-    highCutCoeff.reset (sampleRate, 0.05f);
-    highCutCoeff.setCurrentAndTargetValue (highCutCoeffFor (highCutHz, sampleRate));
-    highCutState.fill (0.0f);
+    lowCutCoeff.reset (sampleRate, 0.05f);
+    lowCutCoeff.setCurrentAndTargetValue (lowCutCoeffFor (lowCutHz, sampleRate));
+    lowCutState.fill (0.0f);
 
     dirty = true;
     updateDerived();
@@ -175,11 +189,12 @@ void FdnReverb::reset()
     for (auto& l : lines)     l.reset();
     for (auto& d : dampers)   d.reset();
     for (auto& a : tank)      a.reset();
+    for (auto& a : tank2)     a.reset();
     for (auto& a : diffusers) a.reset();
     for (auto& a : spreadL)   a.reset();
     for (auto& a : spreadR)   a.reset();
     predelayLine.reset();
-    highCutState.fill (0.0f);
+    lowCutState.fill (0.0f);
 }
 
 void FdnReverb::setDecayTime (float seconds) noexcept
@@ -192,20 +207,21 @@ void FdnReverb::setDecayTime (float seconds) noexcept
     }
 }
 
-void FdnReverb::setModulation (float amount01) noexcept
+
+void FdnReverb::setLowCut (float hz) noexcept
 {
-    amount01 = juce::jlimit (0.0f, 1.0f, amount01);
-    if (! juce::approximatelyEqual (amount01, modAmount))
-    {
-        modAmount = amount01;
-        dirty = true;
-    }
+    lowCutHz = juce::jlimit (kMinLowCutHz, kMaxLowCutHz, hz);
+    lowCutCoeff.setTargetValue (lowCutCoeffFor (lowCutHz, sr));
 }
 
-void FdnReverb::setHighCut (float hz) noexcept
+void FdnReverb::setMovement (float amount01) noexcept
 {
-    highCutHz = juce::jlimit (kMinHighCutHz, kMaxHighCutHz, hz);
-    highCutCoeff.setTargetValue (highCutCoeffFor (highCutHz, sr));
+    amount01 = juce::jlimit (0.0f, 1.0f, amount01);
+    if (! juce::approximatelyEqual (amount01, movement))
+    {
+        movement = amount01;
+        dirty = true;
+    }
 }
 
 void FdnReverb::setDecayTilt (float low, float high) noexcept
@@ -232,7 +248,7 @@ void FdnReverb::updateDerived() noexcept
     outputScale.setTargetValue (std::pow (kGainReferenceSeconds / decaySeconds, kGainExponent));
 
     // Scaled off 44.1k so the modulation depth is the same musical amount at any rate.
-    modDepthSamples = static_cast<float> ((config::kModFloorSamples + config::kModDepthSamples * modAmount) * sr / 44100.0);
+    modDepthSamples = static_cast<float> (config::kModDepthSamples * movement * sr / 44100.0);
 
     for (int i = 0; i < kLines; ++i)
     {
@@ -245,7 +261,8 @@ void FdnReverb::updateDerived() noexcept
         // Per-trip loss for a -60 dB decay over decaySeconds, then the two
         // bands expressed relative to it. The tank allpass is part of the trip,
         // so its delay counts towards the time round the loop.
-        const float t = (samples + static_cast<float> (kTankMs[idx] * 0.001 * sr)) / static_cast<float> (sr);
+        const float tankSamples = static_cast<float> ((kTankMs[idx] + kTank2Ms[idx]) * 0.001 * sr);
+        const float t = (samples + tankSamples) / static_cast<float> (sr);
         const float target = decaySeconds * kDecayCompensation;
         const float gMid  = juce::jmin (std::pow (10.0f, -3.0f * t / target), 0.9995f);
         const float gLow  = std::pow (10.0f, -3.0f * t / (target * lowRatio));
@@ -286,7 +303,9 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
             if (lfoPhase[idx] >= 1.0f)
                 lfoPhase[idx] -= 1.0f;
 
-            v[idx] = dampers[idx].process (tank[idx].process (lines[idx].read (delaySmooth[idx].getNextValue() + mod)));
+            v[idx] = dampers[idx].process (
+                tank2[idx].process (
+                    tank[idx].process (lines[idx].read (delaySmooth[idx].getNextValue() + mod))));
         }
 
         float sumL = 0.0f;
@@ -311,18 +330,26 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
         outL[s] = (l + crossFeed * r) * crossNorm;
         outR[s] = (r + crossFeed * l) * crossNorm;
 
-        // Two cascaded one-poles, so the cut has a slope rather than a corner.
-        const float hc = highCutCoeff.getNextValue();
-        if (hc < 0.999f)
+        // Two one-pole highpasses in series, for a real 12 dB/oct slope.
+        const float lc = lowCutCoeff.getNextValue();
+        if (lc > 0.0f)
         {
-            highCutState[0] += hc * (outL[s] - highCutState[0]);
-            highCutState[1] += hc * (highCutState[0] - highCutState[1]);
-            outL[s] = highCutState[1];
+            lowCutState[0] += lc * (outL[s] - lowCutState[0]);
+            const float hpL = outL[s] - lowCutState[0];
+            lowCutState[1] += lc * (hpL - lowCutState[1]);
+            outL[s] = hpL - lowCutState[1];
 
-            highCutState[2] += hc * (outR[s] - highCutState[2]);
-            highCutState[3] += hc * (highCutState[2] - highCutState[3]);
-            outR[s] = highCutState[3];
+            lowCutState[2] += lc * (outR[s] - lowCutState[2]);
+            const float hpR = outR[s] - lowCutState[2];
+            lowCutState[3] += lc * (hpR - lowCutState[3]);
+            outR[s] = hpR - lowCutState[3];
         }
+
+        // Widening is done last so it acts on the finished wet image.
+        const float mid = 0.5f * (outL[s] + outR[s]);
+        const float side = 0.5f * (outL[s] - outR[s]) * config::kStereoWidth;
+        outL[s] = mid + side;
+        outR[s] = mid - side;
 
         hadamard16 (v.data());
 

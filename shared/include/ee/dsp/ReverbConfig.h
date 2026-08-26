@@ -56,25 +56,32 @@ constexpr float kDiffusion = 0.80f;
 // TANK DIFFUSION
 // ============================================================================
 // Allpass coefficient of the diffusers sitting inside the feedback loop, one
-// per delay line. These are what keep the tail smooth: they multiply the echo
-// density on every trip without changing the decay rate, because an allpass
-// passes all its energy through. Without them the tail ripples audibly as
-// energy sloshes between lines, which is heard as bouncing or repeating.
-// 0 disables them.
-constexpr float kTankDiffusion = 0.72f;
+// per delay line, in two stages. These are what make the tail lush: they
+// multiply the echo density on every trip without changing the decay rate,
+// because an allpass passes all its energy through.
+//
+// Held fixed. Sweeping them was tried as a way to settle the tail and measured
+// flat, because redistributing phase does not stop energy sloshing between the
+// lines. Movement is what actually changes that.
+constexpr float kTankDiffusion = 0.76f;
+constexpr float kTankStage2 = 0.70f;
 
 // ============================================================================
 // STEREO
 // ============================================================================
-// Allpass coefficient of the output decorrelators, and the correlation the wet
-// path is steered to afterwards.
+// Allpass coefficient of the output decorrelators, the correlation the wet
+// path is steered to, and a final mid/side widening on top.
 //
-// This is a *wet-only* figure and it is not the number that reaches the mix
-// bus. The dry path is mono and the modulation pulls the channels further
-// apart, so the finished signal always measures wider than this. Fitted so a
-// 50 % mix lands near the reference reverb's image.
-constexpr float kStereoSpread = 0.45f;
-constexpr float kTargetCorrelation = 0.70f;
+// kTargetCorrelation folds each channel back into the other, so raising it
+// collapses the image towards the centre. Matching a reference reverb's
+// measured bus correlation turned out to be the wrong goal: the dry path is
+// mono and dominates that number, so chasing it narrowed the wet until the
+// whole thing sounded centred. These are set by ear for spread instead.
+constexpr float kStereoSpread = 0.62f;
+constexpr float kTargetCorrelation = 0.05f;
+
+// Side-channel gain applied after everything else. 1.0 leaves the image alone.
+constexpr float kStereoWidth = 1.6f;
 
 // ============================================================================
 // PREDELAY
@@ -87,10 +94,9 @@ constexpr float kPredelayMaxMs = 28.0f;
 // ============================================================================
 // MODULATION DEPTH
 // ============================================================================
-// Peak delay-line deviation in samples at 44.1 kHz. The floor applies even at
-// Mod = 0, because a completely static network parks its modes on fixed pitches
-// and those are what get heard as ringing.
-constexpr float kModFloorSamples = 2.5f;
-constexpr float kModDepthSamples = 9.0f;
+// Peak delay-line deviation in samples at 44.1 kHz at full movement. Zero
+// movement leaves the lines completely still, which is what a settled, lush
+// tail needs.
+constexpr float kModDepthSamples = 26.0f;
 
 } // namespace ee::dsp::config

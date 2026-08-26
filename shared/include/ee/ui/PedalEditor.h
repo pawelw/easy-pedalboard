@@ -37,6 +37,7 @@ private:
 
     std::vector<std::unique_ptr<Knob>> knobs;
     std::unique_ptr<FootSwitch> footSwitch;
+    juce::Image grain;
     juce::TooltipWindow tooltips { this, 600 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PedalEditor)

@@ -10,7 +10,7 @@
     Runs a dry file through the real EasyReverbProcessor, so the mix law, wet
     trim and parameter smoothing are all exercised rather than reimplemented.
 
-        ee_reverb_match in.wav out.wav <decaySeconds> <mixPercent> <highCutHz>
+        ee_reverb_match in.wav out.wav <decaySeconds> <mixPercent> <lowCutHz> [midCutPercent]
 */
 int main (int argc, char** argv)
 {
@@ -25,6 +25,7 @@ int main (int argc, char** argv)
     const auto decay = static_cast<float> (juce::String (argv[3]).getDoubleValue());
     const auto mix = static_cast<float> (juce::String (argv[4]).getDoubleValue());
     const auto highCut = static_cast<float> (juce::String (argv[5]).getDoubleValue());
+    const auto midCut = argc > 6 ? static_cast<float> (juce::String (argv[6]).getDoubleValue()) : 0.0f;
 
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
@@ -60,7 +61,8 @@ int main (int argc, char** argv)
 
     set ("decay", decay);
     set ("mix", mix);
-    set ("hicut", highCut);
+    set ("locut", highCut);
+    set ("res", midCut);
     set ("on", 1.0f);
 
     juce::MidiBuffer midi;

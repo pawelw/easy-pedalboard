@@ -26,6 +26,13 @@ struct PedalTheme
 
     juce::Colour accent          { 0xffc8e06a };
     juce::Colour accentDim       { 0xff5e6b34 };
+    juce::Colour accentGlow      { 0xffc8e06a };
+
+    juce::Colour title           { 0xfff2f2ea };
+    juce::Colour ledRing         { 0xff2a2724 };
+
+    /** Speckle strength on the painted face. 0 = perfectly flat colour. */
+    float grain = 0.0f;
 
     juce::Colour ledOn           { 0xffc8e06a };
     juce::Colour ledOff          { 0xff35352f };
@@ -38,15 +45,34 @@ struct PedalTheme
     juce::String titleTypeface;  // empty = JUCE default
     juce::String bodyTypeface;
 
-    /** Optional artwork. Leave empty to use the vector drawing. */
+    /** Optional artwork. Leave empty to use the vector drawing.
+
+        Two ways to supply a knob, both alpha-aware:
+          - knobImage: one upright PNG, rotated at runtime. Easiest to produce.
+          - knobFilmstrip: frames stacked vertically, already rotated. Sharper
+            for detailed caps, and the only option if the art is not radially
+            symmetric under rotation.
+
+        Whichever is set, the value arc is still drawn underneath, so artwork
+        with a transparent background keeps its ring.
+    */
     juce::Image backgroundImage;
+    juce::Image knobImage;
     juce::Image knobFilmstrip;
     int knobFilmstripFrames = 0;
+
+    /** Set false if knobImage already carries its own pointer at 12 o'clock
+        and should stay upright. */
+    bool knobImageRotates = true;
 
     juce::Font titleFont (float height) const;
     juce::Font bodyFont (float height) const;
 
     static PedalTheme dark();
+    static PedalTheme cream();
+
+    /** First installed name from the list, or empty for the JUCE default. */
+    static juce::String pickTypeface (const juce::StringArray& preferred);
 };
 
 } // namespace ee::ui
