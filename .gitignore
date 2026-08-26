@@ -1,0 +1,8 @@
+build/
+cmake-build-*/
+.cache/
+.DS_Store
+compile_commands.json
+*.xcodeproj/
+*.xcworkspace/
+.vscode/ipch/
