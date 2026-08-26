@@ -17,6 +17,15 @@ juce::String percentToText (float value, int)
     return juce::String (juce::roundToInt (value)) + " %";
 }
 
+juce::String hertzToText (float value, int)
+{
+    if (value >= 20000.0f)
+        return "off";
+    if (value >= 1000.0f)
+        return juce::String (value / 1000.0f, 1) + " k";
+    return juce::String (juce::roundToInt (value)) + " Hz";
+}
+
 /** Minimal host-free processor carrying the same parameters as Easy Reverb. */
 class SnapshotProcessor : public juce::AudioProcessor
 {
@@ -42,9 +51,12 @@ public:
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "mix", 1 }, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 30.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
+        auto highCutRange = juce::NormalisableRange<float> (800.0f, 20000.0f);
+        highCutRange.setSkewForCentre (4000.0f);
+
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "mod", 1 }, "Modulation", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 25.0f,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
+            juce::ParameterID { "hicut", 1 }, "High Cut", highCutRange, 8000.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (hertzToText)));
         layout.add (std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID { "on", 1 }, "On", true));
 
@@ -76,8 +88,9 @@ ee::ui::PedalSpec makeSpec()
     ee::ui::PedalSpec spec;
     spec.name = "Easy Reverb";
     spec.tagline = "Decay drives room size and predelay";
+    spec.version = "v0.2.0";
     spec.bypassParameterID = "on";
-    spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" }, { "mod", "Mod" } };
+    spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" }, { "hicut", "High Cut" } };
     return spec;
 }
 

@@ -17,6 +17,7 @@ struct PedalSpec
 {
     juce::String name;
     juce::String tagline;
+    juce::String version;
     std::vector<KnobSpec> knobs;
     juce::String bypassParameterID;
 

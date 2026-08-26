@@ -7,7 +7,7 @@ namespace
     constexpr int kMargin = 18;
     constexpr int kHeaderHeight = 74;
     constexpr int kKnobRowHeight = 132;
-    constexpr int kFootSwitchHeight = 118;
+    constexpr int kFootSwitchHeight = 100;
     constexpr int kKnobGap = 10;
 }
 
@@ -77,6 +77,16 @@ void PedalEditor::paint (juce::Graphics& g)
     const float lineY = static_cast<float> (kMargin + kHeaderHeight);
     g.setColour (theme.outline);
     g.drawLine (static_cast<float> (kMargin), lineY, static_cast<float> (getWidth() - kMargin), lineY, 1.0f);
+
+    if (spec.version.isNotEmpty())
+    {
+        g.setColour (theme.textSecondary.withAlpha (0.55f));
+        g.setFont (theme.bodyFont (9.5f));
+        g.drawText (spec.version,
+                    getLocalBounds().reduced (kMargin, 10),
+                    juce::Justification::bottomRight,
+                    false);
+    }
 }
 
 void PedalEditor::resized()

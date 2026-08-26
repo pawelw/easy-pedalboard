@@ -42,7 +42,7 @@ private:
 
     std::atomic<float>* decayParam = nullptr;
     std::atomic<float>* mixParam = nullptr;
-    std::atomic<float>* modParam = nullptr;
+    std::atomic<float>* highCutParam = nullptr;
     std::atomic<float>* onParam = nullptr;
 
     juce::SmoothedValue<float> dryGain;

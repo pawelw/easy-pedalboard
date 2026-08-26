@@ -90,7 +90,7 @@ void testDecayAccuracy()
 {
     std::printf ("Decay accuracy (target -> measured RT60):\n");
 
-    for (const float target : { 0.3f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f })
+    for (const float target : { 0.5f, 1.0f, 2.0f, 4.0f, 8.0f })
     {
         const auto res = measureImpulse (target, 0.25f);
 
@@ -202,7 +202,7 @@ void testWetLevelConsistency()
 
     double minGain = 1.0e9, maxGain = 0.0;
 
-    for (const float decay : { 0.3f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f })
+    for (const float decay : { 0.5f, 1.0f, 2.0f, 4.0f, 8.0f })
     {
         ee::dsp::FdnReverb reverb;
         reverb.prepare (kSampleRate);

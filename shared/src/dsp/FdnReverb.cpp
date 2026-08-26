@@ -8,29 +8,82 @@ namespace
 {
     // Mutually non-harmonic lengths, so the modes of the network do not pile up.
     constexpr std::array<float, FdnReverb::kLines> kBaseDelayMs
-        { 23.13f, 29.41f, 37.11f, 43.67f, 51.29f, 59.51f, 67.13f, 79.31f };
+        { 10.37f, 12.89f, 15.61f, 18.43f, 21.29f, 24.17f, 27.31f, 30.53f,
+          33.79f, 37.21f, 40.87f, 44.63f, 48.59f, 53.17f, 58.31f, 64.27f };
 
     constexpr std::array<float, FdnReverb::kLines> kLfoHz
-        { 0.13f, 0.19f, 0.27f, 0.34f, 0.43f, 0.55f, 0.68f, 0.81f };
+        { 0.09f, 0.13f, 0.17f, 0.21f, 0.26f, 0.31f, 0.37f, 0.43f,
+          0.49f, 0.55f, 0.61f, 0.67f, 0.73f, 0.79f, 0.85f, 0.91f };
 
-    constexpr std::array<float, 4> kDiffuserMs { 6.9f, 10.3f, 15.7f, 22.1f };
+    // One allpass per line, sitting inside the feedback loop. Lengths are kept
+    // clear of the line lengths so the pair does not lock into a common period.
+    constexpr std::array<float, FdnReverb::kLines> kTankMs
+        { 3.11f, 3.89f, 4.51f, 5.23f, 5.87f, 6.53f, 7.19f, 7.83f,
+          8.41f, 9.07f, 9.73f, 10.31f, 10.97f, 11.59f, 12.23f, 12.89f };
 
-    constexpr float kMaxPredelayMs = 60.0f;
+    // Dattorro-style input ladder: short pairs first to build density fast, then
+    // longer pairs to stretch it out. Coefficients taper hard towards the end,
+    // because the ladder sits outside the feedback loop and its own ring is what
+    // stretches the shortest decay settings past where the knob says.
+    constexpr std::array<float, FdnReverb::kDiffusers> kDiffuserMs
+        { 2.31f, 3.59f, 5.77f, 7.11f, 8.93f, 10.71f, 12.29f, 13.97f };
+    constexpr std::array<float, FdnReverb::kDiffusers> kDiffuserWeight
+        { 1.06f, 1.06f, 1.00f, 1.00f, 0.92f, 0.92f, 0.84f, 0.84f };
+
+    // Outside the feedback loop, so these change phase and stereo width without
+    // touching the decay at all. Kept moderate: the cross-feed below sets the
+    // correlation at every frequency, so these only need to add phase variety,
+    // and long ones ring on past the network at short decay settings.
+    constexpr std::array<float, FdnReverb::kDecorrelators> kSpreadLeftMs  { 9.31f, 15.73f, 23.11f };
+    constexpr std::array<float, FdnReverb::kDecorrelators> kSpreadRightMs { 11.47f, 19.31f, 28.73f };
+
     constexpr float kDelayRampSeconds = 0.30f;
+
+    // Injecting the source into every line at +/-c puts kLines * c^2 units of
+    // energy into the network; hold that constant regardless of line count.
+    const float kInjectGain = std::sqrt (2.0f / static_cast<float> (FdnReverb::kLines));
+
+    // Summing kLines uncorrelated taps grows the amplitude by sqrt(kLines).
+    constexpr float kTapNorm = 1.0f / 4.0f;
+
+    /** Cross-feed that turns two orthogonal channels into a given correlation.
+        corr = 2k / (1 + k^2), solved for k. Negative correlations are allowed
+        and are what the wet path actually wants; see ReverbConfig.
+    */
+    inline float crossFeedFor (float correlation) noexcept
+    {
+        const float c = juce::jlimit (-0.9f, 0.9f, correlation);
+        if (std::abs (c) < 1.0e-4f)
+            return 0.0f;
+        return (1.0f - std::sqrt (1.0f - c * c)) / c;
+    }
+
+    inline float highCutCoeffFor (float hz, double sampleRate) noexcept
+    {
+        if (hz >= FdnReverb::kMaxHighCutHz)
+            return 1.0f; // exact pass-through, so "off" really is off
+        const float w = 2.0f * juce::MathConstants<float>::pi * hz / static_cast<float> (sampleRate);
+        return juce::jlimit (0.0f, 1.0f, 1.0f - std::exp (-w));
+    }
+
+    // Damping the low and high bands takes broadband energy out of the tail, so
+    // a -60 dB measurement lands short of the nominal time. Empirical fit against
+    // the offline harness; retune it there if the voicing above changes a lot.
+    constexpr float kDecayCompensation = 1.40f;
 
     // A lossless FDN retains more energy the longer it rings, so wet level would
     // otherwise rise ~9 dB across the decay sweep. Measured gain follows
-    // (decay ^ 0.315) closely; normalising against the midpoint keeps the wet
-    // signal put while the decay knob moves.
-    constexpr float kGainExponent = 0.315f;
+    // (decay ^ kGainExponent) closely; normalising against the midpoint keeps
+    // the wet signal put while the decay knob moves.
+    constexpr float kGainExponent = 0.41f;
     constexpr float kGainReferenceSeconds = 2.0f;
 
-    /** In-place 8-point Walsh-Hadamard transform, normalised to be lossless. */
-    inline void hadamard8 (float* v) noexcept
+    /** In-place 16-point Walsh-Hadamard transform, normalised to be lossless. */
+    inline void hadamard16 (float* v) noexcept
     {
-        for (int stride = 1; stride < 8; stride <<= 1)
+        for (int stride = 1; stride < 16; stride <<= 1)
         {
-            for (int i = 0; i < 8; i += stride * 2)
+            for (int i = 0; i < 16; i += stride * 2)
             {
                 for (int j = i; j < i + stride; ++j)
                 {
@@ -42,9 +95,22 @@ namespace
             }
         }
 
-        constexpr float norm = 0.35355339059f; // 1 / sqrt(8)
-        for (int i = 0; i < 8; ++i)
+        constexpr float norm = 0.25f; // 1 / sqrt(16)
+        for (int i = 0; i < 16; ++i)
             v[i] *= norm;
+    }
+
+    /** Walsh rows 5 and 10: orthogonal, so the two output taps are uncorrelated. */
+    constexpr float tapSign (int line, int mask) noexcept
+    {
+        int bits = line & mask;
+        int parity = 0;
+        while (bits != 0)
+        {
+            parity ^= (bits & 1);
+            bits >>= 1;
+        }
+        return parity == 0 ? 1.0f : -1.0f;
     }
 }
 
@@ -56,9 +122,14 @@ void FdnReverb::prepare (double sampleRate)
 
     for (int i = 0; i < kLines; ++i)
     {
-        lines[static_cast<size_t> (i)].prepare (sampleRate, maxLineSeconds);
-        delaySmooth[static_cast<size_t> (i)].reset (sampleRate, kDelayRampSeconds);
-        lfoPhase[static_cast<size_t> (i)] = static_cast<float> (i) / static_cast<float> (kLines);
+        const auto idx = static_cast<size_t> (i);
+        lines[idx].prepare (sampleRate, maxLineSeconds);
+        dampers[idx].prepare (sampleRate, config::kLowCornerHz, config::kHighCornerHz);
+        tank[idx].prepare (sampleRate, (kTankMs[idx] + 5.0f) * 0.001f);
+        tank[idx].setDelaySamples (static_cast<float> (kTankMs[idx] * 0.001 * sampleRate));
+        tank[idx].setCoefficient (juce::jlimit (0.0f, 0.85f, config::kTankDiffusion));
+        delaySmooth[idx].reset (sampleRate, kDelayRampSeconds);
+        lfoPhase[idx] = static_cast<float> (i) / static_cast<float> (kLines);
     }
 
     for (size_t i = 0; i < diffusers.size(); ++i)
@@ -66,12 +137,28 @@ void FdnReverb::prepare (double sampleRate)
         diffusers[i].prepare (sampleRate, (kDiffuserMs[i] + 5.0f) * 0.001f);
         // Held constant across the decay sweep; retuning these mid-sweep clicks.
         diffusers[i].setDelaySamples (static_cast<float> (kDiffuserMs[i] * 0.001 * sampleRate));
-        diffusers[i].setCoefficient (0.62f);
+        diffusers[i].setCoefficient (juce::jlimit (0.05f, 0.85f, config::kDiffusion * kDiffuserWeight[i]));
     }
 
-    predelayLine.prepare (sampleRate, (kMaxPredelayMs + 20.0f) * 0.001f);
+    for (size_t i = 0; i < spreadL.size(); ++i)
+    {
+        const float spread = juce::jlimit (0.0f, 0.85f, config::kStereoSpread);
+
+        spreadL[i].prepare (sampleRate, (kSpreadLeftMs[i] + 5.0f) * 0.001f);
+        spreadL[i].setDelaySamples (static_cast<float> (kSpreadLeftMs[i] * 0.001 * sampleRate));
+        spreadL[i].setCoefficient (spread);
+
+        spreadR[i].prepare (sampleRate, (kSpreadRightMs[i] + 5.0f) * 0.001f);
+        spreadR[i].setDelaySamples (static_cast<float> (kSpreadRightMs[i] * 0.001 * sampleRate));
+        spreadR[i].setCoefficient (-spread);
+    }
+
+    predelayLine.prepare (sampleRate, (config::kPredelayMaxMs + 20.0f) * 0.001f);
     predelaySmooth.reset (sampleRate, kDelayRampSeconds);
     outputScale.reset (sampleRate, kDelayRampSeconds);
+    highCutCoeff.reset (sampleRate, 0.05f);
+    highCutCoeff.setCurrentAndTargetValue (highCutCoeffFor (highCutHz, sampleRate));
+    highCutState.fill (0.0f);
 
     dirty = true;
     updateDerived();
@@ -87,8 +174,12 @@ void FdnReverb::reset()
 {
     for (auto& l : lines)     l.reset();
     for (auto& d : dampers)   d.reset();
+    for (auto& a : tank)      a.reset();
     for (auto& a : diffusers) a.reset();
+    for (auto& a : spreadL)   a.reset();
+    for (auto& a : spreadR)   a.reset();
     predelayLine.reset();
+    highCutState.fill (0.0f);
 }
 
 void FdnReverb::setDecayTime (float seconds) noexcept
@@ -111,10 +202,16 @@ void FdnReverb::setModulation (float amount01) noexcept
     }
 }
 
-void FdnReverb::setDecayTilt (float lowMultiplier, float highMultiplier) noexcept
+void FdnReverb::setHighCut (float hz) noexcept
 {
-    lowMult = juce::jlimit (0.1f, 4.0f, lowMultiplier);
-    highMult = juce::jlimit (0.1f, 4.0f, highMultiplier);
+    highCutHz = juce::jlimit (kMinHighCutHz, kMaxHighCutHz, hz);
+    highCutCoeff.setTargetValue (highCutCoeffFor (highCutHz, sr));
+}
+
+void FdnReverb::setDecayTilt (float low, float high) noexcept
+{
+    lowRatio = juce::jlimit (0.05f, 1.0f, low);
+    highRatio = juce::jlimit (0.05f, 1.0f, high);
     dirty = true;
 }
 
@@ -124,15 +221,18 @@ void FdnReverb::updateDerived() noexcept
 
     const float norm = juce::jlimit (0.0f, 1.0f, (decaySeconds - kMinDecay) / (kMaxDecay - kMinDecay));
 
-    // The two hidden parameters the decay knob drives.
-    const float roomSize   = 0.30f + 0.70f * std::sqrt (norm);
-    const float predelayMs = 8.0f + (kMaxPredelayMs - 8.0f) * std::pow (norm, 0.7f);
+    // The two hidden parameters the decay knob drives. Room size stays in a
+    // narrow band because a plate is dense at every setting; shrinking the
+    // lines much further would push the modes up into audible pitches.
+    const float roomSize = 0.55f + 0.45f * std::sqrt (norm);
+    const float predelayMs = config::kPredelayMinMs
+                             + (config::kPredelayMaxMs - config::kPredelayMinMs) * std::pow (norm, 0.7f);
 
     predelaySmooth.setTargetValue (static_cast<float> (predelayMs * 0.001 * sr));
     outputScale.setTargetValue (std::pow (kGainReferenceSeconds / decaySeconds, kGainExponent));
 
     // Scaled off 44.1k so the modulation depth is the same musical amount at any rate.
-    modDepthSamples = static_cast<float> ((0.8 + 11.0 * modAmount) * sr / 44100.0);
+    modDepthSamples = static_cast<float> ((config::kModFloorSamples + config::kModDepthSamples * modAmount) * sr / 44100.0);
 
     for (int i = 0; i < kLines; ++i)
     {
@@ -142,11 +242,18 @@ void FdnReverb::updateDerived() noexcept
         delaySmooth[idx].setTargetValue (samples);
         lfoInc[idx] = static_cast<float> (kLfoHz[idx] / sr);
 
-        const float t = samples / static_cast<float> (sr);
-        const float gLow  = std::pow (10.0f, -3.0f * t / (decaySeconds * lowMult));
-        const float gHigh = std::pow (10.0f, -3.0f * t / (decaySeconds * highMult));
+        // Per-trip loss for a -60 dB decay over decaySeconds, then the two
+        // bands expressed relative to it. The tank allpass is part of the trip,
+        // so its delay counts towards the time round the loop.
+        const float t = (samples + static_cast<float> (kTankMs[idx] * 0.001 * sr)) / static_cast<float> (sr);
+        const float target = decaySeconds * kDecayCompensation;
+        const float gMid  = juce::jmin (std::pow (10.0f, -3.0f * t / target), 0.9995f);
+        const float gLow  = std::pow (10.0f, -3.0f * t / (target * lowRatio));
+        const float gHigh = std::pow (10.0f, -3.0f * t / (target * highRatio));
 
-        dampers[idx].set (juce::jmin (gLow, 0.9995f), gHigh / juce::jmax (gLow, 1.0e-6f));
+        dampers[idx].set (gMid,
+                          gLow / juce::jmax (gMid, 1.0e-6f),
+                          gHigh / juce::jmax (gMid, 1.0e-6f));
     }
 }
 
@@ -154,6 +261,9 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
 {
     if (dirty)
         updateDerived();
+
+    const float crossFeed = crossFeedFor (config::kTargetCorrelation);
+    const float crossNorm = 1.0f / std::sqrt (1.0f + crossFeed * crossFeed);
 
     for (int s = 0; s < numSamples; ++s)
     {
@@ -176,20 +286,50 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
             if (lfoPhase[idx] >= 1.0f)
                 lfoPhase[idx] -= 1.0f;
 
-            v[idx] = dampers[idx].process (lines[idx].read (delaySmooth[idx].getNextValue() + mod));
+            v[idx] = dampers[idx].process (tank[idx].process (lines[idx].read (delaySmooth[idx].getNextValue() + mod)));
         }
 
-        // Decorrelated taps: each side reads a different subset of the network.
-        const float scale = outputScale.getNextValue() * 0.5f;
-        outL[s] = (v[0] + v[2] - v[5] - v[7]) * scale;
-        outR[s] = (v[1] + v[3] - v[4] - v[6]) * scale;
+        float sumL = 0.0f;
+        float sumR = 0.0f;
+        for (int i = 0; i < kLines; ++i)
+        {
+            const float x = v[static_cast<size_t> (i)];
+            sumL += tapSign (i, 0b0101) * x;
+            sumR += tapSign (i, 0b1010) * x;
+        }
 
-        hadamard8 (v.data());
+        const float scale = outputScale.getNextValue() * kTapNorm;
+
+        float l = sumL * scale;
+        float r = sumR * scale;
+        for (int i = 0; i < kDecorrelators; ++i)
+        {
+            l = spreadL[static_cast<size_t> (i)].process (l);
+            r = spreadR[static_cast<size_t> (i)].process (r);
+        }
+
+        outL[s] = (l + crossFeed * r) * crossNorm;
+        outR[s] = (r + crossFeed * l) * crossNorm;
+
+        // Two cascaded one-poles, so the cut has a slope rather than a corner.
+        const float hc = highCutCoeff.getNextValue();
+        if (hc < 0.999f)
+        {
+            highCutState[0] += hc * (outL[s] - highCutState[0]);
+            highCutState[1] += hc * (highCutState[0] - highCutState[1]);
+            outL[s] = highCutState[1];
+
+            highCutState[2] += hc * (outR[s] - highCutState[2]);
+            highCutState[3] += hc * (highCutState[2] - highCutState[3]);
+            outR[s] = highCutState[3];
+        }
+
+        hadamard16 (v.data());
 
         for (int i = 0; i < kLines; ++i)
         {
             const auto idx = static_cast<size_t> (i);
-            const float inject = (i % 2 == 0 ? 0.5f : -0.5f) * diffused;
+            const float inject = tapSign (i, 0b0110) * kInjectGain * diffused;
             lines[idx].write (v[idx] + inject);
             lines[idx].advance();
         }

@@ -4,13 +4,18 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 
 #include "Allpass.h"
+#include "LoopDamper.h"
 #include "ModDelayLine.h"
-#include "OnePoleDamper.h"
+#include "ReverbConfig.h"
 
 namespace ee::dsp
 {
 
-/** Feedback delay network reverb: mono in, stereo out.
+/** Plate-voiced feedback delay network: mono in, stereo out.
+
+    Sixteen lines rather than the usual eight, because at eight the mode
+    density audibly thins out as the tail decays and the late reflections start
+    to separate into distinct bounces.
 
     Decay time is the only size control exposed. Room size and predelay are
     derived from it so the space stays plausible across the whole sweep.
@@ -18,9 +23,16 @@ namespace ee::dsp
 class FdnReverb
 {
 public:
-    static constexpr int kLines = 8;
-    static constexpr float kMinDecay = 0.3f;
+    static constexpr int kLines = 16;
+    static constexpr int kDiffusers = 8;
+    static constexpr int kDecorrelators = 3;
+    // The diffusion ladder and the output decorrelators ring on for around
+    // half a second regardless of the network, so anything shorter than this
+    // could not be delivered and the knob would be lying.
+    static constexpr float kMinDecay = 0.5f;
     static constexpr float kMaxDecay = 8.0f;
+    static constexpr float kMinHighCutHz = 800.0f;
+    static constexpr float kMaxHighCutHz = 20000.0f;
 
     void prepare (double sampleRate);
     void reset();
@@ -28,8 +40,14 @@ public:
     void setDecayTime (float seconds) noexcept;
     void setModulation (float amount01) noexcept;
 
-    /** Fixed voicing knobs. Not exposed on the pedal, but future effects can use them. */
-    void setDecayTilt (float lowMultiplier, float highMultiplier) noexcept;
+    /** Two-pole lowpass across the wet output. kMaxHighCutHz is effectively off. */
+    void setHighCut (float hz) noexcept;
+
+    /** Fixed voicing knobs. Not exposed on the pedal, but future effects can use them.
+        Both are fractions of the mid-band decay and are clamped to 1.0, so no
+        band can ever ring longer than the decay knob says.
+    */
+    void setDecayTilt (float lowRatio, float highRatio) noexcept;
 
     void process (const float* monoIn, float* outL, float* outR, int numSamples) noexcept;
 
@@ -43,20 +61,27 @@ private:
 
     float decaySeconds = 2.0f;
     float modAmount = 0.25f;
-    float lowMult = 1.20f;
-    float highMult = 0.45f;
+    float highCutHz = kMaxHighCutHz;
+    float lowRatio = config::kLowDecayRatio;
+    float highRatio = config::kHighDecayRatio;
 
     std::array<ModDelayLine, kLines> lines;
-    std::array<OnePoleDamper, kLines> dampers;
+    std::array<LoopDamper, kLines> dampers;
+    std::array<Allpass, kLines> tank;
     std::array<juce::SmoothedValue<float>, kLines> delaySmooth;
     std::array<float, kLines> lfoPhase {};
     std::array<float, kLines> lfoInc {};
     float modDepthSamples = 0.0f;
 
-    std::array<Allpass, 4> diffusers;
+    std::array<Allpass, kDiffusers> diffusers;
+    std::array<Allpass, kDecorrelators> spreadL;
+    std::array<Allpass, kDecorrelators> spreadR;
+
     ModDelayLine predelayLine;
     juce::SmoothedValue<float> predelaySmooth;
     juce::SmoothedValue<float> outputScale;
+    juce::SmoothedValue<float> highCutCoeff;
+    std::array<float, 4> highCutState {};
 };
 
 } // namespace ee::dsp
