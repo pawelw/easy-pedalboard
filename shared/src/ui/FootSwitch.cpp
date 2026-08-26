@@ -4,8 +4,10 @@ namespace ee::ui
 {
 namespace
 {
-    constexpr float kLedDiameter = 13.0f;
-    constexpr float kLedGap = 14.0f;
+    constexpr float kLedDiameter = 12.0f;
+    constexpr float kMaxStompDiameter = 64.0f;
+    constexpr float kStompCentreX = 0.5f;
+    constexpr float kLedCentreX = 0.82f;
 }
 
 FootSwitch::FootSwitch (juce::AudioProcessorValueTreeState& state,
@@ -23,50 +25,49 @@ FootSwitch::~FootSwitch() = default;
 
 void FootSwitch::paintButton (juce::Graphics& g, bool isHighlighted, bool isDown)
 {
-    auto area = getLocalBounds().toFloat();
+    const auto area = getLocalBounds().toFloat();
     const bool engaged = getToggleState();
 
-    const auto ledArea = juce::Rectangle<float> (kLedDiameter, kLedDiameter)
-                             .withCentre ({ area.getCentreX(), area.getY() + kLedDiameter * 0.5f });
+    const float diameter = juce::jmin (area.getWidth() * 0.5f, area.getHeight(), kMaxStompDiameter);
+    if (diameter <= 0.0f)
+        return;
+
+    auto centre = juce::Point<float> (area.getX() + area.getWidth() * kStompCentreX, area.getCentreY());
+    if (isDown)
+        centre.y += 1.0f;
+
+    const auto stomp = juce::Rectangle<float> (diameter, diameter).withCentre (centre);
+
+    // Recessed collar, then the button proper standing slightly proud of it.
+    g.setColour (pedalTheme.switchBody.darker (0.6f));
+    g.fillEllipse (stomp);
+    g.setColour (juce::Colours::black.withAlpha (0.45f));
+    g.drawEllipse (stomp, 1.6f);
+
+    const auto button = stomp.reduced (diameter * 0.14f);
+    g.setColour (pedalTheme.switchBody.brighter (isHighlighted ? 0.22f : 0.0f));
+    g.fillEllipse (button);
+    g.setColour (pedalTheme.switchHighlight.withAlpha (0.75f));
+    g.drawEllipse (button, 1.2f);
+
+    g.setColour (pedalTheme.switchHighlight.withAlpha (isDown ? 0.25f : 0.5f));
+    g.fillEllipse (button.reduced (diameter * 0.22f));
+
+    const auto led = juce::Rectangle<float> (kLedDiameter, kLedDiameter)
+                         .withCentre ({ area.getX() + area.getWidth() * kLedCentreX, area.getCentreY() });
 
     if (engaged)
     {
-        g.setColour (pedalTheme.ledOn.withAlpha (0.22f));
-        g.fillEllipse (ledArea.expanded (7.0f));
-        g.setColour (pedalTheme.ledOn.withAlpha (0.40f));
-        g.fillEllipse (ledArea.expanded (3.0f));
+        g.setColour (pedalTheme.glow.withAlpha (0.16f));
+        g.fillEllipse (led.expanded (20.0f));
+        g.setColour (pedalTheme.glow.withAlpha (0.30f));
+        g.fillEllipse (led.expanded (12.0f));
+        g.setColour (pedalTheme.glow.withAlpha (0.55f));
+        g.fillEllipse (led.expanded (5.0f));
     }
 
     g.setColour (engaged ? pedalTheme.ledOn : pedalTheme.ledOff);
-    g.fillEllipse (ledArea);
-    g.setColour (pedalTheme.outline);
-    g.drawEllipse (ledArea, 1.0f);
-
-    area.removeFromTop (kLedDiameter + kLedGap);
-
-    const float diameter = juce::jmin (area.getWidth(), area.getHeight());
-    auto stomp = juce::Rectangle<float> (diameter, diameter)
-                     .withCentre ({ area.getCentreX(), area.getCentreY() });
-
-    if (isDown)
-        stomp = stomp.reduced (2.0f);
-
-    g.setColour (juce::Colours::black.withAlpha (0.35f));
-    g.fillEllipse (stomp.translated (0.0f, 3.0f));
-
-    juce::ColourGradient gradient (pedalTheme.switchHighlight, stomp.getCentreX(), stomp.getY(),
-                                   pedalTheme.switchBody.darker (0.5f), stomp.getCentreX(), stomp.getBottom(), false);
-    g.setGradientFill (gradient);
-    g.fillEllipse (stomp);
-
-    g.setColour (pedalTheme.outline);
-    g.drawEllipse (stomp, 1.5f);
-
-    const auto cap = stomp.reduced (diameter * 0.26f);
-    g.setColour (pedalTheme.switchBody.brighter (isHighlighted ? 0.35f : 0.12f));
-    g.fillEllipse (cap);
-    g.setColour (pedalTheme.outline.darker (0.3f));
-    g.drawEllipse (cap, 1.0f);
+    g.fillEllipse (led);
 }
 
 } // namespace ee::ui

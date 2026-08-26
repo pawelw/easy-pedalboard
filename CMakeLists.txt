@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(EasyEffects VERSION 0.1.0 LANGUAGES C CXX)
+project(EasyEffects VERSION 0.10.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,6 +25,12 @@ FetchContent_Declare(JUCE
     GIT_SHALLOW TRUE
     GIT_PROGRESS TRUE)
 FetchContent_MakeAvailable(JUCE)
+
+# Fonts are compiled in rather than installed, so the pedal looks the same on a
+# machine that has never seen them.
+juce_add_binary_data(ee_assets SOURCES
+    assets/fonts/Birthstone-Regular.ttf)
+set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)
 add_subdirectory(plugins/easy-reverb)

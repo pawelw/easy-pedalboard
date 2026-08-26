@@ -17,6 +17,13 @@ juce::String percentToText (float value, int)
     return juce::String (juce::roundToInt (value)) + " %";
 }
 
+juce::String hertzToText (float value, int)
+{
+    if (value <= 20.5f)
+        return "off";
+    return juce::String (juce::roundToInt (value)) + " Hz";
+}
+
 /** Minimal host-free processor carrying the same parameters as Easy Reverb. */
 class SnapshotProcessor : public juce::AudioProcessor
 {
@@ -37,13 +44,19 @@ public:
         decayRange.setSkewForCentre (2.0f);
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "decay", 1 }, "Decay Time", decayRange, 2.0f,
+            juce::ParameterID { "decay", 1 }, "Decay Time", decayRange, 3.2f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (secondsToText)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "mix", 1 }, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 30.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
+        auto lowCutRange = juce::NormalisableRange<float> (20.0f, 800.0f);
+        lowCutRange.setSkewForCentre (180.0f);
+
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "mod", 1 }, "Modulation", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 25.0f,
+            juce::ParameterID { "locut", 1 }, "Low Cut", lowCutRange, 20.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (hertzToText)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "res", 1 }, "Resonance", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 50.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
         layout.add (std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID { "on", 1 }, "On", true));
@@ -76,8 +89,12 @@ ee::ui::PedalSpec makeSpec()
     ee::ui::PedalSpec spec;
     spec.name = "Easy Reverb";
     spec.tagline = "Decay drives room size and predelay";
+    spec.version = "v0.10.0";
     spec.bypassParameterID = "on";
-    spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" }, { "mod", "Mod" } };
+    spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" },
+                   { "res", "Resonance" }, { "locut", "Low Cut" } };
+    spec.knobsPerRow = 2;
+    spec.height = 500;
     return spec;
 }
 
@@ -86,7 +103,7 @@ void render (const juce::File& outputFile, bool engaged)
     SnapshotProcessor processor;
     processor.apvts.getParameter ("on")->setValueNotifyingHost (engaged ? 1.0f : 0.0f);
 
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec());
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), ee::ui::PedalTheme::blue());
 
     const int w = editor.getWidth();
     const int h = editor.getHeight();

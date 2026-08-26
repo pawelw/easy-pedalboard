@@ -4,14 +4,20 @@
 
 namespace
 {
-    constexpr const char* kDecayID = "decay";
-    constexpr const char* kMixID   = "mix";
-    constexpr const char* kModID   = "mod";
-    constexpr const char* kOnID    = "on";
+    constexpr const char* kDecayID  = "decay";
+    constexpr const char* kMixID    = "mix";
+    constexpr const char* kLowCutID = "locut";
+    constexpr const char* kResonanceID = "res";
+    constexpr const char* kOnID     = "on";
 
-    // The network is normalised to ~0.59 RMS gain, so this lands a fully wet
-    // signal at roughly the level of the dry one.
-    constexpr float kWetTrim = 1.6f;
+    // The network is normalised to ~0.42 RMS gain. Trimmed against a reference
+    // plate so that a 50 % mix lands at the same wet level it does there.
+    constexpr float kWetTrim = 1.1f;
+
+    // Mix knob shaping. Above 1.0 the wet comes in more gradually, so the
+    // useful part of the range is not squeezed into the first third of travel.
+    constexpr float kMixCurve = 1.3f;
+
 
     constexpr float kGainRampSeconds = 0.02f;
 
@@ -24,6 +30,18 @@ namespace
     {
         return juce::String (juce::roundToInt (value)) + " %";
     }
+
+    juce::String hertzToText (float value, int)
+    {
+        if (value <= ee::dsp::FdnReverb::kMinLowCutHz + 0.5f)
+            return "off";
+        return juce::String (juce::roundToInt (value)) + " Hz";
+    }
+
+    float shapedMix (float percent) noexcept
+    {
+        return std::pow (juce::jlimit (0.0f, 1.0f, percent * 0.01f), kMixCurve);
+    }
 }
 
 EasyReverbProcessor::EasyReverbProcessor()
@@ -32,10 +50,11 @@ EasyReverbProcessor::EasyReverbProcessor()
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    decayParam = apvts.getRawParameterValue (kDecayID);
-    mixParam   = apvts.getRawParameterValue (kMixID);
-    modParam   = apvts.getRawParameterValue (kModID);
-    onParam    = apvts.getRawParameterValue (kOnID);
+    decayParam  = apvts.getRawParameterValue (kDecayID);
+    mixParam    = apvts.getRawParameterValue (kMixID);
+    lowCutParam = apvts.getRawParameterValue (kLowCutID);
+    resonanceParam = apvts.getRawParameterValue (kResonanceID);
+    onParam     = apvts.getRawParameterValue (kOnID);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout EasyReverbProcessor::createParameterLayout()
@@ -47,7 +66,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyReverbProcessor::createP
     decayRange.setSkewForCentre (2.0f);
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kDecayID, 1 }, "Decay Time", decayRange, 2.0f,
+        juce::ParameterID { kDecayID, 1 }, "Decay Time", decayRange, 3.2f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (secondsToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -55,9 +74,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout EasyReverbProcessor::createP
         juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 30.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
+    auto lowCutRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz,
+                                                       ee::dsp::FdnReverb::kMaxLowCutHz);
+    lowCutRange.setSkewForCentre (180.0f);
+
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kModID, 1 }, "Modulation",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 25.0f,
+        juce::ParameterID { kLowCutID, 1 }, "Low Cut", lowCutRange,
+        ee::dsp::FdnReverb::kMinLowCutHz,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (hertzToText)));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kResonanceID, 1 }, "Resonance",
+        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 50.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (
@@ -80,8 +108,11 @@ void EasyReverbProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
     wetGain.reset (sampleRate, kGainRampSeconds);
     inputGain.reset (sampleRate, kGainRampSeconds);
 
-    const float mix = mixParam->load() * 0.01f;
+    const float mix = shapedMix (mixParam->load());
     const bool engaged = onParam->load() > 0.5f;
+
+    reverb.setLowCut (lowCutParam->load());
+    reverb.setResonance (resonanceParam->load() * 0.01f);
 
     dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
     wetGain.setCurrentAndTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi) * kWetTrim);
@@ -130,11 +161,12 @@ void EasyReverbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     for (int ch = numIn; ch < numOut; ++ch)
         buffer.clear (ch, 0, numSamples);
 
-    const float mix = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
+    const float mix = shapedMix (mixParam->load());
     const bool engaged = onParam->load() > 0.5f;
 
     reverb.setDecayTime (decayParam->load());
-    reverb.setModulation (juce::jlimit (0.0f, 1.0f, modParam->load() * 0.01f));
+    reverb.setLowCut (lowCutParam->load());
+    reverb.setResonance (resonanceParam->load() * 0.01f);
 
     // Trails: bypassing stops feeding the network but leaves the wet path open,
     // so the existing tail rings out instead of being cut off.
@@ -186,14 +218,18 @@ juce::AudioProcessorEditor* EasyReverbProcessor::createEditor()
     ee::ui::PedalSpec spec;
     spec.name = "Easy Reverb";
     spec.tagline = "Decay drives room size and predelay";
+    spec.version = "v" JucePlugin_VersionString;
     spec.bypassParameterID = kOnID;
     spec.knobs = {
         { kDecayID, "Decay" },
         { kMixID,   "Mix" },
-        { kModID,   "Mod" }
+        { kResonanceID, "Resonance" },
+        { kLowCutID, "Low Cut" }
     };
+    spec.knobsPerRow = 2;
+    spec.height = 500;
 
-    return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::dark());
+    return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::blue());
 }
 
 void EasyReverbProcessor::getStateInformation (juce::MemoryBlock& destData)

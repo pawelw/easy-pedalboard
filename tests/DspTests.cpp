@@ -37,7 +37,7 @@ ImpulseResult measureImpulse (float decaySeconds, float modulation)
     reverb.prepare (kSampleRate);
     reverb.reset();
     reverb.setDecayTime (decaySeconds);
-    reverb.setModulation (modulation);
+    reverb.setResonance (1.0f - modulation);
 
     // Let the smoothed delay lengths settle before the impulse goes in.
     std::vector<float> silence (kBlock, 0.0f);
@@ -90,7 +90,7 @@ void testDecayAccuracy()
 {
     std::printf ("Decay accuracy (target -> measured RT60):\n");
 
-    for (const float target : { 0.3f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f })
+    for (const float target : { 0.5f, 1.0f, 2.0f, 4.0f, 8.0f })
     {
         const auto res = measureImpulse (target, 0.25f);
 
@@ -120,7 +120,7 @@ void testStabilityUnderLoad()
     reverb.prepare (kSampleRate);
     reverb.reset();
     reverb.setDecayTime (ee::dsp::FdnReverb::kMaxDecay);
-    reverb.setModulation (1.0f);
+    reverb.setResonance (0.0f);
 
     std::mt19937 rng (1234);
     std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
@@ -157,7 +157,7 @@ void testDecaySweepIsQuiet()
     ee::dsp::FdnReverb reverb;
     reverb.prepare (kSampleRate);
     reverb.reset();
-    reverb.setModulation (0.5f);
+    reverb.setResonance (0.5f);
 
     std::mt19937 rng (99);
     std::uniform_real_distribution<float> dist (-0.25f, 0.25f);
@@ -202,13 +202,13 @@ void testWetLevelConsistency()
 
     double minGain = 1.0e9, maxGain = 0.0;
 
-    for (const float decay : { 0.3f, 0.5f, 1.0f, 2.0f, 4.0f, 8.0f })
+    for (const float decay : { 0.5f, 1.0f, 2.0f, 4.0f, 8.0f })
     {
         ee::dsp::FdnReverb reverb;
         reverb.prepare (kSampleRate);
         reverb.reset();
         reverb.setDecayTime (decay);
-        reverb.setModulation (0.25f);
+        reverb.setResonance (0.75f);
 
         std::mt19937 rng (7);
         std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
@@ -259,7 +259,7 @@ void testSilenceInSilenceOut()
     reverb.prepare (kSampleRate);
     reverb.reset();
     reverb.setDecayTime (4.0f);
-    reverb.setModulation (0.5f);
+    reverb.setResonance (0.5f);
 
     std::vector<float> in (kBlock, 0.0f), l (kBlock), r (kBlock);
     float peak = 0.0f;

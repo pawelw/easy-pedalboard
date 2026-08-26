@@ -30,60 +30,88 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
 {
     const auto bounds = juce::Rectangle<int> (x, y, width, height).toFloat().reduced (2.0f);
     const float diameter = juce::jmin (bounds.getWidth(), bounds.getHeight());
-    const auto square = juce::Rectangle<float> (diameter, diameter).withCentre (bounds.getCentre());
+    const auto centre = bounds.getCentre();
     const float angle = rotaryStartAngle + sliderPos * (rotaryEndAngle - rotaryStartAngle);
 
-    if (theme.knobFilmstrip.isValid() && theme.knobFilmstripFrames > 1)
-    {
-        const int frameHeight = theme.knobFilmstrip.getHeight() / theme.knobFilmstripFrames;
-        const int frame = juce::jlimit (0, theme.knobFilmstripFrames - 1,
-                                        static_cast<int> (sliderPos * static_cast<float> (theme.knobFilmstripFrames - 1) + 0.5f));
-
-        g.drawImage (theme.knobFilmstrip,
-                     static_cast<int> (square.getX()), static_cast<int> (square.getY()),
-                     static_cast<int> (square.getWidth()), static_cast<int> (square.getHeight()),
-                     0, frame * frameHeight,
-                     theme.knobFilmstrip.getWidth(), frameHeight);
-        return;
-    }
-
-    const float radius = diameter * 0.5f;
     const float track = theme.knobThickness;
-    const auto centre = square.getCentre();
-    const float arcRadius = radius - track * 0.5f - 1.0f;
+    const float arcRadius = diameter * 0.5f - track * 0.5f - 1.0f;
+    const auto stroke = juce::PathStrokeType (track, juce::PathStrokeType::curved,
+                                              juce::PathStrokeType::rounded);
 
-    juce::Path backgroundArc;
-    backgroundArc.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f,
-                                 rotaryStartAngle, rotaryEndAngle, true);
+    juce::Path arc;
+    arc.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f,
+                       rotaryStartAngle, rotaryEndAngle, true);
     g.setColour (theme.knobTrack);
-    g.strokePath (backgroundArc, juce::PathStrokeType (track, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.strokePath (arc, stroke);
 
     if (sliderPos > 0.001f)
     {
-        juce::Path valueArc;
-        valueArc.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f,
-                                rotaryStartAngle, angle, true);
+        juce::Path value;
+        value.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f,
+                             rotaryStartAngle, angle, true);
+
+        if (slider.isEnabled())
+        {
+            g.setColour (theme.glow.withAlpha (0.22f));
+            g.strokePath (value, juce::PathStrokeType (track * 4.0f, juce::PathStrokeType::curved,
+                                                       juce::PathStrokeType::rounded));
+            g.setColour (theme.glow.withAlpha (0.38f));
+            g.strokePath (value, juce::PathStrokeType (track * 2.3f, juce::PathStrokeType::curved,
+                                                       juce::PathStrokeType::rounded));
+        }
+
         g.setColour (slider.isEnabled() ? theme.accent : theme.accentDim);
-        g.strokePath (valueArc, juce::PathStrokeType (track, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        g.strokePath (value, stroke);
     }
 
     const float bodyRadius = arcRadius - track * 1.6f;
     const auto body = juce::Rectangle<float> (bodyRadius * 2.0f, bodyRadius * 2.0f).withCentre (centre);
 
-    g.setColour (theme.knobBody);
-    g.fillEllipse (body);
-    g.setColour (theme.knobOutline);
-    g.drawEllipse (body, 1.4f);
+    // Artwork draws over the arc, so a transparent PNG keeps its ring.
+    if (theme.knobFilmstrip.isValid() && theme.knobFilmstripFrames > 1)
+    {
+        const int frameHeight = theme.knobFilmstrip.getHeight() / theme.knobFilmstripFrames;
+        const int frame = juce::jlimit (0, theme.knobFilmstripFrames - 1,
+                                        juce::roundToInt (sliderPos * static_cast<float> (theme.knobFilmstripFrames - 1)));
 
-    juce::Path pointer;
-    const float pointerThickness = juce::jmax (2.0f, bodyRadius * 0.10f);
-    const float pointerLength = bodyRadius * 0.72f;
-    pointer.addRoundedRectangle (-pointerThickness * 0.5f, -bodyRadius * 0.86f,
-                                 pointerThickness, pointerLength, pointerThickness * 0.5f);
-    pointer.applyTransform (juce::AffineTransform::rotation (angle).translated (centre));
+        g.drawImage (theme.knobFilmstrip,
+                     body.getX(), body.getY(), body.getWidth(), body.getHeight(),
+                     0, frame * frameHeight, theme.knobFilmstrip.getWidth(), frameHeight);
+        return;
+    }
+
+    if (theme.knobImage.isValid())
+    {
+        const auto src = theme.knobImage.getBounds().toFloat();
+        const float scale = juce::jmin (body.getWidth() / src.getWidth(),
+                                        body.getHeight() / src.getHeight());
+
+        auto t = juce::AffineTransform::translation (-src.getWidth() * 0.5f, -src.getHeight() * 0.5f)
+                     .scaled (scale);
+        if (theme.knobImageRotates)
+            t = t.rotated (angle);
+
+        g.drawImageTransformed (theme.knobImage, t.translated (centre), false);
+        return;
+    }
+
+    // Open ring with a dot for position: no filled cap, so the face colour
+    // shows through the middle.
+    const float ringRadius = arcRadius - track * 2.4f;
+    const float ringThickness = juce::jmax (3.0f, diameter * 0.055f);
+    const auto ring = juce::Rectangle<float> (ringRadius * 2.0f, ringRadius * 2.0f).withCentre (centre);
+
+    g.setColour (theme.knobBody);
+    g.drawEllipse (ring, ringThickness);
+
+    const float dotRadius = juce::jmax (2.0f, diameter * 0.038f);
+    const float dotDistance = ringRadius * 0.62f;
+    const auto dot = juce::Rectangle<float> (dotRadius * 2.0f, dotRadius * 2.0f)
+                         .withCentre (centre.translated (dotDistance * std::sin (angle),
+                                                         -dotDistance * std::cos (angle)));
 
     g.setColour (theme.knobPointer);
-    g.fillPath (pointer);
+    g.fillEllipse (dot);
 }
 
 } // namespace ee::ui

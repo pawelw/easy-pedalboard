@@ -9,13 +9,18 @@ Builds as **VST3**, **AU** and a **Standalone** app.
 
 ### Easy Reverb
 
-A modulated feedback delay network reverb. Mono in, stereo out. Three controls:
+A modulated feedback delay network reverb. Mono in, stereo out. Four controls:
 
-| Knob       | Range      | What it does                                                                 |
-| ---------- | ---------- | ---------------------------------------------------------------------------- |
-| **Decay**  | 0.3 – 8 s  | Sets the tail length, and derives room size and predelay from it behind the scenes |
-| **Mix**    | 0 – 100 %  | Equal-power blend of dry signal and wet tail                                  |
-| **Mod**    | 0 – 100 %  | Pitch movement in the reflections, for width                                  |
+| Knob         | Range        | What it does                                                                 |
+| ------------ | ------------ | ---------------------------------------------------------------------------- |
+| **Decay**    | 0.5 - 8 s    | Sets the tail length, and derives room size and predelay from it behind the scenes |
+| **Mix**      | 0 - 100 %    | Blend of dry signal and wet tail                                              |
+| **Resonance** | 0 - 100 %   | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
+| **Low Cut**  | off - 800 Hz | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
+
+Modulation is not a knob. It rides the Mix control: dry-heavy settings leave the
+tail still, and as the wet takes over the extra movement smears the modes that
+would otherwise ring through.
 
 The footswitch has **trails**: bypassing stops feeding the network but leaves the
 wet path open, so the existing tail rings out instead of being cut off.
