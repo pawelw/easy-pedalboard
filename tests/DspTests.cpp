@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/TapeDelay.h"
 
 namespace
 {
@@ -274,6 +275,118 @@ void testSilenceInSilenceOut()
     std::printf ("  peak from silent input: %.2e\n", peak);
     check (peak == 0.0f, "reverb generated signal from silence");
 }
+
+/** Runs an impulse through the delay and reports where each channel taps. */
+void testDelayTaps()
+{
+    std::printf ("Delay tap placement (clean path):\n");
+
+    constexpr float leftSeconds = 0.25f;
+    constexpr float rightSeconds = 0.4f;
+
+    ee::dsp::TapeDelay delay;
+    delay.prepare (kSampleRate);
+    delay.setDelaySeconds (leftSeconds, rightSeconds);
+    delay.snapDelays();
+    delay.setFeedback (0.0f);
+    delay.setModulation (0.0f);
+    delay.setCrush (0.0f);
+
+    const int total = static_cast<int> (kSampleRate);
+    std::vector<float> inL (total, 0.0f), inR (total, 0.0f);
+    std::vector<float> outL (total), outR (total);
+    inL[0] = 1.0f;
+    inR[0] = 1.0f;
+
+    delay.process (inL.data(), inR.data(), outL.data(), outR.data(), total);
+
+    const auto peakIndex = [] (const std::vector<float>& v)
+    {
+        int best = 0;
+        for (int i = 0; i < static_cast<int> (v.size()); ++i)
+            if (std::abs (v[i]) > std::abs (v[best]))
+                best = i;
+        return best;
+    };
+
+    const int l = peakIndex (outL);
+    const int r = peakIndex (outR);
+    const int expectedL = static_cast<int> (leftSeconds * kSampleRate);
+    const int expectedR = static_cast<int> (rightSeconds * kSampleRate);
+
+    std::printf ("  left  %d (expected %d), amplitude %.4f\n", l, expectedL, outL[l]);
+    std::printf ("  right %d (expected %d), amplitude %.4f\n", r, expectedR, outR[r]);
+
+    check (std::abs (l - expectedL) <= 2, "left tap is not where the time knob says");
+    check (std::abs (r - expectedR) <= 2, "right tap is not where the time knob says");
+
+    // The whole point of the neutral setting: no filtering, no drive, no loss.
+    check (std::abs (outL[l] - 1.0f) < 0.005f, "clean path is not unity gain");
+
+    int repeats = 0;
+    for (int i = expectedL + 10; i < total; ++i)
+        if (std::abs (outL[i]) > 0.01f)
+            ++repeats;
+
+    check (repeats == 0, "zero feedback still produced more than one repeat");
+}
+
+void testDelayStability()
+{
+    std::printf ("Delay stability at maximum feedback and crush:\n");
+
+    ee::dsp::TapeDelay delay;
+    delay.prepare (kSampleRate);
+    delay.setDelaySeconds (0.12f, 0.18f);
+    delay.snapDelays();
+    delay.setFeedback (1.0f);
+    delay.setModulation (1.0f);
+    delay.setCrush (1.0f);
+
+    std::mt19937 rng (0xd31a);
+    std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 20.0 / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+        {
+            inL[i] = dist (rng);
+            inR[i] = dist (rng);
+        }
+
+        delay.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            finite = finite && std::isfinite (outL[i]) && std::isfinite (outR[i]);
+            peak = juce::jmax (peak, std::abs (outL[i]), std::abs (outR[i]));
+        }
+    }
+
+    std::printf ("  peak after 20 s of full-scale noise: %.3f\n", peak);
+    check (finite, "delay produced a non-finite sample");
+    check (peak < 4.0f, "delay ran away under sustained input");
+
+    std::fill (inL.begin(), inL.end(), 0.0f);
+    std::fill (inR.begin(), inR.end(), 0.0f);
+
+    delay.reset();
+    float silentPeak = 0.0f;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 2.0 / kBlock); ++b)
+    {
+        delay.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+            silentPeak = juce::jmax (silentPeak, std::abs (outL[i]), std::abs (outR[i]));
+    }
+
+    std::printf ("  peak from silent input: %.2e\n", silentPeak);
+    check (silentPeak == 0.0f, "delay generated signal from silence");
+}
 } // namespace
 
 int main()
@@ -289,6 +402,10 @@ int main()
     testWetLevelConsistency();
     std::printf ("\n");
     testSilenceInSilenceOut();
+    std::printf ("\n");
+    testDelayTaps();
+    std::printf ("\n");
+    testDelayStability();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

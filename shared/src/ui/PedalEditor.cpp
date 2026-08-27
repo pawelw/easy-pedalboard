@@ -44,6 +44,14 @@ PedalEditor::PedalEditor (juce::AudioProcessor& processor,
     for (auto& knob : knobs)
         addAndMakeVisible (*knob);
 
+    // Added after the knobs so they sit on top where the two bounds overlap.
+    for (const auto& toggleSpec : spec.toggles)
+    {
+        toggles.push_back (std::make_unique<MiniToggle> (state, toggleSpec.parameterID,
+                                                         toggleSpec.caption, theme));
+        addAndMakeVisible (*toggles.back());
+    }
+
     setSize (spec.width, spec.height);
 
     if (theme.grain > 0.0f)
@@ -186,6 +194,36 @@ void PedalEditor::resized()
             if (i < inRow - 1)
                 knobRow.removeFromLeft (kKnobGap);
         }
+    }
+
+    // A toggle straddles the gap between two knobs of the same row, centred on
+    // the rotaries rather than on the cell, so it lines up with the caps.
+    for (size_t t = 0; t < toggles.size(); ++t)
+    {
+        const int index = spec.toggles[t].afterKnobIndex;
+
+        if (index < 0 || index + 1 >= count)
+        {
+            toggles[t]->setVisible (false);
+            continue;
+        }
+
+        const auto left = knobs[static_cast<size_t> (index)]->getBounds();
+        const auto right = knobs[static_cast<size_t> (index + 1)]->getBounds();
+
+        if (right.getY() != left.getY())
+        {
+            toggles[t]->setVisible (false);
+            continue;
+        }
+
+        const auto centre = juce::Point<int> ((left.getRight() + right.getX()) / 2,
+                                              left.getY() + (left.getHeight() - Knob::labelHeight) / 2);
+
+        toggles[t]->setVisible (true);
+        toggles[t]->setBounds (juce::Rectangle<int> (MiniToggle::preferredWidth,
+                                                     MiniToggle::preferredHeight)
+                                   .withCentre (centre));
     }
 }
 

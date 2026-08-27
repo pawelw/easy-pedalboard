@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "ee/dsp/TempoDivision.h"
 #include "ee/ui/PedalEditor.h"
 
 namespace
@@ -28,11 +29,11 @@ juce::String hertzToText (float value, int)
 class SnapshotProcessor : public juce::AudioProcessor
 {
 public:
-    SnapshotProcessor()
+    explicit SnapshotProcessor (juce::AudioProcessorValueTreeState::ParameterLayout layout = createLayout())
         : juce::AudioProcessor (BusesProperties()
                                     .withInput ("In", juce::AudioChannelSet::stereo(), true)
                                     .withOutput ("Out", juce::AudioChannelSet::stereo(), true)),
-          apvts (*this, nullptr, "PARAMETERS", createLayout())
+          apvts (*this, nullptr, "PARAMETERS", std::move (layout))
     {
     }
 
@@ -97,12 +98,55 @@ ee::ui::PedalSpec makeSpec()
     return spec;
 }
 
-void render (const juce::File& outputFile)
+/** Minimal host-free processor carrying the same parameters as Simple Delay. */
+class DelaySnapshotProcessor : public SnapshotProcessor
 {
-    SnapshotProcessor processor;
+public:
+    DelaySnapshotProcessor() : SnapshotProcessor (createDelayLayout()) {}
 
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), ee::ui::PedalTheme::blue());
+    static juce::AudioProcessorValueTreeState::ParameterLayout createDelayLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
+        const auto divisions = ee::dsp::tempoDivisionLabels();
+
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { "ltime", 1 }, "Left Time", divisions, 5));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { "rtime", 1 }, "Right Time", divisions, 5));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "sync", 1 }, "Sync L/R", true));
+
+        for (const auto* id : { "fb", "mix", "mod", "crush" })
+            layout.add (std::make_unique<juce::AudioParameterFloat> (
+                juce::ParameterID { id, 1 }, id,
+                juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
+                juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
+
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeDelaySpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Simple Delay";
+    spec.tagline = "Tempo-synced stereo delay";
+    spec.version = "v0.10.0";
+    spec.knobs = { { "ltime", "Left Time" }, { "rtime", "Right Time" }, { "fb", "Feedback" },
+                   { "mix", "Mix" }, { "mod", "Mod" }, { "crush", "Crush" } };
+    spec.toggles = { { "sync", "Sync", 0 } };
+    spec.knobsPerRow = 3;
+    spec.width = 520;
+    spec.height = 490;
+    return spec;
+}
+
+void writePng (juce::Component& editor, const juce::File& outputFile)
+{
     const int w = editor.getWidth();
     const int h = editor.getHeight();
 
@@ -119,6 +163,20 @@ void render (const juce::File& outputFile)
 
     std::printf ("wrote %s (%d x %d)\n", outputFile.getFullPathName().toRawUTF8(), w, h);
 }
+
+void render (const juce::File& outputFile)
+{
+    SnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), ee::ui::PedalTheme::blue());
+    writePng (editor, outputFile);
+}
+
+void renderDelay (const juce::File& outputFile)
+{
+    DelaySnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeDelaySpec(), ee::ui::PedalTheme::silver());
+    writePng (editor, outputFile);
+}
 } // namespace
 
 int main (int argc, char* argv[])
@@ -129,6 +187,7 @@ int main (int argc, char* argv[])
                                     : juce::File::getCurrentWorkingDirectory();
 
     render (dir.getChildFile ("pedal.png"));
+    renderDelay (dir.getChildFile ("delay.png"));
 
     return 0;
 }

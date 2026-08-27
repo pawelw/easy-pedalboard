@@ -18,11 +18,21 @@ cmake --build "$BUILD_DIR"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 
-ARTEFACTS="$BUILD_DIR/plugins/easy-reverb/EasyReverb_artefacts/Release"
-for item in "$ARTEFACTS/VST3/Easy Reverb.vst3" \
-            "$ARTEFACTS/AU/Easy Reverb.component" \
-            "$ARTEFACTS/Standalone/Easy Reverb.app"; do
-    [[ -e "$item" ]] && cp -R "$item" "$STAGE/"
+# "<artefacts dir>:<product name>" for every pedal in the repo.
+PLUGINS=(
+    "easy-reverb/EasyReverb_artefacts:Easy Reverb"
+    "simple-delay/SimpleDelay_artefacts:Simple Delay"
+)
+
+for entry in "${PLUGINS[@]}"; do
+    ARTEFACTS="$BUILD_DIR/plugins/${entry%%:*}/Release"
+    NAME="${entry#*:}"
+
+    for item in "$ARTEFACTS/VST3/$NAME.vst3" \
+                "$ARTEFACTS/AU/$NAME.component" \
+                "$ARTEFACTS/Standalone/$NAME.app"; do
+        [[ -e "$item" ]] && cp -R "$item" "$STAGE/"
+    done
 done
 
 # Ad-hoc signing is all that is possible without a paid Developer ID. It is not
@@ -38,15 +48,15 @@ Easy Effects - install on macOS
 
 1. Copy the bundles into place:
 
-     Easy Reverb.vst3       ->  ~/Library/Audio/Plug-Ins/VST3/
-     Easy Reverb.component  ->  ~/Library/Audio/Plug-Ins/Components/
-     Easy Reverb.app        ->  anywhere (optional, for testing without a DAW)
+     *.vst3       ->  ~/Library/Audio/Plug-Ins/VST3/
+     *.component  ->  ~/Library/Audio/Plug-Ins/Components/
+     *.app        ->  anywhere (optional, for testing without a DAW)
 
 2. These builds are ad-hoc signed, not notarised, so macOS will refuse to load
    them until the quarantine flag is cleared. In Terminal:
 
-     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Easy Reverb.vst3"
-     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Easy Reverb.component"
+     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3
+     xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components
 
    Without this you get "Apple could not verify ... is free of malware".
 
@@ -62,6 +72,8 @@ rm -f "$ZIP"
 
 echo
 echo "Architectures:"
-lipo -archs "$STAGE/Easy Reverb.vst3/Contents/MacOS/Easy Reverb"
+for bundle in "$STAGE"/*.vst3; do
+    echo "  $(basename "$bundle"): $(lipo -archs "$bundle/Contents/MacOS/$(basename "$bundle" .vst3)")"
+done
 echo
 echo "Package: $ZIP"

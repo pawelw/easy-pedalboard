@@ -88,6 +88,46 @@ PedalTheme PedalTheme::blue()
     return t;
 }
 
+PedalTheme PedalTheme::silver()
+{
+    PedalTheme t;
+
+    t.background      = juce::Colour (0xff17181a);
+    t.panel           = juce::Colour (0xffc9ced4);
+    t.outline         = juce::Colour (0xff6d747c);
+    t.bezel           = juce::Colour (0xffeaeef2);
+
+    t.textPrimary     = juce::Colour (0xff101214);
+    t.textSecondary   = juce::Colour (0xff23272c);
+    t.title           = juce::Colour (0xff0c0e10);
+
+    t.knobBody        = juce::Colour (0xff0e1012);
+    t.knobFill        = juce::Colour (0xff1a1d20);
+    t.knobOutline     = juce::Colour (0xff05070a);
+    t.knobPointer     = juce::Colour (0xfff4f6f8);
+    t.knobTrack       = juce::Colour (0xfff0f3f6);
+
+    // Dark arc on a bright track, the inverse of the blue face but the same
+    // amount of contrast.
+    t.accent          = juce::Colour (0xff15181b);
+    t.accentDim       = juce::Colour (0xff868d95);
+    t.glow            = juce::Colour (0xff2d333a);
+
+    t.ledOn           = juce::Colour (0xff1b1e22);
+    t.ledOff          = juce::Colour (0xff9aa2ab);
+    t.ledRing         = juce::Colour (0xff70777f);
+    t.switchBody      = juce::Colour (0xff8b929a);
+    t.switchHighlight = juce::Colour (0xffe4e8ec);
+
+    t.cornerRadius = 16.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.45f;   // brushed-metal speckle
+
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
 PedalTheme PedalTheme::cream()
 {
     PedalTheme t;

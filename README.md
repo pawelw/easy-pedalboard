@@ -29,6 +29,32 @@ the wet path open, so the existing tail rings out instead of being cut off.
 High and low frequency decay rates are fixed internally (lows ring slightly
 longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
 
+### Simple Delay
+
+A tempo-synced stereo delay with independent left and right times. Six controls:
+
+| Knob           | Range         | What it does                                                                   |
+| -------------- | ------------- | ------------------------------------------------------------------------------ |
+| **Left Time**  | 1/32 - 1/1.   | Note value for the left channel, always locked to the host tempo               |
+| **Right Time** | 1/32 - 1/1.   | Same for the right channel                                                     |
+| **Feedback**   | 0 - 100 %     | 0 % is a single slap; 100 % is a long run of repeats that still lands          |
+| **Mix**        | 0 - 100 %     | Blend of dry signal and repeats                                                |
+| **Mod**        | 0 - 100 %     | Tape wow and flutter plus a gentle loop rolloff — turns the repeats analog     |
+| **Crush**      | 0 - 100 %     | Decimation, bit reduction and drive on top — the worn-tape / destroyed end     |
+
+The **Sync** button between the two time knobs links them: with it on, moving
+either knob moves the other, so the two channels stay on the same note value.
+
+Every division comes in straight, dotted (`.`) and triplet (`T`) flavours.
+
+With Mod and Crush at zero the repeat path is bypassed stage by stage, so the
+plugin is a clean digital delay rather than an almost-clean one. Mod alone gives
+the analog voicing; adding Crush takes it to destroyed analog. Both stages sit
+inside the feedback loop, so each repeat is more degraded than the last.
+
+Like the reverb it has no on/off switch of its own, and the `on` parameter has
+trails: bypassing closes the input but lets the repeats run out.
+
 ## Requirements
 
 - macOS with Xcode Command Line Tools

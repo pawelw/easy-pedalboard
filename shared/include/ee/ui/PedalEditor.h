@@ -4,6 +4,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "ee/ui/Knob.h"
+#include "ee/ui/MiniToggle.h"
 #include "ee/ui/PedalLookAndFeel.h"
 #include "ee/ui/PedalSpec.h"
 #include "ee/ui/PedalTheme.h"
@@ -39,6 +40,7 @@ private:
     PedalLookAndFeel lookAndFeel;
 
     std::vector<std::unique_ptr<Knob>> knobs;
+    std::vector<std::unique_ptr<MiniToggle>> toggles;
     juce::Image grain;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PedalEditor)
