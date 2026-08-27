@@ -35,7 +35,7 @@ set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)
 add_subdirectory(plugins/easy-reverb)
-add_subdirectory(plugins/simple-delay)
+add_subdirectory(plugins/easy-delay)
 
 option(EE_BUILD_TESTS "Build the offline DSP test harness" ON)
 if(EE_BUILD_TESTS)

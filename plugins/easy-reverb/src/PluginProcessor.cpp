@@ -226,7 +226,6 @@ juce::AudioProcessorEditor* EasyReverbProcessor::createEditor()
         { kLowCutID, "Low Cut" }
     };
     spec.knobsPerRow = 2;
-    spec.height = 478;
 
     return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::blue());
 }

@@ -2,14 +2,15 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
 
-class SimpleDelayProcessor : public juce::AudioProcessor,
+class EasyDelayProcessor : public juce::AudioProcessor,
                              private juce::AudioProcessorValueTreeState::Listener
 {
 public:
-    SimpleDelayProcessor();
-    ~SimpleDelayProcessor() override;
+    EasyDelayProcessor();
+    ~EasyDelayProcessor() override;
 
     void prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock) override;
     void releaseResources() override;
@@ -42,6 +43,7 @@ private:
     void parameterChanged (const juce::String& parameterID, float newValue) override;
     void mirrorDivision (const juce::String& from, const juce::String& to);
 
+    ee::dsp::TapeCharacter tape;
     ee::dsp::TapeDelay delay;
 
     std::atomic<float>* leftTimeParam = nullptr;
@@ -50,7 +52,7 @@ private:
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* mixParam = nullptr;
     std::atomic<float>* modParam = nullptr;
-    std::atomic<float>* crushParam = nullptr;
+    std::atomic<float>* tapeParam = nullptr;
     std::atomic<float>* onParam = nullptr;
 
     /** Stops the two time parameters echoing each other forever. */
@@ -58,11 +60,15 @@ private:
 
     juce::SmoothedValue<float> dryGain;
     juce::SmoothedValue<float> wetGain;
-    juce::SmoothedValue<float> inputGain;
 
+    /** 1 while the pedal is engaged, 0 when bypassed. Fades the tape off the
+        dry path and closes the delay input, leaving the repeats to ring out. */
+    juce::SmoothedValue<float> engageGain;
+
+    juce::AudioBuffer<float> tapedBuffer;
     juce::AudioBuffer<float> inputBuffer;
     juce::AudioBuffer<float> wetBuffer;
     int maxBlock = 512;
 
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SimpleDelayProcessor)
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EasyDelayProcessor)
 };

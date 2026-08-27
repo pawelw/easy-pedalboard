@@ -10,10 +10,9 @@ namespace
 }
 
 Knob::Knob (juce::AudioProcessorValueTreeState& state,
-            const juce::String& parameterID,
-            const juce::String& caption,
+            const KnobSpec& spec,
             const PedalTheme& theme)
-    : apvts (state), paramID (parameterID), captionText (caption), pedalTheme (theme)
+    : apvts (state), paramID (spec.parameterID), captionText (spec.caption), pedalTheme (theme)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
@@ -21,6 +20,12 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
                                 juce::MathConstants<float>::pi * 2.8f,
                                 true);
     slider.setDoubleClickReturnValue (true, slider.getDoubleClickReturnValue());
+
+    if (spec.capFill.has_value())
+        slider.setColour (juce::Slider::rotarySliderFillColourId, *spec.capFill);
+
+    if (spec.capBorder.has_value())
+        slider.setColour (juce::Slider::rotarySliderOutlineColourId, *spec.capBorder);
 
     addAndMakeVisible (slider);
 

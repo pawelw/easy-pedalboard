@@ -15,7 +15,11 @@ namespace
     constexpr int kMargin = static_cast<int> (kFaceInset) + kContentPad;
 
     constexpr int kKnobGap = 12;
-    constexpr float kKnobScale = 0.8f;   // rotary size relative to its column
+
+    // Fixed rather than a fraction of the column, so a knob is the same size on
+    // every pedal however many of them a row carries.
+    constexpr int kKnobDiameter = 114;
+
     constexpr int kTitleHeight = 64;
     constexpr int kLogoHeight = 54;
 
@@ -39,7 +43,7 @@ PedalEditor::PedalEditor (juce::AudioProcessor& processor,
     setLookAndFeel (&lookAndFeel);
 
     for (const auto& knobSpec : spec.knobs)
-        knobs.push_back (std::make_unique<Knob> (state, knobSpec.parameterID, knobSpec.caption, theme));
+        knobs.push_back (std::make_unique<Knob> (state, knobSpec, theme));
 
     for (auto& knob : knobs)
         addAndMakeVisible (*knob);
@@ -175,9 +179,9 @@ void PedalEditor::resized()
     const int perRow = juce::jlimit (1, juce::jmax (1, count), spec.knobsPerRow);
 
     // Columns span the full content width; the rotary sits centred in its
-    // column at a fraction of it.
+    // column at a fixed size.
     const int cellWidth = (area.getWidth() - kKnobGap * (perRow - 1)) / perRow;
-    const int knobWidth = juce::roundToInt (static_cast<float> (cellWidth) * kKnobScale);
+    const int knobWidth = juce::jmin (kKnobDiameter, cellWidth);
     const int rowHeight = knobWidth + Knob::labelHeight;
 
     for (int first = 0; first < count; first += perRow)

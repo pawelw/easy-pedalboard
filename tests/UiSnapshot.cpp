@@ -94,11 +94,10 @@ ee::ui::PedalSpec makeSpec()
     spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" },
                    { "res", "Resonance" }, { "locut", "Low Cut" } };
     spec.knobsPerRow = 2;
-    spec.height = 478;
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Simple Delay. */
+/** Minimal host-free processor carrying the same parameters as Easy Delay. */
 class DelaySnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -117,7 +116,7 @@ public:
         layout.add (std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID { "sync", 1 }, "Sync L/R", true));
 
-        for (const auto* id : { "fb", "mix", "mod", "crush" })
+        for (const auto* id : { "fb", "mix", "mod", "tape" })
             layout.add (std::make_unique<juce::AudioParameterFloat> (
                 juce::ParameterID { id, 1 }, id,
                 juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
@@ -133,15 +132,15 @@ public:
 ee::ui::PedalSpec makeDelaySpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Simple Delay";
+    spec.name = "Easy Delay";
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v0.10.0";
+    const juce::Colour tapeCap { 0xffbdbdbf };
     spec.knobs = { { "ltime", "Left Time" }, { "rtime", "Right Time" }, { "fb", "Feedback" },
-                   { "mix", "Mix" }, { "mod", "Mod" }, { "crush", "Crush" } };
+                   { "mix", "Mix" }, { "mod", "Mod" }, { "tape", "Tape", tapeCap, tapeCap } };
     spec.toggles = { { "sync", "Sync", 0 } };
     spec.knobsPerRow = 3;
     spec.width = 520;
-    spec.height = 490;
     return spec;
 }
 

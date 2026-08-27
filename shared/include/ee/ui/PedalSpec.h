@@ -1,6 +1,8 @@
 #pragma once
 
-#include <juce_core/juce_core.h>
+#include <juce_graphics/juce_graphics.h>
+
+#include <optional>
 #include <vector>
 
 namespace ee::ui
@@ -10,6 +12,11 @@ struct KnobSpec
 {
     juce::String parameterID;
     juce::String caption;
+
+    /** Override the theme's cap colours, for a control that is not really part
+        of the same effect as the rest of the row. */
+    std::optional<juce::Colour> capFill;
+    std::optional<juce::Colour> capBorder;
 };
 
 /** A small latching button tucked into the gap between two knobs of a row. */
@@ -34,8 +41,10 @@ struct PedalSpec
 
     int knobsPerRow = 3;
 
+    /** Height is shared across pedals so they line up side by side on a rack;
+        only the width follows the number of knobs in a row. */
     int width = 340;
-    int height = 440;
+    int height = 478;
 };
 
 } // namespace ee::ui

@@ -100,10 +100,17 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
     const float ringThickness = juce::jmax (3.0f, diameter * 0.055f);
     const auto ring = juce::Rectangle<float> (ringRadius * 2.0f, ringRadius * 2.0f).withCentre (centre);
 
-    g.setColour (theme.knobFill);
+    const auto capFill = slider.isColourSpecified (juce::Slider::rotarySliderFillColourId)
+                             ? slider.findColour (juce::Slider::rotarySliderFillColourId)
+                             : theme.knobFill;
+    const auto capBorder = slider.isColourSpecified (juce::Slider::rotarySliderOutlineColourId)
+                               ? slider.findColour (juce::Slider::rotarySliderOutlineColourId)
+                               : theme.knobBody;
+
+    g.setColour (capFill);
     g.fillEllipse (ring.expanded (ringThickness * 0.5f));
 
-    g.setColour (theme.knobBody);
+    g.setColour (capBorder);
     g.drawEllipse (ring, ringThickness);
 
     const float dotRadius = juce::jmax (2.0f, diameter * 0.038f);
@@ -112,7 +119,8 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
                          .withCentre (centre.translated (dotDistance * std::sin (angle),
                                                          -dotDistance * std::cos (angle)));
 
-    g.setColour (theme.knobPointer);
+    // A pale cap needs a dark pointer, or the position is invisible.
+    g.setColour (capFill.getPerceivedBrightness() > 0.6f ? theme.knobBody : theme.knobPointer);
     g.fillEllipse (dot);
 }
 

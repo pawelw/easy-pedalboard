@@ -6,6 +6,7 @@
 #include <vector>
 
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
 
 namespace
@@ -290,7 +291,6 @@ void testDelayTaps()
     delay.snapDelays();
     delay.setFeedback (0.0f);
     delay.setModulation (0.0f);
-    delay.setCrush (0.0f);
 
     const int total = static_cast<int> (kSampleRate);
     std::vector<float> inL (total, 0.0f), inR (total, 0.0f);
@@ -333,7 +333,7 @@ void testDelayTaps()
 
 void testDelayStability()
 {
-    std::printf ("Delay stability at maximum feedback and crush:\n");
+    std::printf ("Delay stability at maximum feedback and mod:\n");
 
     ee::dsp::TapeDelay delay;
     delay.prepare (kSampleRate);
@@ -341,7 +341,6 @@ void testDelayStability()
     delay.snapDelays();
     delay.setFeedback (1.0f);
     delay.setModulation (1.0f);
-    delay.setCrush (1.0f);
 
     std::mt19937 rng (0xd31a);
     std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
@@ -387,6 +386,103 @@ void testDelayStability()
     std::printf ("  peak from silent input: %.2e\n", silentPeak);
     check (silentPeak == 0.0f, "delay generated signal from silence");
 }
+
+void testTapeCharacter()
+{
+    std::printf ("Tape stage:\n");
+
+    const int total = static_cast<int> (kSampleRate * 2.0);
+    std::mt19937 rng (0x7a9e);
+    std::normal_distribution<float> dist (0.0f, 0.12f);
+
+    std::vector<float> source (total);
+    for (int i = 0; i < total; ++i)
+        source[i] = std::tanh (dist (rng));
+
+    // At zero the line still runs, so the latency never jumps when the knob
+    // leaves the stop; the samples that come out must still be the originals.
+    {
+        ee::dsp::TapeCharacter tape;
+        tape.prepare (kSampleRate);
+        tape.setAmount (0.0f);
+
+        std::vector<float> l (source), r (source);
+        tape.process (l.data(), r.data(), total);
+
+        const int latency = tape.getLatencySamples();
+        float worst = 0.0f;
+        for (int i = latency; i < total; ++i)
+            worst = juce::jmax (worst, std::abs (l[i] - source[i - latency]));
+
+        std::printf ("  latency %d samples; largest difference at 0 %%: %.2e\n", latency, worst);
+        check (worst == 0.0f, "tape at 0 % is not bit exact");
+    }
+
+    {
+        ee::dsp::TapeCharacter tape;
+        tape.prepare (kSampleRate);
+        tape.setAmount (1.0f);
+
+        std::vector<float> l (source), r (source);
+        tape.process (l.data(), r.data(), total);
+
+        const auto rms = [] (const std::vector<float>& v, int from)
+        {
+            double sum = 0.0;
+            for (int i = from; i < static_cast<int> (v.size()); ++i)
+                sum += static_cast<double> (v[i]) * v[i];
+            return std::sqrt (sum / (v.size() - from));
+        };
+
+        const double before = rms (source, 0);
+        const double after = rms (l, 512);
+        const double changeDb = 20.0 * std::log10 (after / before);
+
+        bool finite = true;
+        for (int i = 0; i < total; ++i)
+            finite = finite && std::isfinite (l[i]) && std::isfinite (r[i]);
+
+        // The reference machine came back +0.5 dB; a character control that
+        // changes the level is a volume control in disguise.
+        std::printf ("  level change at 100 %%: %+.2f dB\n", changeDb);
+        check (finite, "tape produced a non-finite sample");
+        check (std::abs (changeDb) < 1.5, "tape at 100 % moves the level too far");
+
+        double sides = 0.0;
+        for (int i = 512; i < total; ++i)
+            sides += static_cast<double> (l[i] - r[i]) * (l[i] - r[i]);
+        sides = std::sqrt (sides / (total - 512));
+
+        // Flutter is shared between the channels, so the only difference the
+        // two sides should show is the grit. If the wobble leaked in per
+        // channel this would be far larger, and the effect would be a chorus.
+        const double sidesDb = 20.0 * std::log10 (sides / before);
+        std::printf ("  difference between channels: %.1f dB below the source\n", -sidesDb);
+        check (sidesDb < -18.0, "tape decorrelates the channels too much");
+    }
+
+    {
+        ee::dsp::TapeCharacter tape;
+        tape.prepare (kSampleRate);
+        tape.setAmount (1.0f);
+
+        std::vector<float> l (kBlock, 0.0f), r (kBlock, 0.0f);
+        float peak = 0.0f;
+
+        for (int b = 0; b < static_cast<int> (kSampleRate * 2.0 / kBlock); ++b)
+        {
+            std::fill (l.begin(), l.end(), 0.0f);
+            std::fill (r.begin(), r.end(), 0.0f);
+            tape.process (l.data(), r.data(), kBlock);
+
+            for (int i = 0; i < kBlock; ++i)
+                peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+
+        std::printf ("  peak from silent input: %.2e\n", peak);
+        check (peak == 0.0f, "tape hisses into silence instead of riding the signal");
+    }
+}
 } // namespace
 
 int main()
@@ -406,6 +502,8 @@ int main()
     testDelayTaps();
     std::printf ("\n");
     testDelayStability();
+    std::printf ("\n");
+    testTapeCharacter();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

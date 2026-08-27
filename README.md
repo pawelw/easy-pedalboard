@@ -29,7 +29,7 @@ the wet path open, so the existing tail rings out instead of being cut off.
 High and low frequency decay rates are fixed internally (lows ring slightly
 longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
 
-### Simple Delay
+### Easy Delay
 
 A tempo-synced stereo delay with independent left and right times. Six controls:
 
@@ -39,21 +39,44 @@ A tempo-synced stereo delay with independent left and right times. Six controls:
 | **Right Time** | 1/32 - 1/1.   | Same for the right channel                                                     |
 | **Feedback**   | 0 - 100 %     | 0 % is a single slap; 100 % is a long run of repeats that still lands          |
 | **Mix**        | 0 - 100 %     | Blend of dry signal and repeats                                                |
-| **Mod**        | 0 - 100 %     | Tape wow and flutter plus a gentle loop rolloff — turns the repeats analog     |
-| **Crush**      | 0 - 100 %     | Decimation, bit reduction and drive on top — the worn-tape / destroyed end     |
+| **Mod**        | 0 - 100 %     | Slow, wide wow inside the feedback loop — the warm, moving end                  |
+| **Tape**       | 0 - 100 %     | A tape machine in front of the delay: flutter, drive, head loss and grit        |
 
 The **Sync** button between the two time knobs links them: with it on, moving
 either knob moves the other, so the two channels stay on the same note value.
 
 Every division comes in straight, dotted (`.`) and triplet (`T`) flavours.
 
-With Mod and Crush at zero the repeat path is bypassed stage by stage, so the
-plugin is a clean digital delay rather than an almost-clean one. Mod alone gives
-the analog voicing; adding Crush takes it to destroyed analog. Both stages sit
-inside the feedback loop, so each repeat is more degraded than the last.
+**Tape** is not part of the delay. It sits in front of it, the way a separate
+pedal would sit earlier in a chain, so it colours the dry signal whether or not
+any delay is being heard. Turn **Mix** all the way down and the repeats go
+silent but the tape keeps working on the dry signal. Its knob is the pale one,
+because it is not really part of the same effect as the rest of the face.
+
+Mod is the one that lives inside the feedback loop and compounds with every
+pass.
+
+The voicing is measured against a reference machine rather than invented. It is
+not a bit crusher — decimation and quantisation read as digital however they are
+dressed up. What the reference actually does at full tilt is leave the midband
+alone within about 0.2 dB from 50 Hz to 3 kHz, hold the level, take a quarter of
+a dB off the crest, wobble the whole signal by about 0.17 ms at 3-5 Hz, and lay
+a broad band of noise over the top that follows the signal instead of sitting
+under it. That last part is the difference between grit and hiss, and it is why
+the stage is silent on silence and quietens as the signal does.
+
+Two harnesses keep it honest: `tests/ee_tape_match` renders a file through the
+tape stage on its own, and `tests/ee_delay_match` renders one through the whole
+plugin, so the chain can be checked end to end. With Mix at 0 % and Tape at
+100 %, the plugin's dry output carries grit 36.6 dB below the signal against the
+reference's 36.4 dB, where the untouched input sits at 55.8 dB.
+
+At 0 % the stage is bit exact, and it reports a constant 1.5 ms of latency so
+the timing never shifts as the knob moves.
 
 Like the reverb it has no on/off switch of its own, and the `on` parameter has
-trails: bypassing closes the input but lets the repeats run out.
+trails: bypassing fades the tape off the dry path and closes the delay input,
+letting the repeats run out.
 
 ## Requirements
 

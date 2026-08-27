@@ -21,7 +21,7 @@ mkdir -p "$STAGE"
 # "<artefacts dir>:<product name>" for every pedal in the repo.
 PLUGINS=(
     "easy-reverb/EasyReverb_artefacts:Easy Reverb"
-    "simple-delay/SimpleDelay_artefacts:Simple Delay"
+    "easy-delay/EasyDelay_artefacts:Easy Delay"
 )
 
 for entry in "${PLUGINS[@]}"; do

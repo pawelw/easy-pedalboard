@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "ee/ui/PedalSpec.h"
 #include "ee/ui/PedalTheme.h"
 
 namespace ee::ui
@@ -13,8 +14,7 @@ class Knob : public juce::Component
 {
 public:
     Knob (juce::AudioProcessorValueTreeState& state,
-          const juce::String& parameterID,
-          const juce::String& caption,
+          const KnobSpec& spec,
           const PedalTheme& theme);
 
     ~Knob() override;

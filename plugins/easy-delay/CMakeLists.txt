@@ -1,10 +1,10 @@
-juce_add_plugin(SimpleDelay
+juce_add_plugin(EasyDelay
     COMPANY_NAME            "Easy Effects"
-    BUNDLE_ID               com.easyeffects.simpledelay
+    BUNDLE_ID               com.easyeffects.easydelay
     PLUGIN_MANUFACTURER_CODE Eefx
     PLUGIN_CODE             Edly
     FORMATS                 VST3 AU Standalone
-    PRODUCT_NAME            "Simple Delay"
+    PRODUCT_NAME            "Easy Delay"
     VST3_CATEGORIES         Fx Delay
     AU_MAIN_TYPE            kAudioUnitType_Effect
     IS_SYNTH                FALSE
@@ -14,15 +14,15 @@ juce_add_plugin(SimpleDelay
     EDITOR_WANTS_KEYBOARD_FOCUS FALSE
     COPY_PLUGIN_AFTER_BUILD TRUE)
 
-target_sources(SimpleDelay PRIVATE
+target_sources(EasyDelay PRIVATE
     src/PluginProcessor.cpp)
 
-target_compile_definitions(SimpleDelay PUBLIC
+target_compile_definitions(EasyDelay PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0
     JUCE_VST3_CAN_REPLACE_VST2=0)
 
-target_link_libraries(SimpleDelay
+target_link_libraries(EasyDelay
     PRIVATE
         ee_shared
     PUBLIC

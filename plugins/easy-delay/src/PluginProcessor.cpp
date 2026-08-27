@@ -11,7 +11,7 @@ namespace
     constexpr const char* kFeedbackID  = "fb";
     constexpr const char* kMixID       = "mix";
     constexpr const char* kModID       = "mod";
-    constexpr const char* kCrushID     = "crush";
+    constexpr const char* kTapeID      = "tape";
     constexpr const char* kOnID        = "on";
 
     constexpr int kDefaultDivision = 5; // 1/8
@@ -30,7 +30,7 @@ namespace
     }
 }
 
-SimpleDelayProcessor::SimpleDelayProcessor()
+EasyDelayProcessor::EasyDelayProcessor()
     : juce::AudioProcessor (BusesProperties()
                                 .withInput ("Input", juce::AudioChannelSet::stereo(), true)
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
@@ -42,7 +42,7 @@ SimpleDelayProcessor::SimpleDelayProcessor()
     feedbackParam  = apvts.getRawParameterValue (kFeedbackID);
     mixParam       = apvts.getRawParameterValue (kMixID);
     modParam       = apvts.getRawParameterValue (kModID);
-    crushParam     = apvts.getRawParameterValue (kCrushID);
+    tapeParam      = apvts.getRawParameterValue (kTapeID);
     onParam        = apvts.getRawParameterValue (kOnID);
 
     apvts.addParameterListener (kLeftTimeID, this);
@@ -50,14 +50,14 @@ SimpleDelayProcessor::SimpleDelayProcessor()
     apvts.addParameterListener (kSyncID, this);
 }
 
-SimpleDelayProcessor::~SimpleDelayProcessor()
+EasyDelayProcessor::~EasyDelayProcessor()
 {
     apvts.removeParameterListener (kLeftTimeID, this);
     apvts.removeParameterListener (kRightTimeID, this);
     apvts.removeParameterListener (kSyncID, this);
 }
 
-juce::AudioProcessorValueTreeState::ParameterLayout SimpleDelayProcessor::createParameterLayout()
+juce::AudioProcessorValueTreeState::ParameterLayout EasyDelayProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
@@ -88,7 +88,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleDelayProcessor::create
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kCrushID, 1 }, "Crush",
+        juce::ParameterID { kTapeID, 1 }, "Tape",
         juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
@@ -98,7 +98,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout SimpleDelayProcessor::create
     return layout;
 }
 
-void SimpleDelayProcessor::mirrorDivision (const juce::String& from, const juce::String& to)
+void EasyDelayProcessor::mirrorDivision (const juce::String& from, const juce::String& to)
 {
     auto* source = apvts.getParameter (from);
     auto* destination = apvts.getParameter (to);
@@ -112,7 +112,7 @@ void SimpleDelayProcessor::mirrorDivision (const juce::String& from, const juce:
         destination->setValueNotifyingHost (value);
 }
 
-void SimpleDelayProcessor::parameterChanged (const juce::String& parameterID, float newValue)
+void EasyDelayProcessor::parameterChanged (const juce::String& parameterID, float newValue)
 {
     // Read the button from the callback argument rather than the cached value:
     // the two are not guaranteed to be in step at this point.
@@ -136,45 +136,50 @@ void SimpleDelayProcessor::parameterChanged (const juce::String& parameterID, fl
     mirroring = false;
 }
 
-void SimpleDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
+void EasyDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
 {
     maxBlock = juce::jmax (1, maximumExpectedSamplesPerBlock);
 
+    tape.prepare (sampleRate);
     delay.prepare (sampleRate);
 
+    setLatencySamples (tape.getLatencySamples());
+
+    tapedBuffer.setSize (2, maxBlock, false, true, true);
     inputBuffer.setSize (2, maxBlock, false, true, true);
     wetBuffer.setSize (2, maxBlock, false, true, true);
 
     dryGain.reset (sampleRate, kGainRampSeconds);
     wetGain.reset (sampleRate, kGainRampSeconds);
-    inputGain.reset (sampleRate, kGainRampSeconds);
+    engageGain.reset (sampleRate, kGainRampSeconds);
 
     const float mix = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
     const bool engaged = onParam->load() > 0.5f;
 
+    tape.setAmount (tapeParam->load() * 0.01f);
     delay.setFeedback (feedbackParam->load() * 0.01f);
     delay.setModulation (modParam->load() * 0.01f);
-    delay.setCrush (crushParam->load() * 0.01f);
     delay.setDelaySeconds (divisionSeconds (static_cast<int> (leftTimeParam->load()), 120.0),
                            divisionSeconds (static_cast<int> (rightTimeParam->load()), 120.0));
     delay.snapDelays();
 
     dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
     wetGain.setCurrentAndTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi));
-    inputGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
+    engageGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
 }
 
-void SimpleDelayProcessor::releaseResources()
+void EasyDelayProcessor::releaseResources()
 {
+    tape.reset();
     delay.reset();
 }
 
-double SimpleDelayProcessor::getTailLengthSeconds() const
+double EasyDelayProcessor::getTailLengthSeconds() const
 {
     return static_cast<double> (delay.getTailSeconds());
 }
 
-bool SimpleDelayProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
+bool EasyDelayProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
 {
     const auto& in = layouts.getMainInputChannelSet();
     const auto& out = layouts.getMainOutputChannelSet();
@@ -191,7 +196,7 @@ bool SimpleDelayProcessor::isBusesLayoutSupported (const BusesLayout& layouts) c
     return inOk && outOk;
 }
 
-void SimpleDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
+void EasyDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
 
@@ -220,7 +225,7 @@ void SimpleDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
                            divisionSeconds (static_cast<int> (rightTimeParam->load()), bpm));
     delay.setFeedback (feedbackParam->load() * 0.01f);
     delay.setModulation (modParam->load() * 0.01f);
-    delay.setCrush (crushParam->load() * 0.01f);
+    tape.setAmount (tapeParam->load() * 0.01f);
 
     const float mix = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
     const bool engaged = onParam->load() > 0.5f;
@@ -228,7 +233,7 @@ void SimpleDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // Trails: bypassing closes the input but leaves the repeats running out.
     dryGain.setTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
     wetGain.setTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi));
-    inputGain.setTargetValue (engaged ? 1.0f : 0.0f);
+    engageGain.setTargetValue (engaged ? 1.0f : 0.0f);
 
     for (int offset = 0; offset < numSamples; offset += maxBlock)
     {
@@ -237,19 +242,33 @@ void SimpleDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         const float* inL = buffer.getReadPointer (0, offset);
         const float* inR = numIn > 1 ? buffer.getReadPointer (1, offset) : inL;
 
-        float* gatedL = inputBuffer.getWritePointer (0);
-        float* gatedR = inputBuffer.getWritePointer (1);
+        // The tape machine sits in front of everything, so it colours the dry
+        // signal as well as what goes on to be repeated.
+        float* tapedL = tapedBuffer.getWritePointer (0);
+        float* tapedR = tapedBuffer.getWritePointer (1);
+
+        juce::FloatVectorOperations::copy (tapedL, inL, chunk);
+        juce::FloatVectorOperations::copy (tapedR, inR, chunk);
+
+        tape.process (tapedL, tapedR, chunk);
+
+        float* feedL = inputBuffer.getWritePointer (0);
+        float* feedR = inputBuffer.getWritePointer (1);
 
         for (int i = 0; i < chunk; ++i)
         {
-            const float g = inputGain.getNextValue();
-            gatedL[i] = inL[i] * g;
-            gatedR[i] = inR[i] * g;
+            const float e = engageGain.getNextValue();
+
+            tapedL[i] = inL[i] + (tapedL[i] - inL[i]) * e;
+            tapedR[i] = inR[i] + (tapedR[i] - inR[i]) * e;
+
+            feedL[i] = tapedL[i] * e;
+            feedR[i] = tapedR[i] * e;
         }
 
         float* wetL = wetBuffer.getWritePointer (0);
         float* wetR = wetBuffer.getWritePointer (1);
-        delay.process (gatedL, gatedR, wetL, wetR, chunk);
+        delay.process (feedL, feedR, wetL, wetR, chunk);
 
         float* outL = buffer.getWritePointer (0, offset);
         float* outR = numOut > 1 ? buffer.getWritePointer (1, offset) : nullptr;
@@ -261,46 +280,49 @@ void SimpleDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 
             if (outR != nullptr)
             {
-                outL[i] = outL[i] * dg + wetL[i] * wg;
-                outR[i] = outR[i] * dg + wetR[i] * wg;
+                outL[i] = tapedL[i] * dg + wetL[i] * wg;
+                outR[i] = tapedR[i] * dg + wetR[i] * wg;
             }
             else
             {
-                outL[i] = outL[i] * dg + 0.5f * (wetL[i] + wetR[i]) * wg;
+                outL[i] = 0.5f * (tapedL[i] + tapedR[i]) * dg + 0.5f * (wetL[i] + wetR[i]) * wg;
             }
         }
     }
 }
 
-juce::AudioProcessorEditor* SimpleDelayProcessor::createEditor()
+juce::AudioProcessorEditor* EasyDelayProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Simple Delay";
+    spec.name = "Easy Delay";
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v" JucePlugin_VersionString;
+    // Tape is a machine in front of the delay rather than part of it, so its
+    // knob is not one of the black caps.
+    const juce::Colour tapeCap { 0xffbdbdbf };
+
     spec.knobs = {
         { kLeftTimeID,  "Left Time" },
         { kRightTimeID, "Right Time" },
         { kFeedbackID,  "Feedback" },
         { kMixID,       "Mix" },
         { kModID,       "Mod" },
-        { kCrushID,     "Crush" }
+        { kTapeID,      "Tape", tapeCap, tapeCap }
     };
     spec.toggles = { { kSyncID, "Sync", 0 } };
     spec.knobsPerRow = 3;
     spec.width = 520;
-    spec.height = 490;
 
     return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::silver());
 }
 
-void SimpleDelayProcessor::getStateInformation (juce::MemoryBlock& destData)
+void EasyDelayProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     if (auto xml = apvts.copyState().createXml())
         copyXmlToBinary (*xml, destData);
 }
 
-void SimpleDelayProcessor::setStateInformation (const void* data, int sizeInBytes)
+void EasyDelayProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
         if (xml->hasTagName (apvts.state.getType()))
@@ -309,5 +331,5 @@ void SimpleDelayProcessor::setStateInformation (const void* data, int sizeInByte
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 {
-    return new SimpleDelayProcessor();
+    return new EasyDelayProcessor();
 }
