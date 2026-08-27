@@ -16,6 +16,10 @@ struct PedalTheme
     juce::Colour background      { 0xff1c1c1a };
     juce::Colour panel           { 0xff232320 };
     juce::Colour outline         { 0xff3a3a35 };
+
+    /** Frame drawn around the outer edge of the pedal. */
+    juce::Colour bezel           { 0xff87ceef };
+
     juce::Colour textPrimary     { 0xfff2f2ea };
     juce::Colour textSecondary   { 0xff8f8f85 };
 

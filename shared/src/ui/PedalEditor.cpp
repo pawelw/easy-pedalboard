@@ -6,14 +6,13 @@ namespace ee::ui
 {
 namespace
 {
-    constexpr float kFaceInset = 6.0f;       // dark frame around the painted face
-    constexpr float kBorderInset = 9.0f;     // white line, measured in from the face
-    constexpr float kBorderThickness = 5.0f;
+    constexpr float kBorderThickness = 5.0f; // frame hugging the outer edge
+    constexpr float kFaceInset = kBorderThickness;
+    constexpr int kShadowDepth = 12;         // how far the face is sunk below the frame
 
-    // Everything on the face is spaced from the inside of the white border.
+    // Everything on the face is spaced from the inside edge of the frame.
     constexpr int kContentPad = 16;
-    constexpr int kMargin = static_cast<int> (kFaceInset + kBorderInset + kBorderThickness * 0.5f)
-                                + kContentPad;
+    constexpr int kMargin = static_cast<int> (kFaceInset) + kContentPad;
 
     constexpr int kKnobGap = 12;
     constexpr float kKnobScale = 0.8f;   // rotary size relative to its column
@@ -114,11 +113,26 @@ void PedalEditor::paint (juce::Graphics& g)
             g.drawImageAt (grain, 0, 0, true);
         }
 
-        // Heavy enamel edge, with a bold screened line set inside it.
-        g.setColour (theme.outline);
-        g.drawRoundedRectangle (face, theme.cornerRadius, kFaceInset);
-        g.setColour (theme.textPrimary.withAlpha (0.92f));
-        g.drawRoundedRectangle (face.reduced (kBorderInset), theme.cornerRadius * 0.7f, kBorderThickness);
+        // Shadow cast inwards by the frame, so the face reads as recessed.
+        {
+            juce::Graphics::ScopedSaveState clip (g);
+            juce::Path rounded;
+            rounded.addRoundedRectangle (face, theme.cornerRadius);
+            g.reduceClipRegion (rounded);
+
+            for (int i = 0; i < kShadowDepth; ++i)
+            {
+                const float fade = 1.0f - static_cast<float> (i) / static_cast<float> (kShadowDepth);
+                g.setColour (juce::Colours::black.withAlpha (0.30f * fade * fade));
+                g.drawRoundedRectangle (face.reduced (0.5f + static_cast<float> (i)),
+                                        theme.cornerRadius, 1.6f);
+            }
+        }
+
+        g.setColour (theme.bezel);
+        g.drawRoundedRectangle (bounds.reduced (kBorderThickness * 0.5f),
+                                theme.cornerRadius + kBorderThickness * 0.5f,
+                                kBorderThickness);
     }
 
     // Name sits under the knobs, the way it is screened onto a real pedal.

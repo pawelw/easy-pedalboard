@@ -58,6 +58,7 @@ PedalTheme PedalTheme::blue()
     t.background      = juce::Colour (0xff121417);
     t.panel           = juce::Colour (0xff1f9fde);
     t.outline         = juce::Colour (0xff0d1014);
+    t.bezel           = juce::Colour (0xff87ceef);
 
     t.textPrimary     = juce::Colours::white;
     t.textSecondary   = juce::Colours::white;
