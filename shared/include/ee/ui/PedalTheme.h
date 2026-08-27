@@ -24,6 +24,7 @@ struct PedalTheme
     juce::Colour textSecondary   { 0xff8f8f85 };
 
     juce::Colour knobBody        { 0xff2b2b27 };
+    juce::Colour knobFill        { 0xff222222 };
     juce::Colour knobOutline     { 0xff4a4a43 };
     juce::Colour knobPointer     { 0xfff2f2ea };
     juce::Colour knobTrack       { 0xff33332e };

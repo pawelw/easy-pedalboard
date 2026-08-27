@@ -95,11 +95,13 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
         return;
     }
 
-    // Open ring with a dot for position: no filled cap, so the face colour
-    // shows through the middle.
+    // Ring with a dot for position, over a filled cap.
     const float ringRadius = arcRadius - track * 2.4f;
     const float ringThickness = juce::jmax (3.0f, diameter * 0.055f);
     const auto ring = juce::Rectangle<float> (ringRadius * 2.0f, ringRadius * 2.0f).withCentre (centre);
+
+    g.setColour (theme.knobFill);
+    g.fillEllipse (ring.expanded (ringThickness * 0.5f));
 
     g.setColour (theme.knobBody);
     g.drawEllipse (ring, ringThickness);
