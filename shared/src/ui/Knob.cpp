@@ -6,6 +6,7 @@ namespace
 {
     constexpr float kValueRowHeight = 18.0f;
     constexpr float kCaptionRowHeight = 14.0f;
+    static_assert (Knob::labelHeight == static_cast<int> (kValueRowHeight + kCaptionRowHeight));
 }
 
 Knob::Knob (juce::AudioProcessorValueTreeState& state,
@@ -20,9 +21,6 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
                                 juce::MathConstants<float>::pi * 2.8f,
                                 true);
     slider.setDoubleClickReturnValue (true, slider.getDoubleClickReturnValue());
-
-    if (auto* param = apvts.getParameter (paramID))
-        slider.setTooltip (param->getName (64));
 
     addAndMakeVisible (slider);
 
@@ -51,7 +49,7 @@ void Knob::refreshValueText()
 void Knob::resized()
 {
     auto area = getLocalBounds();
-    area.removeFromBottom (static_cast<int> (kValueRowHeight + kCaptionRowHeight));
+    area.removeFromBottom (labelHeight);
     slider.setBounds (area);
 }
 

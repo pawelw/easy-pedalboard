@@ -219,7 +219,6 @@ juce::AudioProcessorEditor* EasyReverbProcessor::createEditor()
     spec.name = "Easy Reverb";
     spec.tagline = "Decay drives room size and predelay";
     spec.version = "v" JucePlugin_VersionString;
-    spec.bypassParameterID = kOnID;
     spec.knobs = {
         { kDecayID, "Decay" },
         { kMixID,   "Mix" },
@@ -227,7 +226,7 @@ juce::AudioProcessorEditor* EasyReverbProcessor::createEditor()
         { kLowCutID, "Low Cut" }
     };
     spec.knobsPerRow = 2;
-    spec.height = 500;
+    spec.height = 478;
 
     return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::blue());
 }

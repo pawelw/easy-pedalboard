@@ -90,18 +90,16 @@ ee::ui::PedalSpec makeSpec()
     spec.name = "Easy Reverb";
     spec.tagline = "Decay drives room size and predelay";
     spec.version = "v0.10.0";
-    spec.bypassParameterID = "on";
     spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" },
                    { "res", "Resonance" }, { "locut", "Low Cut" } };
     spec.knobsPerRow = 2;
-    spec.height = 500;
+    spec.height = 478;
     return spec;
 }
 
-void render (const juce::File& outputFile, bool engaged)
+void render (const juce::File& outputFile)
 {
     SnapshotProcessor processor;
-    processor.apvts.getParameter ("on")->setValueNotifyingHost (engaged ? 1.0f : 0.0f);
 
     ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), ee::ui::PedalTheme::blue());
 
@@ -130,8 +128,7 @@ int main (int argc, char* argv[])
     const juce::File dir = argc > 1 ? juce::File (juce::String (argv[1]))
                                     : juce::File::getCurrentWorkingDirectory();
 
-    render (dir.getChildFile ("pedal-on.png"), true);
-    render (dir.getChildFile ("pedal-off.png"), false);
+    render (dir.getChildFile ("pedal.png"));
 
     return 0;
 }

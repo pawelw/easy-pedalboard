@@ -29,7 +29,8 @@ FetchContent_MakeAvailable(JUCE)
 # Fonts are compiled in rather than installed, so the pedal looks the same on a
 # machine that has never seen them.
 juce_add_binary_data(ee_assets SOURCES
-    assets/fonts/Birthstone-Regular.ttf)
+    assets/fonts/Birthstone-Regular.ttf
+    assets/images/rocket-logo.png)
 set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)

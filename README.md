@@ -22,8 +22,9 @@ Modulation is not a knob. It rides the Mix control: dry-heavy settings leave the
 tail still, and as the wet takes over the extra movement smears the modes that
 would otherwise ring through.
 
-The footswitch has **trails**: bypassing stops feeding the network but leaves the
-wet path open, so the existing tail rings out instead of being cut off.
+The pedal carries no on/off switch of its own — use the host's device on/off.
+The `on` parameter has **trails**: bypassing stops feeding the network but leaves
+the wet path open, so the existing tail rings out instead of being cut off.
 
 High and low frequency decay rates are fixed internally (lows ring slightly
 longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
@@ -129,7 +130,6 @@ The UI is data-driven, so a new pedal needs no editor code. Describe the face:
 ee::ui::PedalSpec spec;
 spec.name = "Easy Drive";
 spec.tagline = "...";
-spec.bypassParameterID = "on";
 spec.knobs = { { "gain", "Gain" }, { "tone", "Tone" }, { "level", "Level" } };
 
 return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::dark());

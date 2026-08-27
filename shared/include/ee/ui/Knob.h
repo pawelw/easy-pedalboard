@@ -19,6 +19,9 @@ public:
 
     ~Knob() override;
 
+    /** Height of the value and caption rows below the rotary. */
+    static constexpr int labelHeight = 32;
+
     void resized() override;
     void paint (juce::Graphics&) override;
 

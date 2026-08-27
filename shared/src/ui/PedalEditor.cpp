@@ -1,16 +1,31 @@
 #include "ee/ui/PedalEditor.h"
 
+#include "BinaryData.h"
+
 namespace ee::ui
 {
 namespace
 {
-    constexpr int kMargin = 18;
-    constexpr int kTopPad = 6;
+    constexpr float kFaceInset = 6.0f;       // dark frame around the painted face
+    constexpr float kBorderInset = 9.0f;     // white line, measured in from the face
+    constexpr float kBorderThickness = 5.0f;
+
+    // Everything on the face is spaced from the inside of the white border.
+    constexpr int kContentPad = 16;
+    constexpr int kMargin = static_cast<int> (kFaceInset + kBorderInset + kBorderThickness * 0.5f)
+                                + kContentPad;
+
+    constexpr int kKnobGap = 12;
+    constexpr float kKnobScale = 0.8f;   // rotary size relative to its column
     constexpr int kTitleHeight = 64;
-    constexpr int kKnobRowHeight = 132;
-    constexpr int kFootSwitchHeight = 92;
-    constexpr int kFootSwitchBottomPad = 22;
-    constexpr int kKnobGap = 10;
+    constexpr int kLogoHeight = 54;
+
+    juce::Image brandLogo()
+    {
+        static const juce::Image logo = juce::ImageCache::getFromMemory (BinaryData::rocketlogo_png,
+                                                                        BinaryData::rocketlogo_pngSize);
+        return logo;
+    }
 }
 
 PedalEditor::PedalEditor (juce::AudioProcessor& processor,
@@ -29,12 +44,6 @@ PedalEditor::PedalEditor (juce::AudioProcessor& processor,
 
     for (auto& knob : knobs)
         addAndMakeVisible (*knob);
-
-    if (spec.bypassParameterID.isNotEmpty())
-    {
-        footSwitch = std::make_unique<FootSwitch> (state, spec.bypassParameterID, theme);
-        addAndMakeVisible (*footSwitch);
-    }
 
     setSize (spec.width, spec.height);
 
@@ -60,6 +69,25 @@ PedalEditor::~PedalEditor()
     setLookAndFeel (nullptr);
 }
 
+juce::Rectangle<int> PedalEditor::logoArea() const
+{
+    return getLocalBounds().reduced (kMargin).removeFromBottom (kLogoHeight);
+}
+
+juce::Rectangle<int> PedalEditor::titleArea() const
+{
+    auto area = getLocalBounds().reduced (kMargin);
+    area.removeFromBottom (kLogoHeight);
+    return area.removeFromBottom (kTitleHeight);
+}
+
+juce::Rectangle<int> PedalEditor::knobArea() const
+{
+    auto area = getLocalBounds().reduced (kMargin);
+    area.removeFromBottom (kLogoHeight + kTitleHeight);
+    return area;
+}
+
 void PedalEditor::paint (juce::Graphics& g)
 {
     auto bounds = getLocalBounds().toFloat();
@@ -72,7 +100,7 @@ void PedalEditor::paint (juce::Graphics& g)
     {
         g.fillAll (theme.background);
 
-        const auto face = bounds.reduced (6.0f);
+        const auto face = bounds.reduced (kFaceInset);
         g.setColour (theme.panel);
         g.fillRoundedRectangle (face, theme.cornerRadius);
 
@@ -86,29 +114,32 @@ void PedalEditor::paint (juce::Graphics& g)
             g.drawImageAt (grain, 0, 0, true);
         }
 
-        // Heavy enamel edge, with a lighter screened line set inside it.
+        // Heavy enamel edge, with a bold screened line set inside it.
         g.setColour (theme.outline);
-        g.drawRoundedRectangle (face, theme.cornerRadius, 6.0f);
-        g.setColour (theme.textPrimary.withAlpha (0.4f));
-        g.drawRoundedRectangle (face.reduced (9.0f), theme.cornerRadius * 0.7f, 1.4f);
+        g.drawRoundedRectangle (face, theme.cornerRadius, kFaceInset);
+        g.setColour (theme.textPrimary.withAlpha (0.92f));
+        g.drawRoundedRectangle (face.reduced (kBorderInset), theme.cornerRadius * 0.7f, kBorderThickness);
     }
 
     // Name sits under the knobs, the way it is screened onto a real pedal.
     // That also keeps the top of the face free instead of carrying a header.
-    auto footer = getLocalBounds().reduced (kMargin, 0);
-    footer = footer.withHeight (kTitleHeight)
-                   .withY (getHeight() - kMargin - kFootSwitchBottomPad - kFootSwitchHeight - kTitleHeight);
-
     g.setColour (theme.title);
     g.setFont (theme.titleFont (58.0f));
-    g.drawText (spec.name, footer, juce::Justification::centred, false);
+    g.drawText (spec.name, titleArea(), juce::Justification::centred, false);
+
+    if (const auto logo = brandLogo(); logo.isValid())
+    {
+        g.setOpacity (0.92f);
+        g.drawImage (logo, logoArea().toFloat(), juce::RectanglePlacement::centred);
+        g.setOpacity (1.0f);
+    }
 
     if (spec.version.isNotEmpty())
     {
         g.setColour (theme.textSecondary.withAlpha (0.7f));
         g.setFont (theme.bodyFont (10.5f));
         g.drawText (spec.version,
-                    getLocalBounds().reduced (kMargin + 4, kMargin - 2),
+                    getLocalBounds().reduced (kMargin),
                     juce::Justification::bottomLeft,
                     false);
     }
@@ -116,36 +147,32 @@ void PedalEditor::paint (juce::Graphics& g)
 
 void PedalEditor::resized()
 {
-    auto area = getLocalBounds().reduced (kMargin, kMargin);
-    area.removeFromTop (kTopPad);
-
-    // Claimed before the knobs so the switch cannot creep up into the title.
-    auto switchStrip = area.removeFromBottom (kFootSwitchBottomPad + kFootSwitchHeight);
-    switchStrip.removeFromBottom (kFootSwitchBottomPad);
-    area.removeFromBottom (kTitleHeight);
+    auto area = knobArea();
 
     const int count = static_cast<int> (knobs.size());
     const int perRow = juce::jlimit (1, juce::jmax (1, count), spec.knobsPerRow);
 
+    // Columns span the full content width; the rotary sits centred in its
+    // column at a fraction of it.
+    const int cellWidth = (area.getWidth() - kKnobGap * (perRow - 1)) / perRow;
+    const int knobWidth = juce::roundToInt (static_cast<float> (cellWidth) * kKnobScale);
+    const int rowHeight = knobWidth + Knob::labelHeight;
+
     for (int first = 0; first < count; first += perRow)
     {
-        auto knobRow = area.removeFromTop (kKnobRowHeight);
-        knobRow.removeFromTop (kKnobGap);
+        auto knobRow = area.removeFromTop (rowHeight);
+        area.removeFromTop (kKnobGap);
 
         const int inRow = juce::jmin (perRow, count - first);
-        const int totalGap = kKnobGap * (inRow - 1);
-        const int knobWidth = (knobRow.getWidth() - totalGap) / inRow;
 
         for (int i = 0; i < inRow; ++i)
         {
-            knobs[static_cast<size_t> (first + i)]->setBounds (knobRow.removeFromLeft (knobWidth));
+            auto cell = knobRow.removeFromLeft (cellWidth);
+            knobs[static_cast<size_t> (first + i)]->setBounds (cell.withSizeKeepingCentre (knobWidth, rowHeight));
             if (i < inRow - 1)
                 knobRow.removeFromLeft (kKnobGap);
         }
     }
-
-    if (footSwitch != nullptr)
-        footSwitch->setBounds (switchStrip);
 }
 
 } // namespace ee::ui

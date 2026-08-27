@@ -3,7 +3,6 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
-#include "ee/ui/FootSwitch.h"
 #include "ee/ui/Knob.h"
 #include "ee/ui/PedalLookAndFeel.h"
 #include "ee/ui/PedalSpec.h"
@@ -31,14 +30,16 @@ public:
     void resized() override;
 
 private:
+    juce::Rectangle<int> knobArea() const;
+    juce::Rectangle<int> titleArea() const;
+    juce::Rectangle<int> logoArea() const;
+
     PedalTheme theme;
     PedalSpec spec;
     PedalLookAndFeel lookAndFeel;
 
     std::vector<std::unique_ptr<Knob>> knobs;
-    std::unique_ptr<FootSwitch> footSwitch;
     juce::Image grain;
-    juce::TooltipWindow tooltips { this, 600 };
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PedalEditor)
 };
