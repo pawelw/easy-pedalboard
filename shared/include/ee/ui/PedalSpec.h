@@ -17,6 +17,9 @@ struct KnobSpec
         of the same effect as the rest of the row. */
     std::optional<juce::Colour> capFill;
     std::optional<juce::Colour> capBorder;
+
+    /** Override the value arc and its halo to match. */
+    std::optional<juce::Colour> arc;
 };
 
 /** A small latching button tucked into the gap between two knobs of a row. */

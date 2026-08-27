@@ -27,6 +27,10 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
     if (spec.capBorder.has_value())
         slider.setColour (juce::Slider::rotarySliderOutlineColourId, *spec.capBorder);
 
+    // No dedicated slot for a rotary's value arc, so the thumb colour carries it.
+    if (spec.arc.has_value())
+        slider.setColour (juce::Slider::thumbColourId, *spec.arc);
+
     addAndMakeVisible (slider);
 
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramID, slider);

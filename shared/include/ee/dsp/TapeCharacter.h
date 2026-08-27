@@ -45,8 +45,15 @@ public:
         noiseLpCoeff = onePoleCoeff (kNoiseLowpassHz, sr);
         depthCoeff = onePoleCoeff (12.0f, sr);
 
-        flutterInc = kFlutterHz / static_cast<float> (sr);
-        scrapeInc = kScrapeHz / static_cast<float> (sr);
+        modDepth = kModRmsSeconds * static_cast<float> (sr);
+
+        for (int k = 0; k < 3; ++k)
+        {
+            modCoeff[k] = onePoleCoeff (kModCornersHz[k], sr);
+            // A one-pole on white noise has variance c / (2 - c); undo it so the
+            // depth constant means what it says.
+            modNorm[k] = std::sqrt ((2.0f - modCoeff[k]) / modCoeff[k]);
+        }
 
         for (auto& c : channels)
             c.line.prepare (sr, kNominalDelaySeconds * 3.0f);
@@ -57,9 +64,11 @@ public:
 
     void reset() noexcept
     {
-        flutterPhase = 0.0f;
-        scrapePhase = 0.31f;
         smoothedDepth = 0.0f;
+        modRng = 0x2545f491u;
+
+        for (auto& s : modState)
+            s = 0.0f;
 
         uint32_t seed = 0x9e3779b9u;
 
@@ -98,17 +107,10 @@ public:
 
         for (int i = 0; i < numSamples; ++i)
         {
-            flutterPhase += flutterInc;
-            if (flutterPhase >= 1.0f) flutterPhase -= 1.0f;
-
-            scrapePhase += scrapeInc;
-            if (scrapePhase >= 1.0f) scrapePhase -= 1.0f;
-
             smoothedDepth += depthCoeff * (amount - smoothedDepth);
 
-            const float wobble = smoothedDepth
-                                 * (flutterDepth * std::sin (kTwoPi * flutterPhase)
-                                    + scrapeDepth * std::sin (kTwoPi * scrapePhase));
+            float wobble = smoothedDepth * modDepth * modulator();
+            wobble = std::clamp (wobble, -kWobbleLimit, kWobbleLimit);
 
             for (size_t c = 0; c < channels.size(); ++c)
             {
@@ -145,10 +147,18 @@ private:
     // reported latency is well under anything a player would notice.
     static constexpr float kNominalDelaySeconds = 0.0015f;
 
-    static constexpr float kFlutterHz = 4.7f;
-    static constexpr float kScrapeHz = 3.4f;
-    static constexpr float kFlutterSeconds = 0.00005f;
-    static constexpr float kScrapeSeconds = 0.000035f;
+    /** Wow and flutter is random, not a pair of sine oscillators. Measured off
+        a reference machine, its sidebands are spread evenly from about 1.5 Hz
+        out past 70 Hz, falling roughly 3 dB per octave - which is 1/f. Three
+        one-pole filters on white noise, at corners an octave-and-a-half or so
+        apart, get close enough with almost no arithmetic. */
+    static constexpr float kModCornersHz[3] = { 2.0f, 12.0f, 70.0f };
+
+    /** Root mean square of the delay deviation at full amount. */
+    static constexpr float kModRmsSeconds = 0.000195f;
+
+    /** Random modulation has no fixed peak, so the excursion needs a stop. */
+    static constexpr float kWobbleLimit = 48.0f;
 
     static constexpr float kShelfCornerHz = 1600.0f;
     static constexpr float kDcCornerHz = 18.0f;
@@ -162,8 +172,13 @@ private:
     static constexpr float kMaxDrive = 0.95f;
     static constexpr float kMaxBias = 0.015f;
     static constexpr float kMaxShelfLoss = 0.04f;
-    static constexpr float kMaxNoise = 0.61f;
+    static constexpr float kMaxNoise = 0.21f;
     static constexpr float kMaxTrim = 0.09f;
+
+    // Level the grit is calibrated at, and a ceiling on the tilt so a hot input
+    // cannot run it away.
+    static constexpr float kEnvReferenceInv = 1.0f / 0.02f;
+    static constexpr float kMaxTilt = 3.0f;
 
     static float onePoleCoeff (float cornerHz, double sampleRate) noexcept
     {
@@ -196,12 +211,29 @@ private:
         ch.noiseLpState += noiseLpCoeff * (n - ch.noiseLpState);
         ch.noiseLpState2 += noiseLpCoeff * (ch.noiseLpState - ch.noiseLpState2);
 
-        y += ch.noiseLpState2 * ch.envState * noiseGain;
+        // Grit rises faster than the signal does, so it bites on the loud parts
+        // and gets out of the way as they die instead of hissing over the tail.
+        const float tilt = std::min (kMaxTilt, std::sqrt (ch.envState * kEnvReferenceInv));
+
+        y += ch.noiseLpState2 * ch.envState * tilt * noiseGain;
 
         // Without this the asymmetry would settle into a DC offset.
         ch.dcState += dcCoeff * (y - ch.dcState);
 
         return y - ch.dcState;
+    }
+
+    float modulator() noexcept
+    {
+        float sum = 0.0f;
+
+        for (int k = 0; k < 3; ++k)
+        {
+            modState[k] += modCoeff[k] * (whiteNoise (modRng) - modState[k]);
+            sum += modState[k] * modNorm[k];
+        }
+
+        return sum * 0.57735027f; // three independent unit-variance terms
     }
 
     void updateCoefficients() noexcept
@@ -216,9 +248,6 @@ private:
 
         shelfGain = 1.0f - amount * kMaxShelfLoss;
         noiseGain = amount * kMaxNoise;
-
-        flutterDepth = kFlutterSeconds * static_cast<float> (sr);
-        scrapeDepth = kScrapeSeconds * static_cast<float> (sr);
     }
 
     double sr = 44100.0;
@@ -227,15 +256,14 @@ private:
 
     std::array<Channel, 2> channels;
 
-    float flutterPhase = 0.0f;
-    float scrapePhase = 0.0f;
-    float flutterInc = 0.0f;
-    float scrapeInc = 0.0f;
-    float flutterDepth = 0.0f;
-    float scrapeDepth = 0.0f;
+    float modState[3] = { 0.0f, 0.0f, 0.0f };
+    float modCoeff[3] = { 0.0f, 0.0f, 0.0f };
+    float modNorm[3] = { 1.0f, 1.0f, 1.0f };
+    float modDepth = 0.0f;
+    uint32_t modRng = 0x2545f491u;
+
     float smoothedDepth = 0.0f;
     float depthCoeff = 0.0f;
-
     float drive = 1.0f;
     float bias = 0.0f;
     float biasOffset = 0.0f;

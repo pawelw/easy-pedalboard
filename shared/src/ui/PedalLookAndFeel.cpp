@@ -44,6 +44,11 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
     g.setColour (theme.knobTrack);
     g.strokePath (arc, stroke);
 
+    const bool arcOverridden = slider.isColourSpecified (juce::Slider::thumbColourId);
+    const auto arcColour = arcOverridden ? slider.findColour (juce::Slider::thumbColourId)
+                                         : theme.accent;
+    const auto glowColour = arcOverridden ? arcColour : theme.glow;
+
     if (sliderPos > 0.001f)
     {
         juce::Path value;
@@ -52,15 +57,15 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
 
         if (slider.isEnabled())
         {
-            g.setColour (theme.glow.withAlpha (0.22f));
+            g.setColour (glowColour.withAlpha (0.22f));
             g.strokePath (value, juce::PathStrokeType (track * 4.0f, juce::PathStrokeType::curved,
                                                        juce::PathStrokeType::rounded));
-            g.setColour (theme.glow.withAlpha (0.38f));
+            g.setColour (glowColour.withAlpha (0.38f));
             g.strokePath (value, juce::PathStrokeType (track * 2.3f, juce::PathStrokeType::curved,
                                                        juce::PathStrokeType::rounded));
         }
 
-        g.setColour (slider.isEnabled() ? theme.accent : theme.accentDim);
+        g.setColour (slider.isEnabled() ? arcColour : theme.accentDim);
         g.strokePath (value, stroke);
     }
 

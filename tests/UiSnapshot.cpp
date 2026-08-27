@@ -135,9 +135,11 @@ ee::ui::PedalSpec makeDelaySpec()
     spec.name = "Easy Delay";
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v0.10.0";
-    const juce::Colour tapeCap { 0xffbdbdbf };
+    const juce::Colour tapeCap { 0xffffaa33 };
+    const juce::Colour tapeBorder { 0xffa35f00 };
     spec.knobs = { { "ltime", "Left Time" }, { "rtime", "Right Time" }, { "fb", "Feedback" },
-                   { "mix", "Mix" }, { "mod", "Mod" }, { "tape", "Tape", tapeCap, tapeCap } };
+                   { "mix", "Mix" }, { "mod", "Mod" },
+                   { "tape", "Tape", tapeCap, tapeBorder, tapeCap } };
     spec.toggles = { { "sync", "Sync", 0 } };
     spec.knobsPerRow = 3;
     spec.width = 520;

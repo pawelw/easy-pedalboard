@@ -299,7 +299,8 @@ juce::AudioProcessorEditor* EasyDelayProcessor::createEditor()
     spec.version = "v" JucePlugin_VersionString;
     // Tape is a machine in front of the delay rather than part of it, so its
     // knob is not one of the black caps.
-    const juce::Colour tapeCap { 0xffbdbdbf };
+    const juce::Colour tapeCap { 0xffffaa33 };
+    const juce::Colour tapeBorder { 0xffa35f00 };
 
     spec.knobs = {
         { kLeftTimeID,  "Left Time" },
@@ -307,7 +308,7 @@ juce::AudioProcessorEditor* EasyDelayProcessor::createEditor()
         { kFeedbackID,  "Feedback" },
         { kMixID,       "Mix" },
         { kModID,       "Mod" },
-        { kTapeID,      "Tape", tapeCap, tapeCap }
+        { kTapeID,      "Tape", tapeCap, tapeBorder, tapeCap }
     };
     spec.toggles = { { kSyncID, "Sync", 0 } };
     spec.knobsPerRow = 3;

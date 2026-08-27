@@ -59,11 +59,17 @@ pass.
 The voicing is measured against a reference machine rather than invented. It is
 not a bit crusher — decimation and quantisation read as digital however they are
 dressed up. What the reference actually does at full tilt is leave the midband
-alone within about 0.2 dB from 50 Hz to 3 kHz, hold the level, take a quarter of
-a dB off the crest, wobble the whole signal by about 0.17 ms at 3-5 Hz, and lay
-a broad band of noise over the top that follows the signal instead of sitting
-under it. That last part is the difference between grit and hiss, and it is why
-the stage is silent on silence and quietens as the signal does.
+alone within about 0.2 dB from 50 Hz to 3 kHz, hold the level, and take a
+quarter of a dB off the crest.
+
+Most of what you hear is the wobble, not the noise. Wow and flutter on a real
+machine is random rather than a pair of sine oscillators: its sidebands spread
+evenly from about 1.5 Hz out past 70 Hz, falling roughly 3 dB per octave, which
+is 1/f. Three one-pole filters on white noise get close enough for almost no
+arithmetic. That movement alone accounts for about nine tenths of the energy the
+stage adds above 6 kHz; the remaining tenth is grit, which rides the programme
+instead of sitting under it, so it is silent on silence and quietens as the
+signal does.
 
 Two harnesses keep it honest: `tests/ee_tape_match` renders a file through the
 tape stage on its own, and `tests/ee_delay_match` renders one through the whole
