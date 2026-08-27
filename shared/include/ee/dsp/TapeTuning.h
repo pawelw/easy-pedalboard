@@ -29,14 +29,14 @@ struct TapeTuning
 
     // Gap loss: a 12 dB/octave lowpass mixed in linearly with the knob, so it
     // is always on the tape signal and never on the untouched one.
-    float hiCutHz = 8430.0f;
+    float hiCutHz = 6830.0f;
     float hiCutQ = 0.53f;
 
     // Grit. It rides the programme, so it needs an envelope and a reference
     // level to be calibrated against.
     float maxNoise = 0.0f;
     float noiseHighpassHz = 3000.0f;
-    float noiseLowpassHz = 3600.0f;
+    float noiseLowpassHz = 1600.0f;
     float envelopeCornerHz = 6.0f;
     float envReference = 0.02f;
     float maxTilt = 3.0f;
