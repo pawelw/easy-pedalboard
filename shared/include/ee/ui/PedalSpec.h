@@ -31,6 +31,10 @@ struct ToggleSpec
     /** Index into `knobs`; the button sits to the right of that knob. Ignored
         if the next knob starts a new row. */
     int afterKnobIndex = 0;
+
+    /** Colour of the bezel and legend while the button is on. Unset falls back
+        to the theme's glow. */
+    std::optional<juce::Colour> litColour;
 };
 
 /** Declarative description of a pedal face. Add an effect by writing one of these. */

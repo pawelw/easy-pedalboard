@@ -16,6 +16,10 @@ namespace
 
     constexpr int kKnobGap = 12;
 
+    // Sits above the middle of the rotaries, where the caps have curved away
+    // and there is more room either side of it.
+    constexpr int kToggleRise = 18;
+
     // Fixed rather than a fraction of the column, so a knob is the same size on
     // every pedal however many of them a row carries.
     constexpr int kKnobDiameter = 114;
@@ -28,6 +32,21 @@ namespace
         static const juce::Image logo = juce::ImageCache::getFromMemory (BinaryData::rocketlogo_png,
                                                                         BinaryData::rocketlogo_pngSize);
         return logo;
+    }
+
+    /** Keeps the artwork's shape and replaces its colour. */
+    juce::Image tinted (const juce::Image& source, juce::Colour colour)
+    {
+        juce::Image out (juce::Image::ARGB, source.getWidth(), source.getHeight(), true);
+
+        const juce::Image::BitmapData src (source, juce::Image::BitmapData::readOnly);
+        juce::Image::BitmapData dst (out, juce::Image::BitmapData::writeOnly);
+
+        for (int y = 0; y < source.getHeight(); ++y)
+            for (int x = 0; x < source.getWidth(); ++x)
+                dst.setPixelColour (x, y, colour.withAlpha (src.getPixelColour (x, y).getFloatAlpha()));
+
+        return out;
     }
 }
 
@@ -51,12 +70,16 @@ PedalEditor::PedalEditor (juce::AudioProcessor& processor,
     // Added after the knobs so they sit on top where the two bounds overlap.
     for (const auto& toggleSpec : spec.toggles)
     {
-        toggles.push_back (std::make_unique<MiniToggle> (state, toggleSpec.parameterID,
-                                                         toggleSpec.caption, theme));
+        toggles.push_back (std::make_unique<MiniToggle> (state, toggleSpec, theme));
         addAndMakeVisible (*toggles.back());
     }
 
     setSize (spec.width, spec.height);
+
+    logoImage = brandLogo();
+
+    if (theme.logoTint.has_value() && logoImage.isValid())
+        logoImage = tinted (logoImage, *theme.logoTint);
 
     if (theme.grain > 0.0f)
     {
@@ -80,28 +103,44 @@ PedalEditor::~PedalEditor()
     setLookAndFeel (nullptr);
 }
 
+juce::Rectangle<int> PedalEditor::faceBounds() const
+{
+    return getLocalBounds().withWidth (spec.width);
+}
+
+void PedalEditor::setSidePanel (std::unique_ptr<juce::Component> panel, int panelWidth)
+{
+    sidePanel = std::move (panel);
+
+    if (sidePanel != nullptr)
+    {
+        addAndMakeVisible (*sidePanel);
+        setSize (spec.width + panelWidth, spec.height);
+    }
+}
+
 juce::Rectangle<int> PedalEditor::logoArea() const
 {
-    return getLocalBounds().reduced (kMargin).removeFromBottom (kLogoHeight);
+    return faceBounds().reduced (kMargin).removeFromBottom (kLogoHeight);
 }
 
 juce::Rectangle<int> PedalEditor::titleArea() const
 {
-    auto area = getLocalBounds().reduced (kMargin);
+    auto area = faceBounds().reduced (kMargin);
     area.removeFromBottom (kLogoHeight);
     return area.removeFromBottom (kTitleHeight);
 }
 
 juce::Rectangle<int> PedalEditor::knobArea() const
 {
-    auto area = getLocalBounds().reduced (kMargin);
+    auto area = faceBounds().reduced (kMargin);
     area.removeFromBottom (kLogoHeight + kTitleHeight);
     return area;
 }
 
 void PedalEditor::paint (juce::Graphics& g)
 {
-    auto bounds = getLocalBounds().toFloat();
+    auto bounds = faceBounds().toFloat();
 
     if (theme.backgroundImage.isValid())
     {
@@ -153,7 +192,7 @@ void PedalEditor::paint (juce::Graphics& g)
     g.setFont (theme.titleFont (58.0f));
     g.drawText (spec.name, titleArea(), juce::Justification::centred, false);
 
-    if (const auto logo = brandLogo(); logo.isValid())
+    if (const auto logo = logoImage; logo.isValid())
     {
         g.setOpacity (0.92f);
         g.drawImage (logo, logoArea().toFloat(), juce::RectanglePlacement::centred);
@@ -165,7 +204,7 @@ void PedalEditor::paint (juce::Graphics& g)
         g.setColour (theme.textSecondary.withAlpha (0.7f));
         g.setFont (theme.bodyFont (10.5f));
         g.drawText (spec.version,
-                    getLocalBounds().reduced (kMargin),
+                    faceBounds().reduced (kMargin),
                     juce::Justification::bottomLeft,
                     false);
     }
@@ -173,6 +212,9 @@ void PedalEditor::paint (juce::Graphics& g)
 
 void PedalEditor::resized()
 {
+    if (sidePanel != nullptr)
+        sidePanel->setBounds (getLocalBounds().withTrimmedLeft (spec.width));
+
     auto area = knobArea();
 
     const int count = static_cast<int> (knobs.size());
@@ -222,7 +264,8 @@ void PedalEditor::resized()
         }
 
         const auto centre = juce::Point<int> ((left.getRight() + right.getX()) / 2,
-                                              left.getY() + (left.getHeight() - Knob::labelHeight) / 2);
+                                              left.getY() + (left.getHeight() - Knob::labelHeight) / 2
+                                                  - kToggleRise);
 
         toggles[t]->setVisible (true);
         toggles[t]->setBounds (juce::Rectangle<int> (MiniToggle::preferredWidth,

@@ -6,6 +6,10 @@
 #include "ee/dsp/TempoDivision.h"
 #include "ee/ui/PedalEditor.h"
 
+#if EE_TAPE_TUNER
+ #include "TapeTunerPanel.h"
+#endif
+
 namespace
 {
 juce::String secondsToText (float value, int)
@@ -140,7 +144,7 @@ ee::ui::PedalSpec makeDelaySpec()
     spec.knobs = { { "ltime", "Left Time" }, { "rtime", "Right Time" }, { "fb", "Feedback" },
                    { "mix", "Mix" }, { "mod", "Mod" },
                    { "tape", "Tape", tapeCap, tapeBorder, tapeCap } };
-    spec.toggles = { { "sync", "Sync", 0 } };
+    spec.toggles = { { "sync", "Sync", 0, tapeCap } };
     spec.knobsPerRow = 3;
     spec.width = 520;
     return spec;
@@ -176,6 +180,13 @@ void renderDelay (const juce::File& outputFile)
 {
     DelaySnapshotProcessor processor;
     ee::ui::PedalEditor editor (processor, processor.apvts, makeDelaySpec(), ee::ui::PedalTheme::silver());
+
+#if EE_TAPE_TUNER
+    editor.setSidePanel (std::make_unique<TapeTunerPanel> (ee::dsp::TapeTuning{},
+                                                           [] (const ee::dsp::TapeTuning&) {}),
+                         TapeTunerPanel::preferredWidth);
+#endif
+
     writePng (editor, outputFile);
 }
 } // namespace

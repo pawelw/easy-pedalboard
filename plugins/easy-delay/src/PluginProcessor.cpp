@@ -3,6 +3,10 @@
 #include "ee/dsp/TempoDivision.h"
 #include "ee/ui/PedalEditor.h"
 
+#if EE_TAPE_TUNER
+ #include "TapeTunerPanel.h"
+#endif
+
 namespace
 {
     constexpr const char* kLeftTimeID  = "ltime";
@@ -310,13 +314,25 @@ juce::AudioProcessorEditor* EasyDelayProcessor::createEditor()
         { kModID,       "Mod" },
         { kTapeID,      "Tape", tapeCap, tapeBorder, tapeCap }
     };
-    spec.toggles = { { kSyncID, "Sync", 0 } };
+    spec.toggles = { { kSyncID, "Sync", 0, tapeCap } };
     spec.knobsPerRow = 3;
     spec.width = 520;
 
-    return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::silver());
-}
+    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::silver());
 
+#if EE_TAPE_TUNER
+    // Flip to true to bring the tuning panel back without reconfiguring CMake.
+    constexpr bool showTuner = false;
+
+    if (showTuner)
+        editor->setSidePanel (std::make_unique<TapeTunerPanel> (
+                                  tape.getTuning(),
+                                  [this] (const ee::dsp::TapeTuning& t) { tape.setTuning (t); }),
+                              TapeTunerPanel::preferredWidth);
+#endif
+
+    return editor;
+}
 void EasyDelayProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
     if (auto xml = apvts.copyState().createXml())

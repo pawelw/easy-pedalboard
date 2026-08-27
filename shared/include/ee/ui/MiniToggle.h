@@ -3,24 +3,28 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "ee/ui/PedalSpec.h"
 #include "ee/ui/PedalTheme.h"
 
 namespace ee::ui
 {
 
-/** Small latching pill button, sized to drop into the gap between two knobs. */
+/** Small latching button, sized to drop into the gap between two knobs.
+
+    Drawn as a lit bezel around a black face: the frame and the legend carry the
+    colour while it is on, and lose it when it is off.
+*/
 class MiniToggle : public juce::Button
 {
 public:
     MiniToggle (juce::AudioProcessorValueTreeState& state,
-                const juce::String& parameterID,
-                const juce::String& caption,
+                const ToggleSpec& spec,
                 const PedalTheme& theme);
 
     ~MiniToggle() override;
 
-    static constexpr int preferredWidth = 42;
-    static constexpr int preferredHeight = 22;
+    static constexpr int preferredWidth = 46;
+    static constexpr int preferredHeight = 24;
 
 protected:
     void paintButton (juce::Graphics&, bool highlighted, bool down) override;
@@ -28,6 +32,7 @@ protected:
 private:
     const PedalTheme& pedalTheme;
     juce::String captionText;
+    juce::Colour litColour;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
 

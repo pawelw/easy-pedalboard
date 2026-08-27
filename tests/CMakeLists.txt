@@ -24,6 +24,14 @@ target_link_libraries(ee_ui_snapshot
     PRIVATE ee_ui
     PUBLIC juce::juce_recommended_config_flags)
 
+if(EE_TAPE_TUNER)
+    target_sources(ee_ui_snapshot PRIVATE
+        ${CMAKE_SOURCE_DIR}/plugins/easy-delay/src/TapeTunerPanel.cpp)
+    target_include_directories(ee_ui_snapshot
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-delay/src)
+    target_compile_definitions(ee_ui_snapshot PUBLIC EE_TAPE_TUNER=1)
+endif()
+
 # Renders a dry file through the real processor so its output can be scored
 # against a reference recording.
 juce_add_console_app(ee_reverb_match PRODUCT_NAME "ee_reverb_match")

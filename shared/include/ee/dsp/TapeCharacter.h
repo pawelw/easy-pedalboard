@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ee/dsp/ModDelayLine.h"
+#include "ee/dsp/TapeTuning.h"
 
 #include <algorithm>
 #include <array>
@@ -38,28 +39,22 @@ public:
         // sample rather than an interpolated one, and the stage is bit exact.
         nominalSamples = std::round (kNominalDelaySeconds * static_cast<float> (sr));
 
-        shelfCoeff = onePoleCoeff (kShelfCornerHz, sr);
-        dcCoeff = onePoleCoeff (kDcCornerHz, sr);
-        envCoeff = onePoleCoeff (kEnvelopeCornerHz, sr);
-        noiseHpCoeff = onePoleCoeff (kNoiseHighpassHz, sr);
-        noiseLpCoeff = onePoleCoeff (kNoiseLowpassHz, sr);
-        depthCoeff = onePoleCoeff (12.0f, sr);
-
-        modDepth = kModRmsSeconds * static_cast<float> (sr);
-
-        for (int k = 0; k < 3; ++k)
-        {
-            modCoeff[k] = onePoleCoeff (kModCornersHz[k], sr);
-            // A one-pole on white noise has variance c / (2 - c); undo it so the
-            // depth constant means what it says.
-            modNorm[k] = std::sqrt ((2.0f - modCoeff[k]) / modCoeff[k]);
-        }
-
         for (auto& c : channels)
             c.line.prepare (sr, kNominalDelaySeconds * 3.0f);
 
+        updateRates();
         updateCoefficients();
         reset();
+    }
+
+    const TapeTuning& getTuning() const noexcept { return tuning; }
+
+    /** Swaps the voicing without disturbing the running state. */
+    void setTuning (const TapeTuning& newTuning) noexcept
+    {
+        tuning = newTuning;
+        updateRates();
+        updateCoefficients();
     }
 
     void reset() noexcept
@@ -81,6 +76,8 @@ public:
             c.noiseHpState = 0.0f;
             c.noiseLpState = 0.0f;
             c.noiseLpState2 = 0.0f;
+            c.hiCutZ1 = 0.0f;
+            c.hiCutZ2 = 0.0f;
             c.rngState = seed;
             seed = seed * 1664525u + 1013904223u;
         }
@@ -110,7 +107,7 @@ public:
             smoothedDepth += depthCoeff * (amount - smoothedDepth);
 
             float wobble = smoothedDepth * modDepth * modulator();
-            wobble = std::clamp (wobble, -kWobbleLimit, kWobbleLimit);
+            wobble = std::clamp (wobble, -tuning.wobbleLimitSamples, tuning.wobbleLimitSamples);
 
             for (size_t c = 0; c < channels.size(); ++c)
             {
@@ -138,47 +135,17 @@ private:
         float noiseHpState = 0.0f;
         float noiseLpState = 0.0f;
         float noiseLpState2 = 0.0f;
+        float hiCutZ1 = 0.0f;
+        float hiCutZ2 = 0.0f;
         uint32_t rngState = 1u;
     };
 
     static constexpr float kTwoPi = 6.28318530718f;
 
     // Enough headroom for the wobble either side, and short enough that the
-    // reported latency is well under anything a player would notice.
+    // reported latency is well under anything a player would notice. Not
+    // tunable: it sets the buffer size and the reported latency.
     static constexpr float kNominalDelaySeconds = 0.0015f;
-
-    /** Wow and flutter is random, not a pair of sine oscillators. Measured off
-        a reference machine, its sidebands are spread evenly from about 1.5 Hz
-        out past 70 Hz, falling roughly 3 dB per octave - which is 1/f. Three
-        one-pole filters on white noise, at corners an octave-and-a-half or so
-        apart, get close enough with almost no arithmetic. */
-    static constexpr float kModCornersHz[3] = { 2.0f, 12.0f, 70.0f };
-
-    /** Root mean square of the delay deviation at full amount. */
-    static constexpr float kModRmsSeconds = 0.000195f;
-
-    /** Random modulation has no fixed peak, so the excursion needs a stop. */
-    static constexpr float kWobbleLimit = 48.0f;
-
-    static constexpr float kShelfCornerHz = 1600.0f;
-    static constexpr float kDcCornerHz = 18.0f;
-    static constexpr float kEnvelopeCornerHz = 6.0f;
-
-    // Shapes the grit into a broad presence-band bump. Two poles on the way
-    // down, because a single one leaves the top octave brighter than tape.
-    static constexpr float kNoiseHighpassHz = 3000.0f;
-    static constexpr float kNoiseLowpassHz = 3600.0f;
-
-    static constexpr float kMaxDrive = 0.95f;
-    static constexpr float kMaxBias = 0.015f;
-    static constexpr float kMaxShelfLoss = 0.04f;
-    static constexpr float kMaxNoise = 0.21f;
-    static constexpr float kMaxTrim = 0.09f;
-
-    // Level the grit is calibrated at, and a ceiling on the tilt so a hot input
-    // cannot run it away.
-    static constexpr float kEnvReferenceInv = 1.0f / 0.02f;
-    static constexpr float kMaxTilt = 3.0f;
 
     static float onePoleCoeff (float cornerHz, double sampleRate) noexcept
     {
@@ -213,14 +180,21 @@ private:
 
         // Grit rises faster than the signal does, so it bites on the loud parts
         // and gets out of the way as they die instead of hissing over the tail.
-        const float tilt = std::min (kMaxTilt, std::sqrt (ch.envState * kEnvReferenceInv));
+        const float tilt = std::min (tuning.maxTilt, std::sqrt (ch.envState * envReferenceInv));
 
         y += ch.noiseLpState2 * ch.envState * tilt * noiseGain;
 
         // Without this the asymmetry would settle into a DC offset.
         ch.dcState += dcCoeff * (y - ch.dcState);
+        y -= ch.dcState;
 
-        return y - ch.dcState;
+        // Gap loss. Mixed in rather than switched, so it arrives with the knob
+        // and never touches a signal the stage is not already colouring.
+        const float lp = hiCutB0 * y + ch.hiCutZ1;
+        ch.hiCutZ1 = hiCutB1 * y - hiCutA1 * lp + ch.hiCutZ2;
+        ch.hiCutZ2 = hiCutB2 * y - hiCutA2 * lp;
+
+        return y + (lp - y) * amount;
     }
 
     float modulator() noexcept
@@ -236,19 +210,68 @@ private:
         return sum * 0.57735027f; // three independent unit-variance terms
     }
 
+    void updateRates() noexcept
+    {
+        shelfCoeff = onePoleCoeff (tuning.shelfCornerHz, sr);
+        dcCoeff = onePoleCoeff (tuning.dcCornerHz, sr);
+        envCoeff = onePoleCoeff (tuning.envelopeCornerHz, sr);
+        noiseHpCoeff = onePoleCoeff (tuning.noiseHighpassHz, sr);
+        noiseLpCoeff = onePoleCoeff (tuning.noiseLowpassHz, sr);
+        depthCoeff = onePoleCoeff (12.0f, sr);
+
+        modDepth = tuning.modRmsSeconds * static_cast<float> (sr);
+
+        const float corners[3] = { tuning.modCornerLowHz, tuning.modCornerMidHz,
+                                   tuning.modCornerHighHz };
+
+        for (int k = 0; k < 3; ++k)
+        {
+            modCoeff[k] = onePoleCoeff (std::max (0.05f, corners[k]), sr);
+            // A one-pole on white noise has variance c / (2 - c); undo it so the
+            // depth setting means what it says.
+            modNorm[k] = std::sqrt ((2.0f - modCoeff[k]) / modCoeff[k]);
+        }
+
+        envReferenceInv = 1.0f / std::max (1.0e-5f, tuning.envReference);
+
+        updateHiCut();
+    }
+
+    void updateHiCut() noexcept
+    {
+        const float nyquist = 0.45f * static_cast<float> (sr);
+        const float f0 = std::clamp (tuning.hiCutHz, 200.0f, nyquist);
+        const float q = std::max (0.1f, tuning.hiCutQ);
+
+        const float w0 = kTwoPi * f0 / static_cast<float> (sr);
+        const float cosw = std::cos (w0);
+        const float alpha = std::sin (w0) / (2.0f * q);
+
+        const float b = (1.0f - cosw) * 0.5f;
+        const float a0 = 1.0f + alpha;
+
+        hiCutB0 = b / a0;
+        hiCutB1 = (1.0f - cosw) / a0;
+        hiCutB2 = b / a0;
+        hiCutA1 = (-2.0f * cosw) / a0;
+        hiCutA2 = (1.0f - alpha) / a0;
+    }
+
     void updateCoefficients() noexcept
     {
-        drive = 1.0f + amount * kMaxDrive;
-        bias = amount * kMaxBias;
+        drive = 1.0f + amount * tuning.maxDrive;
+        bias = amount * tuning.maxBias;
         biasOffset = std::tanh (bias);
 
         // Slope of the curve at the origin is drive * (1 - tanh(bias)^2). The
         // trim on top puts the level back where the reference machine left it.
-        makeup = (1.0f + amount * kMaxTrim) / (drive * (1.0f - biasOffset * biasOffset));
+        makeup = (1.0f + amount * tuning.maxTrim) / (drive * (1.0f - biasOffset * biasOffset));
 
-        shelfGain = 1.0f - amount * kMaxShelfLoss;
-        noiseGain = amount * kMaxNoise;
+        shelfGain = 1.0f - amount * tuning.maxShelfLoss;
+        noiseGain = amount * tuning.maxNoise;
     }
+
+    TapeTuning tuning;
 
     double sr = 44100.0;
     float amount = 0.0f;
@@ -274,10 +297,17 @@ private:
 
     float noiseGain = 0.0f;
     float envCoeff = 0.0f;
+    float envReferenceInv = 50.0f;
     float noiseHpCoeff = 0.0f;
     float noiseLpCoeff = 0.0f;
 
     float dcCoeff = 0.0f;
+
+    float hiCutB0 = 1.0f;
+    float hiCutB1 = 0.0f;
+    float hiCutB2 = 0.0f;
+    float hiCutA1 = 0.0f;
+    float hiCutA2 = 0.0f;
 };
 
 } // namespace ee::dsp

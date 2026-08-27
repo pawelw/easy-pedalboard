@@ -2,6 +2,8 @@
 
 #include <juce_graphics/juce_graphics.h>
 
+#include <optional>
+
 namespace ee::ui
 {
 
@@ -70,6 +72,10 @@ struct PedalTheme
     juce::Image knobImage;
     juce::Image knobFilmstrip;
     int knobFilmstripFrames = 0;
+
+    /** Recolours the brand logo, keeping its shape. Leave unset to draw the
+        artwork as it is. */
+    std::optional<juce::Colour> logoTint;
 
     /** Set false if knobImage already carries its own pointer at 12 o'clock
         and should stay upright. */

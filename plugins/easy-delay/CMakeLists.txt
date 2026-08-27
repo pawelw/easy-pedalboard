@@ -17,6 +17,12 @@ juce_add_plugin(EasyDelay
 target_sources(EasyDelay PRIVATE
     src/PluginProcessor.cpp)
 
+if(EE_TAPE_TUNER)
+    target_sources(EasyDelay PRIVATE src/TapeTunerPanel.cpp)
+    target_compile_definitions(EasyDelay PUBLIC EE_TAPE_TUNER=1)
+    message(STATUS "Easy Delay: tape tuning panel enabled - development build")
+endif()
+
 target_compile_definitions(EasyDelay PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0

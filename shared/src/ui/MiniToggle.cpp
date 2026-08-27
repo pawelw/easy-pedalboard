@@ -2,16 +2,23 @@
 
 namespace ee::ui
 {
+namespace
+{
+    constexpr float kCornerRadius = 5.0f;
+    constexpr float kBezelThickness = 3.0f;
+}
 
 MiniToggle::MiniToggle (juce::AudioProcessorValueTreeState& state,
-                        const juce::String& parameterID,
-                        const juce::String& caption,
+                        const ToggleSpec& spec,
                         const PedalTheme& theme)
-    : juce::Button (caption), pedalTheme (theme), captionText (caption)
+    : juce::Button (spec.caption),
+      pedalTheme (theme),
+      captionText (spec.caption),
+      litColour (spec.litColour.value_or (theme.glow))
 {
     setClickingTogglesState (true);
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
-        state, parameterID, *this);
+        state, spec.parameterID, *this);
 }
 
 MiniToggle::~MiniToggle() = default;
@@ -19,29 +26,26 @@ MiniToggle::~MiniToggle() = default;
 void MiniToggle::paintButton (juce::Graphics& g, bool highlighted, bool down)
 {
     const auto bounds = getLocalBounds().toFloat().reduced (1.5f);
-    const float radius = bounds.getHeight() * 0.5f;
     const bool on = getToggleState();
 
-    if (on)
-    {
-        g.setColour (pedalTheme.glow.withAlpha (0.28f));
-        g.drawRoundedRectangle (bounds.expanded (1.5f), radius + 1.5f, 3.0f);
-    }
-
-    g.setColour (on ? pedalTheme.knobBody : pedalTheme.knobTrack);
-    g.fillRoundedRectangle (bounds, radius);
+    // Off, the frame and legend fall back to a grey that barely lifts off the
+    // black face, so only the lit state carries any colour.
+    const auto accent = on ? litColour : pedalTheme.knobBody.brighter (0.35f);
 
     g.setColour (pedalTheme.knobBody);
-    g.drawRoundedRectangle (bounds, radius, 1.6f);
+    g.fillRoundedRectangle (bounds, kCornerRadius + kBezelThickness * 0.5f);
+
+    g.setColour (accent);
+    g.drawRoundedRectangle (bounds.reduced (kBezelThickness * 0.5f), kCornerRadius, kBezelThickness);
 
     if (highlighted || down)
     {
-        g.setColour (juce::Colours::white.withAlpha (down ? 0.16f : 0.08f));
-        g.fillRoundedRectangle (bounds, radius);
+        g.setColour (juce::Colours::white.withAlpha (down ? 0.14f : 0.07f));
+        g.fillRoundedRectangle (bounds, kCornerRadius + kBezelThickness * 0.5f);
     }
 
-    g.setColour (on ? pedalTheme.knobPointer : pedalTheme.knobBody);
-    g.setFont (pedalTheme.bodyFont (9.5f).boldened().withExtraKerningFactor (0.12f));
+    g.setColour (accent);
+    g.setFont (pedalTheme.bodyFont (9.0f).boldened().withExtraKerningFactor (0.14f));
     g.drawText (captionText.toUpperCase(), getLocalBounds(), juce::Justification::centred, false);
 }
 

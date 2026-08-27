@@ -30,7 +30,12 @@ public:
     void paint (juce::Graphics&) override;
     void resized() override;
 
+    /** Attaches a panel to the right of the pedal and widens the window to fit
+        it. Used by the development tuning tools; the face is unaffected. */
+    void setSidePanel (std::unique_ptr<juce::Component> panel, int panelWidth);
+
 private:
+    juce::Rectangle<int> faceBounds() const;
     juce::Rectangle<int> knobArea() const;
     juce::Rectangle<int> titleArea() const;
     juce::Rectangle<int> logoArea() const;
@@ -41,7 +46,9 @@ private:
 
     std::vector<std::unique_ptr<Knob>> knobs;
     std::vector<std::unique_ptr<MiniToggle>> toggles;
+    std::unique_ptr<juce::Component> sidePanel;
     juce::Image grain;
+    juce::Image logoImage;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PedalEditor)
 };

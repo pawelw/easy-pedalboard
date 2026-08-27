@@ -123,6 +123,7 @@ PedalTheme PedalTheme::silver()
     t.knobThickness = 3.0f;
     t.grain = 0.45f;   // brushed-metal speckle
 
+    t.logoTint = t.title;
     t.titleTypefacePtr = birthstone();
 
     return t;
