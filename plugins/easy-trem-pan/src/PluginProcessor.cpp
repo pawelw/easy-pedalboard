@@ -110,6 +110,13 @@ void EasyTremPanProcessor::prepareToPlay(double newSampleRate,
   const int maxBlock = juce::jmax(1, maximumExpectedSamplesPerBlock);
 
   lfoPhase = 0.0;
+  expectedPpq = 0.0;
+  haveExpectedPpq = false;
+  wasPlaying = false;
+
+  modZ1 = 0.0f;
+  // ~2.5 ms one-pole.
+  modSlewCoeff = 1.0f - std::exp(-1.0f / (0.0025f * static_cast<float>(newSampleRate)));
 
   dryBuffer.setSize(kMaxChannels, maxBlock, false, false, true);
   modBuffer.assign(static_cast<size_t>(maxBlock), 0.0f);
@@ -161,10 +168,13 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   if (numOut == 0 || numSamples == 0)
     return;
 
-  // Fan a mono input out to both output channels so the pan has something to
-  // move; a silenced channel would just clear.
+  // Clear any output channels the input does not feed, then fan a genuine mono
+  // input out across them so the pan has something to move.
   for (int ch = numIn; ch < numOut; ++ch)
-    buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
+    buffer.clear(ch, 0, numSamples);
+  if (numIn == 1)
+    for (int ch = 1; ch < numOut; ++ch)
+      buffer.copyFrom(ch, 0, buffer, 0, 0, numSamples);
 
   const int numCh = juce::jmin(numOut, int{kMaxChannels});
   if (numCh == 0)
@@ -172,6 +182,7 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 
   double bpm = 120.0;
   bool havePpq = false;
+  bool isPlaying = false;
   double ppqStart = 0.0;
   if (auto *playHead = getPlayHead())
     if (const auto position = playHead->getPosition()) {
@@ -179,9 +190,12 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
         bpm = *hostBpm;
       if (const auto ppq = position->getPpqPosition()) {
         ppqStart = *ppq;
-        havePpq = true;
+        havePpq = std::isfinite(ppqStart);
       }
+      isPlaying = position->getIsPlaying();
     }
+  if (!std::isfinite(bpm))
+    bpm = 120.0;
   bpm = juce::jlimit(20.0, 300.0, bpm);
 
   const float amount01 = juce::jlimit(0.0f, 1.0f, amountParam->load() * 0.01f);
@@ -195,16 +209,46 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
       1.0e-4f, ee::trempan::rateToPeriodSeconds(rate01, synced, bpm));
   const double phaseInc = 1.0 / (static_cast<double>(periodSeconds) * sampleRate);
 
-  // When synced and the host gives us a timeline position, take the LFO phase
-  // straight from it: cycles = quarter-notes * (cycles per quarter). The same
-  // musical spot then always renders the same phase, sample for sample, instead
-  // of wherever a free-running oscillator happened to be.
-  const bool lockToTransport = synced && havePpq;
-  const double cyclesPerQuarter =
-      lockToTransport ? 1.0 / juce::jmax(1.0e-4, static_cast<double>(
-                                                     ee::trempan::syncedDivisionBeats(rate01)))
-                      : 0.0;
-  const double ppqPerSample = bpm / (60.0 * sampleRate);
+  // The LFO always free-runs on lfoPhase, so a rate or division change never
+  // steps the phase - it just carries on at a new speed. When synced to a
+  // running transport we also align it to the host grid: a hard snap only on the
+  // first playing block or a transport jump (loop / relocate); otherwise a
+  // gentle per-block pull, capped small, so host ppq jitter and division changes
+  // stay click-free and just re-settle over a fraction of a second.
+  if (synced && havePpq && isPlaying) {
+    const double cyclesPerQuarter =
+        1.0 / juce::jmax(1.0e-4, static_cast<double>(
+                                     ee::trempan::syncedDivisionBeats(rate01)));
+    const double ppqPerSample = bpm / (60.0 * sampleRate);
+
+    double target = ppqStart * cyclesPerQuarter;
+    target -= std::floor(target);
+
+    const bool jumped =
+        !wasPlaying ||
+        (haveExpectedPpq && std::abs(ppqStart - expectedPpq) > 0.25);
+
+    if (jumped) {
+      lfoPhase = target;
+    } else {
+      double err = target - lfoPhase;
+      err -= std::round(err);   // wrap to [-0.5, 0.5]
+      lfoPhase += juce::jlimit(-0.006, 0.006, 0.15 * err);
+    }
+
+    expectedPpq = ppqStart + numSamples * ppqPerSample;
+    haveExpectedPpq = true;
+  } else {
+    haveExpectedPpq = false;   // next playing block re-aligns from scratch
+  }
+  wasPlaying = isPlaying;
+
+  // Self-heal if a bad host value ever slipped a non-finite into the state -
+  // otherwise a single NaN here would stick and roar.
+  if (!std::isfinite(lfoPhase))
+    lfoPhase = 0.0;
+  if (!std::isfinite(modZ1))
+    modZ1 = 0.0f;
 
   depth.setTargetValue(amount01);
   wetMix.setTargetValue(engaged ? 1.0f : 0.0f);
@@ -212,22 +256,16 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   if (numSamples > static_cast<int>(modBuffer.size()))
     modBuffer.assign(static_cast<size_t>(numSamples), 0.0f);
 
-  // One shaped LFO value per sample, from the same helper the UI preview uses -
-  // so the wave drawn on the face is a picture of what is heard.
+  // One shaped LFO value per sample, slew-limited so nothing steps the gain in a
+  // single sample. Same helper the UI preview uses, so the drawing still tracks.
   for (int i = 0; i < numSamples; ++i) {
-    float phase;
-    if (lockToTransport) {
-      double cycles = (ppqStart + i * ppqPerSample) * cyclesPerQuarter;
-      cycles -= std::floor(cycles);
-      phase = static_cast<float>(cycles);
-      lfoPhase = cycles;   // keep the fallback aligned for a clean hand-off
-    } else {
-      phase = static_cast<float>(lfoPhase);
-      lfoPhase += phaseInc;
-      while (lfoPhase >= 1.0)
-        lfoPhase -= 1.0;
-    }
-    modBuffer[static_cast<size_t>(i)] = ee::dsp::lfoValue(phase, shape01);
+    const float raw = ee::dsp::lfoValue(static_cast<float>(lfoPhase), shape01);
+    modZ1 += modSlewCoeff * (raw - modZ1);
+    modBuffer[static_cast<size_t>(i)] = modZ1;
+
+    lfoPhase += phaseInc;
+    while (lfoPhase >= 1.0)
+      lfoPhase -= 1.0;
   }
 
   if (numSamples > dryBuffer.getNumSamples())

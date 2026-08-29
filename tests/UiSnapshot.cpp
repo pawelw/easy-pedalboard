@@ -140,12 +140,12 @@ ee::ui::PedalSpec makeDelaySpec()
     spec.name = "Easy Delay";
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v0.10.0";
-    const juce::Colour tapeCap { 0xffffaa33 };
-    const juce::Colour tapeBorder { 0xffa35f00 };
+    const juce::Colour tapeCap { 0xff375916 };
+    const juce::Colour tapeBorder { 0xff17280b };
     spec.knobs = { { "ltime", "Left Time" }, { "rtime", "Right Time" }, { "fb", "Feedback" },
                    { "mix", "Mix" }, { "mod", "Mod" },
                    { "tape", "Tape", tapeCap, tapeBorder, tapeCap } };
-    spec.toggles = { { "sync", "Sync", 0, tapeCap } };
+    spec.toggles = { { "sync", "Sync", 0, juce::Colour (0xffffaa33) } };
     spec.knobsPerRow = 3;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
@@ -321,7 +321,7 @@ void render (const juce::File& outputFile)
 void renderDelay (const juce::File& outputFile)
 {
     DelaySnapshotProcessor processor;
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeDelaySpec(), ee::ui::PedalTheme::silver());
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeDelaySpec(), ee::ui::PedalTheme::gold());
 
 #if EE_TAPE_TUNER
     editor.setSidePanel (std::make_unique<TapeTunerPanel> (ee::dsp::TapeTuning{},

@@ -50,8 +50,11 @@ Every division comes in straight, dotted (`.`) and triplet (`T`) flavours.
 **Tape** is not part of the delay. It sits in front of it, the way a separate
 pedal would sit earlier in a chain, so it colours the dry signal whether or not
 any delay is being heard. Turn **Mix** all the way down and the repeats go
-silent but the tape keeps working on the dry signal. Its knob is the pale one,
+silent but the tape keeps working on the dry signal. Its knob is the green one,
 because it is not really part of the same effect as the rest of the face.
+
+The face uses a mustard `gold()` theme (`#c09d28`), with the green (`#375916`)
+Tape cap and the amber `Sync` toggle set apart from the black caps.
 
 Mod is the one that lives inside the feedback loop and compounds with every
 pass.
@@ -156,10 +159,13 @@ Two switches sit above the knobs:
   **Rate** remembers where each mode was left, so flipping Sync back and forth
   keeps both settings; the first switch to free lands on 124 ms.
 
-When synced and the host reports a timeline position, the LFO phase is taken
-straight from it (`quarter-notes x cycles-per-quarter`), so the same bar always
-sounds identical sample-for-sample rather than starting wherever a free-running
-oscillator happened to be.
+The LFO free-runs on a phase accumulator. When synced to a running transport it
+also aligns to the host grid: a hard snap on the first playing block or a
+transport jump (so the same bar always starts at the same phase), otherwise a
+small per-block pull that shrugs off host `ppq` jitter and lets a division change
+re-settle over a fraction of a second instead of clicking. The modulation signal
+is slew-limited (~2.5 ms) as a backstop, so no snap or switch can ever step the
+gain in a single sample.
 
 Between the knobs and the pedal name is a live LFO preview: it redraws from the
 Amount, Rate and Shape values, and switches to a mirrored pair of traces in

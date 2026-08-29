@@ -173,6 +173,27 @@ PedalTheme PedalTheme::teal()
     return t;
 }
 
+PedalTheme PedalTheme::gold()
+{
+    // Easy Delay's silver face restruck in light ocean blue.
+    PedalTheme t = silver();
+
+    t.panel           = juce::Colour (0xffa4caa8);
+    t.outline         = juce::Colour (0xff4f6b52);
+    t.bezel           = juce::Colour (0xffcfe9d2);   // lighter tint of the panel green
+
+    t.knobTrack       = juce::Colour (0xfff4ead0);   // warm off-white groove
+    t.accentDim       = juce::Colour (0xff9a8a55);
+    t.glow            = juce::Colour (0xff3a3320);
+
+    t.ledOff          = juce::Colour (0xffb59a4a);
+    t.ledRing         = juce::Colour (0xff5a4a12);
+    t.switchBody      = juce::Colour (0xffa8892f);
+    t.switchHighlight = juce::Colour (0xffe6cf86);
+
+    return t;
+}
+
 PedalTheme PedalTheme::cream()
 {
     PedalTheme t;

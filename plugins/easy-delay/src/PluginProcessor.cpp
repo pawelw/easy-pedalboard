@@ -302,9 +302,10 @@ juce::AudioProcessorEditor* EasyDelayProcessor::createEditor()
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v" JucePlugin_VersionString;
     // Tape is a machine in front of the delay rather than part of it, so its
-    // knob is not one of the black caps.
-    const juce::Colour tapeCap { 0xffffaa33 };
-    const juce::Colour tapeBorder { 0xffa35f00 };
+    // knob is not one of the black caps - here a deep green.
+    const juce::Colour tapeCap { 0xff375916 };
+    const juce::Colour tapeBorder { 0xff17280b };
+    const juce::Colour syncAmber { 0xffffaa33 };
 
     spec.knobs = {
         { kLeftTimeID,  "Left Time" },
@@ -314,11 +315,11 @@ juce::AudioProcessorEditor* EasyDelayProcessor::createEditor()
         { kModID,       "Mod" },
         { kTapeID,      "Tape", tapeCap, tapeBorder, tapeCap }
     };
-    spec.toggles = { { kSyncID, "Sync", 0, tapeCap } };
+    spec.toggles = { { kSyncID, "Sync", 0, syncAmber } };
     spec.knobsPerRow = 3;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);   // same column spacing as Easy Reverb
 
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::silver());
+    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::gold());
 
 #if EE_TAPE_TUNER
     // Flip to true to bring the tuning panel back without reconfiguring CMake.

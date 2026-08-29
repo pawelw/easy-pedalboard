@@ -62,9 +62,21 @@ private:
     juce::SmoothedValue<float> wetMix;   // 1 = processed, 0 = clean dry
 
     juce::AudioBuffer<float> dryBuffer;
-    std::vector<float> modBuffer;        // shaped LFO, one value per sample
+    std::vector<float> modBuffer;        // shaped, slew-limited LFO, per sample
 
-    double lfoPhase = 0.0;               // [0, 1); free-running fallback
+    // The LFO free-runs on this phase accumulator; when synced it is nudged
+    // (or, on a transport jump, snapped) towards the host timeline so the same
+    // bar always plays the same phase.
+    double lfoPhase = 0.0;               // [0, 1)
+    double expectedPpq = 0.0;
+    bool haveExpectedPpq = false;
+    bool wasPlaying = false;
+
+    // One-pole slew on the modulation signal - a few ms - so a phase snap or a
+    // division/mode switch can never step the gain in a single sample.
+    float modZ1 = 0.0f;
+    float modSlewCoeff = 1.0f;
+
     double sampleRate = 44100.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EasyTremPanProcessor)
