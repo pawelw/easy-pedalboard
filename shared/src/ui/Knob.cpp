@@ -13,7 +13,7 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
             const KnobSpec& spec,
             const PedalTheme& theme)
     : apvts (state), paramID (spec.parameterID), captionText (spec.caption),
-      pedalTheme (theme), compact (spec.compact)
+      pedalTheme (theme), compact (spec.compact), liveValueText (spec.liveValueText)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
@@ -54,7 +54,9 @@ void Knob::refreshValueText()
 {
     juce::String next;
 
-    if (auto* param = apvts.getParameter (paramID))
+    if (liveValueText)
+        next = liveValueText();
+    else if (auto* param = apvts.getParameter (paramID))
         next = param->getCurrentValueAsText();
 
     if (next != valueText)

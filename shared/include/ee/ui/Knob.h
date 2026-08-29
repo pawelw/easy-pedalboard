@@ -30,6 +30,11 @@ public:
 
     juce::Slider& getSlider() noexcept { return slider; }
 
+    /** Re-reads the value text (from `liveValueText` if the spec set one, else
+        the parameter) and repaints if it changed. Call this when something the
+        `liveValueText` closure depends on has moved. */
+    void refreshValueText();
+
     int getLabelHeight() const noexcept { return compact ? compactLabelHeight : labelHeight; }
 
     /** Called after the value changes, once the readout has refreshed. Lets a
@@ -37,13 +42,13 @@ public:
     std::function<void()> onValueChanged;
 
 private:
-    void refreshValueText();
-
     juce::AudioProcessorValueTreeState& apvts;
     juce::String paramID;
     juce::String captionText;
     const PedalTheme& pedalTheme;
     bool compact = false;
+
+    std::function<juce::String()> liveValueText;
 
     juce::Slider slider;
     juce::String valueText;

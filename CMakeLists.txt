@@ -36,6 +36,7 @@ set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 add_subdirectory(shared)
 add_subdirectory(plugins/easy-reverb)
 add_subdirectory(plugins/easy-eq)
+add_subdirectory(plugins/easy-trem-pan)
 
 # Bolts a live tuning panel onto Easy Delay. Never turn this on for a build you
 # hand to anyone.

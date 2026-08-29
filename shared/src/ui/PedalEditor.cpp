@@ -1,5 +1,8 @@
 #include "ee/ui/PedalEditor.h"
 
+#include "ee/ui/SlideToggle.h"
+#include "ee/ui/WaveDisplay.h"
+
 #include "BinaryData.h"
 
 #include <algorithm>
@@ -41,6 +44,14 @@ namespace
     // Sits above the middle of the rotaries, where the caps have curved away
     // and there is more room either side of it.
     constexpr int kToggleRise = 26;
+
+    // Sliding switch in a strip carved off the top of the knob area, with a
+    // little breathing room below before the caps.
+    constexpr int kSwitchStripHeight = 30;
+    constexpr int kSwitchStripGap = 10;
+
+    // Gap between the LFO preview band and the pedal name below it.
+    constexpr int kWaveDisplayGap = 10;
 
     // Fixed rather than a fraction of the column, so a knob is the same size on
     // every pedal however many of them a row carries.
@@ -95,6 +106,9 @@ public:
 
 private:
     juce::Rectangle<int> faceBounds() const;
+    juce::Rectangle<int> contentArea() const;
+    juce::Rectangle<int> switchStripArea() const;
+    juce::Rectangle<int> waveDisplayArea() const;
     juce::Rectangle<int> knobArea() const;
     juce::Rectangle<int> titleArea() const;
     juce::Rectangle<int> logoArea() const;
@@ -113,6 +127,8 @@ private:
     std::vector<std::unique_ptr<Knob>> cornerKnobs;
     std::vector<std::unique_ptr<FaderStrip>> faders;
     std::vector<std::unique_ptr<MiniToggle>> toggles;
+    std::unique_ptr<SlideToggle> slideToggle;
+    std::unique_ptr<WaveDisplay> waveDisplay;
     std::unique_ptr<juce::TextButton> faderResetButton;
     std::unique_ptr<juce::Component> sidePanel;
     int sidePanelWidth = 0;
@@ -169,7 +185,41 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
     for (const auto& toggleSpec : spec.toggles)
     {
         toggles.push_back (std::make_unique<MiniToggle> (state, toggleSpec, theme));
+
+        // A toggle (e.g. tempo sync) can change the unit a knob reads in.
+        toggles.back()->onStateChange = [this]
+        {
+            for (auto& knob : knobs)
+                knob->refreshValueText();
+            if (waveDisplay != nullptr)
+                waveDisplay->repaint();
+        };
+
+        if (toggleSpec.onClick)
+            toggles.back()->onClick = toggleSpec.onClick;
+
         addAndMakeVisible (*toggles.back());
+    }
+
+    if (spec.slideToggle.has_value())
+    {
+        slideToggle = std::make_unique<SlideToggle> (state, *spec.slideToggle, theme);
+        slideToggle->onStateChange = [this]
+        {
+            // The switch can change what a knob's readout means, and what the
+            // preview draws.
+            for (auto& knob : knobs)
+                knob->refreshValueText();
+            if (waveDisplay != nullptr)
+                waveDisplay->repaint();
+        };
+        addAndMakeVisible (*slideToggle);
+    }
+
+    if (spec.waveDisplay.has_value())
+    {
+        waveDisplay = std::make_unique<WaveDisplay> (state, *spec.waveDisplay, theme);
+        addAndMakeVisible (*waveDisplay);
     }
 
     logoImage = brandLogo();
@@ -225,10 +275,40 @@ juce::Rectangle<int> PedalEditor::Face::titleArea() const
     return area.removeFromBottom (kTitleHeight);
 }
 
-juce::Rectangle<int> PedalEditor::Face::knobArea() const
+juce::Rectangle<int> PedalEditor::Face::contentArea() const
 {
     auto area = faceBounds().reduced (kMargin);
     area.removeFromBottom (kLogoHeight + kTitleHeight);
+    return area;
+}
+
+juce::Rectangle<int> PedalEditor::Face::switchStripArea() const
+{
+    if (slideToggle == nullptr)
+        return {};
+
+    return contentArea().removeFromTop (kSwitchStripHeight);
+}
+
+juce::Rectangle<int> PedalEditor::Face::waveDisplayArea() const
+{
+    if (waveDisplay == nullptr)
+        return {};
+
+    auto band = contentArea().removeFromBottom (spec.waveDisplay->height + kWaveDisplayGap);
+    return band.withTrimmedBottom (kWaveDisplayGap);
+}
+
+juce::Rectangle<int> PedalEditor::Face::knobArea() const
+{
+    auto area = contentArea();
+
+    if (slideToggle != nullptr)
+        area.removeFromTop (kSwitchStripHeight + kSwitchStripGap);
+
+    if (waveDisplay != nullptr)
+        area.removeFromBottom (spec.waveDisplay->height + kWaveDisplayGap);
+
     return area;
 }
 
@@ -655,6 +735,18 @@ void PedalEditor::Face::resized()
     const int knobWidth = juce::jmin (kKnobDiameter, cellWidth);
     const int rowHeight = knobWidth + Knob::labelHeight;
 
+    // Centre the knob block when it does not fill the area - a single row with a
+    // switch strip above and a preview band below would otherwise sit high. Only
+    // done on the new layout, so the other pedals are untouched.
+    if (count > 0 && (waveDisplay != nullptr || slideToggle != nullptr))
+    {
+        const int rows = (count + perRow - 1) / perRow;
+        const int blockHeight = rows * rowHeight + (rows - 1) * kKnobGap;
+        const int slack = area.getHeight() - blockHeight;
+        if (slack > 0)
+            area.removeFromTop (slack / 2);
+    }
+
     for (int first = 0; first < count; first += perRow)
     {
         auto knobRow = area.removeFromTop (rowHeight);
@@ -715,36 +807,64 @@ void PedalEditor::Face::resized()
         layOutFaders (area);
     }
 
-    // A toggle straddles the gap between two knobs of the same row, centred on
-    // the rotaries rather than on the cell, so it lines up with the caps.
+    // A toggle either straddles the gap after `afterKnobIndex` or sits centred
+    // above that knob's cap, depending on the spec.
     for (size_t t = 0; t < toggles.size(); ++t)
     {
-        const int index = spec.toggles[t].afterKnobIndex;
+        const auto& tSpec = spec.toggles[t];
+        const int index = tSpec.afterKnobIndex;
 
-        if (index < 0 || index + 1 >= count)
+        const bool haveAnchor = tSpec.centeredAbove
+            ? (index >= 0 && index < count)
+            : (index >= 0 && index + 1 < count);
+
+        if (! haveAnchor)
         {
             toggles[t]->setVisible (false);
             continue;
         }
 
-        const auto left = knobs[static_cast<size_t> (index)]->getBounds();
-        const auto right = knobs[static_cast<size_t> (index + 1)]->getBounds();
+        const auto anchor = knobs[static_cast<size_t> (index)]->getBounds();
+        juce::Point<int> centre;
 
-        if (right.getY() != left.getY())
+        if (tSpec.centeredAbove)
         {
-            toggles[t]->setVisible (false);
-            continue;
+            // Just above the cap: the cap fills the knob bounds minus the label
+            // block at the bottom.
+            const int capTop = anchor.getY();
+            centre = { anchor.getCentreX(),
+                       capTop - MiniToggle::preferredHeight / 2 - 5 };
         }
-
-        const auto centre = juce::Point<int> ((left.getRight() + right.getX()) / 2,
-                                              left.getY() + (left.getHeight() - Knob::labelHeight) / 2
-                                                  - kToggleRise);
+        else
+        {
+            const auto right = knobs[static_cast<size_t> (index + 1)]->getBounds();
+            if (right.getY() != anchor.getY())
+            {
+                toggles[t]->setVisible (false);
+                continue;
+            }
+            centre = { (anchor.getRight() + right.getX()) / 2,
+                       anchor.getY() + (anchor.getHeight() - Knob::labelHeight) / 2 - kToggleRise };
+        }
 
         toggles[t]->setVisible (true);
         toggles[t]->setBounds (juce::Rectangle<int> (MiniToggle::preferredWidth,
                                                      MiniToggle::preferredHeight)
                                    .withCentre (centre));
     }
+
+    // Sliding switch: pinned to the top-left of the strip, vertically centred.
+    if (slideToggle != nullptr)
+    {
+        const auto strip = switchStripArea();
+        slideToggle->setBounds (juce::Rectangle<int> (SlideToggle::preferredWidth,
+                                                      SlideToggle::preferredHeight)
+                                    .withPosition (strip.getX(),
+                                                   strip.getCentreY() - SlideToggle::preferredHeight / 2));
+    }
+
+    if (waveDisplay != nullptr)
+        waveDisplay->setBounds (waveDisplayArea());
 }
 
 //==============================================================================

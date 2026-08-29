@@ -126,6 +126,55 @@ toggling it never clicks.
 The face reuses Easy Delay's `silver()` theme, and is the same width and height
 as Easy Reverb, so the pedals line up on a rack.
 
+### Easy Trem & Pan
+
+One LFO that either chops the level (tremolo) or sweeps the stereo position
+(auto-pan), modelled on Ableton's Auto Pan. Mono or stereo in, stereo out.
+Three knobs shape the LFO:
+
+| Knob       | Range            | What it does                                                     |
+| ---------- | ---------------- | -------------------------------------------------------------- |
+| **Amount** | 0 - 100 %        | Depth of the effect - chop depth in tremolo, pan width in panning |
+| **Rate**   | -                | LFO speed. Reads a note value when synced, a period in ms when free |
+| **Shape**  | 0 - 100 %        | Sweeps the LFO waveform (see below). Default 50 %              |
+
+**Shape** morphs the LFO through five anchors, crossfading between them: `0 %`
+exponential decay (a plucked feel), `25 %` falling ramp, `50 %` triangle, `75 %`
+soft rounded square, `100 %` a hard rounded-corner rectangle. Even the square end
+keeps its corners eased, so the chop never steps between two levels in one sample
+and never clicks. The audio path and the on-screen preview both read
+`ee::dsp::lfoValue`, so the drawing is a picture of the wave being heard.
+
+Two switches sit above the knobs:
+
+- A **Tremolo / Panning** slider, top-left: a light knob on a dark track (about
+  two circles wide), left for tremolo (default), right for panning.
+- A **Sync** button centred above the **Rate** knob - Easy Delay's `MiniToggle`,
+  with the same amber lit colour. Lit locks **Rate** to the host tempo (note
+  divisions); off runs it free, where the knob reads one LFO cycle in
+  milliseconds (10 ms - 2 s). Turning the knob up speeds the LFO up either way.
+  **Rate** remembers where each mode was left, so flipping Sync back and forth
+  keeps both settings; the first switch to free lands on 124 ms.
+
+When synced and the host reports a timeline position, the LFO phase is taken
+straight from it (`quarter-notes x cycles-per-quarter`), so the same bar always
+sounds identical sample-for-sample rather than starting wherever a free-running
+oscillator happened to be.
+
+Between the knobs and the pedal name is a live LFO preview: it redraws from the
+Amount, Rate and Shape values, and switches to a mirrored pair of traces in
+Panning to show the left and right motion.
+
+The LFO is a plain phase accumulator. JUCE ships no tremolo primitive, and its
+`juce::dsp::Panner` bakes in a 50 ms gain ramp that swallows LFO-rate motion, so
+both laws are written out in the processor: tremolo as
+`g = 1 - depth·(0.5 - 0.5·lfo)`, pan as a sample-accurate equal-power curve.
+
+Like the other pedals it has no on/off switch of its own - the `on` parameter
+crossfades to the dry signal so the host's device on/off never clicks. The face
+uses a new `teal()` theme: a `#2d8a8e` panel with `#fee1b8` legend and a darker
+teal value arc on black caps.
+
 ## Requirements
 
 - macOS with Xcode Command Line Tools
@@ -193,6 +242,7 @@ Cloning the source and building there avoids the whole problem.
 ./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests   # DSP: decay accuracy, stability, levels
 ./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp   # renders the UI to PNG
 auval -v aufx Ervb Eefx                                     # Apple's AU validation
+auval -v aufx Etpn Eefx                                     # Easy Trem & Pan
 ```
 
 `pluginval` (`brew install --cask pluginval`) covers the VST3:
@@ -213,6 +263,7 @@ plugins/
   easy-reverb/       processor + parameter definitions
   easy-delay/        processor + tape colour stage
   easy-eq/           processor + juce::dsp IIR band filters
+  easy-trem-pan/     processor + phase-accumulator LFO, hand-written trem/pan
 tests/               offline DSP tests and the UI snapshot renderer
 ```
 

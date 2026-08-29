@@ -129,6 +129,50 @@ PedalTheme PedalTheme::silver()
     return t;
 }
 
+PedalTheme PedalTheme::teal()
+{
+    PedalTheme t;
+
+    // BOSS-tremolo teal face, cream legend.
+    t.background      = juce::Colour (0xff10201f);
+    t.panel           = juce::Colour (0xff2d8a8e);
+    t.outline         = juce::Colour (0xff0b1a19);
+    t.bezel           = juce::Colour (0xff8fd0d2);
+
+    t.textPrimary     = juce::Colour (0xfffee1b8);
+    t.textSecondary   = juce::Colour (0xfffee1b8);
+    t.title           = juce::Colour (0xfffee1b8);
+
+    // Black caps with a cream pointer.
+    t.knobBody        = juce::Colour (0xff0e1211);
+    t.knobFill        = juce::Colour (0xff161b1a);
+    t.knobOutline     = juce::Colour (0xff05080a);
+    t.knobPointer     = juce::Colour (0xfffee1b8);
+
+    // Dark teal groove with a deeper shade of the face for the value arc - the
+    // same idea as Easy Reverb's blue arc on its blue face, kept bright enough
+    // to read against the black cap.
+    t.knobTrack       = juce::Colour (0xff123230);
+    t.accent          = juce::Colour (0xff30a1a5);
+    t.accentDim       = juce::Colour (0xff3a5a5a);
+    t.glow            = juce::Colour (0xff6fd6da);
+
+    t.ledOn           = juce::Colour (0xff1e6d70);
+    t.ledOff          = juce::Colour (0xff1f4746);
+    t.ledRing         = juce::Colour (0xff0b1a19);
+    t.switchBody      = juce::Colour (0xff17403f);
+    t.switchHighlight = juce::Colour (0xff2f6d6c);
+
+    t.cornerRadius = 16.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.35f;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
 PedalTheme PedalTheme::cream()
 {
     PedalTheme t;

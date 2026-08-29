@@ -237,6 +237,61 @@ ee::ui::PedalSpec makeEqSpec()
     return spec;
 }
 
+/** Minimal host-free processor carrying the same parameters as Easy Trem & Pan. */
+class TremPanSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    TremPanSnapshotProcessor() : SnapshotProcessor (createTremPanLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createTremPanLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto percentAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "amount", 1 }, "Amount", percent, 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "rate", 1 }, "Rate", juce::NormalisableRange<float> (0.0f, 1.0f), 0.5f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float, int) { return juce::String ("1/8"); })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "shape", 1 }, "Shape", percent, 50.0f, percentAttributes));
+
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "mode", 1 }, "Panning", false));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "sync", 1 }, "Tempo Sync", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeTremPanSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Easy Trem & Pan";
+    spec.version = "v0.10.0";
+    spec.knobs = { { "amount", "Amount" }, { "rate", "Rate" }, { "shape", "Shape" } };
+
+    const juce::Colour cream { 0xfffee1b8 };
+    spec.slideToggle = ee::ui::SlideToggleSpec {
+        .parameterID = "mode", .labelOff = "Tremolo", .labelOn = "Panning", .accent = cream };
+    spec.toggles = {
+        { .parameterID = "sync", .caption = "Sync", .afterKnobIndex = 1,
+          .litColour = juce::Colour (0xffffaa33), .centeredAbove = true },
+    };
+    spec.waveDisplay = ee::ui::WaveDisplaySpec {
+        .amountID = "amount", .rateID = "rate", .shapeID = "shape", .modeID = "mode" };
+    spec.knobsPerRow = 3;
+    spec.width = ee::ui::knobRowWidth (3);
+    return spec;
+}
+
 void writePng (juce::Component& editor, const juce::File& outputFile)
 {
     const int w = editor.getWidth();
@@ -283,6 +338,13 @@ void renderEq (const juce::File& outputFile)
     ee::ui::PedalEditor editor (processor, processor.apvts, makeEqSpec(), ee::ui::PedalTheme::silver());
     writePng (editor, outputFile);
 }
+
+void renderTremPan (const juce::File& outputFile)
+{
+    TremPanSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeTremPanSpec(), ee::ui::PedalTheme::teal());
+    writePng (editor, outputFile);
+}
 } // namespace
 
 int main (int argc, char* argv[])
@@ -295,6 +357,7 @@ int main (int argc, char* argv[])
     render (dir.getChildFile ("pedal.png"));
     renderDelay (dir.getChildFile ("delay.png"));
     renderEq (dir.getChildFile ("eq.png"));
+    renderTremPan (dir.getChildFile ("trempan.png"));
 
     return 0;
 }

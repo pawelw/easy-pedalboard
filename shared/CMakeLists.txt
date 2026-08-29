@@ -17,6 +17,8 @@ target_sources(ee_ui INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/Knob.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/FaderStrip.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/MiniToggle.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/SlideToggle.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/WaveDisplay.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/PedalEditor.cpp)
 target_link_libraries(ee_ui INTERFACE juce::juce_audio_utils juce::juce_gui_basics ee_assets)
 
