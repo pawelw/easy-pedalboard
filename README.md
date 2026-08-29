@@ -249,7 +249,11 @@ size in an inner component and scales that to fill the window, with the aspect
 ratio locked and the range clamped to `kMinZoom`..`kMaxZoom`. Drag the faint
 diagonal grip in the bottom-right corner, or the host's own window edge. No
 per-pedal code — it all lives in `PedalEditor`. (The zoom is not persisted; the
-editor opens at 100 %.)
+editor opens at `kDefaultZoom`, currently 85 %.)
+
+Knob columns are spaced the same on every pedal: a face with a knob row sets
+`spec.width = ee::ui::knobRowWidth (spec.knobsPerRow)`, which derives the width
+from shared metrics in `PedalSpec.h` rather than a hand-picked number.
 
 ## Replacing the graphics
 
