@@ -12,7 +12,8 @@ namespace
 Knob::Knob (juce::AudioProcessorValueTreeState& state,
             const KnobSpec& spec,
             const PedalTheme& theme)
-    : apvts (state), paramID (spec.parameterID), captionText (spec.caption), pedalTheme (theme)
+    : apvts (state), paramID (spec.parameterID), captionText (spec.caption),
+      pedalTheme (theme), compact (spec.compact)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
@@ -31,11 +32,19 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
     if (spec.arc.has_value())
         slider.setColour (juce::Slider::thumbColourId, *spec.arc);
 
+    if (spec.invertedArc)
+        slider.getProperties().set ("invertedArc", true);
+
     addAndMakeVisible (slider);
 
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramID, slider);
 
-    slider.onValueChange = [this] { refreshValueText(); };
+    slider.onValueChange = [this]
+    {
+        refreshValueText();
+        if (onValueChanged)
+            onValueChanged();
+    };
     refreshValueText();
 }
 
@@ -58,13 +67,24 @@ void Knob::refreshValueText()
 void Knob::resized()
 {
     auto area = getLocalBounds();
-    area.removeFromBottom (labelHeight);
+    area.removeFromBottom (getLabelHeight());
     slider.setBounds (area);
 }
 
 void Knob::paint (juce::Graphics& g)
 {
     auto area = getLocalBounds().toFloat();
+
+    if (compact)
+    {
+        const auto valueArea = area.removeFromBottom (static_cast<float> (compactLabelHeight));
+
+        g.setColour (pedalTheme.textPrimary);
+        g.setFont (pedalTheme.bodyFont (12.0f));
+        g.drawText (valueText, valueArea, juce::Justification::centred, false);
+        return;
+    }
+
     const auto captionArea = area.removeFromBottom (kCaptionRowHeight);
     const auto valueArea = area.removeFromBottom (kValueRowHeight);
 

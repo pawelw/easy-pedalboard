@@ -22,10 +22,19 @@ public:
     /** Height of the value and caption rows below the rotary. */
     static constexpr int labelHeight = 32;
 
+    /** Same, compact: value readout only, no caption. */
+    static constexpr int compactLabelHeight = 16;
+
     void resized() override;
     void paint (juce::Graphics&) override;
 
     juce::Slider& getSlider() noexcept { return slider; }
+
+    int getLabelHeight() const noexcept { return compact ? compactLabelHeight : labelHeight; }
+
+    /** Called after the value changes, once the readout has refreshed. Lets a
+        parent react (e.g. repaint artwork that depends on the value). */
+    std::function<void()> onValueChanged;
 
 private:
     void refreshValueText();
@@ -34,6 +43,7 @@ private:
     juce::String paramID;
     juce::String captionText;
     const PedalTheme& pedalTheme;
+    bool compact = false;
 
     juce::Slider slider;
     juce::String valueText;

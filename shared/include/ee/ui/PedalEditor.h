@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "ee/ui/FaderStrip.h"
 #include "ee/ui/Knob.h"
 #include "ee/ui/MiniToggle.h"
 #include "ee/ui/PedalLookAndFeel.h"
@@ -40,12 +41,32 @@ private:
     juce::Rectangle<int> titleArea() const;
     juce::Rectangle<int> logoArea() const;
 
+    /** Lays a single row of faders across the given area. */
+    void layOutFaders (juce::Rectangle<int> area);
+
+    /** Slider region spanned by the fader row, once laid out. Empty when the
+        pedal has no faders. */
+    juce::Rectangle<int> faderArea() const;
+
+    /** Faint grid plus the curve joining the fader nodes. */
+    void paintFaderGraph (juce::Graphics&) const;
+
+    /** Translucent shading over the grid for whatever the corner cut knobs are
+        removing from each end of the spectrum. */
+    void paintCutMasks (juce::Graphics&, juce::Rectangle<float> grid) const;
+
+    /** Returns every fader to its parameter default. */
+    void resetFaders();
+
     PedalTheme theme;
     PedalSpec spec;
     PedalLookAndFeel lookAndFeel;
 
     std::vector<std::unique_ptr<Knob>> knobs;
+    std::vector<std::unique_ptr<Knob>> cornerKnobs;
+    std::vector<std::unique_ptr<FaderStrip>> faders;
     std::vector<std::unique_ptr<MiniToggle>> toggles;
+    std::unique_ptr<juce::TextButton> faderResetButton;
     std::unique_ptr<juce::Component> sidePanel;
     juce::Image grain;
     juce::Image logoImage;

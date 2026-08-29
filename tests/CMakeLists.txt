@@ -65,6 +65,23 @@ target_link_libraries(ee_tape_match
     PRIVATE ee_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
+# Renders audio through the whole EQ processor, band filters and bypass mix.
+juce_add_console_app(ee_eq_match PRODUCT_NAME "ee_eq_match")
+
+target_sources(ee_eq_match PRIVATE EqMatch.cpp)
+
+target_compile_definitions(ee_eq_match PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_include_directories(ee_eq_match
+    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-eq/src)
+
+target_link_libraries(ee_eq_match
+    PRIVATE EasyEq ee_shared juce::juce_audio_formats
+    PUBLIC juce::juce_recommended_config_flags)
+
 # Renders a file through the whole delay processor, chain and all.
 juce_add_console_app(ee_delay_match PRODUCT_NAME "ee_delay_match")
 

@@ -22,6 +22,7 @@ mkdir -p "$STAGE"
 PLUGINS=(
     "easy-reverb/EasyReverb_artefacts:Easy Reverb"
     "easy-delay/EasyDelay_artefacts:Easy Delay"
+    "easy-eq/EasyEq_artefacts:Easy EQ"
 )
 
 for entry in "${PLUGINS[@]}"; do

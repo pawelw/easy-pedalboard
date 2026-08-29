@@ -150,6 +150,92 @@ ee::ui::PedalSpec makeDelaySpec()
     return spec;
 }
 
+juce::String decibelsToText (float value, int)
+{
+    const int rounded = juce::roundToInt (value);
+    return (rounded > 0 ? "+" : "") + juce::String (rounded);
+}
+
+juce::String freqToText (float hz)
+{
+    if (hz >= 1000.0f)
+        return juce::String (hz / 1000.0f, 1) + " kHz";
+    return juce::String (juce::roundToInt (hz)) + " Hz";
+}
+
+juce::String loCutToText (float hz, int)
+{
+    return hz <= 20.5f ? juce::String ("0 Hz") : freqToText (hz);
+}
+
+juce::String hiCutToText (float hz, int)
+{
+    return hz >= 19999.5f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e")) : freqToText (hz);
+}
+
+/** Minimal host-free processor carrying the same parameters as Easy EQ. */
+class EqSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    EqSnapshotProcessor() : SnapshotProcessor (createEqLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createEqLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto dbRange = juce::NormalisableRange<float> (-15.0f, 15.0f, 0.1f);
+        const auto dbAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (decibelsToText);
+
+        for (const auto* id : { "level", "b100", "b200", "b400", "b800", "b1k6", "b3k2", "b6k4" })
+            layout.add (std::make_unique<juce::AudioParameterFloat> (
+                juce::ParameterID { id, 1 }, id, dbRange, 0.0f, dbAttributes));
+
+        auto loCutRange = juce::NormalisableRange<float> (20.0f, 1200.0f);
+        loCutRange.setSkewForCentre (120.0f);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "locut", 1 }, "Low Cut", loCutRange, 20.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (loCutToText)));
+
+        auto hiCutRange = juce::NormalisableRange<float> (1200.0f, 20000.0f);
+        hiCutRange.setSkewForCentre (4000.0f);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "hicut", 1 }, "High Cut", hiCutRange, 20000.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (hiCutToText)));
+
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeEqSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Easy EQ";
+    spec.tagline = "Seven-band graphic EQ";
+    spec.version = "v0.10.0";
+    spec.sliders = {
+        { .parameterID = "level", .caption = "LEVEL",
+          .fill = juce::Colour (0xffd6d6d6), .joinCurve = false },
+        { .parameterID = "b100", .caption = "100",  .axisHz = 100.0f },
+        { .parameterID = "b200", .caption = "200",  .axisHz = 200.0f },
+        { .parameterID = "b400", .caption = "400",  .axisHz = 400.0f },
+        { .parameterID = "b800", .caption = "800",  .axisHz = 800.0f },
+        { .parameterID = "b1k6", .caption = "1.6k", .axisHz = 1600.0f },
+        { .parameterID = "b3k2", .caption = "3.2k", .axisHz = 3200.0f },
+        { .parameterID = "b6k4", .caption = "6.4k", .axisHz = 6400.0f },
+    };
+    spec.cornerKnobs = {
+        { .parameterID = "locut", .compact = true, .cutSide = ee::ui::CutSide::low },
+        { .parameterID = "hicut", .compact = true, .cutSide = ee::ui::CutSide::high,
+          .invertedArc = true },
+    };
+    spec.width = 340;
+    return spec;
+}
+
 void writePng (juce::Component& editor, const juce::File& outputFile)
 {
     const int w = editor.getWidth();
@@ -189,6 +275,13 @@ void renderDelay (const juce::File& outputFile)
 
     writePng (editor, outputFile);
 }
+
+void renderEq (const juce::File& outputFile)
+{
+    EqSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeEqSpec(), ee::ui::PedalTheme::silver());
+    writePng (editor, outputFile);
+}
 } // namespace
 
 int main (int argc, char* argv[])
@@ -200,6 +293,7 @@ int main (int argc, char* argv[])
 
     render (dir.getChildFile ("pedal.png"));
     renderDelay (dir.getChildFile ("delay.png"));
+    renderEq (dir.getChildFile ("eq.png"));
 
     return 0;
 }

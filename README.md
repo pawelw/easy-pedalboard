@@ -84,6 +84,48 @@ Like the reverb it has no on/off switch of its own, and the `on` parameter has
 trails: bypassing fades the tape off the dry path and closes the delay input,
 letting the repeats run out.
 
+### Easy EQ
+
+A seven-band graphic EQ modelled on the Boss GE-7, driven by vertical faders
+instead of knobs. Mono or stereo, in and out. Eight faders:
+
+| Fader     | Range          | What it does                                            |
+| --------- | -------------- | ------------------------------------------------------ |
+| **Level**       | -15 - +15 dB | Output make-up gain after the bands                     |
+| **100 - 6.4k**  | -15 - +15 dB | Cut or boost at 100, 200, 400, 800, 1.6k, 3.2k, 6.4k Hz |
+
+Each fader is a graph node — a stem to the baseline with a round handle at the
+value, joined to its neighbours by a live green response curve (corners eased
+off) over a faint grid. Any value that is not 0 is printed in the same green.
+The **Level** node is drawn light-grey with a black outline and sits outside
+the curve, since it is not part of the frequency response. The handle grabs
+where you press and drags from there (it never jumps on touch); it detents
+onto 0 dB when a drag lands near it, and double-click snaps back to 0.
+**RESET**, top-left above the faders, flattens every band. The bands are broad, overlapping bells (`Q ≈ 1.4`) built
+from JUCE's `juce::dsp::IIR` peak filters, so the curve follows the fader
+positions rather than showing seven isolated spikes.
+
+Two small knobs top-right trim the ends of the spectrum: **low cut** (a
+high-pass, `20 Hz – 1.2 kHz`, default off) and **high cut** (a low-pass,
+`1.2 kHz – 20 kHz`, default off). Each reads `∞ / Hz / kHz`. The high cut is
+drawn inverted — a full white ring at rest, with the value arc growing back
+from the top as it is turned down. As a knob engages, a faint shaded band grows
+in from that side of the grid, its inner edge on a shared log-frequency axis;
+because the two ranges meet at 1.2 kHz, pushing both knobs there lands the
+shading on the same point.
+
+The green curve is a live response readout: between the band faders it follows
+their positions, and where a cut is engaged it bends down at roughly the
+filter's slope and runs off the bottom of the grid, reshaping as any fader or
+cut knob moves.
+
+Like the other pedals it carries no on/off switch of its own — use the host's
+device on/off. The `on` parameter crossfades to the clean dry signal so
+toggling it never clicks.
+
+The face reuses Easy Delay's `silver()` theme, and is the same width and height
+as Easy Reverb, so the pedals line up on a rack.
+
 ## Requirements
 
 - macOS with Xcode Command Line Tools
@@ -169,6 +211,8 @@ shared/
   include/ee/ui/     the pedal UI framework
 plugins/
   easy-reverb/       processor + parameter definitions
+  easy-delay/        processor + tape colour stage
+  easy-eq/           processor + juce::dsp IIR band filters
 tests/               offline DSP tests and the UI snapshot renderer
 ```
 
@@ -189,6 +233,11 @@ spec.knobs = { { "gain", "Gain" }, { "tone", "Tone" }, { "level", "Level" } };
 
 return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::dark());
 ```
+
+For a pedal with vertical faders instead of knobs (a graphic EQ), fill
+`spec.sliders` instead of `spec.knobs` — same `{ parameterID, caption }` pairs.
+They lay out in one row across the face. `plugins/easy-eq` is the worked
+example.
 
 Then copy `plugins/easy-reverb/CMakeLists.txt`, change `PLUGIN_CODE` and
 `PRODUCT_NAME`, and add it to the top-level `CMakeLists.txt`.
