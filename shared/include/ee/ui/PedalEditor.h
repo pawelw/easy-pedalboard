@@ -17,6 +17,10 @@ namespace ee::ui
 
     Every effect in this repo uses this class directly; none of them need their
     own editor subclass.
+
+    The pedal face is drawn at its design size by an inner component and scaled
+    to fill the window, so the whole thing zooms when the corner grip (or the
+    host) resizes it. Aspect ratio is locked.
 */
 class PedalEditor : public juce::AudioProcessorEditor
 {
@@ -35,41 +39,25 @@ public:
         it. Used by the development tuning tools; the face is unaffected. */
     void setSidePanel (std::unique_ptr<juce::Component> panel, int panelWidth);
 
+    /** How far the face can be scaled from its design size, and where it opens. */
+    static constexpr float kMinZoom = 0.6f;
+    static constexpr float kMaxZoom = 2.0f;
+    static constexpr float kDefaultZoom = 0.85f;
+
 private:
-    juce::Rectangle<int> faceBounds() const;
-    juce::Rectangle<int> knobArea() const;
-    juce::Rectangle<int> titleArea() const;
-    juce::Rectangle<int> logoArea() const;
+    /** The pedal face, drawn once at design size and then scaled by the editor. */
+    class Face;
 
-    /** Lays a single row of faders across the given area. */
-    void layOutFaders (juce::Rectangle<int> area);
-
-    /** Slider region spanned by the fader row, once laid out. Empty when the
-        pedal has no faders. */
-    juce::Rectangle<int> faderArea() const;
-
-    /** Faint grid plus the curve joining the fader nodes. */
-    void paintFaderGraph (juce::Graphics&) const;
-
-    /** Translucent shading over the grid for whatever the corner cut knobs are
-        removing from each end of the spectrum. */
-    void paintCutMasks (juce::Graphics&, juce::Rectangle<float> grid) const;
-
-    /** Returns every fader to its parameter default. */
-    void resetFaders();
+    void applyResizeLimits();
 
     PedalTheme theme;
-    PedalSpec spec;
     PedalLookAndFeel lookAndFeel;
 
-    std::vector<std::unique_ptr<Knob>> knobs;
-    std::vector<std::unique_ptr<Knob>> cornerKnobs;
-    std::vector<std::unique_ptr<FaderStrip>> faders;
-    std::vector<std::unique_ptr<MiniToggle>> toggles;
-    std::unique_ptr<juce::TextButton> faderResetButton;
-    std::unique_ptr<juce::Component> sidePanel;
-    juce::Image grain;
-    juce::Image logoImage;
+    std::unique_ptr<Face> face;
+    std::unique_ptr<juce::ResizableCornerComponent> resizeGrip;
+
+    int baseWidth = 0;
+    int baseHeight = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PedalEditor)
 };

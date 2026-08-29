@@ -32,6 +32,11 @@ public:
     void drawButtonText (juce::Graphics&, juce::TextButton&,
                          bool shouldDrawButtonAsHighlighted, bool shouldDrawButtonAsDown) override;
 
+    /** Two faint 45-degree strokes in the bottom-right corner, just inside where
+        the pedal's drop shadow fades - the resize grip. */
+    void drawCornerResizer (juce::Graphics&, int w, int h,
+                            bool isMouseOver, bool isMouseDragging) override;
+
 private:
     void applyColours();
 

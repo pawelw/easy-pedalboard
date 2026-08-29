@@ -89,11 +89,11 @@ void Knob::paint (juce::Graphics& g)
     const auto valueArea = area.removeFromBottom (kValueRowHeight);
 
     g.setColour (pedalTheme.textPrimary);
-    g.setFont (pedalTheme.bodyFont (15.0f));
+    g.setFont (pedalTheme.bodyFont (16.0f));
     g.drawText (valueText, valueArea, juce::Justification::centredTop, false);
 
     g.setColour (pedalTheme.textSecondary);
-    g.setFont (pedalTheme.bodyFont (11.0f).boldened().withExtraKerningFactor (0.09f));
+    g.setFont (pedalTheme.bodyFont (12.0f).boldened().withExtraKerningFactor (0.09f));
     g.drawText (captionText.toUpperCase(), captionArea, juce::Justification::centredTop, false);
 }
 

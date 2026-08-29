@@ -227,6 +227,28 @@ void PedalLookAndFeel::drawButtonBackground (juce::Graphics& g, juce::Button& bu
     g.fillRoundedRectangle (r.reduced (1.0f).removeFromTop (r.getHeight() * 0.45f), radius);
 }
 
+void PedalLookAndFeel::drawCornerResizer (juce::Graphics& g, int w, int h,
+                                          bool isMouseOver, bool isMouseDragging)
+{
+    const auto fw = static_cast<float> (w);
+    const auto fh = static_cast<float> (h);
+    const float thickness = juce::jmax (1.2f, fw / 40.0f);
+
+    // Anchor point sits in from the corner so nothing touches the frame or its
+    // drop shadow.
+    const float inset = fw * 0.30f;
+    const float cx = fw - inset;
+    const float cy = fh - inset;
+
+    g.setColour (theme.textSecondary.withAlpha (isMouseOver || isMouseDragging ? 0.55f : 0.34f));
+
+    // A short stroke nearer the corner, a longer one just inside it.
+    g.drawLine (cx - fw * 0.20f, cy, cx, cy - fw * 0.20f, thickness);
+
+    const float gap = fw * 0.075f;
+    g.drawLine (cx - gap - fw * 0.32f, cy - gap, cx - gap, cy - gap - fw * 0.32f, thickness);
+}
+
 void PedalLookAndFeel::drawButtonText (juce::Graphics& g, juce::TextButton& button,
                                        bool, bool)
 {

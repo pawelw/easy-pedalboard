@@ -16,8 +16,9 @@ namespace
     // Everything on the face is spaced from the inside edge of the frame.
     constexpr int kContentPad = 16;
     constexpr int kMargin = static_cast<int> (kFaceInset) + kContentPad;
+    static_assert (kMargin == kFaceContentMargin, "shared face margin out of sync");
 
-    constexpr int kKnobGap = 12;
+    constexpr int kKnobGap = kKnobColumnGap;
 
     // Faders sit in one row below the knobs (or fill the whole control area on
     // a pedal that has no knobs). Fixed cap width so a fader is the same size
@@ -33,13 +34,13 @@ namespace
 
     // Small knobs pinned top-right. The component is wider than the cap so the
     // "4.5 kHz" style readout fits underneath.
-    constexpr int kCornerKnobDiameter = 44;
+    constexpr int kCornerKnobDiameter = 48;
     constexpr int kCornerKnobWidth = 60;
     constexpr int kCornerKnobGap = 6;
 
     // Sits above the middle of the rotaries, where the caps have curved away
     // and there is more room either side of it.
-    constexpr int kToggleRise = 18;
+    constexpr int kToggleRise = 26;
 
     // Fixed rather than a fraction of the column, so a knob is the same size on
     // every pedal however many of them a row carries.
@@ -71,16 +72,65 @@ namespace
     }
 }
 
-PedalEditor::PedalEditor (juce::AudioProcessor& processor,
-                          juce::AudioProcessorValueTreeState& state,
-                          PedalSpec specToUse,
-                          PedalTheme themeToUse)
-    : juce::AudioProcessorEditor (processor),
-      theme (std::move (themeToUse)),
-      spec (std::move (specToUse)),
-      lookAndFeel (theme)
+//==============================================================================
+/** The pedal face: everything the old editor drew and laid out, at design size.
+    PedalEditor owns one of these and scales it to fill the window. */
+class PedalEditor::Face : public juce::Component
 {
-    setLookAndFeel (&lookAndFeel);
+public:
+    Face (juce::AudioProcessorValueTreeState& state,
+          PedalSpec specToUse,
+          const PedalTheme& themeToUse,
+          PedalLookAndFeel& lnf);
+
+    ~Face() override;
+
+    void paint (juce::Graphics&) override;
+    void resized() override;
+
+    void setSidePanel (std::unique_ptr<juce::Component> panel, int panelWidth);
+
+    int getLogicalWidth() const  { return spec.width + sidePanelWidth; }
+    int getLogicalHeight() const { return spec.height; }
+
+private:
+    juce::Rectangle<int> faceBounds() const;
+    juce::Rectangle<int> knobArea() const;
+    juce::Rectangle<int> titleArea() const;
+    juce::Rectangle<int> logoArea() const;
+
+    void layOutFaders (juce::Rectangle<int> area);
+    juce::Rectangle<int> faderArea() const;
+
+    void paintFaderGraph (juce::Graphics&) const;
+    void paintCutMasks (juce::Graphics&, juce::Rectangle<float> grid) const;
+    void resetFaders();
+
+    PedalTheme theme;
+    PedalSpec spec;
+
+    std::vector<std::unique_ptr<Knob>> knobs;
+    std::vector<std::unique_ptr<Knob>> cornerKnobs;
+    std::vector<std::unique_ptr<FaderStrip>> faders;
+    std::vector<std::unique_ptr<MiniToggle>> toggles;
+    std::unique_ptr<juce::TextButton> faderResetButton;
+    std::unique_ptr<juce::Component> sidePanel;
+    int sidePanelWidth = 0;
+    juce::Image grain;
+    juce::Image logoImage;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Face)
+};
+
+//==============================================================================
+PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
+                         PedalSpec specToUse,
+                         const PedalTheme& themeToUse,
+                         PedalLookAndFeel& lnf)
+    : theme (themeToUse),
+      spec (std::move (specToUse))
+{
+    setLookAndFeel (&lnf);
 
     for (const auto& knobSpec : spec.knobs)
         knobs.push_back (std::make_unique<Knob> (state, knobSpec, theme));
@@ -103,7 +153,7 @@ PedalEditor::PedalEditor (juce::AudioProcessor& processor,
     }
 
     // A pedal driven by faders gets a reset that flattens them all. It lives in
-    // the name row, under the first fader.
+    // the strip above the grid.
     if (! faders.empty())
     {
         faderResetButton = std::make_unique<juce::TextButton> ("RESET");
@@ -121,8 +171,6 @@ PedalEditor::PedalEditor (juce::AudioProcessor& processor,
         toggles.push_back (std::make_unique<MiniToggle> (state, toggleSpec, theme));
         addAndMakeVisible (*toggles.back());
     }
-
-    setSize (spec.width, spec.height);
 
     logoImage = brandLogo();
 
@@ -146,47 +194,45 @@ PedalEditor::PedalEditor (juce::AudioProcessor& processor,
     }
 }
 
-PedalEditor::~PedalEditor()
+PedalEditor::Face::~Face()
 {
     setLookAndFeel (nullptr);
 }
 
-juce::Rectangle<int> PedalEditor::faceBounds() const
+void PedalEditor::Face::setSidePanel (std::unique_ptr<juce::Component> panel, int panelWidth)
+{
+    sidePanel = std::move (panel);
+    sidePanelWidth = (sidePanel != nullptr) ? panelWidth : 0;
+
+    if (sidePanel != nullptr)
+        addAndMakeVisible (*sidePanel);
+}
+
+juce::Rectangle<int> PedalEditor::Face::faceBounds() const
 {
     return getLocalBounds().withWidth (spec.width);
 }
 
-void PedalEditor::setSidePanel (std::unique_ptr<juce::Component> panel, int panelWidth)
-{
-    sidePanel = std::move (panel);
-
-    if (sidePanel != nullptr)
-    {
-        addAndMakeVisible (*sidePanel);
-        setSize (spec.width + panelWidth, spec.height);
-    }
-}
-
-juce::Rectangle<int> PedalEditor::logoArea() const
+juce::Rectangle<int> PedalEditor::Face::logoArea() const
 {
     return faceBounds().reduced (kMargin).removeFromBottom (kLogoHeight);
 }
 
-juce::Rectangle<int> PedalEditor::titleArea() const
+juce::Rectangle<int> PedalEditor::Face::titleArea() const
 {
     auto area = faceBounds().reduced (kMargin);
     area.removeFromBottom (kLogoHeight);
     return area.removeFromBottom (kTitleHeight);
 }
 
-juce::Rectangle<int> PedalEditor::knobArea() const
+juce::Rectangle<int> PedalEditor::Face::knobArea() const
 {
     auto area = faceBounds().reduced (kMargin);
     area.removeFromBottom (kLogoHeight + kTitleHeight);
     return area;
 }
 
-juce::Rectangle<int> PedalEditor::faderArea() const
+juce::Rectangle<int> PedalEditor::Face::faderArea() const
 {
     if (faders.empty())
         return {};
@@ -198,7 +244,7 @@ juce::Rectangle<int> PedalEditor::faderArea() const
     return r.withTrimmedBottom (FaderStrip::labelHeight);
 }
 
-void PedalEditor::paintFaderGraph (juce::Graphics& g) const
+void PedalEditor::Face::paintFaderGraph (juce::Graphics& g) const
 {
     if (faders.empty())
         return;
@@ -420,7 +466,7 @@ void PedalEditor::paintFaderGraph (juce::Graphics& g) const
     }
 }
 
-void PedalEditor::paintCutMasks (juce::Graphics& g, juce::Rectangle<float> grid) const
+void PedalEditor::Face::paintCutMasks (juce::Graphics& g, juce::Rectangle<float> grid) const
 {
     // A shared log-frequency axis across every cut knob's full range, so the
     // low- and high-cut shading land on the same x where their ranges meet.
@@ -478,16 +524,23 @@ void PedalEditor::paintCutMasks (juce::Graphics& g, juce::Rectangle<float> grid)
     }
 }
 
-void PedalEditor::resetFaders()
+void PedalEditor::Face::resetFaders()
 {
-    for (auto& fader : faders)
+    const auto toDefault = [] (juce::Slider& s)
     {
-        auto& s = fader->getSlider();
         s.setValue (s.getDoubleClickReturnValue(), juce::sendNotificationSync);
-    }
+    };
+
+    for (auto& fader : faders)
+        toDefault (fader->getSlider());
+
+    // The corner cut knobs go back to their defaults too (low cut off, high
+    // cut wide open).
+    for (auto& knob : cornerKnobs)
+        toDefault (knob->getSlider());
 }
 
-void PedalEditor::layOutFaders (juce::Rectangle<int> area)
+void PedalEditor::Face::layOutFaders (juce::Rectangle<int> area)
 {
     const int count = static_cast<int> (faders.size());
 
@@ -511,7 +564,7 @@ void PedalEditor::layOutFaders (juce::Rectangle<int> area)
     }
 }
 
-void PedalEditor::paint (juce::Graphics& g)
+void PedalEditor::Face::paint (juce::Graphics& g)
 {
     auto bounds = faceBounds().toFloat();
 
@@ -586,7 +639,7 @@ void PedalEditor::paint (juce::Graphics& g)
     }
 }
 
-void PedalEditor::resized()
+void PedalEditor::Face::resized()
 {
     if (sidePanel != nullptr)
         sidePanel->setBounds (getLocalBounds().withTrimmedLeft (spec.width));
@@ -691,6 +744,88 @@ void PedalEditor::resized()
         toggles[t]->setBounds (juce::Rectangle<int> (MiniToggle::preferredWidth,
                                                      MiniToggle::preferredHeight)
                                    .withCentre (centre));
+    }
+}
+
+//==============================================================================
+PedalEditor::PedalEditor (juce::AudioProcessor& processor,
+                          juce::AudioProcessorValueTreeState& state,
+                          PedalSpec specToUse,
+                          PedalTheme themeToUse)
+    : juce::AudioProcessorEditor (processor),
+      theme (std::move (themeToUse)),
+      lookAndFeel (theme)
+{
+    setLookAndFeel (&lookAndFeel);
+
+    face = std::make_unique<Face> (state, std::move (specToUse), theme, lookAndFeel);
+    addAndMakeVisible (*face);
+
+    baseWidth = face->getLogicalWidth();
+    baseHeight = face->getLogicalHeight();
+
+    setResizable (true, false);
+    applyResizeLimits();
+
+    resizeGrip = std::make_unique<juce::ResizableCornerComponent> (this, getConstrainer());
+    addAndMakeVisible (*resizeGrip);
+
+    // Open a little smaller than the design size.
+    setSize (juce::roundToInt (baseWidth  * kDefaultZoom),
+             juce::roundToInt (baseHeight * kDefaultZoom));
+}
+
+PedalEditor::~PedalEditor()
+{
+    setLookAndFeel (nullptr);
+}
+
+void PedalEditor::applyResizeLimits()
+{
+    setResizeLimits (juce::roundToInt (baseWidth  * kMinZoom),
+                     juce::roundToInt (baseHeight * kMinZoom),
+                     juce::roundToInt (baseWidth  * kMaxZoom),
+                     juce::roundToInt (baseHeight * kMaxZoom));
+
+    if (auto* c = getConstrainer())
+        c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
+}
+
+void PedalEditor::setSidePanel (std::unique_ptr<juce::Component> panel, int panelWidth)
+{
+    face->setSidePanel (std::move (panel), panelWidth);
+
+    baseWidth = face->getLogicalWidth();
+    baseHeight = face->getLogicalHeight();
+
+    applyResizeLimits();
+    setSize (juce::roundToInt (baseWidth  * kDefaultZoom),
+             juce::roundToInt (baseHeight * kDefaultZoom));
+}
+
+void PedalEditor::paint (juce::Graphics& g)
+{
+    // The face covers the whole window; this only shows through sub-pixel seams.
+    g.fillAll (theme.background);
+}
+
+void PedalEditor::resized()
+{
+    if (face == nullptr || baseWidth <= 0 || baseHeight <= 0)
+        return;
+
+    const float scale = juce::jmax (0.1f, static_cast<float> (getWidth()) / static_cast<float> (baseWidth));
+
+    face->setBounds (0, 0, baseWidth, baseHeight);
+    face->setTransform (juce::AffineTransform::scale (scale));
+
+    if (resizeGrip != nullptr)
+    {
+        // Big enough that the strokes, drawn well inside it, clear the frame
+        // and drop shadow.
+        const int s = juce::jmax (32, juce::roundToInt (50.0f * scale));
+        resizeGrip->setBounds (getWidth() - s, getHeight() - s, s, s);
+        resizeGrip->toFront (false);
     }
 }
 

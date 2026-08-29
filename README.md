@@ -242,6 +242,15 @@ example.
 Then copy `plugins/easy-reverb/CMakeLists.txt`, change `PLUGIN_CODE` and
 `PRODUCT_NAME`, and add it to the top-level `CMakeLists.txt`.
 
+## Resizing
+
+Every pedal is resizable for free. `PedalEditor` draws the face at its design
+size in an inner component and scales that to fill the window, with the aspect
+ratio locked and the range clamped to `kMinZoom`..`kMaxZoom`. Drag the faint
+diagonal grip in the bottom-right corner, or the host's own window edge. No
+per-pedal code — it all lives in `PedalEditor`. (The zoom is not persisted; the
+editor opens at 100 %.)
+
 ## Replacing the graphics
 
 Everything drawn comes from `PedalTheme`. Change the colours there, or drop in

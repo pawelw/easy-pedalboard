@@ -316,7 +316,7 @@ juce::AudioProcessorEditor* EasyDelayProcessor::createEditor()
     };
     spec.toggles = { { kSyncID, "Sync", 0, tapeCap } };
     spec.knobsPerRow = 3;
-    spec.width = 520;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);   // same column spacing as Easy Reverb
 
     auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::silver());
 

@@ -98,6 +98,7 @@ ee::ui::PedalSpec makeSpec()
     spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" },
                    { "res", "Resonance" }, { "locut", "Low Cut" } };
     spec.knobsPerRow = 2;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
 }
 
@@ -146,7 +147,7 @@ ee::ui::PedalSpec makeDelaySpec()
                    { "tape", "Tape", tapeCap, tapeBorder, tapeCap } };
     spec.toggles = { { "sync", "Sync", 0, tapeCap } };
     spec.knobsPerRow = 3;
-    spec.width = 520;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
 }
 

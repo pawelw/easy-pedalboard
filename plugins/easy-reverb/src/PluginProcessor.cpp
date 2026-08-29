@@ -221,6 +221,7 @@ juce::AudioProcessorEditor *EasyReverbProcessor::createEditor() {
                 {kResonanceID, "Resonance"},
                 {kLowCutID, "Low Cut"}};
   spec.knobsPerRow = 2;
+  spec.width = ee::ui::knobRowWidth(spec.knobsPerRow);
 
   return new ee::ui::PedalEditor(*this, apvts, spec,
                                  ee::ui::PedalTheme::blue());

@@ -8,6 +8,30 @@
 namespace ee::ui
 {
 
+//==============================================================================
+// Shared face metrics, so every pedal spaces its knob columns identically
+// whatever the row count. These match Easy Reverb's original layout.
+
+/** Frame inset + content padding: the margin every control keeps from the edge. */
+inline constexpr int kFaceContentMargin = 21;
+
+/** One knob column, cap plus the slack that sets the gap to its neighbour. */
+inline constexpr int kKnobCellWidth = 143;
+
+/** Gap between knob columns. */
+inline constexpr int kKnobColumnGap = 12;
+
+/** Face width that gives `knobsPerRow` columns that shared spacing. Every pedal
+    with a knob row should use this rather than a hand-picked width. */
+inline constexpr int knobRowWidth (int knobsPerRow)
+{
+    return knobsPerRow <= 0
+             ? 2 * kFaceContentMargin
+             : 2 * kFaceContentMargin
+                   + knobsPerRow * kKnobCellWidth
+                   + (knobsPerRow - 1) * kKnobColumnGap;
+}
+
 /** For a corner knob that trims one end of the spectrum: which side of the
     fader grid its "removed" shading grows from. `low` grows from the left as
     the knob turns up; `high` grows from the right as the knob turns down. */
@@ -98,8 +122,9 @@ struct PedalSpec
     int knobsPerRow = 3;
 
     /** Height is shared across pedals so they line up side by side on a rack;
-        only the width follows the number of knobs in a row. */
-    int width = 340;
+        only the width follows the number of knobs in a row - use
+        `knobRowWidth (knobsPerRow)` unless the face has no knob row. */
+    int width = knobRowWidth (3);
     int height = 478;
 };
 
