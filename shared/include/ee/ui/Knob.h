@@ -47,6 +47,7 @@ private:
     juce::String captionText;
     const PedalTheme& pedalTheme;
     bool compact = false;
+    bool compactCaption = false;
 
     std::function<juce::String()> liveValueText;
 

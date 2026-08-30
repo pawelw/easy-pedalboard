@@ -32,6 +32,14 @@ if(EE_TAPE_TUNER)
     target_compile_definitions(ee_ui_snapshot PUBLIC EE_TAPE_TUNER=1)
 endif()
 
+if(EE_SHIMMER_TUNER)
+    target_sources(ee_ui_snapshot PRIVATE
+        ${CMAKE_SOURCE_DIR}/plugins/easy-reverb/src/ShimmerTunerPanel.cpp)
+    target_include_directories(ee_ui_snapshot
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-reverb/src)
+    target_compile_definitions(ee_ui_snapshot PUBLIC EE_SHIMMER_TUNER=1)
+endif()
+
 # Renders a dry file through the real processor so its output can be scored
 # against a reference recording.
 juce_add_console_app(ee_reverb_match PRODUCT_NAME "ee_reverb_match")

@@ -23,11 +23,12 @@ namespace ee::dsp::config
 // shelf sits. This is the single biggest lever on "boomy / resonant /
 // ringing". A real plate has very little low-end sustain.
 //   0.35 = tight, almost no low tail
-//   0.45 = plate (reference measures ~0.51 at 100-300 Hz)  <-- default
+//   0.45 = plate (reference measures ~0.51 at 100-300 Hz)
+//   0.65 = extra low-end weight, lows sustain well past the plate  <-- default
 //   0.75 = hall-ish warmth
 //   1.00 = lows ring as long as mids (boomy on guitar)
-constexpr float kLowDecayRatio = 0.40f;
-constexpr float kLowCornerHz = 450.0f;
+constexpr float kLowDecayRatio = 0.65f;
+constexpr float kLowCornerHz = 550.0f;
 
 // ============================================================================
 // HIGH DECAY
@@ -103,5 +104,11 @@ constexpr float kPredelayMaxMs = 28.0f;
 // movement leaves the lines completely still, which is what a settled, lush
 // tail needs.
 constexpr float kModDepthSamples = 26.0f;
+
+// ============================================================================
+// SHIMMER
+// ============================================================================
+// The shimmer voicing lives in its own struct so the development tuning panel
+// can drive every value live - see shared/include/ee/dsp/ShimmerTuning.h.
 
 } // namespace ee::dsp::config

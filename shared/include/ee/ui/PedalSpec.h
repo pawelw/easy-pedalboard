@@ -55,6 +55,11 @@ struct KnobSpec
         a corner. */
     bool compact = false;
 
+    /** In compact mode, print the caption on the one text line instead of the
+        value. For a knob whose value needs no unit on the face - a bare "reso"
+        tucked between the main knobs. */
+    bool compactCaption = false;
+
     /** If set, this knob shades one side of the fader grid to show the band it
         is removing. Only meaningful for `cornerKnobs`. */
     CutSide cutSide = CutSide::none;
@@ -162,6 +167,11 @@ struct PedalSpec
     /** Small knobs pinned to the top-right, above the main control area. Not
         part of the knob-row layout. */
     std::vector<KnobSpec> cornerKnobs;
+
+    /** A small knob centred on the block of main knobs, for a secondary control
+        that belongs "between" them. Laid out on top of the row grid, in the
+        gap the caps leave in the middle. */
+    std::optional<KnobSpec> centreKnob;
 
     std::vector<SliderSpec> sliders;
     std::vector<ToggleSpec> toggles;

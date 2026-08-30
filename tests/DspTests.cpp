@@ -277,6 +277,139 @@ void testSilenceInSilenceOut()
     check (peak == 0.0f, "reverb generated signal from silence");
 }
 
+/** Fires a half-second 220 Hz tone into the reverb, then measures the tail once
+    the dry note is long gone. `shimmer` is the knob amount. */
+struct ShimmerRun
+{
+    float drivenPeak = 0.0f;
+    float earlyTailRms = 0.0f;   // 1.5 - 2.5 s after the note: the bloom window
+    float lateTailRms = 0.0f;    // 7 - 8 s in: has it settled?
+    double octaveRatio = 0.0;    // energy at 440 Hz vs 220 Hz in the bloom window
+    double correlation = 0.0;    // L/R across the bloom window
+    bool finite = true;
+};
+
+ShimmerRun runShimmer (float shimmer)
+{
+    ee::dsp::FdnReverb reverb;
+    reverb.prepare (kSampleRate);
+    reverb.reset();
+    reverb.setDecayTime (5.0f);
+    reverb.setResonance (0.5f);
+    reverb.setShimmer (shimmer);
+
+    std::vector<float> in (kBlock), l (kBlock), r (kBlock);
+
+    const double wIn = 2.0 * juce::MathConstants<double>::pi * 220.0 / kSampleRate;
+    const double wOct = 2.0 * juce::MathConstants<double>::pi * 440.0 / kSampleRate;
+
+    const int noteBlocks  = static_cast<int> (kSampleRate * 0.5 / kBlock);
+    const int totalBlocks = static_cast<int> (kSampleRate * 8.0 / kBlock);
+    const auto inWindow = [] (int b, double lo, double hi)
+    {
+        const double t = b * kBlock / kSampleRate;
+        return t >= lo && t < hi;
+    };
+
+    ShimmerRun out;
+    double bloomLL = 0.0, bloomRR = 0.0, bloomLR = 0.0;
+    double gFundR = 0.0, gFundI = 0.0, gOctR = 0.0, gOctI = 0.0;
+    long long ph = 0, lateN = 0; double lateSum = 0.0;
+
+    for (int b = 0; b < totalBlocks; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const double t = (b * kBlock + i) / kSampleRate;
+            in[static_cast<size_t> (i)] = b < noteBlocks
+                ? 0.5f * static_cast<float> (std::sin (2.0 * juce::MathConstants<double>::pi * 220.0 * t))
+                : 0.0f;
+        }
+
+        reverb.process (in.data(), l.data(), r.data(), kBlock);
+
+        const bool bloom = inWindow (b, 1.5, 2.5);
+        const bool late  = inWindow (b, 7.0, 8.0);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const float lv = l[static_cast<size_t> (i)];
+            const float rv = r[static_cast<size_t> (i)];
+            const float m = 0.5f * (lv + rv);
+            out.finite = out.finite && std::isfinite (lv) && std::isfinite (rv);
+
+            if (b < noteBlocks)
+                out.drivenPeak = juce::jmax (out.drivenPeak, std::abs (lv), std::abs (rv));
+
+            if (bloom)
+            {
+                bloomLL += lv * lv; bloomRR += rv * rv; bloomLR += lv * rv;
+                gFundR += m * std::cos (wIn * ph);  gFundI += m * std::sin (wIn * ph);
+                gOctR  += m * std::cos (wOct * ph); gOctI  += m * std::sin (wOct * ph);
+                ++ph;
+            }
+            if (late) { lateSum += m * m; ++lateN; }
+        }
+    }
+
+    out.earlyTailRms = static_cast<float> (std::sqrt (juce::jmax (1.0e-20, (bloomLL + bloomRR) / juce::jmax (1LL, ph * 2))));
+    out.lateTailRms  = static_cast<float> (std::sqrt (juce::jmax (1.0e-20, lateSum / juce::jmax (1LL, lateN))));
+    const double fund = std::sqrt (gFundR * gFundR + gFundI * gFundI);
+    const double oct  = std::sqrt (gOctR * gOctR + gOctI * gOctI);
+    out.octaveRatio = oct / juce::jmax (1.0e-9, fund);
+    out.correlation = bloomLR / std::sqrt (juce::jmax (1.0e-12, bloomLL * bloomRR));
+    return out;
+}
+
+/** Shimmer must stay bounded, settle after the note is gone, add a clear octave
+    into the tail, and not narrow the image. */
+void testShimmer()
+{
+    std::printf ("Shimmer (octave feedback):\n");
+
+    const ShimmerRun off = runShimmer (0.0f);
+    const ShimmerRun on  = runShimmer (1.0f);
+
+    std::printf ("  off: bloom rms %.4e  octave/fundamental %.3f  corr %.3f\n",
+                off.earlyTailRms, off.octaveRatio, off.correlation);
+    std::printf ("  on : bloom rms %.4e  octave/fundamental %.3f  corr %.3f  peak %.3f  late rms %.2e\n",
+                on.earlyTailRms, on.octaveRatio, on.correlation, on.drivenPeak, on.lateTailRms);
+
+    check (on.finite, "shimmer produced a non-finite sample");
+    check (on.drivenPeak < 4.0f, "shimmer feedback ran away");
+    check (on.lateTailRms < 5.0e-4f, "shimmer tail did not settle after the note stopped");
+    check (on.earlyTailRms > off.earlyTailRms * 1.5f, "shimmer did not sustain the tail");
+    check (on.octaveRatio > off.octaveRatio * 3.0 && on.octaveRatio > 0.2,
+           "shimmer did not add an audible octave to the tail");
+    check (on.correlation < off.correlation + 0.05,
+           "shimmer narrowed the stereo image instead of widening it");
+}
+
+/** Silence in still has to give exact silence out with shimmer fully up. */
+void testShimmerSilence()
+{
+    std::printf ("Shimmer silence handling:\n");
+
+    ee::dsp::FdnReverb reverb;
+    reverb.prepare (kSampleRate);
+    reverb.reset();
+    reverb.setDecayTime (4.0f);
+    reverb.setShimmer (1.0f);
+
+    std::vector<float> in (kBlock, 0.0f), l (kBlock), r (kBlock);
+    float peak = 0.0f;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 2.0 / kBlock); ++b)
+    {
+        reverb.process (in.data(), l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+    }
+
+    std::printf ("  peak from silent input: %.2e\n", peak);
+    check (peak == 0.0f, "shimmer generated signal from silence");
+}
+
 /** Runs an impulse through the delay and reports where each channel taps. */
 void testDelayTaps()
 {
@@ -498,6 +631,10 @@ int main()
     testWetLevelConsistency();
     std::printf ("\n");
     testSilenceInSilenceOut();
+    std::printf ("\n");
+    testShimmer();
+    std::printf ("\n");
+    testShimmerSilence();
     std::printf ("\n");
     testDelayTaps();
     std::printf ("\n");

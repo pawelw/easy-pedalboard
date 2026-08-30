@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+#include "Effects/pitchshifter.h"
+
 namespace ee::dsp
 {
 namespace
@@ -76,6 +78,35 @@ namespace
         return onePoleCoeff (hz, sampleRate);
     }
 
+    /** Knob amount to shimmer feedback gain, tapered so the musical low end of
+        the range is not crammed into the first part of the travel. */
+    inline float shimmerGainFor (float amount01, float skew, float maxFeedback) noexcept
+    {
+        const float a = juce::jlimit (0.0f, 1.0f, amount01);
+        return std::pow (a, skew) * maxFeedback;
+    }
+
+    /** One side of the shimmer feedback shaping: band limit, kill the sub the
+        shifter's tracking error builds up, a low shelf for body and a high
+        shelf for sparkle, then soft clip so no knob setting can let the octave
+        stack run away. */
+    inline float shapeShimmerSide (float x, float bass, float sparkle,
+                                   float hiCutCoeff, float& hiCutState,
+                                   float loCutCoeff, float& loCutState,
+                                   float bassCoeff, float& bassState,
+                                   float shelfCoeff, float& shelfState) noexcept
+    {
+        hiCutState += hiCutCoeff * (x - hiCutState);
+        x = hiCutState;
+        loCutState += loCutCoeff * (x - loCutState);
+        x -= loCutState;
+        bassState += bassCoeff * (x - bassState);
+        x += bass * bassState;               // low shelf: adds the low-passed part
+        shelfState += shelfCoeff * (x - shelfState);
+        x += sparkle * (x - shelfState);     // high shelf: adds the complement
+        return std::tanh (x);
+    }
+
     /** Diffusion is only thinned once the top half of the sweep is reached. */
     inline float tankScaleFor (float resonance) noexcept
     {
@@ -131,6 +162,10 @@ namespace
     }
 }
 
+// Out of line, where daisysp::PitchShifter is a complete type for unique_ptr.
+FdnReverb::FdnReverb() = default;
+FdnReverb::~FdnReverb() = default;
+
 void FdnReverb::prepare (double sampleRate)
 {
     sr = sampleRate;
@@ -181,9 +216,32 @@ void FdnReverb::prepare (double sampleRate)
     lowCutCoeff.setCurrentAndTargetValue (lowCutCoeffFor (lowCutHz, sampleRate));
     lowCutState.fill (0.0f);
 
+    if (shimmerShifterL == nullptr)
+        shimmerShifterL = std::make_unique<daisysp::PitchShifter>();
+    if (shimmerShifterR == nullptr)
+        shimmerShifterR = std::make_unique<daisysp::PitchShifter>();
+    for (auto* shifter : { shimmerShifterL.get(), shimmerShifterR.get() })
+        shifter->Init (static_cast<float> (sampleRate));
+
+    shimmerGain.reset (sampleRate, kDelayRampSeconds);
+    shimmerLowCutStateL = shimmerLowCutStateR = 0.0f;
+    shimmerHighCutStateL = shimmerHighCutStateR = 0.0f;
+    shimmerBassStateL = shimmerBassStateR = 0.0f;
+    shimmerShelfStateL = shimmerShelfStateR = 0.0f;
+    shimmerFeedbackL = shimmerFeedbackR = 0.0f;
+
+    // Sized for the tuning panel's ceiling, not the current predelay, so the
+    // panel can push it up without the delay line clamping.
+    shimmerPredelay.prepare (sampleRate, (kShimmerPredelayCeilingMs + 40.0f) * 0.001f);
+    shimmerPredelaySmooth.reset (sampleRate, kDelayRampSeconds);
+
+    updateShimmerDerived();
+    shimmerGain.setCurrentAndTargetValue (shimmerGain.getTargetValue());
+
     dirty = true;
     updateDerived();
     outputScale.setCurrentAndTargetValue (outputScale.getTargetValue());
+    shimmerPredelaySmooth.setCurrentAndTargetValue (shimmerPredelaySmooth.getTargetValue());
 
     for (int i = 0; i < kLines; ++i)
         delaySmooth[static_cast<size_t> (i)].setCurrentAndTargetValue (delaySmooth[static_cast<size_t> (i)].getTargetValue());
@@ -202,6 +260,20 @@ void FdnReverb::reset()
     for (auto& a : spreadR)   a.reset();
     predelayLine.reset();
     lowCutState.fill (0.0f);
+
+    if (shimmerShifterL != nullptr)
+    {
+        // No buffer-clear on its own, so re-init and restore the voicing.
+        for (auto* shifter : { shimmerShifterL.get(), shimmerShifterR.get() })
+            shifter->Init (static_cast<float> (sr));
+        updateShimmerDerived();
+    }
+    shimmerPredelay.reset();
+    shimmerFeedbackL = shimmerFeedbackR = 0.0f;
+    shimmerLowCutStateL = shimmerLowCutStateR = 0.0f;
+    shimmerHighCutStateL = shimmerHighCutStateR = 0.0f;
+    shimmerBassStateL = shimmerBassStateR = 0.0f;
+    shimmerShelfStateL = shimmerShelfStateR = 0.0f;
 }
 
 void FdnReverb::setDecayTime (float seconds) noexcept
@@ -245,6 +317,44 @@ void FdnReverb::setDecayTilt (float low, float high) noexcept
     dirty = true;
 }
 
+void FdnReverb::setShimmer (float amount01) noexcept
+{
+    amount01 = juce::jlimit (0.0f, 1.0f, amount01);
+    if (juce::approximatelyEqual (amount01, shimmerAmount))
+        return;
+
+    shimmerAmount = amount01;
+    shimmerGain.setTargetValue (
+        shimmerGainFor (amount01, shimmerTuning.skew, shimmerTuning.maxFeedback));
+}
+
+void FdnReverb::updateShimmerDerived() noexcept
+{
+    shimmerLowCutCoeff  = onePoleCoeff (shimmerTuning.lowCutHz,  sr);
+    shimmerHighCutCoeff = onePoleCoeff (shimmerTuning.highCutHz, sr);
+    shimmerBassCoeff    = onePoleCoeff (shimmerTuning.bassHz,    sr);
+    shimmerShelfCoeff   = onePoleCoeff (shimmerTuning.sparkleHz, sr);
+    shimmerHaasSamples  = static_cast<float> (shimmerTuning.haasMs * 0.001 * sr);
+
+    if (shimmerShifterL != nullptr)
+    {
+        for (auto* shifter : { shimmerShifterL.get(), shimmerShifterR.get() })
+            shifter->SetFun (shimmerTuning.flutter);
+        shimmerShifterL->SetTransposition (shimmerTuning.semitones - shimmerTuning.detuneSemis);
+        shimmerShifterR->SetTransposition (shimmerTuning.semitones + shimmerTuning.detuneSemis);
+    }
+
+    shimmerGain.setTargetValue (
+        shimmerGainFor (shimmerAmount, shimmerTuning.skew, shimmerTuning.maxFeedback));
+}
+
+void FdnReverb::setShimmerTuning (const ShimmerTuning& newTuning) noexcept
+{
+    shimmerTuning = newTuning;
+    updateShimmerDerived();
+    dirty = true;   // the predelay range is applied in updateDerived()
+}
+
 void FdnReverb::updateDerived() noexcept
 {
     dirty = false;
@@ -260,6 +370,11 @@ void FdnReverb::updateDerived() noexcept
 
     predelaySmooth.setTargetValue (static_cast<float> (predelayMs * 0.001 * sr));
     outputScale.setTargetValue (std::pow (kGainReferenceSeconds / decaySeconds, kGainExponent));
+
+    // The octave feedback blooms further behind the note as the room grows.
+    const float shimmerPreMs = shimmerTuning.predelayMinMs
+        + (shimmerTuning.predelayMaxMs - shimmerTuning.predelayMinMs) * std::pow (norm, 0.7f);
+    shimmerPredelaySmooth.setTargetValue (static_cast<float> (shimmerPreMs * 0.001 * sr));
 
     // Scaled off 44.1k so the modulation depth is the same musical amount at any rate.
     modDepthSamples = static_cast<float> (config::kModDepthSamples * (1.0f - resonance) * sr / 44100.0);
@@ -302,6 +417,23 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
         const float predelayed = predelayLine.read (predelaySmooth.getNextValue());
         predelayLine.advance();
 
+        // Skip the whole shimmer path while the knob sits at zero, so the plain
+        // reverb is bit-for-bit what it was before shimmer existed. Stays true
+        // through the gain ramp until the smoothed value lands exactly on 0.
+        const bool shimmerActive = shimmerGain.getCurrentValue() > 1.0e-6f
+                                || shimmerGain.getTargetValue()  > 1.0e-6f;
+
+        // The shaped octave from the previous sample, one value per side, ready
+        // to be injected into the network below with the L/R tap patterns.
+        float shimmerInjectL = 0.0f;
+        float shimmerInjectR = 0.0f;
+        if (shimmerActive)
+        {
+            const float g = shimmerGain.getNextValue();
+            shimmerInjectL = g * shimmerFeedbackL;
+            shimmerInjectR = g * shimmerFeedbackR;
+        }
+
         float diffused = predelayed;
         for (auto& ap : diffusers)
             diffused = ap.process (diffused);
@@ -332,6 +464,38 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
         }
 
         const float scale = outputScale.getNextValue() * kTapNorm;
+
+        // Feed a mono tap of the raw network output through the shimmer
+        // predelay, then to the two shifters a Haas offset apart, shape each
+        // side, and hold both for the next sample's injection above.
+        if (shimmerActive)
+        {
+            const float wetMono = (sumL + sumR) * 0.5f * scale;
+            shimmerPredelay.write (wetMono);
+
+            const float preDelaySamples = shimmerPredelaySmooth.getNextValue();
+            float preL = shimmerPredelay.read (preDelaySamples);
+            float preR = shimmerPredelay.read (preDelaySamples + shimmerHaasSamples);
+            shimmerPredelay.advance();
+
+            float shiftedL = shimmerShifterL->Process (preL);
+            float shiftedR = shimmerShifterR->Process (preR);
+
+            shimmerFeedbackL = shapeShimmerSide (shiftedL, shimmerTuning.bass, shimmerTuning.sparkle,
+                                                 shimmerHighCutCoeff, shimmerHighCutStateL,
+                                                 shimmerLowCutCoeff,  shimmerLowCutStateL,
+                                                 shimmerBassCoeff,    shimmerBassStateL,
+                                                 shimmerShelfCoeff,   shimmerShelfStateL);
+            shimmerFeedbackR = shapeShimmerSide (shiftedR, shimmerTuning.bass, shimmerTuning.sparkle,
+                                                 shimmerHighCutCoeff, shimmerHighCutStateR,
+                                                 shimmerLowCutCoeff,  shimmerLowCutStateR,
+                                                 shimmerBassCoeff,    shimmerBassStateR,
+                                                 shimmerShelfCoeff,   shimmerShelfStateR);
+        }
+        else
+        {
+            shimmerFeedbackL = shimmerFeedbackR = 0.0f;
+        }
 
         float l = sumL * scale;
         float r = sumR * scale;
@@ -367,11 +531,25 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
 
         hadamard16 (v.data());
 
+        // Shimmer re-enters as a correlated centre plus a scaled L/R
+        // difference: the centre rides the dry tap pattern, the difference goes
+        // in on the orthogonal output patterns so it opens up inside the tank
+        // without gutting a mono sum.
+        const float shimmerMono  = 0.5f * (shimmerInjectL + shimmerInjectR);
+        const float shimmerSideL = (shimmerInjectL - shimmerMono) * shimmerTuning.width;
+        const float shimmerSideR = (shimmerInjectR - shimmerMono) * shimmerTuning.width;
+
         for (int i = 0; i < kLines; ++i)
         {
             const auto idx = static_cast<size_t> (i);
+
             const float inject = tapSign (i, 0b0110) * kInjectGain * diffused;
-            lines[idx].write (v[idx] + inject);
+            const float shimmerInject = kInjectGain
+                * (tapSign (i, 0b0110) * shimmerMono
+                 + tapSign (i, 0b0101) * shimmerSideL
+                 + tapSign (i, 0b1010) * shimmerSideR);
+
+            lines[idx].write (v[idx] + inject + shimmerInject);
             lines[idx].advance();
         }
     }

@@ -17,6 +17,12 @@ juce_add_plugin(EasyReverb
 target_sources(EasyReverb PRIVATE
     src/PluginProcessor.cpp)
 
+if(EE_SHIMMER_TUNER)
+    target_sources(EasyReverb PRIVATE src/ShimmerTunerPanel.cpp)
+    target_compile_definitions(EasyReverb PUBLIC EE_SHIMMER_TUNER=1)
+    message(STATUS "Easy Reverb: shimmer tuning panel enabled - development build")
+endif()
+
 target_compile_definitions(EasyReverb PUBLIC
     JUCE_WEB_BROWSER=0
     JUCE_USE_CURL=0

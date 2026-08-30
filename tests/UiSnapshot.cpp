@@ -10,6 +10,10 @@
  #include "TapeTunerPanel.h"
 #endif
 
+#if EE_SHIMMER_TUNER
+ #include "ShimmerTunerPanel.h"
+#endif
+
 namespace
 {
 juce::String secondsToText (float value, int)
@@ -63,6 +67,9 @@ public:
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "res", 1 }, "Resonance", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 50.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "shimmer", 1 }, "Shimmer", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
         layout.add (std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID { "on", 1 }, "On", true));
 
@@ -96,7 +103,9 @@ ee::ui::PedalSpec makeSpec()
     spec.tagline = "Decay drives room size and predelay";
     spec.version = "v0.10.0";
     spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" },
-                   { "res", "Resonance" }, { "locut", "Low Cut" } };
+                   { "shimmer", "Shimmer" }, { "locut", "Low Cut" } };
+    spec.centreKnob = ee::ui::KnobSpec {
+        .parameterID = "res", .caption = "reso", .compact = true, .compactCaption = true };
     spec.knobsPerRow = 2;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
@@ -315,6 +324,13 @@ void render (const juce::File& outputFile)
 {
     SnapshotProcessor processor;
     ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), ee::ui::PedalTheme::blue());
+
+#if EE_SHIMMER_TUNER
+    editor.setSidePanel (std::make_unique<ShimmerTunerPanel> (ee::dsp::ShimmerTuning{},
+                                                             [] (const ee::dsp::ShimmerTuning&) {}),
+                         ShimmerTunerPanel::preferredWidth);
+#endif
+
     writePng (editor, outputFile);
 }
 

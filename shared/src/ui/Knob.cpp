@@ -13,7 +13,8 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
             const KnobSpec& spec,
             const PedalTheme& theme)
     : apvts (state), paramID (spec.parameterID), captionText (spec.caption),
-      pedalTheme (theme), compact (spec.compact), liveValueText (spec.liveValueText)
+      pedalTheme (theme), compact (spec.compact), compactCaption (spec.compactCaption),
+      liveValueText (spec.liveValueText)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
@@ -79,11 +80,12 @@ void Knob::paint (juce::Graphics& g)
 
     if (compact)
     {
-        const auto valueArea = area.removeFromBottom (static_cast<float> (compactLabelHeight));
+        const auto textArea = area.removeFromBottom (static_cast<float> (compactLabelHeight));
 
         g.setColour (pedalTheme.textPrimary);
         g.setFont (pedalTheme.bodyFont (12.0f));
-        g.drawText (valueText, valueArea, juce::Justification::centred, false);
+        g.drawText (compactCaption ? captionText.toUpperCase() : valueText,
+                    textArea, juce::Justification::centred, false);
         return;
     }
 

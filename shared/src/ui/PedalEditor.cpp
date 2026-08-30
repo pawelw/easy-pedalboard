@@ -124,6 +124,7 @@ private:
     PedalSpec spec;
 
     std::vector<std::unique_ptr<Knob>> knobs;
+    std::unique_ptr<Knob> centreKnob;
     std::vector<std::unique_ptr<Knob>> cornerKnobs;
     std::vector<std::unique_ptr<FaderStrip>> faders;
     std::vector<std::unique_ptr<MiniToggle>> toggles;
@@ -153,6 +154,14 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
 
     for (auto& knob : knobs)
         addAndMakeVisible (*knob);
+
+    // Added after the row knobs so it draws on top where its small cap overlaps
+    // their bounds in the middle of the grid.
+    if (spec.centreKnob.has_value())
+    {
+        centreKnob = std::make_unique<Knob> (state, *spec.centreKnob, theme);
+        addAndMakeVisible (*centreKnob);
+    }
 
     for (const auto& sliderSpec : spec.sliders)
         faders.push_back (std::make_unique<FaderStrip> (state, sliderSpec, theme));
@@ -761,6 +770,23 @@ void PedalEditor::Face::resized()
             if (i < inRow - 1)
                 knobRow.removeFromLeft (kKnobGap);
         }
+    }
+
+    // Centre knob: dropped into the middle of the caps' bounding box, at the
+    // corner-knob size so it reads as a utility control against the main row.
+    if (centreKnob != nullptr && count > 0)
+    {
+        juce::Rectangle<int> caps;
+        for (size_t i = 0; i < knobs.size(); ++i)
+        {
+            const auto capBounds =
+                knobs[i]->getBounds().withTrimmedBottom (knobs[i]->getLabelHeight());
+            caps = (i == 0) ? capBounds : caps.getUnion (capBounds);
+        }
+
+        centreKnob->setBounds (juce::Rectangle<int> (kCornerKnobDiameter,
+                                                     kCornerKnobDiameter + Knob::compactLabelHeight)
+                                   .withCentre (caps.getCentre()));
     }
 
     // Faders take whatever is left below the knob rows. On a knob-less pedal

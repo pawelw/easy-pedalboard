@@ -2,11 +2,16 @@
 
 #include "ee/ui/PedalEditor.h"
 
+#if EE_SHIMMER_TUNER
+ #include "ShimmerTunerPanel.h"
+#endif
+
 namespace {
 constexpr const char *kDecayID = "decay";
 constexpr const char *kMixID = "mix";
 constexpr const char *kLowCutID = "locut";
 constexpr const char *kResonanceID = "res";
+constexpr const char *kShimmerID = "shimmer";
 constexpr const char *kOnID = "on";
 
 // The network is normalised to ~0.42 RMS gain. Trimmed against a reference
@@ -48,6 +53,7 @@ EasyReverbProcessor::EasyReverbProcessor()
   mixParam = apvts.getRawParameterValue(kMixID);
   lowCutParam = apvts.getRawParameterValue(kLowCutID);
   resonanceParam = apvts.getRawParameterValue(kResonanceID);
+  shimmerParam = apvts.getRawParameterValue(kShimmerID);
   onParam = apvts.getRawParameterValue(kOnID);
 }
 
@@ -86,6 +92,12 @@ EasyReverbProcessor::createParameterLayout() {
       juce::AudioParameterFloatAttributes().withStringFromValueFunction(
           percentToText)));
 
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      juce::ParameterID{kShimmerID, 1}, "Shimmer",
+      juce::NormalisableRange<float>(0.0f, 100.0f, 0.1f), 0.0f,
+      juce::AudioParameterFloatAttributes().withStringFromValueFunction(
+          percentToText)));
+
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{kOnID, 1}, "On", true));
 
@@ -111,6 +123,7 @@ void EasyReverbProcessor::prepareToPlay(double sampleRate,
 
   reverb.setLowCut(lowCutParam->load());
   reverb.setResonance(resonanceParam->load() * 0.01f);
+  reverb.setShimmer(shimmerParam->load() * 0.01f);
 
   dryGain.setCurrentAndTargetValue(
       engaged ? std::cos(mix * juce::MathConstants<float>::halfPi) : 1.0f);
@@ -168,6 +181,7 @@ void EasyReverbProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   reverb.setDecayTime(decayParam->load());
   reverb.setLowCut(lowCutParam->load());
   reverb.setResonance(resonanceParam->load() * 0.01f);
+  reverb.setShimmer(shimmerParam->load() * 0.01f);
 
   // Trails: bypassing stops feeding the network but leaves the wet path open,
   // so the existing tail rings out instead of being cut off.
@@ -218,13 +232,34 @@ juce::AudioProcessorEditor *EasyReverbProcessor::createEditor() {
   spec.version = "v" JucePlugin_VersionString;
   spec.knobs = {{kDecayID, "Decay"},
                 {kMixID, "Mix"},
-                {kResonanceID, "Resonance"},
+                {kShimmerID, "Shimmer"},
                 {kLowCutID, "Low Cut"}};
+
+  // Resonance moves to a small cap in the middle of the four - value on the
+  // face would only crowd it, so the readout is just the "RESO" label.
+  spec.centreKnob = ee::ui::KnobSpec{
+      .parameterID = kResonanceID, .caption = "reso", .compact = true,
+      .compactCaption = true};
+
   spec.knobsPerRow = 2;
   spec.width = ee::ui::knobRowWidth(spec.knobsPerRow);
 
-  return new ee::ui::PedalEditor(*this, apvts, spec,
-                                 ee::ui::PedalTheme::blue());
+  auto *editor =
+      new ee::ui::PedalEditor(*this, apvts, spec, ee::ui::PedalTheme::blue());
+
+#if EE_SHIMMER_TUNER
+  // Flip to true to bring the panel back without reconfiguring CMake.
+  constexpr bool showTuner = false;
+
+  if (showTuner)
+    editor->setSidePanel(
+        std::make_unique<ShimmerTunerPanel>(
+            reverb.getShimmerTuning(),
+            [this](const ee::dsp::ShimmerTuning &t) { reverb.setShimmerTuning(t); }),
+        ShimmerTunerPanel::preferredWidth);
+#endif
+
+  return editor;
 }
 
 void EasyReverbProcessor::getStateInformation(juce::MemoryBlock &destData) {

@@ -9,18 +9,42 @@ Builds as **VST3**, **AU** and a **Standalone** app.
 
 ### Easy Reverb
 
-A modulated feedback delay network reverb. Mono in, stereo out. Four controls:
+A modulated feedback delay network reverb. Mono in, stereo out. Four knobs, plus
+a small **Resonance** cap in the middle of them:
 
 | Knob         | Range        | What it does                                                                 |
 | ------------ | ------------ | ---------------------------------------------------------------------------- |
 | **Decay**    | 0.5 - 8 s    | Sets the tail length, and derives room size and predelay from it behind the scenes |
 | **Mix**      | 0 - 100 %    | Blend of dry signal and wet tail                                              |
-| **Resonance** | 0 - 100 %   | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
+| **Shimmer**  | 0 - 100 %    | Feeds an octave-up copy of the tail back into the reverb. 0 % is off; up high each pass stacks another octave into a rising pad |
 | **Low Cut**  | off - 800 Hz | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
+| **Resonance** (centre) | 0 - 100 % | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
+
+Resonance sits on a small cap between the four main knobs, marked `RESO` with no
+value printed — it is a voicing trim, not a headline control.
 
 Modulation is not a knob. It rides the Mix control: dry-heavy settings leave the
 tail still, and as the wet takes over the extra movement smears the modes that
 would otherwise ring through.
+
+**Shimmer** is a stereo pair of time-domain pitch shifters (DaisySP's), fed a
+tap of the wet output through a predelay that grows with the decay knob, so the
+octave blooms behind the note rather than piling onto it. The two shifters read
+the predelay a Haas offset apart and their internal random modulation
+decorrelates them, so the octave comes back wide rather than as a mono point.
+Each side is band-limited — a highpass keeps the stack from growing a sub rumble
+as the shifter's tracking drifts flat, a lowpass keeps stacked octaves from
+piling into hiss — with an optional high shelf for sparkle, then soft-clipped
+through a `tanh` so no setting can let it run away. It re-enters the network as a
+correlated centre plus an L/R difference scaled by `width`, so it spreads without
+gutting a mono sum. The knob is the feedback gain, tapered and capped below
+unity. At 0 % neither shifter runs and the reverb is exactly what it was.
+
+The full shimmer voicing lives in `shared/include/ee/dsp/ShimmerTuning.h`; the
+defaults there are a tuned setting. Configure with `-DEE_SHIMMER_TUNER=ON` (and
+flip `showTuner` in `PluginProcessor.cpp`) to open Easy Reverb with a side panel
+of live sliders for every value plus a copy-paste-ready readout of the struct —
+a development build only, the way `-DEE_TAPE_TUNER=ON` works for Easy Delay.
 
 The pedal carries no on/off switch of its own — use the host's device on/off.
 The `on` parameter has **trails**: bypassing stops feeding the network but leaves
@@ -188,8 +212,9 @@ teal value arc on black caps.
 
 ## Setting up on another Mac
 
-The repo carries no dependencies — JUCE is fetched by CMake at configure time
-against a pinned tag, so the first configure needs an internet connection.
+The repo vendors no dependencies — JUCE and DaisySP (the pitch shifter behind
+Easy Reverb's shimmer) are both fetched by CMake at configure time against
+pinned tags, so the first configure needs an internet connection.
 
 ```bash
 xcode-select --install          # if you have never installed the CLT
@@ -295,6 +320,11 @@ For a pedal with vertical faders instead of knobs (a graphic EQ), fill
 `spec.sliders` instead of `spec.knobs` — same `{ parameterID, caption }` pairs.
 They lay out in one row across the face. `plugins/easy-eq` is the worked
 example.
+
+`spec.centreKnob` drops one small cap into the middle of the knob block for a
+secondary trim (`plugins/easy-reverb` puts Resonance there). Give it
+`compact = true` for the small size and `compactCaption = true` to print the
+caption on its one text line instead of the value.
 
 Then copy `plugins/easy-reverb/CMakeLists.txt`, change `PLUGIN_CODE` and
 `PRODUCT_NAME`, and add it to the top-level `CMakeLists.txt`.

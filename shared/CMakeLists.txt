@@ -7,7 +7,10 @@ target_include_directories(ee_dsp INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_sources(ee_dsp INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/FdnReverb.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/TapeDelay.cpp)
-target_link_libraries(ee_dsp INTERFACE juce::juce_audio_basics)
+# DaisySP is a private implementation detail of FdnReverb.cpp - its header is
+# never pulled into ee/dsp/FdnReverb.h - but INTERFACE sources compile into each
+# consumer, so the link and its include dirs have to propagate too.
+target_link_libraries(ee_dsp INTERFACE juce::juce_audio_basics DaisySP)
 
 add_library(ee_ui INTERFACE)
 target_include_directories(ee_ui INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)

@@ -1,12 +1,16 @@
 #pragma once
 
 #include <array>
+#include <memory>
 #include <juce_audio_basics/juce_audio_basics.h>
 
 #include "Allpass.h"
 #include "LoopDamper.h"
 #include "ModDelayLine.h"
 #include "ReverbConfig.h"
+#include "ShimmerTuning.h"
+
+namespace daisysp { class PitchShifter; }
 
 namespace ee::dsp
 {
@@ -34,6 +38,9 @@ public:
     static constexpr float kMinLowCutHz = 20.0f;
     static constexpr float kMaxLowCutHz = 800.0f;
 
+    FdnReverb();
+    ~FdnReverb();
+
     void prepare (double sampleRate);
     void reset();
 
@@ -58,12 +65,32 @@ public:
     */
     void setDecayTilt (float lowRatio, float highRatio) noexcept;
 
+    /** Amount of pitch-shifted tail folded back into the network, 0..1. 0 is
+        exactly the reverb with no shimmer path running at all; turning it up
+        stacks an octave on the tail on every pass round the loop. */
+    void setShimmer (float amount01) noexcept;
+
+    /** The full shimmer voicing. Safe to call while playing - the development
+        tuning panel drives it live. */
+    const ShimmerTuning& getShimmerTuning() const noexcept { return shimmerTuning; }
+    void setShimmerTuning (const ShimmerTuning& newTuning) noexcept;
+
     void process (const float* monoIn, float* outL, float* outR, int numSamples) noexcept;
 
-    float getTailSeconds() const noexcept { return decaySeconds * 1.5f + 0.25f; }
+    float getTailSeconds() const noexcept
+    {
+        // The shimmer feedback keeps re-exciting the network, so the audible
+        // tail outlasts the bare decay the more of it is dialled in.
+        return (decaySeconds * 1.5f + 0.25f) * (1.0f + 0.6f * shimmerAmount);
+    }
 
 private:
     void updateDerived() noexcept;
+
+    /** Re-derives the sample-rate-dependent shimmer state (filter coeffs, Haas
+        offset, shifter transpositions and flutter, gain target) from
+        shimmerTuning. Called from prepare and setShimmerTuning. */
+    void updateShimmerDerived() noexcept;
 
     double sr = 44100.0;
     bool dirty = true;
@@ -73,6 +100,39 @@ private:
     float lowCutHz = kMinLowCutHz;
     float lowRatio = config::kLowDecayRatio;
     float highRatio = config::kHighDecayRatio;
+
+    // Shimmer: a stereo pair of pitch shifters fed a predelayed tap of the wet
+    // output, their results shaped and injected back into the network one
+    // sample later as a mono centre plus a scaled L/R difference, so the octave
+    // re-enters as a wide field rather than a mono point. The two read the
+    // predelay line a Haas offset apart. Held behind pointers so the DaisySP
+    // header stays out of this one.
+    float shimmerAmount = 0.0f;
+    ShimmerTuning shimmerTuning;
+    std::unique_ptr<daisysp::PitchShifter> shimmerShifterL;
+    std::unique_ptr<daisysp::PitchShifter> shimmerShifterR;
+    juce::SmoothedValue<float> shimmerGain;
+
+    float shimmerFeedbackL = 0.0f;
+    float shimmerFeedbackR = 0.0f;
+
+    // Per-side one-pole states: a lowpass (band limit), a lowpass used as a
+    // highpass (kills regen rumble), and lowpasses feeding the bass and
+    // sparkle shelves.
+    float shimmerHighCutStateL = 0.0f, shimmerHighCutStateR = 0.0f;
+    float shimmerLowCutStateL = 0.0f,  shimmerLowCutStateR = 0.0f;
+    float shimmerBassStateL = 0.0f,    shimmerBassStateR = 0.0f;
+    float shimmerShelfStateL = 0.0f,   shimmerShelfStateR = 0.0f;
+    float shimmerLowCutCoeff = 0.0f;
+    float shimmerHighCutCoeff = 1.0f;
+    float shimmerBassCoeff = 0.0f;
+    float shimmerShelfCoeff = 0.0f;
+
+    // Predelay on the octave feedback so it blooms behind the note; the Haas
+    // read offset that opens the two sides apart.
+    ModDelayLine shimmerPredelay;
+    juce::SmoothedValue<float> shimmerPredelaySmooth;
+    float shimmerHaasSamples = 0.0f;
 
     std::array<ModDelayLine, kLines> lines;
     std::array<LoopDamper, kLines> dampers;
