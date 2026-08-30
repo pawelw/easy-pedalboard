@@ -2,8 +2,48 @@
 
 #include "ee/ui/FaderStrip.h"
 
+#include "BinaryData.h"
+
 namespace ee::ui
 {
+
+namespace
+{
+    /** The white-on-transparent spoon icon, loaded once. */
+    juce::Image spoonImage()
+    {
+        static const juce::Image img = juce::ImageCache::getFromMemory (BinaryData::spoon_png,
+                                                                       BinaryData::spoon_pngSize);
+        return img;
+    }
+
+    /** Draws the spoon as the position pointer: the handle tip sits on the knob
+        centre and the scoop points radially outward along `angle`, reaching
+        `length` from the centre. Replaces the dot entirely. */
+    void drawSpoonPointer (juce::Graphics& g, juce::Point<float> centre,
+                           float angle, float length)
+    {
+        const auto img = spoonImage();
+        if (! img.isValid())
+            return;
+
+        const float scale = length / static_cast<float> (img.getHeight());
+
+        // Anchor the midpoint of the spoon halfway out, so its inner end lands on
+        // the knob centre.
+        const float distance = length * 0.5f;
+        const juce::Point<float> at (centre.x + distance * std::sin (angle),
+                                     centre.y - distance * std::cos (angle));
+
+        const auto place =
+            juce::AffineTransform::translation (img.getWidth() * -0.5f, img.getHeight() * -0.5f)
+                .scaled (scale, scale)
+                .rotated (angle)
+                .translated (at.x, at.y);
+
+        g.drawImageTransformed (img, place, false);
+    }
+}
 
 PedalLookAndFeel::PedalLookAndFeel (PedalTheme themeToUse)
     : theme (std::move (themeToUse))
@@ -41,6 +81,9 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
                                               juce::PathStrokeType::rounded);
 
     const bool inverted = static_cast<bool> (slider.getProperties().getWithDefault ("invertedArc", false));
+
+    // The wet/dry knob swaps its position dot for a small spoon pointer.
+    const bool spoonPointer = static_cast<bool> (slider.getProperties().getWithDefault ("spoonPointer", false));
 
     juce::Path arc;
     arc.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f,
@@ -144,6 +187,15 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
 
     const float dotRadius = juce::jmax (2.0f, diameter * 0.038f);
     const float dotDistance = ringRadius * 0.62f;
+
+    if (spoonPointer)
+    {
+        // Spans from the knob centre out to most of the ring radius, so it clears
+        // the rim by a comfortable margin.
+        drawSpoonPointer (g, centre, angle, ringRadius * 0.82f);
+        return;
+    }
+
     const auto dot = juce::Rectangle<float> (dotRadius * 2.0f, dotRadius * 2.0f)
                          .withCentre (centre.translated (dotDistance * std::sin (angle),
                                                          -dotDistance * std::cos (angle)));

@@ -7,6 +7,7 @@
 
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/Overdrive.h"
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
 
@@ -836,6 +837,186 @@ void testChorusStereoIsStable()
                "chorus width never briefly drops out");
     }
 }
+
+//==============================================================================
+// Overdrive
+
+void testOverdriveSilence()
+{
+    std::printf ("Overdrive: silence in -> silence out\n");
+
+    ee::dsp::Overdrive od;
+    od.prepare (kSampleRate);
+    od.reset();
+    od.setDrive01 (1.0f);
+    od.setTone01 (0.5f);
+
+    std::vector<float> l (kBlock, 0.0f), r (kBlock, 0.0f);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < 400; ++b)
+    {
+        od.process (l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (l[i]) || ! std::isfinite (r[i]))
+                finite = false;
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    check (finite, "overdrive output stays finite on silence");
+    check (peak < 1.0e-6f, "overdrive is silent on a silent input");
+}
+
+void testOverdriveStability()
+{
+    std::printf ("Overdrive: bounded and finite under a hot input at full drive\n");
+
+    ee::dsp::Overdrive od;
+    od.prepare (kSampleRate);
+    od.reset();
+    od.setDrive01 (1.0f);
+    od.setTone01 (1.0f);
+
+    std::mt19937 rng (4321);
+    std::uniform_real_distribution<float> dist (-1.5f, 1.5f);   // deliberately over 0 dBFS
+
+    std::vector<float> l (kBlock), r (kBlock);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < 2000; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { l[i] = dist (rng); r[i] = dist (rng); }
+        od.process (l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (l[i]) || ! std::isfinite (r[i]))
+                finite = false;
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    std::printf ("  output peak = %.3f\n", peak);
+    check (finite, "overdrive output stays finite under load");
+    check (peak < 4.0f, "overdrive output stays bounded under load");
+}
+
+/** Peak-to-RMS ratio (crest factor) of a steady sine put through the drive. A
+    clean sine is ~1.41; the flatter the clipper squashes it, the closer to 1. */
+float overdriveCrest (float drive01)
+{
+    ee::dsp::Overdrive od;
+    od.prepare (kSampleRate);
+    od.reset();
+    od.setDrive01 (drive01);
+    od.setTone01 (0.5f);
+
+    const double freq = 220.0;
+    const double w = 2.0 * juce::MathConstants<double>::pi * freq / kSampleRate;
+
+    std::vector<float> buf (kBlock);
+    double phase = 0.0;
+
+    for (int b = 0; b < 40; ++b)   // let the filter states settle
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = 0.2f * (float) std::sin (phase); phase += w; }
+        od.process (buf.data(), nullptr, kBlock);
+    }
+
+    double sumSq = 0.0;
+    float peak = 0.0f;
+    int n = 0;
+    for (int b = 0; b < 200; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = 0.2f * (float) std::sin (phase); phase += w; }
+        od.process (buf.data(), nullptr, kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            sumSq += (double) buf[i] * buf[i];
+            peak = juce::jmax (peak, std::abs (buf[i]));
+            ++n;
+        }
+    }
+
+    const float rms = (float) std::sqrt (sumSq / juce::jmax (1, n));
+    return rms > 0.0f ? peak / rms : 0.0f;
+}
+
+void testOverdriveAddsHarmonics()
+{
+    std::printf ("Overdrive: more Drive flattens the wave (crest factor falls)\n");
+
+    const float lowDrive = overdriveCrest (0.1f);
+    const float highDrive = overdriveCrest (0.95f);
+
+    std::printf ("  crest factor: Drive 10%% = %.3f, Drive 95%% = %.3f\n", lowDrive, highDrive);
+
+    check (std::isfinite (lowDrive) && std::isfinite (highDrive), "overdrive crest factor is finite");
+    check (highDrive < lowDrive - 0.05f, "raising Drive squashes the waveform");
+    check (highDrive < 1.2f, "at full Drive the sine is heavily clipped");
+}
+
+/** RMS of the output above vs below ~1 kHz for a white-noise input, at a given
+    Tone setting. A rising ratio means a brighter voicing. */
+float overdriveHighLowRatio (float tone01)
+{
+    ee::dsp::Overdrive od;
+    od.prepare (kSampleRate);
+    od.reset();
+    od.setDrive01 (0.3f);
+    od.setTone01 (tone01);
+
+    // One-pole split at 1 kHz to score the balance.
+    const float splitCoeff =
+        1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi * 1000.0f / (float) kSampleRate);
+
+    std::mt19937 rng (777);
+    std::uniform_real_distribution<float> dist (-0.3f, 0.3f);
+    std::vector<float> buf (kBlock);
+
+    for (int b = 0; b < 40; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) buf[i] = dist (rng);
+        od.process (buf.data(), nullptr, kBlock);
+    }
+
+    float lp = 0.0f;
+    double lowSq = 0.0, highSq = 0.0;
+    int n = 0;
+    for (int b = 0; b < 400; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) buf[i] = dist (rng);
+        od.process (buf.data(), nullptr, kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            lp += splitCoeff * (buf[i] - lp);
+            const float high = buf[i] - lp;
+            lowSq += (double) lp * lp;
+            highSq += (double) high * high;
+            ++n;
+        }
+    }
+
+    const float lowRms = (float) std::sqrt (lowSq / juce::jmax (1, n));
+    const float highRms = (float) std::sqrt (highSq / juce::jmax (1, n));
+    return lowRms > 0.0f ? highRms / lowRms : 0.0f;
+}
+
+void testOverdriveToneTilt()
+{
+    std::printf ("Overdrive: Tone tilts the balance from dark to bright\n");
+
+    const float dark = overdriveHighLowRatio (0.0f);
+    const float bright = overdriveHighLowRatio (1.0f);
+
+    std::printf ("  high/low ratio: Tone 0%% = %.3f, Tone 100%% = %.3f\n", dark, bright);
+
+    check (std::isfinite (dark) && std::isfinite (bright), "overdrive tone ratio is finite");
+    check (bright > dark * 1.5f, "Tone up makes the pedal clearly brighter");
+}
 } // namespace
 
 int main()
@@ -869,6 +1050,14 @@ int main()
     testChorusWidensImage();
     std::printf ("\n");
     testChorusStereoIsStable();
+    std::printf ("\n");
+    testOverdriveSilence();
+    std::printf ("\n");
+    testOverdriveStability();
+    std::printf ("\n");
+    testOverdriveAddsHarmonics();
+    std::printf ("\n");
+    testOverdriveToneTilt();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

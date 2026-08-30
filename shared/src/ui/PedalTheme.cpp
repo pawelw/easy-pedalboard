@@ -149,12 +149,13 @@ PedalTheme PedalTheme::teal()
     t.knobOutline     = juce::Colour (0xff05080a);
     t.knobPointer     = juce::Colour (0xfffee1b8);
 
-    // Dark teal groove with a deeper shade of the face for the value arc - the
-    // same idea as Easy Reverb's blue arc on its blue face, kept bright enough
-    // to read against the black cap.
-    t.knobTrack       = juce::Colour (0xff123230);
-    t.accent          = juce::Colour (0xff30a1a5);
-    t.accentDim       = juce::Colour (0xff3a5a5a);
+    // Pale teal groove with a deep teal value arc - the arc fills over the
+    // groove as the knob turns up, the same polarity as every other face
+    // (sky/yellow/blue). Bright enough to read against the black cap, dark
+    // enough to read against the teal panel.
+    t.knobTrack       = juce::Colour (0xffd2e8e4);
+    t.accent          = juce::Colour (0xff123f3d);
+    t.accentDim       = juce::Colour (0xff5f8480);
     t.glow            = juce::Colour (0xff6fd6da);
 
     t.ledOn           = juce::Colour (0xff1e6d70);
@@ -227,6 +228,50 @@ PedalTheme PedalTheme::sky()
     t.ledRing         = juce::Colour (0xff0e2a30);
     t.switchBody      = juce::Colour (0xff5f8b96);
     t.switchHighlight = juce::Colour (0xffcdeaf1);
+
+    t.cornerRadius = 16.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.35f;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
+PedalTheme PedalTheme::yellow()
+{
+    PedalTheme t;
+
+    // Boss OD-style yellow face: a warm amber panel, near-black legend and black
+    // caps - the same high-contrast recipe as teal()/sky(), struck in yellow.
+    t.background      = juce::Colour (0xff1a1710);
+    t.panel           = juce::Colour (0xffe8b400);
+    t.outline         = juce::Colour (0xff5a4a12);
+    t.bezel           = juce::Colour (0xfff2cf58);   // lighter tint of the panel
+
+    t.textPrimary     = juce::Colour (0xff231a05);
+    t.textSecondary   = juce::Colour (0xff231a05);
+    t.title           = juce::Colour (0xff1a1305);
+
+    // Black caps with a warm off-white pointer.
+    t.knobBody        = juce::Colour (0xff100d08);
+    t.knobFill        = juce::Colour (0xff181410);
+    t.knobOutline     = juce::Colour (0xff05060a);
+    t.knobPointer     = juce::Colour (0xfff7efdc);
+
+    // Warm off-white groove with a deep brown-amber value arc - bright enough to
+    // read against the black cap, dark enough to read against the yellow face.
+    t.knobTrack       = juce::Colour (0xfff2e4b0);
+    t.accent          = juce::Colour (0xff6a3d0a);
+    t.accentDim       = juce::Colour (0xff9a7a3a);
+    t.glow            = juce::Colour (0xff8a5a1a);
+
+    t.ledOn           = juce::Colour (0xffc06a1a);
+    t.ledOff          = juce::Colour (0xff8a6a2a);
+    t.ledRing         = juce::Colour (0xff2a1f0a);
+    t.switchBody      = juce::Colour (0xff7a5a1a);
+    t.switchHighlight = juce::Colour (0xffe6c060);
 
     t.cornerRadius = 16.0f;
     t.knobThickness = 3.0f;

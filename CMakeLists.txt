@@ -45,7 +45,8 @@ set_target_properties(DaisySP PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED O
 # machine that has never seen them.
 juce_add_binary_data(ee_assets SOURCES
     assets/fonts/Birthstone-Regular.ttf
-    assets/images/rocket-logo.png)
+    assets/images/rocket-logo.png
+    assets/images/spoon.png)
 set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)
@@ -58,6 +59,7 @@ add_subdirectory(plugins/easy-reverb)
 add_subdirectory(plugins/easy-eq)
 add_subdirectory(plugins/easy-trem-pan)
 add_subdirectory(plugins/easy-chorus)
+add_subdirectory(plugins/easy-overdrive)
 
 # Bolts a live tuning panel onto Easy Delay. Never turn this on for a build you
 # hand to anyone.

@@ -238,6 +238,39 @@ The full voicing - voice count, per-voice base delays, depth range, wet filter
 corners, knob defaults - lives in `shared/include/ee/dsp/ChorusConfig.h`; retune
 it there and rebuild.
 
+### Easy Overdrive
+
+A soft-clipping overdrive with a Boss-OD voicing. Mono or stereo, in and out -
+each channel is driven independently. Three knobs, on the small Easy Reverb
+footprint: **Level** and **Drive** across the top, **Tone** centred in a row of
+its own below.
+
+| Knob      | Range        | What it does                                                              |
+| --------- | ------------ | ----------------------------------------------------------------------- |
+| **Level** | -30 - +6 dB  | Output volume after the drive. Unity at noon, a little boost on tap for pushing an amp |
+| **Drive** | 0 - 100 %    | Gain into the clipper, swept exponentially. Always a little hair at 0; slammed and compressed at 100 |
+| **Tone**  | 0 - 100 %    | A tilt around ~640 Hz: dark and thick at the bottom, bright and cutting at the top, near-flat in the middle |
+
+The path per sample is a one-pole high-pass ahead of the clipper (~190 Hz, the
+Tube-Screamer trick that keeps the low strings out of the distortion so chords
+stay defined), an exponential gain stage (`×2.5` – `×260`), an asymmetric `tanh`
+clip with a small DC bias for even harmonics, then the removed sub-bass folded
+back in unclipped so the note keeps its body. After the clip comes the tilt tone
+control, a fixed 11 kHz low-pass to tame the buzz (the stage does **not**
+oversample - the clipper is soft and, at any real instrument level, fed nowhere
+near a hard corner), and a DC blocker. The engine loudness-compensates Drive
+roughly so winding it up trades headroom for saturation rather than volume; the
+Level knob trims the rest.
+
+Like the other pedals it has no on/off switch of its own - the `on` parameter
+crossfades to the dry signal so the host's device on/off never clicks. The face
+uses a new `yellow()` theme: a warm `#e8b400` amber panel with a near-black
+legend and a deep brown-amber value arc on black caps.
+
+The full voicing - drive gain range, clip bias, pre-clip high-pass, tilt pivot
+and band gains, post low-pass, loudness-compensation trim, knob defaults - lives
+in `shared/include/ee/dsp/OverdriveConfig.h`; retune it there and rebuild.
+
 ## Requirements
 
 - macOS with Xcode Command Line Tools
@@ -308,6 +341,7 @@ Cloning the source and building there avoids the whole problem.
 auval -v aufx Ervb Eefx                                     # Apple's AU validation
 auval -v aufx Etpn Eefx                                     # Easy Trem & Pan
 auval -v aufx Echr Eefx                                     # Easy Chorus
+auval -v aufx Eovd Eefx                                     # Easy Overdrive
 ```
 
 `pluginval` (`brew install --cask pluginval`) covers the VST3:
@@ -329,6 +363,7 @@ plugins/
   easy-delay/        processor + tape colour stage
   easy-eq/           processor + juce::dsp IIR band filters
   easy-trem-pan/     processor + phase-accumulator LFO, hand-written trem/pan
+  easy-overdrive/    processor + soft-clipping drive stage
 tests/               offline DSP tests and the UI snapshot renderer
 ```
 

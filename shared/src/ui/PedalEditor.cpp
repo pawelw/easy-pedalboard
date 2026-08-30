@@ -763,6 +763,15 @@ void PedalEditor::Face::resized()
 
         const int inRow = juce::jmin (perRow, count - first);
 
+        // A trailing row that does not fill its columns is centred, so a lone
+        // last knob sits under the gap between the pair above it rather than
+        // hanging off the left. Full rows keep their exact column maths.
+        if (inRow < perRow)
+        {
+            const int usedWidth = inRow * cellWidth + (inRow - 1) * kKnobGap;
+            knobRow.removeFromLeft ((knobRow.getWidth() - usedWidth) / 2);
+        }
+
         for (int i = 0; i < inRow; ++i)
         {
             auto cell = knobRow.removeFromLeft (cellWidth);

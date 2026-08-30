@@ -91,6 +91,7 @@ struct PedalTheme
     static PedalTheme teal();
     static PedalTheme gold();
     static PedalTheme sky();
+    static PedalTheme yellow();
 
     /** First installed name from the list, or empty for the JUCE default. */
     static juce::String pickTypeface (const juce::StringArray& preferred);

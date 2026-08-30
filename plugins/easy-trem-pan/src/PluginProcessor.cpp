@@ -9,6 +9,7 @@ namespace {
 constexpr const char *kAmountID = "amount";
 constexpr const char *kRateID = "rate";
 constexpr const char *kShapeID = "shape";
+constexpr const char *kBiasID = "bias";   // 0 = clean opto tremolo, 100 = bias-tube
 constexpr const char *kModeID = "mode";   // false = tremolo, true = panning
 constexpr const char *kSyncID = "sync";   // true = tempo synced, false = free (ms)
 constexpr const char *kOnID = "on";
@@ -22,8 +23,43 @@ constexpr float kRampSeconds = 0.02f;
 // Where the Rate knob lands the first time it is switched to free mode.
 constexpr float kDefaultFreePeriodMs = 124.0f;
 
+// Bias-tube tremolo. An opto/photocell tremolo just fades the level with a
+// smooth LFO; a brownface-style bias tremolo modulates a power tube's bias,
+// which does two audible things the clean fade does not:
+//
+//   1. the ducking envelope stops being a mirror of the LFO - the tube snaps
+//      toward cutoff and lingers there, so the throb reads as a harder,
+//      flatter-bottomed pulse (kBiasDuckSkew bends the duck curve for this);
+//   2. as the operating point nears cutoff the signal grinds - an asymmetric,
+//      level-dependent distortion that swells and clears in time with the
+//      throb, clean on the loud peaks and dirtiest at the bottom of the dip.
+//
+// Modelled the same way as ee::dsp::TapeCharacter's stage: a hand-rolled tanh
+// with a one-sided bias, no oversampling (the drive is program-dependent and
+// mostly gentle), and a one-pole DC blocker to mop up the offset the moving
+// bias leaves. The Bias knob crossfades the whole thing in; at 0 the clean
+// opto law is untouched.
+constexpr float kBiasDuckSkew = 0.6f;  // how far the duck curve bends toward a hard pulse
+constexpr float kBiasDrive = 10.0f;    // peak extra drive into the tanh at the bottom of the dip
+constexpr float kBiasAsym = 0.7f;      // one-sided bias offset - the pulsing even harmonics
+constexpr float kBiasTrim = 5.0f;      // output trim that tracks the drive, leaving a little sag
+constexpr float kBiasDcHz = 20.0f;     // DC-blocker corner: below the lowest note, above the LFO's pump
+
 juce::String percentToText(float value, int) {
   return juce::String(juce::roundToInt(value)) + " %";
+}
+
+// Gain that keeps the perceived level roughly constant as the tremolo depth
+// comes up. The tremolo law pins its peak at unity and only ever ducks, so the
+// pedal always sounds quieter when engaged. For a symmetric LFO the applied gain
+// sweeps linearly over [1 - d, 1], whose mean-square is (1 - d + d^2/3); the
+// reciprocal square root of that restores the RMS level. Bounded: ~+2.3 dB at
+// 50 %, ~+4.8 dB at full depth. Non-symmetric shapes (exp decay, ramp) lose a
+// touch more, so this slightly under-compensates them - deliberately, to keep
+// the wet path from ever out-running the dry transients.
+float tremoloMakeupGain(float depth01) {
+  const float d = juce::jlimit(0.0f, 1.0f, depth01);
+  return 1.0f / std::sqrt(1.0f - d + d * d / 3.0f);
 }
 } // namespace
 
@@ -36,6 +72,7 @@ EasyTremPanProcessor::EasyTremPanProcessor()
   amountParam = apvts.getRawParameterValue(kAmountID);
   rateParam = apvts.getRawParameterValue(kRateID);
   shapeParam = apvts.getRawParameterValue(kShapeID);
+  biasParam = apvts.getRawParameterValue(kBiasID);
   modeParam = apvts.getRawParameterValue(kModeID);
   syncParam = apvts.getRawParameterValue(kSyncID);
   onParam = apvts.getRawParameterValue(kOnID);
@@ -91,6 +128,11 @@ EasyTremPanProcessor::createParameterLayout() {
   layout.add(std::make_unique<juce::AudioParameterFloat>(
       juce::ParameterID{kShapeID, 1}, "Shape", percent, 50.0f, percentAttributes));
 
+  // 0 % is the clean opto tremolo; turning it up crossfades in the bias-tube
+  // stage. Defaults off so the pedal still opens sounding like it always did.
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      juce::ParameterID{kBiasID, 1}, "Bias", percent, 0.0f, percentAttributes));
+
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{kModeID, 1}, "Panning", false));
 
@@ -118,6 +160,13 @@ void EasyTremPanProcessor::prepareToPlay(double newSampleRate,
   // ~2.5 ms one-pole.
   modSlewCoeff = 1.0f - std::exp(-1.0f / (0.0025f * static_cast<float>(newSampleRate)));
 
+  for (auto &s : biasDcState)
+    s = 0.0f;
+  biasDcCoeff = juce::jlimit(
+      0.0f, 1.0f,
+      1.0f - std::exp(-2.0f * juce::MathConstants<float>::pi * kBiasDcHz /
+                      static_cast<float>(newSampleRate)));
+
   dryBuffer.setSize(kMaxChannels, maxBlock, false, false, true);
   modBuffer.assign(static_cast<size_t>(maxBlock), 0.0f);
 
@@ -125,6 +174,12 @@ void EasyTremPanProcessor::prepareToPlay(double newSampleRate,
 
   depth.reset(newSampleRate, kRampSeconds);
   depth.setCurrentAndTargetValue(amountParam->load() * 0.01f);
+
+  makeup.reset(newSampleRate, kRampSeconds);
+  makeup.setCurrentAndTargetValue(tremoloMakeupGain(amountParam->load() * 0.01f));
+
+  bias.reset(newSampleRate, kRampSeconds);
+  bias.setCurrentAndTargetValue(juce::jlimit(0.0f, 1.0f, biasParam->load() * 0.01f));
 
   wetMix.reset(newSampleRate, kRampSeconds);
   wetMix.setCurrentAndTargetValue(engaged ? 1.0f : 0.0f);
@@ -200,6 +255,7 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 
   const float amount01 = juce::jlimit(0.0f, 1.0f, amountParam->load() * 0.01f);
   const float shape01 = juce::jlimit(0.0f, 1.0f, shapeParam->load() * 0.01f);
+  const float bias01 = juce::jlimit(0.0f, 1.0f, biasParam->load() * 0.01f);
   const float rate01 = rateParam->load();
   const bool panning = modeParam->load() > 0.5f;
   const bool synced = syncParam->load() > 0.5f;
@@ -251,6 +307,11 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     modZ1 = 0.0f;
 
   depth.setTargetValue(amount01);
+  // Only the tremolo law ducks; the panning branch is already equal-power, so
+  // it needs no make-up and its target stays at unity.
+  makeup.setTargetValue(panning ? 1.0f : tremoloMakeupGain(amount01));
+  // Bias is a tremolo-only colour; in panning mode it stays parked at 0.
+  bias.setTargetValue(panning ? 0.0f : bias01);
   wetMix.setTargetValue(engaged ? 1.0f : 0.0f);
 
   if (numSamples > static_cast<int>(modBuffer.size()))
@@ -290,18 +351,60 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
       left[i] *= std::cos(angle) * kCentreComp;
       right[i] *= std::sin(angle) * kCentreComp;
     }
+    makeup.skip(numSamples);
+    bias.skip(numSamples);
   } else if (!panning) {
     // Tremolo: LFO at +1 is unity, at -1 is (1 - depth). JUCE has no tremolo
-    // primitive, so the gain law is written out here.
+    // primitive, so the gain law is written out here. The make-up factor lifts
+    // the whole envelope so bringing the depth up doesn't just make it quieter.
+    // Bias (0 = clean opto, 1 = full bias-tube) reshapes the ducking envelope
+    // and folds in a throb-synced asymmetric drive; see the constants above.
     for (int i = 0; i < numSamples; ++i) {
       const float d = depth.getNextValue();
-      const float g = 1.0f - d * (0.5f - 0.5f * modBuffer[static_cast<size_t>(i)]);
-      for (int ch = 0; ch < numCh; ++ch)
-        buffer.getWritePointer(ch)[i] *= g;
+      const float mk = makeup.getNextValue();
+      const float b01 = bias.getNextValue();
+      const float rawDuck = 0.5f - 0.5f * modBuffer[static_cast<size_t>(i)]; // 0 loud .. 1 quiet
+
+      // Bend the duck toward a harder, flatter-bottomed pulse as Bias comes up.
+      // Exponent 1 (b01 = 0) leaves the LFO shape exactly as the opto law had it.
+      const float duck =
+          b01 > 0.0f
+              ? std::pow(juce::jlimit(0.0f, 1.0f, rawDuck), 1.0f - kBiasDuckSkew * b01)
+              : rawDuck;
+
+      const float g = mk * (1.0f - d * duck);
+
+      if (b01 <= 0.0f) {
+        for (int ch = 0; ch < numCh; ++ch)
+          buffer.getWritePointer(ch)[i] *= g;
+        continue;
+      }
+
+      // Drive rises with the (shaped) dip, so the grind swells and clears in
+      // time with the throb. One-sided offset -> pulsing even harmonics; the
+      // trim tracks the drive so the level only sags a little.
+      const float driveAmt = b01 * d * duck;
+      const float k = 1.0f + kBiasDrive * driveAmt;
+      const float trim = 1.0f / (1.0f + kBiasTrim * driveAmt);
+      const float tanhAsym = std::tanh(kBiasAsym * driveAmt);
+
+      for (int ch = 0; ch < numCh; ++ch) {
+        float *s = buffer.getWritePointer(ch) + i;
+        const float clean = *s * g;
+
+        float coloured =
+            (std::tanh(clean * k + kBiasAsym * driveAmt) - tanhAsym) * trim;
+        biasDcState[ch] += biasDcCoeff * (coloured - biasDcState[ch]);
+        coloured -= biasDcState[ch];
+
+        *s = clean + b01 * (coloured - clean);
+      }
     }
   } else {
     // Panning asked for on a mono output: nothing sensible to sweep, leave dry.
     depth.skip(numSamples);
+    makeup.skip(numSamples);
+    bias.skip(numSamples);
   }
 
   // Crossfade to the untouched dry copy when bypassed, so the host on/off never
@@ -327,6 +430,7 @@ juce::AudioProcessorEditor *EasyTremPanProcessor::createEditor() {
        .caption = "Rate",
        .liveValueText = [this] { return rateReadout(); }},
       {kShapeID, "Shape"},
+      {kBiasID, "Bias"},
   };
 
   const juce::Colour cream{0xfffee1b8};
@@ -349,8 +453,11 @@ juce::AudioProcessorEditor *EasyTremPanProcessor::createEditor() {
                                              .shapeID = kShapeID,
                                              .modeID = kModeID};
 
-  spec.knobsPerRow = 3;
-  spec.width = ee::ui::knobRowWidth(spec.knobsPerRow);
+  // Four knobs across, but held to the three-knob footprint: the row layout
+  // shrinks the caps to fit rather than widening the pedal, so it still racks
+  // up flush against the others.
+  spec.knobsPerRow = 4;
+  spec.width = ee::ui::knobRowWidth(3);
 
   return new ee::ui::PedalEditor(*this, apvts, spec, ee::ui::PedalTheme::teal());
 }

@@ -49,6 +49,7 @@ private:
     std::atomic<float>* amountParam = nullptr;
     std::atomic<float>* rateParam = nullptr;
     std::atomic<float>* shapeParam = nullptr;
+    std::atomic<float>* biasParam = nullptr;
     std::atomic<float>* modeParam = nullptr;
     std::atomic<float>* syncParam = nullptr;
     std::atomic<float>* onParam = nullptr;
@@ -59,6 +60,8 @@ private:
     std::atomic<float> storedFreeRate01 { 0.5f };
 
     juce::SmoothedValue<float> depth;    // 0..1 LFO amount
+    juce::SmoothedValue<float> makeup;   // gain that offsets the tremolo's level drop
+    juce::SmoothedValue<float> bias;     // 0..1 - crossfade from opto to bias-tube tremolo
     juce::SmoothedValue<float> wetMix;   // 1 = processed, 0 = clean dry
 
     juce::AudioBuffer<float> dryBuffer;
@@ -76,6 +79,11 @@ private:
     // division/mode switch can never step the gain in a single sample.
     float modZ1 = 0.0f;
     float modSlewCoeff = 1.0f;
+
+    // Per-channel DC blocker for the bias-tube stage: the LFO-driven operating
+    // point leaves a wandering offset that would otherwise pump the output.
+    float biasDcState[kMaxChannels] = {};
+    float biasDcCoeff = 1.0f;
 
     double sampleRate = 44100.0;
 

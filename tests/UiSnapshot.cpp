@@ -268,6 +268,8 @@ public:
                 [] (float, int) { return juce::String ("1/8"); })));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "shape", 1 }, "Shape", percent, 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "bias", 1 }, "Bias", percent, 0.0f, percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID { "mode", 1 }, "Panning", false));
@@ -285,7 +287,8 @@ ee::ui::PedalSpec makeTremPanSpec()
     ee::ui::PedalSpec spec;
     spec.name = "Easy Trem & Pan";
     spec.version = "v0.10.0";
-    spec.knobs = { { "amount", "Amount" }, { "rate", "Rate" }, { "shape", "Shape" } };
+    spec.knobs = { { "amount", "Amount" }, { "rate", "Rate" }, { "shape", "Shape" },
+                   { "bias", "Bias" } };
 
     const juce::Colour cream { 0xfffee1b8 };
     spec.slideToggle = ee::ui::SlideToggleSpec {
@@ -296,7 +299,7 @@ ee::ui::PedalSpec makeTremPanSpec()
     };
     spec.waveDisplay = ee::ui::WaveDisplaySpec {
         .amountID = "amount", .rateID = "rate", .shapeID = "shape", .modeID = "mode" };
-    spec.knobsPerRow = 3;
+    spec.knobsPerRow = 4;
     spec.width = ee::ui::knobRowWidth (3);
     return spec;
 }
@@ -346,6 +349,49 @@ ee::ui::PedalSpec makeChorusSpec()
     spec.version = "v0.10.0";
     spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" },
                    { "phase", "Phase" }, { "mix", "Mix" } };
+    spec.knobsPerRow = 2;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+    return spec;
+}
+
+/** Minimal host-free processor carrying the same parameters as Easy Overdrive. */
+class OverdriveSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    OverdriveSnapshotProcessor() : SnapshotProcessor (createOverdriveLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createOverdriveLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto percentAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+        auto levelRange = juce::NormalisableRange<float> (-30.0f, 6.0f, 0.1f);
+        levelRange.setSkewForCentre (-6.0f);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "level", 1 }, "Level", levelRange, 0.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (v, 1) + " dB"; })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "tone", 1 }, "Tone", percent, 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "drive", 1 }, "Drive", percent, 35.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeOverdriveSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Easy Overdrive";
+    spec.tagline = "Soft-clipping overdrive";
+    spec.version = "v0.10.0";
+    spec.knobs = { { "level", "Level" }, { "drive", "Drive" }, { "tone", "Tone" } };
     spec.knobsPerRow = 2;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
@@ -418,6 +464,13 @@ void renderChorus (const juce::File& outputFile)
     ee::ui::PedalEditor editor (processor, processor.apvts, makeChorusSpec(), ee::ui::PedalTheme::sky());
     writePng (editor, outputFile);
 }
+
+void renderOverdrive (const juce::File& outputFile)
+{
+    OverdriveSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeOverdriveSpec(), ee::ui::PedalTheme::yellow());
+    writePng (editor, outputFile);
+}
 } // namespace
 
 int main (int argc, char* argv[])
@@ -432,6 +485,7 @@ int main (int argc, char* argv[])
     renderEq (dir.getChildFile ("eq.png"));
     renderTremPan (dir.getChildFile ("trempan.png"));
     renderChorus (dir.getChildFile ("chorus.png"));
+    renderOverdrive (dir.getChildFile ("overdrive.png"));
 
     return 0;
 }

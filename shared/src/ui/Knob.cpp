@@ -36,6 +36,12 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
     if (spec.invertedArc)
         slider.getProperties().set ("invertedArc", true);
 
+    // The wet/dry control shows a small spoon instead of the plain position dot.
+    // Keyed off the parameter ID so every pedal with a "mix" knob picks it up
+    // without touching its spec.
+    if (paramID == "mix")
+        slider.getProperties().set ("spoonPointer", true);
+
     addAndMakeVisible (slider);
 
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramID, slider);
