@@ -205,6 +205,39 @@ crossfades to the dry signal so the host's device on/off never clicks. The face
 uses a new `teal()` theme: a `#2d8a8e` panel with `#fee1b8` legend and a darker
 teal value arc on black caps.
 
+### Easy Chorus
+
+A wide stereo chorus. Mono or stereo in, stereo out. Four knobs:
+
+| Knob      | Range        | What it does                                                              |
+| --------- | ------------ | ----------------------------------------------------------------------- |
+| **Rate**  | 0.05 - 8 Hz  | LFO speed. Free-running, not tempo-synced. Skewed so the slow end has most of the travel |
+| **Depth** | 0 - 100 %    | How far the LFO swings the delay taps - subtle at the bottom, detuned and seasick at the top |
+| **Phase** | 0 - 180°     | The width control: how far the right channel's LFOs lag the left's. Narrow at the bottom, wide at the top. The offset it drives is capped short of true antiphase, so the image stays wide at every setting instead of periodically folding to mono |
+| **Mix**   | 0 - 100 %    | Blend of dry signal and chorus. 50 % is a strong, usable chorus         |
+
+The wet path is fed from a **mono sum** of the input and read back through two
+modulated delay taps per channel (`ee::dsp::ModDelayLine`, cubic-Hermite
+fractional reads). The two taps sit at different base delays - roughly 9 / 14 ms
+on the left, 12.5 / 18 ms on the right - and that left/right asymmetry opens the
+image before the LFOs do anything, and keeps it open at the instants the
+modulation is momentarily still. Turning **Phase** up offsets the right
+channel's sine LFOs from the left's, which spreads the chorus wider; the two
+taps of each channel are held off exact antiphase so the effect never briefly
+cancels itself. The
+dry signal passes straight through untouched; only the wet is coloured, by a
+one-pole highpass (~100 Hz, keeps the low end tight and centred) and lowpass
+(~9 kHz, keeps the moving reads from adding fizz).
+
+Like the other pedals it has no on/off switch of its own - the `on` parameter
+crossfades to the dry signal so the host's device on/off never clicks. The face
+uses a new `sky()` theme: a pale `#8bcbdb` cyan panel with a near-black legend
+and a deep-teal value arc on black caps.
+
+The full voicing - voice count, per-voice base delays, depth range, wet filter
+corners, knob defaults - lives in `shared/include/ee/dsp/ChorusConfig.h`; retune
+it there and rebuild.
+
 ## Requirements
 
 - macOS with Xcode Command Line Tools
@@ -274,6 +307,7 @@ Cloning the source and building there avoids the whole problem.
 ./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp   # renders the UI to PNG
 auval -v aufx Ervb Eefx                                     # Apple's AU validation
 auval -v aufx Etpn Eefx                                     # Easy Trem & Pan
+auval -v aufx Echr Eefx                                     # Easy Chorus
 ```
 
 `pluginval` (`brew install --cask pluginval`) covers the VST3:

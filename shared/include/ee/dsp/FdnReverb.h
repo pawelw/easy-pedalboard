@@ -152,6 +152,11 @@ private:
     juce::SmoothedValue<float> outputScale;
     juce::SmoothedValue<float> lowCutCoeff;
     std::array<float, 4> lowCutState {};
+
+    // Low shelf on the finished wet output, for body. Outside every feedback
+    // path, so it only ever colours what you hear.
+    std::array<float, 2> wetLowShelfState {};
+    float wetLowShelfCoeff = 0.0f;
 };
 
 } // namespace ee::dsp

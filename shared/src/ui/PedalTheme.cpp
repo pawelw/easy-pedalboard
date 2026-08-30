@@ -194,6 +194,50 @@ PedalTheme PedalTheme::gold()
     return t;
 }
 
+PedalTheme PedalTheme::sky()
+{
+    PedalTheme t;
+
+    // Pale sky-cyan face, near-black legend and black caps - the same
+    // high-contrast recipe as teal()/silver(), struck in cyan.
+    t.background      = juce::Colour (0xff10181b);
+    t.panel           = juce::Colour (0xff8bcbdb);
+    t.outline         = juce::Colour (0xff2f4750);
+    t.bezel           = juce::Colour (0xffb8e2ec);   // lighter tint of the panel
+
+    t.textPrimary     = juce::Colour (0xff0e1a1e);
+    t.textSecondary   = juce::Colour (0xff0e1a1e);
+    t.title           = juce::Colour (0xff081319);
+
+    // Black caps with a pale pointer.
+    t.knobBody        = juce::Colour (0xff101416);
+    t.knobFill        = juce::Colour (0xff181d1f);
+    t.knobOutline     = juce::Colour (0xff05080a);
+    t.knobPointer     = juce::Colour (0xffeef7fa);
+
+    // Pale cyan groove with a deep teal value arc - bright enough to read
+    // against the black cap, dark enough to read against the cyan face.
+    t.knobTrack       = juce::Colour (0xffd6eef4);
+    t.accent          = juce::Colour (0xff123844);
+    t.accentDim       = juce::Colour (0xff4f7883);
+    t.glow            = juce::Colour (0xff2b4a52);
+
+    t.ledOn           = juce::Colour (0xff2b8fa5);
+    t.ledOff          = juce::Colour (0xff5a8b96);
+    t.ledRing         = juce::Colour (0xff0e2a30);
+    t.switchBody      = juce::Colour (0xff5f8b96);
+    t.switchHighlight = juce::Colour (0xffcdeaf1);
+
+    t.cornerRadius = 16.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.35f;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
 PedalTheme PedalTheme::cream()
 {
     PedalTheme t;

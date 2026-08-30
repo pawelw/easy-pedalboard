@@ -49,19 +49,21 @@ struct ShimmerTuning
     float predelayMinMs = 38.4f;
     float predelayMaxMs = 147.1f;
 
-    // How far apart the two sides read the predelay line, for stereo width on
-    // top of the detune.
-    float haasMs = 0.44f;
+    // How far apart the two sides read the predelay line. A static offset, so
+    // it gives the octave stereo width without any movement - this carries the
+    // width now that flutter is low. Too large and the comb dip it puts in the
+    // mono sum starts to thin the octave.
+    float haasMs = 8.0f;
 
     // How much of the L/R difference is injected. 1.0 is the full decorrelated
-    // difference; above that over-drives the sides for a wider image. Past ~2
-    // the difference feeds enough energy back into the loop to stretch the
-    // tail, so this is about as far as it goes at this feedback setting.
-    float width = 2.0f;
+    // difference; higher over-drives the sides but also feeds the difference
+    // (and any wobble on it) back into the loop, so keep it near 1.
+    float width = 1.4f;
 
-    // DaisySP's internal random delay modulation (its "fun" control). With the
-    // detune at zero this is what decorrelates the two shifters.
-    float flutter = 0.817f;
+    // DaisySP's internal random delay modulation (its "fun" control). This was
+    // the main source of the tail "wandering back and forth" - kept low so the
+    // shimmer swells in and decays as a steady line, with just a little life.
+    float flutter = 0.25f;
 };
 
 /** Describes a field for the tuning panel, and names it as the source does. */

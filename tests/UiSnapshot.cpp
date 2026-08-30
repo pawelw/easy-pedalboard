@@ -301,6 +301,56 @@ ee::ui::PedalSpec makeTremPanSpec()
     return spec;
 }
 
+/** Minimal host-free processor carrying the same parameters as Easy Chorus. */
+class ChorusSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    ChorusSnapshotProcessor() : SnapshotProcessor (createChorusLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createChorusLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto percentAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+        auto rateRange = juce::NormalisableRange<float> (0.05f, 8.0f);
+        rateRange.setSkewForCentre (0.8f);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "rate", 1 }, "Rate", rateRange, 0.6f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (v, v < 1.0f ? 2 : 1) + " Hz"; })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "depth", 1 }, "Depth", percent, 45.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "phase", 1 }, "Phase",
+            juce::NormalisableRange<float> (0.0f, 180.0f, 1.0f), 110.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (juce::roundToInt (v))
+                                           + juce::String::fromUTF8 ("\xc2\xb0"); })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "mix", 1 }, "Mix", percent, 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeChorusSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Easy Chorus";
+    spec.tagline = "Wide stereo chorus";
+    spec.version = "v0.10.0";
+    spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" },
+                   { "phase", "Phase" }, { "mix", "Mix" } };
+    spec.knobsPerRow = 2;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+    return spec;
+}
+
 void writePng (juce::Component& editor, const juce::File& outputFile)
 {
     const int w = editor.getWidth();
@@ -361,6 +411,13 @@ void renderTremPan (const juce::File& outputFile)
     ee::ui::PedalEditor editor (processor, processor.apvts, makeTremPanSpec(), ee::ui::PedalTheme::teal());
     writePng (editor, outputFile);
 }
+
+void renderChorus (const juce::File& outputFile)
+{
+    ChorusSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeChorusSpec(), ee::ui::PedalTheme::sky());
+    writePng (editor, outputFile);
+}
 } // namespace
 
 int main (int argc, char* argv[])
@@ -374,6 +431,7 @@ int main (int argc, char* argv[])
     renderDelay (dir.getChildFile ("delay.png"));
     renderEq (dir.getChildFile ("eq.png"));
     renderTremPan (dir.getChildFile ("trempan.png"));
+    renderChorus (dir.getChildFile ("chorus.png"));
 
     return 0;
 }

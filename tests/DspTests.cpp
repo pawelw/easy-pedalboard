@@ -5,6 +5,7 @@
 #include <random>
 #include <vector>
 
+#include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
@@ -616,6 +617,225 @@ void testTapeCharacter()
         check (peak == 0.0f, "tape hisses into silence instead of riding the signal");
     }
 }
+
+//==============================================================================
+// Chorus
+
+void testChorusSilence()
+{
+    std::printf ("Chorus: silence in -> silence out\n");
+
+    ee::dsp::Chorus chorus;
+    chorus.prepare (kSampleRate);
+    chorus.reset();
+    chorus.setRateHz (1.0f);
+    chorus.setDepth01 (1.0f);
+    chorus.setPhaseDegrees (90.0f);
+    chorus.setMix01 (1.0f);
+
+    std::vector<float> in (kBlock, 0.0f), l (kBlock, 0.0f), r (kBlock, 0.0f);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < 400; ++b)
+    {
+        chorus.process (in.data(), in.data(), l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (l[i]) || ! std::isfinite (r[i]))
+                finite = false;
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    check (finite, "chorus output stays finite on silence");
+    check (peak < 1.0e-6f, "chorus is silent on a silent input");
+}
+
+void testChorusBypassIsUnity()
+{
+    std::printf ("Chorus: Mix 0%% leaves the dry signal untouched\n");
+
+    ee::dsp::Chorus chorus;
+    chorus.prepare (kSampleRate);
+    chorus.reset();
+    chorus.setRateHz (2.0f);
+    chorus.setDepth01 (0.7f);
+    chorus.setPhaseDegrees (120.0f);
+    chorus.setMix01 (0.0f);
+
+    std::mt19937 rng (1234);
+    std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+    double maxErr = 0.0;
+
+    for (int b = 0; b < 60; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { inL[i] = dist (rng); inR[i] = dist (rng); }
+        chorus.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            maxErr = juce::jmax (maxErr, (double) std::abs (outL[i] - inL[i]));
+            maxErr = juce::jmax (maxErr, (double) std::abs (outR[i] - inR[i]));
+        }
+    }
+
+    check (maxErr < 1.0e-6, "chorus dry path is transparent at Mix 0%");
+}
+
+/** Normalised L/R cross-correlation of the wet chorus output for a mono input,
+    at a given Phase setting. 1 = mono, lower = wider. */
+float chorusCorrelation (ee::dsp::Chorus& chorus, float phaseDeg)
+{
+    chorus.reset();
+    chorus.setRateHz (0.8f);
+    chorus.setDepth01 (0.6f);
+    chorus.setPhaseDegrees (phaseDeg);
+    chorus.setMix01 (1.0f);
+
+    std::mt19937 rng (99);
+    std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    for (int b = 0; b < 20; ++b)   // warm up the delay lines
+    {
+        for (int i = 0; i < kBlock; ++i) { const float s = dist (rng); inL[i] = s; inR[i] = s; }
+        chorus.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+    }
+
+    double sumLR = 0.0, sumLL = 0.0, sumRR = 0.0;
+    for (int b = 0; b < 400; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { const float s = dist (rng); inL[i] = s; inR[i] = s; }
+        chorus.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            sumLR += (double) outL[i] * outR[i];
+            sumLL += (double) outL[i] * outL[i];
+            sumRR += (double) outR[i] * outR[i];
+        }
+    }
+
+    const double denom = std::sqrt (sumLL * sumRR);
+    return denom > 0.0 ? (float) (sumLR / denom) : 1.0f;
+}
+
+void testChorusWidensImage()
+{
+    std::printf ("Chorus: Phase knob decorrelates the stereo image\n");
+
+    ee::dsp::Chorus chorus;
+    chorus.prepare (kSampleRate);
+
+    const float c90 = chorusCorrelation (chorus, 90.0f);
+    const float c180 = chorusCorrelation (chorus, 180.0f);
+
+    std::printf ("  L/R correlation: 90 deg = %.3f, 180 deg = %.3f\n", c90, c180);
+
+    check (std::isfinite (c90) && std::isfinite (c180), "chorus correlation is finite");
+    check (c90 < 0.95f, "chorus at Phase 90 deg is clearly wider than mono");
+    check (c180 < c90 + 0.05f, "chorus widens further toward Phase 180 deg");
+}
+
+/** Short-time L/R behaviour of the pure wet output for a mono input: how mono
+    it ever gets over an LFO cycle, and whether the stereo (side) energy ever
+    briefly drops out. */
+struct ChorusStereoStability
+{
+    float maxWindowCorrelation = 0.0f;   // 1 = momentarily collapsed to mono
+    float minSideRmsRatio = 1.0f;        // min short-time side RMS / its mean
+};
+
+ChorusStereoStability chorusStereoStability (float phaseDeg, float depth01, float rateHz)
+{
+    ee::dsp::Chorus chorus;
+    chorus.prepare (kSampleRate);
+    chorus.reset();
+    chorus.setRateHz (rateHz);
+    chorus.setDepth01 (depth01);
+    chorus.setPhaseDegrees (phaseDeg);
+    chorus.setMix01 (1.0f);   // pure wet, so we measure the effect itself
+
+    std::mt19937 rng (2024);
+    std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 0.5 / kBlock); ++b)  // warm up
+    {
+        for (int i = 0; i < kBlock; ++i) { const float s = dist (rng); inL[i] = s; inR[i] = s; }
+        chorus.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+    }
+
+    const int totalSamples = static_cast<int> (kSampleRate * 8.0);
+    std::vector<float> wetL, wetR;
+    wetL.reserve (static_cast<size_t> (totalSamples));
+    wetR.reserve (static_cast<size_t> (totalSamples));
+    while (static_cast<int> (wetL.size()) < totalSamples)
+    {
+        for (int i = 0; i < kBlock; ++i) { const float s = dist (rng); inL[i] = s; inR[i] = s; }
+        chorus.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i) { wetL.push_back (outL[i]); wetR.push_back (outR[i]); }
+    }
+
+    const int windowLen = 4096;   // ~85 ms at 48 kHz
+    const int hop = 1024;
+    const int produced = static_cast<int> (wetL.size());
+
+    ChorusStereoStability out;
+    std::vector<float> sideRms;
+    double sideRmsSum = 0.0;
+
+    for (int start = 0; start + windowLen <= produced; start += hop)
+    {
+        double ll = 0.0, rr = 0.0, lr = 0.0, ss = 0.0;
+        for (int i = 0; i < windowLen; ++i)
+        {
+            const float l = wetL[static_cast<size_t> (start + i)];
+            const float r = wetR[static_cast<size_t> (start + i)];
+            ll += (double) l * l;
+            rr += (double) r * r;
+            lr += (double) l * r;
+            const float side = 0.5f * (l - r);
+            ss += (double) side * side;
+        }
+        const double denom = std::sqrt (ll * rr);
+        out.maxWindowCorrelation = juce::jmax (
+            out.maxWindowCorrelation, denom > 0.0 ? (float) (lr / denom) : 1.0f);
+
+        const float srms = (float) std::sqrt (ss / windowLen);
+        sideRms.push_back (srms);
+        sideRmsSum += srms;
+    }
+
+    const float meanSide =
+        sideRms.empty() ? 0.0f : (float) (sideRmsSum / (double) sideRms.size());
+    for (float s : sideRms)
+        out.minSideRmsRatio =
+            juce::jmin (out.minSideRmsRatio, meanSide > 0.0f ? s / meanSide : 1.0f);
+
+    return out;
+}
+
+void testChorusStereoIsStable()
+{
+    std::printf ("Chorus: stereo image holds at every Phase setting\n");
+
+    // The setting the dropout was reported at (Phase ~176, Depth ~32 %,
+    // Rate ~0.5 Hz), plus the extremes of the knob.
+    for (float phase : { 30.0f, 90.0f, 176.0f, 180.0f })
+    {
+        const auto st = chorusStereoStability (phase, 0.32f, 0.5f);
+        std::printf ("  phase %5.1f deg: max short-time L/R corr %.3f, min side RMS ratio %.3f\n",
+                     phase, st.maxWindowCorrelation, st.minSideRmsRatio);
+
+        check (st.maxWindowCorrelation < 0.9f,
+               "chorus stereo image never collapses toward mono");
+        check (st.minSideRmsRatio > 0.35f,
+               "chorus width never briefly drops out");
+    }
+}
 } // namespace
 
 int main()
@@ -641,6 +861,14 @@ int main()
     testDelayStability();
     std::printf ("\n");
     testTapeCharacter();
+    std::printf ("\n");
+    testChorusSilence();
+    std::printf ("\n");
+    testChorusBypassIsUnity();
+    std::printf ("\n");
+    testChorusWidensImage();
+    std::printf ("\n");
+    testChorusStereoIsStable();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

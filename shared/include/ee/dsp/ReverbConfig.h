@@ -23,12 +23,17 @@ namespace ee::dsp::config
 // shelf sits. This is the single biggest lever on "boomy / resonant /
 // ringing". A real plate has very little low-end sustain.
 //   0.35 = tight, almost no low tail
-//   0.45 = plate (reference measures ~0.51 at 100-300 Hz)
-//   0.65 = extra low-end weight, lows sustain well past the plate  <-- default
+//   0.45 = plate (reference measures ~0.51 at 100-300 Hz)  <-- default
 //   0.75 = hall-ish warmth
 //   1.00 = lows ring as long as mids (boomy on guitar)
-constexpr float kLowDecayRatio = 0.65f;
-constexpr float kLowCornerHz = 550.0f;
+//
+// Do NOT reach for this to add body: raising the low decay lifts the
+// round-trip gain of the shimmer feedback loop in the low-mids, where the
+// octave-up energy lands, and tips it into a slow "wow" oscillation. Use the
+// WET LOW SHELF below instead - it EQs the finished output, outside every
+// feedback path.
+constexpr float kLowDecayRatio = 0.40f;
+constexpr float kLowCornerHz = 450.0f;
 
 // ============================================================================
 // HIGH DECAY
@@ -104,6 +109,19 @@ constexpr float kPredelayMaxMs = 28.0f;
 // movement leaves the lines completely still, which is what a settled, lush
 // tail needs.
 constexpr float kModDepthSamples = 26.0f;
+
+// ============================================================================
+// WET LOW SHELF
+// ============================================================================
+// A low shelf on the finished wet output - the place to add body without
+// touching decay times. It sits after the network sum, the stereo widening and
+// the shimmer tap, so it colours only what you hear and never feeds back.
+//   kWetLowShelf   lift below the corner. 0 = flat, 0.6 ~ +4 dB, 1.0 ~ +6 dB.
+//                  Generous on purpose - the Low Cut knob pulls it back if a
+//                  player wants the bottom out of the reverb.
+//   kWetLowShelfHz corner the shelf pivots around.
+constexpr float kWetLowShelf = 0.85f;
+constexpr float kWetLowShelfHz = 240.0f;
 
 // ============================================================================
 // SHIMMER

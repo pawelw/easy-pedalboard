@@ -216,6 +216,9 @@ void FdnReverb::prepare (double sampleRate)
     lowCutCoeff.setCurrentAndTargetValue (lowCutCoeffFor (lowCutHz, sampleRate));
     lowCutState.fill (0.0f);
 
+    wetLowShelfCoeff = onePoleCoeff (config::kWetLowShelfHz, sampleRate);
+    wetLowShelfState.fill (0.0f);
+
     if (shimmerShifterL == nullptr)
         shimmerShifterL = std::make_unique<daisysp::PitchShifter>();
     if (shimmerShifterR == nullptr)
@@ -260,6 +263,7 @@ void FdnReverb::reset()
     for (auto& a : spreadR)   a.reset();
     predelayLine.reset();
     lowCutState.fill (0.0f);
+    wetLowShelfState.fill (0.0f);
 
     if (shimmerShifterL != nullptr)
     {
@@ -528,6 +532,15 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
         const float side = 0.5f * (outL[s] - outR[s]) * config::kStereoWidth;
         outL[s] = mid + side;
         outR[s] = mid - side;
+
+        // Low shelf for body, on the finished output only - never fed back.
+        if (config::kWetLowShelf > 0.0f)
+        {
+            wetLowShelfState[0] += wetLowShelfCoeff * (outL[s] - wetLowShelfState[0]);
+            outL[s] += config::kWetLowShelf * wetLowShelfState[0];
+            wetLowShelfState[1] += wetLowShelfCoeff * (outR[s] - wetLowShelfState[1]);
+            outR[s] += config::kWetLowShelf * wetLowShelfState[1];
+        }
 
         hadamard16 (v.data());
 
