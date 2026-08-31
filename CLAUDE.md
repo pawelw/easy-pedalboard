@@ -37,6 +37,14 @@ picks it up automatically and it matters a lot here (see *Why builds are slow*).
 Verification (swap `build` for `build-fast` if that is what you configured):
 
 ```bash
+scripts/dev-check.sh                # configure + build + all suites, one exit code
+scripts/dev-check.sh peak-wah       # ...for a single pedal
+```
+
+It exits 0 when the only failures are the two known ones below, so its exit code
+means "something you changed". The individual binaries, if you want one directly:
+
+```bash
 ./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 45 DSP tests, exits non-zero on failure
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress      # tape knob sweep, non-finite hunt
 ./build/tests/ee_reverb_stress_artefacts/Release/ee_reverb_stress  # reverb tail stability
@@ -56,7 +64,8 @@ in each plugin's `CMakeLists.txt` (`PLUGIN_CODE`).
   rebuild in between — genuine nondeterminism in the Chorus engine. A single green
   run therefore does not prove a chorus change is safe; run the suite a few times.
 
-Anything else is yours.
+Anything else is yours — and `scripts/dev-check.sh` already filters these two out
+of its verdict, so keep its filter list and this section in sync.
 
 ## Formatting
 
@@ -81,6 +90,7 @@ shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knob
 shared/src/dsp/           FdnReverb + TapeDelay implementations
 shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knob…)
 shared/src/ui/            its implementation
+shared/include/ee/plugin/ the bypass crossfade and shared parameter formatters
 cmake/AddPeakPlugin.cmake the juce_add_plugin boilerplate, once
 plugins/peak-*/src/       one PluginProcessor.{h,cpp} each: parameters + processBlock
 plugins/peak-*/CMakeLists.txt  a peak_add_plugin() call — six lines
@@ -107,14 +117,11 @@ catches this.
 UI changes cannot be self-verified yet — render before and after and diff the PNGs
 by hand.
 
-**Bypass crossfades are copy-pasted across all nine processors and have drifted.**
-Only `peak-wah` and `peak-trem-pan` clamp non-finite output in the crossfade loop.
-A NaN escaping a pedal gets latched into the tail of any downstream feedback effect
-(this is what caused the trem+reverb "exploding roar"), so add the guard rather
-than removing it.
-
-**`plugins/peak-wah/src/RateMap.h` and `plugins/peak-trem-pan/src/RateMap.h`** are
-the same file with four different constants. Fix bugs in both.
+**Formatters that share a name do not always share a behaviour.** `hzToText`
+rounds in `peak-wah` but keeps a decimal in `peak-chorus`/`peak-phase`;
+`decibelsToText` prints "3.0 dB" in `peak-overdrive` and a bare signed integer in
+`peak-eq`. Only the genuinely identical ones live in `ee/plugin/ParamText.h` —
+the header explains which were left out and why. Do not "finish the job".
 
 ## Why builds are slow
 
