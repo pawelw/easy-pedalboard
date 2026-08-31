@@ -93,23 +93,44 @@ set_target_properties(ee_tape_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)
 
-# Bolts a live tuning panel onto Peak Reverb's shimmer path. Never turn this on
-# for a build you hand to anyone.
+# ---------------------------------------------------------------------------
+# Which pedals get built, in which formats, and what happens to them afterwards.
+# The defaults reproduce a full release build; the "fast" preset turns them down
+# for iteration. See CLAUDE.md.
+# ---------------------------------------------------------------------------
+set(EE_ALL_PLUGINS
+    peak-reverb peak-delay peak-eq peak-trem-pan peak-chorus
+    peak-phase peak-overdrive peak-wah peak-tape)
+
+set(EE_PLUGINS "all" CACHE STRING
+    "Semicolon-separated pedals to build, or \"all\". e.g. -DEE_PLUGINS=peak-wah;peak-tape")
+option(EE_INSTALL_PLUGINS "Copy built plugins into ~/Library/Audio/Plug-Ins" ON)
+option(EE_DEV_FORMATS "Build Standalone only, skipping VST3 and AU" OFF)
+option(EE_LTO "Link with link-time optimisation (slow; for release builds)" ON)
+
+# Bolt a live tuning panel onto a pedal. Never turn these on for a build you hand
+# to anyone.
 option(EE_SHIMMER_TUNER "Add the shimmer tuning panel to Peak Reverb (development only)" OFF)
-add_subdirectory(plugins/peak-reverb)
-
-add_subdirectory(plugins/peak-eq)
-add_subdirectory(plugins/peak-trem-pan)
-add_subdirectory(plugins/peak-chorus)
-add_subdirectory(plugins/peak-phase)
-add_subdirectory(plugins/peak-overdrive)
-add_subdirectory(plugins/peak-wah)
-add_subdirectory(plugins/peak-tape)
-
-# Bolts a live tuning panel onto Peak Delay. Never turn this on for a build you
-# hand to anyone.
 option(EE_TAPE_TUNER "Add the tape tuning panel to Peak Delay (development only)" OFF)
-add_subdirectory(plugins/peak-delay)
+
+include(cmake/AddPeakPlugin.cmake)
+
+if(EE_PLUGINS STREQUAL "all")
+    set(EE_PLUGINS_TO_BUILD ${EE_ALL_PLUGINS})
+else()
+    set(EE_PLUGINS_TO_BUILD ${EE_PLUGINS})
+    foreach(plugin ${EE_PLUGINS_TO_BUILD})
+        if(NOT plugin IN_LIST EE_ALL_PLUGINS)
+            message(FATAL_ERROR
+                "EE_PLUGINS: unknown pedal \"${plugin}\". Known: ${EE_ALL_PLUGINS}")
+        endif()
+    endforeach()
+    message(STATUS "Building a subset of the pedals: ${EE_PLUGINS_TO_BUILD}")
+endif()
+
+foreach(plugin ${EE_PLUGINS_TO_BUILD})
+    add_subdirectory(plugins/${plugin})
+endforeach()
 
 option(EE_BUILD_TESTS "Build the offline DSP test harness" ON)
 if(EE_BUILD_TESTS)

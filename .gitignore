@@ -1,3 +1,4 @@
+# build/, build-fast/, build-debug/, build-universal/
 build*/
 cmake-build-*/
 dist/

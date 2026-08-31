@@ -6,20 +6,35 @@ install it); this file is the map for working on the code.
 
 ## Build and test
 
+**Iterating? Use `fast`.** It builds Standalone only, no LTO, and installs
+nothing, and `EE_PLUGINS` cuts it down to the pedal you are actually touching:
+
 ```bash
-cmake --preset dev            # configure once; Release + Ninja + tests
-cmake --build build           # everything (9 plugins x VST3/AU/Standalone)
-cmake --build build --preset tests   # just the test binaries — much faster
+cmake --preset fast -DEE_PLUGINS="peak-chorus"
+cmake --build build-fast
+```
+
+Measured cold: **5m07s**, versus **25m39s** for the full `dev` build. Both numbers
+are without ccache. Drop `-DEE_PLUGINS` to get all nine pedals, still Standalone
+only. Standalone is a real app you can launch and hear — you do not need a host.
+
+The full build, when you want the actual VST3/AU installed into `~/Library`:
+
+```bash
+cmake --preset dev            # all nine pedals, all three formats, installed
+cmake --build build
+cmake --build build --preset tests   # or just the test binaries
 ```
 
 Use `--preset debug` (separate `build-debug/`) only when you need asserts; the DSP
 tests run tens of seconds of audio and are unusably slow in a Debug build.
+`--preset release` is the universal binary you hand to someone else.
 
 `build/` is disposable — delete it rather than debugging it. Install `ccache`
 (`brew install ccache`) if it is not already there: the top-level `CMakeLists.txt`
 picks it up automatically and it matters a lot here (see *Why builds are slow*).
 
-Verification:
+Verification (swap `build` for `build-fast` if that is what you configured):
 
 ```bash
 ./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 45 DSP tests, exits non-zero on failure
@@ -66,7 +81,9 @@ shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knob
 shared/src/dsp/           FdnReverb + TapeDelay implementations
 shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knob…)
 shared/src/ui/            its implementation
+cmake/AddPeakPlugin.cmake the juce_add_plugin boilerplate, once
 plugins/peak-*/src/       one PluginProcessor.{h,cpp} each: parameters + processBlock
+plugins/peak-*/CMakeLists.txt  a peak_add_plugin() call — six lines
 tests/                    offline DSP tests, stress sweeps, UI snapshot renderer
 ```
 
@@ -116,12 +133,10 @@ A cold full build measured 25m39s wall / 8731s CPU (2026-08-31, no ccache).
 
 Two other multipliers on top of that:
 
-- Every plugin links `juce::juce_recommended_lto_flags`, so all 27 plugin binaries
-  are LTO links. That is most of the tail of a full build and buys nothing during
-  iteration.
-- Every plugin sets `COPY_PLUGIN_AFTER_BUILD TRUE`, so each build re-signs and
-  reinstalls 18 bundles into `~/Library/Audio/Plug-Ins`.
+- LTO on all 27 plugin links (`EE_LTO`, now off outside release builds). That was
+  most of the tail of a full build and buys nothing during iteration.
+- `COPY_PLUGIN_AFTER_BUILD` re-signing and reinstalling 18 bundles into
+  `~/Library/Audio/Plug-Ins` every build (`EE_INSTALL_PLUGINS`).
 
-Until those are addressed: build a single target
-(`cmake --build build --target PeakChorus`) or `--preset tests` rather than the
-whole tree, and keep ccache installed.
+Both are now off in the `fast` preset, which is most of why it is 5x quicker.
+The INTERFACE-library duplication is the part still outstanding.

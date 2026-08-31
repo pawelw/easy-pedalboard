@@ -450,6 +450,8 @@ lands on the reference recording's (70.1 samples against 70.3).
 
 - macOS with Xcode Command Line Tools
 - CMake and Ninja: `brew install cmake ninja`
+- Optional but recommended: `brew install ccache` — the build picks it up
+  automatically and shared code compiles into every plugin here, so it helps a lot
 
 ## Setting up on another Mac
 
@@ -460,9 +462,9 @@ pinned tags, so the first configure needs an internet connection.
 
 ```bash
 xcode-select --install          # if you have never installed the CLT
-brew install cmake ninja
+brew install cmake ninja ccache
 git clone <this repo> synth-peak && cd synth-peak
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --preset dev
 cmake --build build
 ```
 
@@ -473,18 +475,26 @@ flag, so Gatekeeper stays out of the way.
 ## Build
 
 ```bash
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --preset dev
 cmake --build build
 ```
 
-`COPY_PLUGIN_AFTER_BUILD` installs to `~/Library/Audio/Plug-Ins/VST3` and
+While working on one pedal, the `fast` preset is about five times quicker — it
+builds Standalone only, without LTO, and installs nothing:
+
+```bash
+cmake --preset fast -DEE_PLUGINS="peak-wah"
+cmake --build build-fast
+```
+
+`EE_INSTALL_PLUGINS` (on by default outside `fast`) installs to `~/Library/Audio/Plug-Ins/VST3` and
 `~/Library/Audio/Plug-Ins/Components` automatically. Rescan in Live to pick up
 changes.
 
 For a build to hand to someone else, produce a universal binary:
 
 ```bash
-cmake -B build-universal -G Ninja -DCMAKE_BUILD_TYPE=Release -DEE_UNIVERSAL_BINARY=ON
+cmake --preset release
 cmake --build build-universal
 ```
 
@@ -594,8 +604,22 @@ onto the middle while dragging (mouse only — automation and typed values pass
 through), and `diameter` gives that one knob a smaller cap without moving it off
 the grid or dropping its caption the way `compact` would.
 
-Then copy `plugins/peak-reverb/CMakeLists.txt`, change `PLUGIN_CODE` and
-`PRODUCT_NAME`, and add it to the top-level `CMakeLists.txt`.
+Then give it a `plugins/peak-drive/CMakeLists.txt`:
+
+```cmake
+peak_add_plugin(PeakDrive
+    CODE       Pdrv
+    PRODUCT    "Peak Drive"
+    BUNDLE     com.synthpeak.peakdrive
+    CATEGORIES "Fx Distortion"
+)
+```
+
+`peak_add_plugin` (in `cmake/AddPeakPlugin.cmake`) carries the rest of the
+`juce_add_plugin` boilerplate. Pass `LIBS` for extra link targets and `SOURCES`
+for extra `.cpp` files. Add the directory name to `EE_ALL_PLUGINS` in the
+top-level `CMakeLists.txt`, and mirror the parameter layout into
+`tests/UiSnapshot.cpp` so the pedal renders in the snapshot tool.
 
 ## Resizing
 
