@@ -3,7 +3,7 @@
 #include "ee/dsp/TapeMachineConfig.h"
 #include "ee/ui/PedalEditor.h"
 
-#include "TapeNoiseData.h"
+#include "TapeAssets.h"
 
 #include <juce_audio_formats/juce_audio_formats.h>
 
@@ -63,7 +63,7 @@ void PeakTapeProcessor::loadNoiseSample()
 {
     juce::WavAudioFormat wav;
     auto stream = std::make_unique<juce::MemoryInputStream> (
-        TapeNoiseData::tapenoise_wav, static_cast<size_t> (TapeNoiseData::tapenoise_wavSize), false);
+        TapeAssets::tapenoise_wav, static_cast<size_t> (TapeAssets::tapenoise_wavSize), false);
 
     std::unique_ptr<juce::AudioFormatReader> reader (wav.createReaderFor (stream.release(), true));
 
@@ -248,26 +248,62 @@ juce::AudioProcessorEditor* PeakTapeProcessor::createEditor()
     spec.tagline = "Analogue warmth, wobble and wear";
     spec.version = "v" JucePlugin_VersionString;
 
+    // Four character knobs at the corners of the block, with Tone in the middle
+    // of them. Two columns rather than three: the middle one only ever held
+    // Tone, and carrying an empty column just pushed the knobs away from the
+    // edges - so the face is a whole column narrower than Peak Delay's.
     spec.knobs = {
         { kSaturationID, "Saturation" },
-        // Tone is the trim among the character knobs, so it takes a smaller cap
-        // in the middle of the top row. Its arc grows out of 12 o'clock either
-        // way, the centre carries a detent tick, and the knob snaps onto it.
-        { .parameterID = kToneID, .caption = "Tone", .bipolarArc = true,
-          .centreDetent = true, .diameter = 74 },
         { kFlutterID,    "Flutter" },
         { kWearID,       "Wear" },
-        {},   // spacer: the block keeps its middle column open
         { kNoiseID,      "Noise" }
     };
 
+    // Tone gets Peak Reverb's RESO treatment: a small vector cap dead centre of
+    // the block with its caption alone under it, rather than a cell of its own.
+    // Its arc still grows out of 12 o'clock either way, the centre carries a
+    // detent tick, and the knob snaps onto it.
+    spec.centreKnob = ee::ui::KnobSpec {
+        .parameterID = kToneID, .caption = "Tone", .compact = true,
+        .compactCaption = true, .bipolarArc = true, .centreDetent = true };
+
     // Width is one thing or the other, so it is the big sliding switch Peak
-    // Trem & Pan uses for its mode, in the strip above the knobs.
+    // Trem & Pan uses for its mode - centred in the strip above the knobs,
+    // since it is the only thing in it and Tone sits under it on the same axis.
     spec.slideToggle = ee::ui::SlideToggleSpec {
         .parameterID = kStereoID, .labelOff = "Mono", .labelOn = "Stereo" };
+    spec.slideToggleCentred = true;
+    spec.slideToggleRise = 8;    // tighter to the top edge than the shared strip
 
-    spec.knobsPerRow = 3;
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);   // same footprint as Peak Delay
+    // The shared row gap: a small centre cap needs no more room between the rows
+    // than Peak Reverb's RESO does, which leaves the height for the caps.
+    spec.knobRowGap = 12;
+
+    // Just under the shared cap size. The switch strip costs this face 40 px
+    // that Peak Reverb's two rows do not pay, and the block has to fit in what
+    // is left - 278 px, against 2 x (cap + 32 px of labels) plus the gap.
+    spec.knobDiameter = 100;
+
+    spec.knobsPerRow = 2;
+
+    // 6 % wider than the shared two-column width. The columns take the extra,
+    // so the four knobs move out from the middle and Tone gets clear air around
+    // it - the only reason this face departs from knobRowWidth().
+    spec.width = (ee::ui::knobRowWidth (spec.knobsPerRow) * 106) / 100;
+
+    // Sit the block higher than centring would, so the top row comes up under
+    // the switch and the bottom one lifts off the pedal name.
+    spec.knobBlockRise = 12;
+
+    // The columns are a good deal wider than the caps, so the four knobs sit out
+    // near the edges rather than floating in the middle of their cells.
+    spec.knobColumnSpread = 10;
+
+    // A small reel above the name, centred in the gap the knobs leave.
+    spec.titleImage = juce::ImageCache::getFromMemory (TapeAssets::tape_png,
+                                                      TapeAssets::tape_pngSize);
+    spec.titleImageHeight = 60;
+    spec.titleImageTint = juce::Colours::white;
 
     return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::green());
 }

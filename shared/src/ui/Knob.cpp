@@ -4,7 +4,7 @@ namespace ee::ui
 {
 namespace
 {
-    constexpr float kValueRowHeight = 18.0f;
+    constexpr float kValueRowHeight = static_cast<float> (Knob::valueRowHeight);
     constexpr float kCaptionRowHeight = 14.0f;
     static_assert (Knob::labelHeight == static_cast<int> (kValueRowHeight + kCaptionRowHeight));
 }
@@ -14,7 +14,8 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
             const PedalTheme& theme)
     : apvts (state), paramID (spec.parameterID), captionText (spec.caption),
       pedalTheme (theme), compact (spec.compact), compactCaption (spec.compactCaption),
-      liveValueText (spec.liveValueText)
+      captionUntilTouched (spec.captionUntilTouched),
+      liveValueText (spec.liveValueText), valueIcon (spec.valueIcon)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
@@ -56,9 +57,19 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
 
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment> (apvts, paramID, slider);
 
+    // On a one-row knob the caption gives way to the reading only while the
+    // knob is actually being turned.
+    if (captionUntilTouched)
+    {
+        slider.onDragStart = [this] { touched = true;  repaint(); };
+        slider.onDragEnd   = [this] { touched = false; repaint(); };
+    }
+
     slider.onValueChange = [this]
     {
         refreshValueText();
+        if (valueIcon)
+            repaint();               // the glyph tracks the value, not the text
         if (onValueChanged)
             onValueChanged();
     };
@@ -98,6 +109,12 @@ void Knob::paint (juce::Graphics& g)
     {
         const auto textArea = area.removeFromBottom (static_cast<float> (compactLabelHeight));
 
+        if (valueIcon && ! compactCaption)
+        {
+            valueIcon (g, textArea, pedalTheme.textPrimary);
+            return;
+        }
+
         g.setColour (pedalTheme.textPrimary);
         g.setFont (pedalTheme.bodyFont (12.0f));
         g.drawText (compactCaption ? captionText.toUpperCase() : valueText,
@@ -108,13 +125,32 @@ void Knob::paint (juce::Graphics& g)
     const auto captionArea = area.removeFromBottom (kCaptionRowHeight);
     const auto valueArea = area.removeFromBottom (kValueRowHeight);
 
-    g.setColour (pedalTheme.textPrimary);
-    g.setFont (pedalTheme.bodyFont (16.0f));
-    g.drawText (valueText, valueArea, juce::Justification::centredTop, false);
+    // A caption-until-touched knob keeps its label block the same height as its
+    // neighbours', so the caps still line up, but prints on the top row only:
+    // the caption up close under the cap, swapped for the reading while the
+    // knob is being turned.
+    const auto textArea = captionUntilTouched ? valueArea : captionArea;
+
+    if (! captionUntilTouched || touched)
+    {
+        if (valueIcon)
+        {
+            valueIcon (g, valueArea, pedalTheme.textPrimary);
+        }
+        else
+        {
+            g.setColour (pedalTheme.textPrimary);
+            g.setFont (pedalTheme.bodyFont (16.0f));
+            g.drawText (valueText, valueArea, juce::Justification::centredTop, false);
+        }
+
+        if (captionUntilTouched)
+            return;
+    }
 
     g.setColour (pedalTheme.textSecondary);
     g.setFont (pedalTheme.bodyFont (12.0f).boldened().withExtraKerningFactor (0.09f));
-    g.drawText (captionText.toUpperCase(), captionArea, juce::Justification::centredTop, false);
+    g.drawText (captionText.toUpperCase(), textArea, juce::Justification::centredTop, false);
 }
 
 } // namespace ee::ui

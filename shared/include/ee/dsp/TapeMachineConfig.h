@@ -23,8 +23,7 @@
  *   3. Rescan in the host.
  */
 
-namespace ee::dsp::tape
-{
+namespace ee::dsp::tape {
 
 // One-pole smoothing on every knob value, in Hz. Low enough that a mouse drag
 // never zippers, high enough that a knob still feels immediate.
@@ -38,14 +37,14 @@ constexpr float kParamSmoothingHz = 12.0f;
 //
 // The depth and rate are measured off a reference recording of the effect at
 // full tilt, by tracking the delay between it and the dry take: a near-pure
-// 2 Hz wobble, ~70 samples (1.6 ms) of excursion at 44.1 kHz, which works out at
-// roughly 2 % speed error - about 35 cents.
+// 2 Hz wobble, ~70 samples (1.6 ms) of excursion at 44.1 kHz, which works out
+// at roughly 2 % speed error - about 35 cents.
 //
 // Pure is the point. A real machine has filtered noise riding the wobble too -
-// the rollers, and the tape scraping past the heads - and an earlier voicing had
-// both. They roughen the vibe rather than adding to it, so the transport here is
-// the sine and nothing else, with only a trace of rate wander to keep it off a
-// perfect grid.
+// the rollers, and the tape scraping past the heads - and an earlier voicing
+// had both. They roughen the vibe rather than adding to it, so the transport
+// here is the sine and nothing else, with only a trace of rate wander to keep
+// it off a perfect grid.
 //
 // Voicing it again: render the dry take through ee_tape_render with Flutter at
 // 100 and everything else at 0, then track the two files against each other -
@@ -56,10 +55,12 @@ constexpr float kParamSmoothingHz = 12.0f;
 // reported latency, so it is as short as that allows.
 constexpr float kNominalDelayMs = 4.5f;
 
-constexpr float kWowRateHz     = 2.0f;
-constexpr float kWowDepthMs    = 1.62f;   // peak excursion at Flutter 100 %, matched to the reference
-constexpr float kWowRateJitter = 0.02f;   // the reference wobble is near enough metronomic
-constexpr float kWowJitterHz   = 0.15f;   // how fast that wander itself moves
+constexpr float kWowRateHz = 2.0f;
+constexpr float kWowDepthMs =
+    1.62f; // peak excursion at Flutter 100 %, matched to the reference
+constexpr float kWowRateJitter =
+    0.02f; // the reference wobble is near enough metronomic
+constexpr float kWowJitterHz = 0.15f; // how fast that wander itself moves
 
 // Hard ceiling on the excursion, as a fraction of the nominal delay. The read
 // can never walk off either end of the line whatever the knobs say.
@@ -77,8 +78,8 @@ constexpr float kWobbleLimit = 0.9f;
 // every time the LFO crosses zero; ~0.33 cycles is the widest offset that stays
 // decorrelated right through the cycle. (Peak Chorus's Phase knob is capped for
 // the same reason.)
-constexpr float kStereoRateHz          = 0.33f;
-constexpr float kStereoDepthMs         = 1.5f;   // per channel, at Stereo 100 %
+constexpr float kStereoRateHz = 0.33f;
+constexpr float kStereoDepthMs = 1.5f; // per channel, at Stereo 100 %
 constexpr float kStereoPhaseSpanCycles = 0.33f;
 
 // ============================================================================
@@ -102,7 +103,7 @@ constexpr float kSatBias = 0.16f;
 
 // Record EQ: the shelf pivot, and its high-frequency gain at Saturation 100 %.
 constexpr float kEmphasisPivotHz = 2000.0f;
-constexpr float kEmphasisGain    = 3.0f;
+constexpr float kEmphasisGain = 3.0f;
 
 // The make-up is matched at a reference level rather than at the origin.
 // Normalising by the small-signal slope alone would leave the stage quieter the
@@ -110,10 +111,10 @@ constexpr float kEmphasisGain    = 3.0f;
 // kSatMakeupLevel instead, quiet passages come up a little and loud ones are
 // held - which is what tape actually does. kSatMakeupTrim is the trim on top:
 // 1.0 is level-matched at that reference, above it the knob pushes.
-constexpr float kSatMakeupLevel = 0.14f;   // ~ -17 dBFS, a normal programme level
-constexpr float kSatMakeupTrim  = 1.0f;
+constexpr float kSatMakeupLevel = 0.14f; // ~ -17 dBFS, a normal programme level
+constexpr float kSatMakeupTrim = 1.0f;
 
-constexpr int   kOversampleFactor  = 2;
+constexpr int kOversampleFactor = 2;
 constexpr float kOversampleCutoffHz = 19000.0f;
 
 // ============================================================================
@@ -129,9 +130,9 @@ constexpr float kTonePivotHz = 700.0f;
 // Symmetric on purpose: a centre-detented knob should lean as far one way as
 // the other, so each band's two gains are the same factor above and below unity
 // (+/- 5.6 dB, an 11 dB tilt end to end).
-constexpr float kToneLowGainDark   = 1.90f;
+constexpr float kToneLowGainDark = 1.90f;
 constexpr float kToneLowGainBright = 0.52f;
-constexpr float kToneHighGainDark   = 0.52f;
+constexpr float kToneHighGainDark = 0.52f;
 constexpr float kToneHighGainBright = 1.90f;
 
 // ============================================================================
@@ -142,9 +143,17 @@ constexpr float kToneHighGainBright = 1.90f;
 // running. It is not gated and it does not ride the programme - a floor that
 // ducks when you play is a noise gate, not a tape.
 //
-// The knob is a straight linear gain on it, so 100 % is the recording at the
-// level it was made and the numbers on the face mean something.
+// The knob is a straight linear gain on it, up to this ceiling: 1.0 is the
+// recording at the level it was made, and anything below that is the whole
+// knob range scaled down. Turn it down to make a fully open Noise knob quieter
+// without re-recording the file.
 //
+//   1.0   = the recording as it is           (0 dB)
+//   0.5   = half                            (-6 dB)
+//   0.25  = a quarter                      (-12 dB)
+//   0.125 = an eighth                      (-18 dB)
+constexpr float kMaxFloorGain = 0.4f;
+
 // The loop is seamed with a crossfade this long, so the wrap cannot tick. Long
 // enough to hide the join in a hiss recording, short enough to leave most of
 // the file playing untouched.
@@ -154,8 +163,9 @@ constexpr float kNoiseLoopFadeMs = 250.0f;
 // offline tests, and the render tool without a sample argument): band-limited
 // white noise at a comparable level, so the stage is still exercised.
 constexpr float kHissHighpassHz = 700.0f;
-constexpr float kHissLowpassHz  = 11000.0f;
-constexpr float kMaxHiss = 0.02f;   // ~ -45 dBFS RMS at Noise 100 %, after the band limiting
+constexpr float kHissLowpassHz = 11000.0f;
+constexpr float kMaxHiss =
+    0.02f; // ~ -45 dBFS RMS at Noise 100 %, after the band limiting
 
 // ============================================================================
 // OUTPUT
@@ -168,10 +178,11 @@ constexpr float kDcBlockerHz = 12.0f;
 // DEFAULTS (knob positions the pedal opens on)
 // ============================================================================
 constexpr float kDefaultSaturationPct = 35.0f;
-constexpr float kDefaultWearPct       = 30.0f;
-constexpr float kDefaultFlutterPct    = 25.0f;
-constexpr float kDefaultTonePct       = 0.0f;    // centred: flat
-constexpr bool  kDefaultStereoOn      = true;    // the machine is a stereo one unless asked otherwise
-constexpr float kDefaultNoisePct      = 50.0f;
+constexpr float kDefaultWearPct = 30.0f;
+constexpr float kDefaultFlutterPct = 25.0f;
+constexpr float kDefaultTonePct = 0.0f; // centred: flat
+constexpr bool kDefaultStereoOn =
+    true; // the machine is a stereo one unless asked otherwise
+constexpr float kDefaultNoisePct = 50.0f;
 
 } // namespace ee::dsp::tape

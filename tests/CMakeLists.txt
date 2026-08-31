@@ -21,7 +21,7 @@ target_compile_definitions(ee_ui_snapshot PUBLIC
     JUCE_STANDALONE_APPLICATION=1)
 
 target_link_libraries(ee_ui_snapshot
-    PRIVATE ee_ui
+    PRIVATE ee_ui ee_tape_assets
     PUBLIC juce::juce_recommended_config_flags)
 
 if(EE_TAPE_TUNER)

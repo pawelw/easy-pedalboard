@@ -287,26 +287,32 @@ and rebuild.
 ### Peak Wah
 
 An LFO-driven modulated filter that plays with your picking - the auto-wah's
-tank, swept by a wave (or a random step) that speeds up when you dig in and
-restarts from its peak on every note. Mono or stereo, in and out. Two knob rows,
-a live LFO scope, and a Mono/Stereo switch bottom-left.
+tank, swept by a wave that speeds up when you dig in and restarts from its peak
+on every note. Mono or stereo, in and out. A big row of headline knobs, a tight
+row of LFO controls, a live filter-response scope, and a Mono/Stereo switch
+level with the pedal name.
 
 | Knob       | Range        | What it does                                                                                  |
 | ---------- | ------------ | ------------------------------------------------------------------------------------------- |
-| **Amount** | 0 - 100 %    | Depth of the sweep - how far the LFO pushes the cutoff either side of Freq (up to ~2.3 octaves) |
+| **Range**  | 0 - 100 %    | Depth of the sweep - how far the LFO pushes the cutoff either side of Freq (up to ~2.3 octaves) |
 | **Freq**   | 200 - 1600 Hz | Centre cutoff the LFO sweeps around. Readout shows the mapped Hz                              |
 | **Q**      | 0 - 100 %    | Resonance of the tank - a broad tone-shaping sweep at the bottom, a sharp vocal peak at the top |
 | **Mix**    | 0 - 100 %    | Dry / wet blend (the spoon cap). 0 is bit-exact dry                                           |
 
 | Small knob | What it does                                                                                     |
 | ---------- | ---------------------------------------------------------------------------------------------- |
-| **Decay**  | How fast the wobble flattens once you stop playing. Fully up **latches the LFO on** so it runs continuously; below ~90 % it fades out over 60 ms - 3 s after the last note |
-| **Shape**  | Morphs the LFO through the shared anchors - exp decay, ramp, triangle, soft square, hard chop. **Rnd** button: replaces the wave with a new random height latched twice a cycle (a square wave with random tops), slewed so it never clicks |
+| **Decay**  | What happens after a pluck. At **0** the LFO runs exactly one cycle and then flattens - a single envelope sweep per note. In the middle it is a release-time follower (60 ms - 3 s tail). Fully up **latches the LFO on** so it just runs |
+| **Shape**  | Morphs the LFO through the shared anchors - exp decay, ramp, triangle, soft square, hard chop; its value row shows the wave as a glyph |
 | **Time**   | LFO rate. **Sync** button locks it to the host tempo - the readout flips from milliseconds to note divisions, and each mode remembers its own knob position |
-| **Type**   | Low-pass, band-pass or high-pass, read off three taps of the one tank solve                     |
+| **Type**   | Low-pass, band-pass or high-pass, read off three taps of the one tank solve; the value row shows the curve shape as a glyph rather than a word |
 
-**Mono / Stereo** (the switch): Mono runs one LFO for both channels; Stereo runs
-the right channel half a cycle out of phase, with its own random stream.
+**Mono / Stereo** (the switch, plain black-and-white, on the name row): Mono runs
+one LFO for both channels; Stereo runs the right channel half a cycle out of
+phase.
+
+Every continuous control that feeds the filter - Mix, Range, Q, the Freq base -
+is ramped over ~15 ms, so a knob nudge glides rather than steps (no tick). The
+first block after a load takes the values as they stand.
 
 Two touches make it feel played rather than mechanical, both always on:
 
@@ -317,10 +323,11 @@ Two touches make it feel played rather than mechanical, both always on:
   from the top. In Stereo the left channel starts at the peak, the right at its
   opposite.
 
-The **scope** above the pedal name is a live trace: it scrolls at the running
-LFO, snaps back on each retrigger, and its height follows the gate - so it
-collapses toward flat as the modulation fades out and springs back when you
-play. The processor publishes the LFO phase and depth to it each block.
+The **scope** above the pedal name is a live filter-response graph: a blue
+resonant bump sits at the Freq setting, and two warm bumps sweep either side of
+it with the left and right channels' LFO. They collapse onto the blue one as the
+gate closes, and the dot on the blue apex rises with Q. The processor publishes
+the per-channel sweep amount to it each block.
 
 The filter is a real wah's **LC tank** - a series RLC solved sample-accurately
 as a **Wave Digital Filter** with
@@ -332,10 +339,11 @@ centre frequency and the resistor sets Q; `C` and `R` are re-solved per channel
 every 16 samples from `C = 1 / ((2πf₀)²L)`, `R = (1/Q)·√(L/C)`.
 
 The LFO free-runs on a phase accumulator (aligned to the host grid when Sync is
-on, the same snap/pull as Peak Delay). A gate - a fast follower on the
-high-passed, rectified, noise-floored input - scales the modulation depth, with
-its release set by Decay and a floor under it that the top of the Decay knob
-ramps up to 1, so `cutoff = Freq · 5^(Amount · gate · lfo)`.
+on, the same snap/pull as Peak Delay). A gate scales the modulation depth: a
+fast follower on the high-passed, rectified, noise-floored input, whose release
+is set by Decay - with a floor under it that the top of the knob ramps to 1, and
+a one-shot the bottom of the knob crossfades in that holds for one LFO cycle
+after a pluck and then fades. So `cutoff = Freq · 5^(Range · gate · lfo)`.
 
 After the tank: a per-type make-up gain (a band-pass tap throws away everything
 off the peak and needs the most lift; the low- and high-pass taps keep a whole
@@ -349,12 +357,12 @@ and a deep wine value arc on black caps, the same high-contrast recipe as the
 orange and yellow faces.
 
 The full voicing - gate high-pass / noise floor / sensitivity, attack and decay
-range, the Decay latch knee, the dynamics follower and rate depth, the retrigger
-thresholds, random slew, stereo offset, frequency range and sweep ratio,
-inductor value, Q range, control-block size, per-type make-up, grit, output
-filtering, knob defaults - lives in `shared/include/ee/dsp/AutoWahConfig.h` (and
-the LFO rate range in `plugins/peak-wah/src/RateMap.h`); retune there and
-rebuild.
+range, the Decay latch knee, the one-shot knee and release, the dynamics
+follower and rate depth, the retrigger thresholds, stereo offset, the param-ramp
+time, frequency range and sweep ratio, inductor value, Q range, control-block
+size, per-type make-up, grit, output filtering, knob defaults - lives in
+`shared/include/ee/dsp/AutoWahConfig.h` (and the LFO rate range in
+`plugins/peak-wah/src/RateMap.h`); retune there and rebuild.
 
 ### Peak Tape
 

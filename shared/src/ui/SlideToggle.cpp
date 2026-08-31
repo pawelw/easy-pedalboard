@@ -9,6 +9,17 @@ namespace
     constexpr float kKnobInset = 3.0f;
     constexpr float kTrackWidth = 2.0f * (kTrackHeight - 2.0f * kKnobInset) + 6.0f;
     constexpr float kLabelGap = 7.0f;
+
+    juce::Font labelFont (const ee::ui::PedalTheme& theme)
+    {
+        return theme.bodyFont (11.5f).boldened().withExtraKerningFactor (0.04f);
+    }
+
+    /** Width of one of the two label boxes on a switch of the given width. */
+    float labelBoxWidth (float totalWidth)
+    {
+        return (totalWidth - kTrackWidth) * 0.5f - kLabelGap;
+    }
 }
 
 SlideToggle::SlideToggle (juce::AudioProcessorValueTreeState& state,
@@ -18,7 +29,9 @@ SlideToggle::SlideToggle (juce::AudioProcessorValueTreeState& state,
       pedalTheme (theme),
       labelOff (spec.labelOff),
       labelOn (spec.labelOn),
-      accent (spec.accent.value_or (theme.title))
+      accent (spec.accent.value_or (theme.title)),
+      labelColour (spec.labelColour.value_or (spec.accent.value_or (theme.title))),
+      flushLeft (spec.labelFlushLeft)
 {
     setClickingTogglesState (true);
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (
@@ -26,6 +39,20 @@ SlideToggle::SlideToggle (juce::AudioProcessorValueTreeState& state,
 }
 
 SlideToggle::~SlideToggle() = default;
+
+int SlideToggle::labelInset() const
+{
+    if (! flushLeft)
+        return 0;
+
+    // The off label is right-justified in its box, so everything in front of it
+    // is slack: shifting the switch left by that much starts its first letter on
+    // the component edge.
+    const auto width = static_cast<float> (getWidth() > 0 ? getWidth() : preferredWidth);
+    const auto textW = juce::GlyphArrangement::getStringWidth (labelFont (pedalTheme),
+                                                              labelOff.toUpperCase());
+    return juce::jmax (0, juce::roundToInt (labelBoxWidth (width) - textW));
+}
 
 void SlideToggle::paintButton (juce::Graphics& g, bool highlighted, bool down)
 {
@@ -35,16 +62,16 @@ void SlideToggle::paintButton (juce::Graphics& g, bool highlighted, bool down)
     const float trackH = juce::jmin (kTrackHeight, bounds.getHeight());
     const auto track = juce::Rectangle<float> (kTrackWidth, trackH).withCentre (bounds.getCentre());
 
-    const float sideW = (bounds.getWidth() - kTrackWidth) * 0.5f - kLabelGap;
+    const float sideW = labelBoxWidth (bounds.getWidth());
     const auto leftLabel  = juce::Rectangle<float> (bounds.getX(), bounds.getY(), sideW, bounds.getHeight());
     const auto rightLabel = juce::Rectangle<float> (track.getRight() + kLabelGap, bounds.getY(), sideW, bounds.getHeight());
 
-    g.setFont (pedalTheme.bodyFont (11.5f).boldened().withExtraKerningFactor (0.04f));
+    g.setFont (labelFont (pedalTheme));
 
-    g.setColour (accent.withAlpha (on ? 0.34f : 1.0f));
+    g.setColour (labelColour.withAlpha (on ? 0.34f : 1.0f));
     g.drawText (labelOff.toUpperCase(), leftLabel, juce::Justification::centredRight, false);
 
-    g.setColour (accent.withAlpha (on ? 1.0f : 0.34f));
+    g.setColour (labelColour.withAlpha (on ? 1.0f : 0.34f));
     g.drawText (labelOn.toUpperCase(), rightLabel, juce::Justification::centredLeft, false);
 
     // Recessed track.

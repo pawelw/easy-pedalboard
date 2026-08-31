@@ -3,9 +3,9 @@
 /**
  * Voicing for ee::dsp::AutoWah.
  *
- * Peak Wah is an LFO-driven modulated filter: a wave (or a random step) sweeps
- * a series-RLC tank's cutoff around the Freq setting, with a choice of low- /
- * band- / high-pass. A fast envelope opens the modulation on a note and the
+ * Peak Wah is an LFO-driven modulated filter: a wave sweeps a series-RLC tank's
+ * cutoff around the Freq setting, tapped anywhere on a continuous low- / band- /
+ * high-pass morph. A fast envelope opens the modulation on a note and the
  * Decay knob is how quickly it flattens once you stop - turned fully up it
  * latches on and runs continuously.
  *
@@ -44,15 +44,21 @@ constexpr float kDecayMaxMs = 3000.0f;
 // tempo/rate-synced filter with no dynamics.
 constexpr float kLatchKnee0 = 0.90f;
 
+// The bottom slice (from 0 to kOneShotKnee) crossfades to a one-shot: on a
+// pluck the LFO runs kOneShotCycles of a cycle and then the gate fades out over
+// kOneShotReleaseMs - a single envelope sweep per note. Half a cycle stops the
+// sweep at the bottom of the wave (up then down), rather than a whole one
+// carrying it back up to where it started.
+constexpr float kOneShotKnee = 0.16f;
+constexpr float kOneShotCycles = 0.5f;
+constexpr float kOneShotReleaseMs = 18.0f;
+
 // ============================================================================
 // LFO
 // ============================================================================
 // Shape is ee::dsp::lfoValue's 0..1 morph (exp decay .. ramp .. triangle ..
-// soft square .. hard chop). Random replaces the wave with a new random level
-// latched twice per cycle, slewed by kRandomSlewMs so the step never clicks.
-// The Stereo switch offsets the right channel by kStereoOffset of a cycle
-// (½ = anti-phase) and gives it its own random stream.
-constexpr float kRandomSlewMs = 1.2f;
+// soft square .. hard chop). The Stereo switch offsets the right channel by
+// kStereoOffset of a cycle (½ = anti-phase).
 constexpr float kStereoOffset = 0.5f;
 
 // The LFO free-run period range and default live in plugins/peak-wah/src/RateMap.h.
@@ -97,6 +103,10 @@ constexpr float kSweepRatioMax = 5.0f;
 // retune of the tank can never step the pitch of the peak.
 constexpr float kFreqSmoothingMs = 4.0f;
 
+// Ramp on the knob-derived values that otherwise step the output when a control
+// is nudged - Mix (dry/wet), Amount, Q and the Freq base.
+constexpr float kParamSmoothMs = 15.0f;
+
 // ============================================================================
 // RESONANT TANK (chowdsp_wdf)
 // ============================================================================
@@ -104,6 +114,9 @@ constexpr float kFreqSmoothingMs = 4.0f;
 // LFO set C = 1 / ((2 pi f0)^2 L); the Q knob sets R = (1 / Q) sqrt(L / C).
 // Filter type is which element's voltage is tapped:
 //   V_C = low-pass   V_R = band-pass   V_L = high-pass
+// One solve gives all three, so the Type knob crossfades between them
+// continuously - LP at 0, BP at 50 %, HP at 100 % - the way Shape morphs the
+// LFO wave.
 // C and R are refreshed every kControlBlock samples per channel.
 constexpr float kInductanceH = 0.5f;
 constexpr float kQMin        = 1.8f;
@@ -114,7 +127,8 @@ constexpr int   kControlBlock = 16;
 // ============================================================================
 // OUTPUT STAGE
 // ============================================================================
-// Per-type make-up: a band-pass tap throws away everything off the peak and
+// Per-tap make-up, crossfaded with the taps themselves so the level holds as
+// Type is turned: a band-pass tap throws away everything off the peak and
 // needs the biggest lift; the low- and high-pass taps keep a whole half of the
 // spectrum and need less. kGritDrive is a tanh soft-clip - unity at normal
 // levels, only rounding the hottest peaks so the make-up can't run away. Then a
@@ -129,13 +143,13 @@ constexpr float kOutputLowpassHz = 8000.0f;
 // ============================================================================
 // DEFAULTS (knob positions the pedal opens on, 0..100 unless noted)
 // ============================================================================
-constexpr float kDefaultAmountPct = 55.0f;
+constexpr float kDefaultRangePct  = 55.0f;
 constexpr float kDefaultFreqPct   = 35.0f;
 constexpr float kDefaultQPct      = 40.0f;
 constexpr float kDefaultMixPct    = 55.0f;
 constexpr float kDefaultDecayPct  = 35.0f;
 constexpr float kDefaultStereoPct = 0.0f;
 constexpr float kDefaultShapePct  = 50.0f;   // triangle
-constexpr int   kDefaultType      = 1;       // band-pass
+constexpr float kDefaultTypePct   = 50.0f;   // band-pass, midway between LP and HP
 
 } // namespace ee::dsp::autowah

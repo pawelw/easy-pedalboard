@@ -68,15 +68,17 @@ juce_add_binary_data(ee_assets SOURCES
     assets/images/spoon.png)
 set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
-# Peak Tape's noise floor is a recording played in a loop rather than
-# synthesised hiss, and it is several megabytes - so it gets its own binary-data
-# target, linked by that pedal alone instead of riding along in every plugin.
-# Its own namespace and header, or it would collide with ee_assets' BinaryData.
-juce_add_binary_data(ee_tape_noise
-    NAMESPACE TapeNoiseData
-    HEADER_NAME TapeNoiseData.h
-    SOURCES assets/audio/tape-noise.wav)
-set_target_properties(ee_tape_noise PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+# Peak Tape's own assets: the noise floor it loops (several megabytes of
+# recording) and the emblem on its face. Their own binary-data target, linked by
+# that pedal alone instead of riding along in every plugin, and their own
+# namespace and header, or they would collide with ee_assets' BinaryData.
+juce_add_binary_data(ee_tape_assets
+    NAMESPACE TapeAssets
+    HEADER_NAME TapeAssets.h
+    SOURCES
+        assets/audio/tape-noise.wav
+        assets/images/tape.png)
+set_target_properties(ee_tape_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)
 

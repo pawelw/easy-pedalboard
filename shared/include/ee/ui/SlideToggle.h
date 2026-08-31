@@ -24,6 +24,11 @@ public:
     static constexpr int preferredWidth = 164;
     static constexpr int preferredHeight = 26;
 
+    /** Blank space between the component's left edge and the first letter of the
+        off label - what a caller has to shift the switch left by to line that
+        letter up with something below it. 0 unless `labelFlushLeft` is set. */
+    int labelInset() const;
+
 protected:
     void paintButton (juce::Graphics&, bool highlighted, bool down) override;
 
@@ -32,6 +37,8 @@ private:
     juce::String labelOff;
     juce::String labelOn;
     juce::Colour accent;
+    juce::Colour labelColour;
+    bool flushLeft = false;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
 

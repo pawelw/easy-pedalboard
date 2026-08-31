@@ -403,9 +403,11 @@ private:
         // --- tape floor ------------------------------------------------------
         noiseEngaged = noise > 0.0f;
 
-        // Straight linear on the recording, so 100 % is the floor at the level
-        // it was recorded at. The synthesised fallback carries its own scale.
-        hissGain = noiseTable != nullptr ? noise : tape::kMaxHiss * noise * noise;
+        // Straight linear on the recording, up to the ceiling the voicing sets -
+        // at 1.0 that is the floor exactly as it was recorded. The synthesised
+        // fallback carries its own scale.
+        hissGain = noiseTable != nullptr ? noise * tape::kMaxFloorGain
+                                         : tape::kMaxHiss * noise * noise;
 
         // --- tone ------------------------------------------------------------
         // Exactly centred is flat and bypassed; a hair off it is not, so there

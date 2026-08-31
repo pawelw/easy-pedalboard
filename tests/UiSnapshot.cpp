@@ -3,8 +3,13 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "ee/dsp/Lfo.h"
 #include "ee/dsp/TempoDivision.h"
 #include "ee/ui/PedalEditor.h"
+
+#include "TapeAssets.h"
+
+#include <cmath>
 
 #if EE_TAPE_TUNER
  #include "TapeTunerPanel.h"
@@ -458,17 +463,16 @@ public:
         const auto percentAttributes =
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
 
-        for (const auto* id : { "amount", "freq", "q", "mix", "decay", "shape" })
+        for (const auto* id : { "range", "freq", "q", "mix", "decay", "shape" })
             layout.add (std::make_unique<juce::AudioParameterFloat> (
                 juce::ParameterID { id, 1 }, id, percent, 45.0f, percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "time", 1 }, "Time",
             juce::NormalisableRange<float> (0.0f, 1.0f, 0.0001f), 0.5f));
-        layout.add (std::make_unique<juce::AudioParameterChoice> (
-            juce::ParameterID { "ftype", 1 }, "Type",
-            juce::StringArray { "Low", "Band", "High" }, 1));
-        for (const auto* id : { "stereo", "random", "sync" })
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "ftype", 1 }, "Type", percent, 50.0f, percentAttributes));
+        for (const auto* id : { "stereo", "sync" })
             layout.add (std::make_unique<juce::AudioParameterBool> (
                 juce::ParameterID { id, 1 }, id, false));
         layout.add (std::make_unique<juce::AudioParameterBool> (
@@ -483,29 +487,82 @@ ee::ui::PedalSpec makeWahSpec()
     ee::ui::PedalSpec spec;
     spec.name = "Peak Wah";
     spec.tagline = "LFO-driven modulated filter";
-    spec.version = "v0.10.0";
-    spec.knobs = { { "amount", "Amount" }, { "freq", "Freq" }, { "q", "Q" }, { "mix", "Mix" } };
     spec.knobsPerRow = 4;
-    spec.width = ee::ui::knobRowWidth (4);
-    spec.knobDiameter = 74;
+    spec.knobDividerAfterColumn = 2;
+    spec.knobBlockRise = 10;
+    spec.displayBandRise = 14;
+    spec.width = ee::ui::knobRowWidth (3);
+    spec.knobDiameter = 86;
 
     const juce::Colour lit { 0xffff4f97 };
-    spec.subKnobs = {
-        { .parameterID = "decay", .caption = "Decay" },
-        { .parameterID = "shape", .caption = "Shape",
-          .buttonParameterID = "random", .buttonCaption = "Rnd", .buttonLitColour = lit },
-        { .parameterID = "time", .caption = "Time",
-          .buttonParameterID = "sync", .buttonCaption = "Sync", .buttonLitColour = lit },
-        { .parameterID = "ftype", .caption = "Type" },
+    auto shapeIcon = [] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
+    {
+        r = r.reduced (r.getWidth() * 0.24f, r.getHeight() * 0.14f);
+        juce::Path p;
+        for (int i = 0; i <= 48; ++i)
+        {
+            const float t = (float) i / 48.0f;
+            const float y = r.getCentreY() - ee::dsp::lfoValue (t, 0.45f) * r.getHeight() * 0.5f;
+            i == 0 ? p.startNewSubPath (r.getX() + t * r.getWidth(), y)
+                   : p.lineTo (r.getX() + t * r.getWidth(), y);
+        }
+        g.setColour (c);
+        g.strokePath (p, juce::PathStrokeType (1.6f));
+    };
+    auto typeIcon = [] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
+    {
+        r = r.reduced (r.getWidth() * 0.28f, r.getHeight() * 0.16f);
+        juce::Path p;
+        for (int i = 0; i <= 40; ++i)
+        {
+            const float t = (float) i / 40.0f;
+            const float v = std::exp (-0.5f * std::pow ((t - 0.5f) / 0.16f, 2.0f));   // band-pass
+            const float y = r.getBottom() - juce::jlimit (0.0f, 1.15f, v) * r.getHeight();
+            i == 0 ? p.startNewSubPath (r.getX() + t * r.getWidth(), y)
+                   : p.lineTo (r.getX() + t * r.getWidth(), y);
+        }
+        g.setColour (c);
+        g.strokePath (p, juce::PathStrokeType (1.6f));
     };
 
+    // Two clusters of four, split by a rule: the filter on the left, its
+    // modulation on the right, every cap the same size.
+    spec.knobs = {
+        { .parameterID = "mix", .caption = "Mix" },
+        { .parameterID = "freq", .caption = "Freq" },
+        { .parameterID = "decay", .caption = "Decay", .captionUntilTouched = true },
+        { .parameterID = "shape", .caption = "Shape", .valueIcon = shapeIcon,
+          .captionUntilTouched = true },
+        { .parameterID = "q", .caption = "Q" },
+        { .parameterID = "range", .caption = "Range" },
+        { .parameterID = "time", .caption = "Time", .captionUntilTouched = true },
+        { .parameterID = "ftype", .caption = "Type", .valueIcon = typeIcon,
+          .captionUntilTouched = true },
+    };
+
+    spec.toggles = { { .parameterID = "sync", .caption = "Sync",
+                       .afterKnobIndex = 6, .litColour = lit,
+                       .centeredBelow = true } };
+
+    spec.titleBesideLogo = true;
+    spec.titleRowAlignRight = true;
+
     spec.slideToggle = ee::ui::SlideToggleSpec {
-        .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo", .accent = lit };
+        .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo",
+        .accent = juce::Colour { 0xffe8e6df },
+        .labelColour = juce::Colours::black,
+        .labelFlushLeft = true };
     spec.slideToggleBottom = true;
 
-    spec.waveDisplay = ee::ui::WaveDisplaySpec {
-        .amountID = "amount", .rateID = "time", .shapeID = "shape", .modeID = "stereo",
-        .height = 40 };
+    spec.filterScope = ee::ui::FilterScopeSpec {
+        .baseFreqHz = [] { return 520.0f; },
+        .resonance01 = [] { return 0.55f; },
+        .modL = [] { return 0.55f; },
+        .modR = [] { return -0.35f; },
+        .baseColour = juce::Colour { 0xff8a1f47 },
+        .sweepColour = juce::Colour { 0xffffaa33 },
+        .sweepRatioMax = 5.0f,
+        .height = 52 };
     return spec;
 }
 
@@ -552,16 +609,33 @@ ee::ui::PedalSpec makeTapeSpec()
     spec.tagline = "Analogue warmth, wobble and wear";
     spec.version = "v0.10.0";
     spec.knobs = { { "sat", "Saturation" },
-                   { .parameterID = "tone", .caption = "Tone", .bipolarArc = true,
-                     .centreDetent = true, .diameter = 74 },
                    { "flutter", "Flutter" },
                    { "wear", "Wear" },
-                   {},   // spacer: the block keeps its middle column open
                    { "noise", "Noise" } };
+
+    // Tone gets Peak Reverb's RESO treatment: a small vector cap between the
+    // rows with its caption alone under it, plus the bipolar arc and detent.
+    spec.centreKnob = ee::ui::KnobSpec {
+        .parameterID = "tone", .caption = "Tone", .compact = true,
+        .compactCaption = true, .bipolarArc = true, .centreDetent = true };
+
     spec.slideToggle = ee::ui::SlideToggleSpec {
         .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo" };
-    spec.knobsPerRow = 3;
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+    spec.slideToggleCentred = true;
+    spec.slideToggleRise = 8;
+
+    spec.knobDiameter = 100;
+    spec.knobRowGap = 12;
+    spec.knobBlockRise = 12;
+    spec.knobColumnSpread = 10;
+
+    spec.knobsPerRow = 2;
+    spec.width = (ee::ui::knobRowWidth (spec.knobsPerRow) * 106) / 100;
+
+    spec.titleImage = juce::ImageCache::getFromMemory (TapeAssets::tape_png,
+                                                      TapeAssets::tape_pngSize);
+    spec.titleImageHeight = 60;
+    spec.titleImageTint = juce::Colours::white;
     return spec;
 }
 

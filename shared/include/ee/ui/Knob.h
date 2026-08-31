@@ -25,6 +25,10 @@ public:
     /** Same, compact: value readout only, no caption. */
     static constexpr int compactLabelHeight = 16;
 
+    /** The top row of the label block - the value readout, and the only row a
+        caption-until-touched knob prints in. */
+    static constexpr int valueRowHeight = 18;
+
     void resized() override;
     void paint (juce::Graphics&) override;
 
@@ -37,6 +41,14 @@ public:
 
     int getLabelHeight() const noexcept { return compact ? compactLabelHeight : labelHeight; }
 
+    /** Bottom of the text this knob actually prints, in its parent's
+        coordinates - lower than its own bounds' bottom whenever it leaves a
+        label row empty. What to hang a button off. */
+    int printedTextBottom() const noexcept
+    {
+        return getBottom() - (captionUntilTouched && ! compact ? labelHeight - valueRowHeight : 0);
+    }
+
     /** Called after the value changes, once the readout has refreshed. Lets a
         parent react (e.g. repaint artwork that depends on the value). */
     std::function<void()> onValueChanged;
@@ -48,8 +60,11 @@ private:
     const PedalTheme& pedalTheme;
     bool compact = false;
     bool compactCaption = false;
+    bool captionUntilTouched = false;
+    bool touched = false;          // the knob is being dragged: show the reading
 
     std::function<juce::String()> liveValueText;
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> valueIcon;
 
     /** A slider that pulls onto the middle of its range while being dragged.
         JUCE routes every mouse-driven value through snapValue(), and nothing

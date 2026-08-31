@@ -25,7 +25,7 @@ target_compile_definitions(PeakTape PUBLIC
 target_link_libraries(PeakTape
     PRIVATE
         ee_shared
-        ee_tape_noise
+        ee_tape_assets
         juce::juce_audio_formats
     PUBLIC
         juce::juce_recommended_config_flags

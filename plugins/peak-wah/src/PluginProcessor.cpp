@@ -3,12 +3,70 @@
 #include "RateMap.h"
 
 #include "ee/dsp/AutoWahConfig.h"
+#include "ee/dsp/Lfo.h"
 #include "ee/ui/PedalEditor.h"
 
 #include <cmath>
 
 namespace {
-constexpr const char *kAmountID = "amount";
+
+/** Height of one of the three response shapes at 0..1 across the band.
+    tap: 0 = low-pass, 1 = band-pass, 2 = high-pass. */
+float filterShapeHeight(float t, int tap) {
+  if (tap == 1)                          // band-pass: centred bump
+    return std::exp(-0.5f * std::pow((t - 0.5f) / 0.16f, 2.0f));
+
+  const float u = tap == 0 ? t : 1.0f - t;   // shelf + resonant lip
+  return 0.8f / (1.0f + std::pow(u / 0.5f, 4.0f))
+         + 0.45f * std::exp(-0.5f * std::pow((u - 0.5f) / 0.09f, 2.0f));
+}
+
+/** A little filter-curve glyph for the Type knob's value row. The knob morphs
+    continuously, so the curve crossfades with it - low-pass at 0, band-pass at
+    ½, high-pass at 1 - the same way the Shape glyph morphs its wave. */
+void drawFilterTypeIcon(juce::Graphics &g, juce::Rectangle<float> area,
+                        juce::Colour colour, float morph01) {
+  const auto r = area.reduced(area.getWidth() * 0.28f, area.getHeight() * 0.16f);
+  const float m = juce::jlimit(0.0f, 1.0f, morph01);
+  const int lower = m <= 0.5f ? 0 : 1;
+  const float blend = m <= 0.5f ? m * 2.0f : (m - 0.5f) * 2.0f;
+
+  juce::Path p;
+  const int steps = 40;
+  for (int i = 0; i <= steps; ++i) {
+    const float t = (float)i / (float)steps;
+    const float a = filterShapeHeight(t, lower);
+    const float b = filterShapeHeight(t, lower + 1);
+    const float v = a + blend * (b - a);
+    const float x = r.getX() + t * r.getWidth();
+    const float y = r.getBottom() - juce::jlimit(0.0f, 1.15f, v) * r.getHeight();
+    i == 0 ? p.startNewSubPath(x, y) : p.lineTo(x, y);
+  }
+  g.setColour(colour);
+  g.strokePath(p, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved,
+                                       juce::PathStrokeType::rounded));
+}
+
+/** One cycle of the morphing LFO wave, for the Shape knob's value row. */
+void drawLfoShapeIcon(juce::Graphics &g, juce::Rectangle<float> area,
+                      juce::Colour colour, float shape01) {
+  const auto r = area.reduced(area.getWidth() * 0.24f, area.getHeight() * 0.14f);
+  const float midY = r.getCentreY();
+  const float amp = r.getHeight() * 0.5f;
+  juce::Path p;
+  const int steps = 48;
+  for (int i = 0; i <= steps; ++i) {
+    const float t = (float)i / (float)steps;
+    const float y = midY - ee::dsp::lfoValue(t, shape01) * amp;
+    const float x = r.getX() + t * r.getWidth();
+    i == 0 ? p.startNewSubPath(x, y) : p.lineTo(x, y);
+  }
+  g.setColour(colour);
+  g.strokePath(p, juce::PathStrokeType(1.6f, juce::PathStrokeType::curved,
+                                       juce::PathStrokeType::rounded));
+}
+
+constexpr const char *kRangeID = "range";
 constexpr const char *kFreqID = "freq";
 constexpr const char *kQID = "q";
 constexpr const char *kMixID = "mix";
@@ -16,8 +74,7 @@ constexpr const char *kDecayID = "decay";
 constexpr const char *kStereoID = "stereo";
 constexpr const char *kShapeID = "shape";
 constexpr const char *kTimeID = "time";      // meaning set by Sync (free ms / synced note)
-constexpr const char *kTypeID = "ftype";     // 0 = Low, 1 = Band, 2 = High
-constexpr const char *kRandomID = "random";
+constexpr const char *kTypeID = "ftype";     // 0 % = Low, 50 % = Band, 100 % = High
 constexpr const char *kSyncID = "sync";
 constexpr const char *kOnID = "on";
 
@@ -30,6 +87,20 @@ juce::String percentToText(float value, int) {
 
 juce::String hzToText(float value, int) {
   return juce::String(juce::roundToInt(value)) + " Hz";
+}
+
+/** The Type knob's reading: the named taps at the three anchors, and how far
+    between two of them everywhere else. */
+juce::String filterTypeToText(float pct, int) {
+  const float p = juce::jlimit(0.0f, 100.0f, pct);
+
+  if (p <= 2.0f) return "Low";
+  if (p >= 98.0f) return "High";
+  if (std::abs(p - 50.0f) <= 2.0f) return "Band";
+
+  const bool lower = p < 50.0f;
+  const int mix = juce::roundToInt(lower ? p * 2.0f : (p - 50.0f) * 2.0f);
+  return juce::String(lower ? "Low-Band " : "Band-High ") + juce::String(mix) + " %";
 }
 
 float freqHzFor(float pct) {
@@ -46,7 +117,7 @@ PeakWahProcessor::PeakWahProcessor()
               .withInput("Input", juce::AudioChannelSet::stereo(), true)
               .withOutput("Output", juce::AudioChannelSet::stereo(), true)),
       apvts(*this, nullptr, "PARAMETERS", createParameterLayout()) {
-  amountParam = apvts.getRawParameterValue(kAmountID);
+  rangeParam = apvts.getRawParameterValue(kRangeID);
   freqParam = apvts.getRawParameterValue(kFreqID);
   qParam = apvts.getRawParameterValue(kQID);
   mixParam = apvts.getRawParameterValue(kMixID);
@@ -55,7 +126,6 @@ PeakWahProcessor::PeakWahProcessor()
   shapeParam = apvts.getRawParameterValue(kShapeID);
   timeParam = apvts.getRawParameterValue(kTimeID);
   typeParam = apvts.getRawParameterValue(kTypeID);
-  randomParam = apvts.getRawParameterValue(kRandomID);
   syncParam = apvts.getRawParameterValue(kSyncID);
   onParam = apvts.getRawParameterValue(kOnID);
 
@@ -89,8 +159,8 @@ PeakWahProcessor::createParameterLayout() {
       juce::AudioParameterFloatAttributes().withStringFromValueFunction(percentToText);
 
   layout.add(std::make_unique<juce::AudioParameterFloat>(
-      juce::ParameterID{kAmountID, 1}, "Amount", percent,
-      ee::dsp::autowah::kDefaultAmountPct, pctAttr));
+      juce::ParameterID{kRangeID, 1}, "Range", percent,
+      ee::dsp::autowah::kDefaultRangePct, pctAttr));
 
   layout.add(std::make_unique<juce::AudioParameterFloat>(
       juce::ParameterID{kFreqID, 1}, "Freq", percent,
@@ -124,14 +194,16 @@ PeakWahProcessor::createParameterLayout() {
       juce::AudioParameterFloatAttributes().withStringFromValueFunction(
           [](float v, int) { return ee::peakwah::rateToText(v, true); })));
 
-  layout.add(std::make_unique<juce::AudioParameterChoice>(
-      juce::ParameterID{kTypeID, 1}, "Type",
-      juce::StringArray{"Low", "Band", "High"}, ee::dsp::autowah::kDefaultType));
+  // Continuous, not a three-way switch: the tank's low-, band- and high-pass
+  // taps crossfade into each other the way Shape morphs the LFO wave.
+  layout.add(std::make_unique<juce::AudioParameterFloat>(
+      juce::ParameterID{kTypeID, 1}, "Type", percent,
+      ee::dsp::autowah::kDefaultTypePct,
+      juce::AudioParameterFloatAttributes().withStringFromValueFunction(
+          filterTypeToText)));
 
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{kStereoID, 1}, "Stereo", false));
-  layout.add(std::make_unique<juce::AudioParameterBool>(
-      juce::ParameterID{kRandomID, 1}, "Random", false));
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{kSyncID, 1}, "Sync", false));
   layout.add(std::make_unique<juce::AudioParameterBool>(
@@ -190,8 +262,7 @@ juce::String PeakWahProcessor::timeReadout() const {
 }
 
 juce::String PeakWahProcessor::typeReadout() const {
-  const int t = juce::jlimit(0, 2, static_cast<int>(typeParam->load() + 0.5f));
-  return t == 0 ? "Low" : t == 2 ? "High" : "Band";
+  return filterTypeToText(typeParam->load(), 0);
 }
 
 void PeakWahProcessor::processBlock(juce::AudioBuffer<float> &buffer,
@@ -267,15 +338,14 @@ void PeakWahProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   }
   wasPlaying = isPlaying;
 
-  wah.setAmount01(amountParam->load() * 0.01f);
+  wah.setRange01(rangeParam->load() * 0.01f);
   wah.setFreq01(freqParam->load() * 0.01f);
   wah.setQ01(qParam->load() * 0.01f);
   wah.setMix01(mixParam->load() * 0.01f);
   wah.setDecay01(decayParam->load() * 0.01f);
   wah.setStereo(stereoParam->load() > 0.5f);
   wah.setShape01(shapeParam->load() * 0.01f);
-  wah.setRandom(randomParam->load() > 0.5f);
-  wah.setType(juce::jlimit(0, 2, static_cast<int>(typeParam->load() + 0.5f)));
+  wah.setTypeMorph01(typeParam->load() * 0.01f);
 
   if (numSamples > dryBuffer.getNumSamples())
     dryBuffer.setSize(kMaxChannels, numSamples, false, false, true);
@@ -286,9 +356,9 @@ void PeakWahProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   float *right = numCh >= 2 ? buffer.getWritePointer(1) : nullptr;
   wah.process(left, right, numSamples);
 
-  // Publish the LFO state for the editor's scope.
-  lfoPhaseUi.store(static_cast<float>(wah.phase()), std::memory_order_relaxed);
-  lfoDepthUi.store(wah.depth01(), std::memory_order_relaxed);
+  // Publish the LFO state for the editor's response scope.
+  lfoModLUi.store(wah.modL(), std::memory_order_relaxed);
+  lfoModRUi.store(wah.modR(), std::memory_order_relaxed);
 
   wetMix.setTargetValue(engaged ? 1.0f : 0.0f);
   for (int i = 0; i < numSamples; ++i) {
@@ -306,54 +376,86 @@ void PeakWahProcessor::processBlock(juce::AudioBuffer<float> &buffer,
 juce::AudioProcessorEditor *PeakWahProcessor::createEditor() {
   ee::ui::PedalSpec spec;
   spec.name = "Peak Wah";
-  spec.version = "v" JucePlugin_VersionString;
-
-  spec.knobs = {
-      {kAmountID, "Amount"},
-      {.parameterID = kFreqID,
-       .caption = "Freq",
-       .liveValueText = [this] { return freqReadout(); }},
-      {kQID, "Q"},
-      {kMixID, "Mix"},
-  };
-  spec.knobsPerRow = 4;
-  spec.width = ee::ui::knobRowWidth(4);
-  spec.knobDiameter = 74;
 
   const juce::Colour lit{0xffff4f97};
 
-  spec.subKnobs = {
-      {.parameterID = kDecayID, .caption = "Decay"},
-      {.parameterID = kShapeID,
-       .caption = "Shape",
-       .buttonParameterID = kRandomID,
-       .buttonCaption = "Rnd",
-       .buttonLitColour = lit},
-      {.parameterID = kTimeID,
-       .caption = "Time",
-       .liveValueText = [this] { return timeReadout(); },
-       .buttonParameterID = kSyncID,
-       .buttonCaption = "Sync",
-       .buttonLitColour = lit,
-       .buttonOnClick = [this] { onSyncToggled(); }},
-      {.parameterID = kTypeID,
-       .caption = "Type",
-       .liveValueText = [this] { return typeReadout(); }},
+  // Two clusters of four, split by a rule: the filter itself on the left, what
+  // moves it on the right. Every cap is the same size - the modulation knobs
+  // are no longer the small ones - and the right-hand four show their reading
+  // (or their glyph) only while they are being turned.
+  const auto modKnob = [](const char *id, juce::String caption) {
+    ee::ui::KnobSpec k;
+    k.parameterID = id;
+    k.caption = std::move(caption);
+    k.captionUntilTouched = true;
+    return k;
   };
+
+  auto shape = modKnob(kShapeID, "Shape");
+  shape.valueIcon = [this](juce::Graphics &g, juce::Rectangle<float> r, juce::Colour c) {
+    drawLfoShapeIcon(g, r, c, shapeParam->load() * 0.01f);
+  };
+
+  auto time = modKnob(kTimeID, "Time");
+  time.liveValueText = [this] { return timeReadout(); };
+
+  auto type = modKnob(kTypeID, "Type");
+  type.valueIcon = [this](juce::Graphics &g, juce::Rectangle<float> r, juce::Colour c) {
+    drawFilterTypeIcon(g, r, c, typeParam->load() * 0.01f);
+  };
+
+  spec.knobs = {
+      {kMixID, "Mix"},
+      {.parameterID = kFreqID,
+       .caption = "Freq",
+       .liveValueText = [this] { return freqReadout(); }},
+      modKnob(kDecayID, "Decay"),
+      shape,
+      {kQID, "Q"},
+      {kRangeID, "Range"},
+      time,
+      type,
+  };
+  spec.knobsPerRow = 4;
+  spec.knobDividerAfterColumn = 2;
+  spec.knobBlockRise = 10;   // a little clear of the scope below
+  spec.displayBandRise = 14; // and the scope off the name row
+  spec.width = ee::ui::knobRowWidth(3);
+  spec.knobDiameter = 86;
+
+  // Sync hangs under the Time knob, on the second row of the right cluster.
+  spec.toggles = {{.parameterID = kSyncID,
+                   .caption = "Sync",
+                   .afterKnobIndex = 6,
+                   .litColour = lit,
+                   .centeredBelow = true,
+                   .onClick = [this] { onSyncToggled(); }}};
+
+  // The emblem and the name pair up at the right end of the bottom row, which
+  // hands the row the name had back to the knobs and leaves the left of that
+  // row for the Mono/Stereo switch - its labels in black, its first letter
+  // flush with the left edge of the scope above it.
+  spec.titleBesideLogo = true;
+  spec.titleRowAlignRight = true;
 
   spec.slideToggle = ee::ui::SlideToggleSpec{
       .parameterID = kStereoID, .labelOff = "Mono", .labelOn = "Stereo",
-      .accent = juce::Colour{0xffff4f97}};
+      .accent = juce::Colour{0xffe8e6df},
+      .labelColour = juce::Colours::black,
+      .labelFlushLeft = true};
   spec.slideToggleBottom = true;
 
-  spec.waveDisplay = ee::ui::WaveDisplaySpec{
-      .amountID = kAmountID,
-      .rateID = kTimeID,
-      .shapeID = kShapeID,
-      .modeID = kStereoID,
-      .height = 40,
-      .livePhase = [this] { return lfoPhaseUi.load(std::memory_order_relaxed); },
-      .liveDepth = [this] { return lfoDepthUi.load(std::memory_order_relaxed); }};
+  // The resting curve in the face's own deep wine - the colour of the value
+  // arcs around the caps - and the two swept ones in Peak Delay's Sync amber.
+  spec.filterScope = ee::ui::FilterScopeSpec{
+      .baseFreqHz = [this] { return freqHzFor(freqParam->load()); },
+      .resonance01 = [this] { return qParam->load() * 0.01f; },
+      .modL = [this] { return lfoModLUi.load(std::memory_order_relaxed); },
+      .modR = [this] { return lfoModRUi.load(std::memory_order_relaxed); },
+      .baseColour = juce::Colour{0xff8a1f47},
+      .sweepColour = juce::Colour{0xffffaa33},
+      .sweepRatioMax = ee::dsp::autowah::kSweepRatioMax,
+      .height = 52};
 
   return new ee::ui::PedalEditor(*this, apvts, spec, ee::ui::PedalTheme::pink());
 }

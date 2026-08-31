@@ -56,16 +56,36 @@ namespace
     /** Draws the knob artwork rotated to the value, scaled so the body's outer
         edge lands at `R`. The baked-in pointer turns with it. */
     void drawImageKnob (juce::Graphics& g, juce::Point<float> centre, float R,
-                        float angle, const juce::Image& img)
+                        float angle, const juce::Image& img, juce::Colour backing)
     {
         const float imgKnobR = kKnobImageRadiusFrac * static_cast<float> (img.getWidth()) * 0.5f;
         const float scale    = R / imgKnobR;
+
+        // An opaque disc behind the artwork. The cap is a heavy minification of
+        // an 848 px source - about 0.13 at the full size and half that for a
+        // small one - and the sampler carries some of its transparent surround
+        // inward at that reduction, which let the face colour through the body
+        // and tinted a small cap against a large one. Backing it means whatever
+        // the sampler does at the rim, the body is always the same colour.
+        // Slightly inside R so it cannot peek out past the artwork's own edge.
+        g.setColour (backing);
+        g.fillEllipse (juce::Rectangle<float> (R * 1.94f, R * 1.94f).withCentre (centre));
 
         const auto t = juce::AffineTransform::translation (img.getWidth() * -0.5f,
                                                            img.getHeight() * -0.5f)
                            .scaled (scale)
                            .rotated (angle)
                            .translated (centre.x, centre.y);
+
+        // The artwork is 848 px square and every cap is a heavy downscale of it
+        // - about 0.13 at the full size, half that for a small one. The default
+        // sampler takes too few source pixels for a reduction that big, which
+        // averages the black grooves away into mid-grey and leaves a small cap
+        // looking washed out and tinted next to a large one. Filtering properly
+        // costs nothing here (the caps only redraw on a value change) and keeps
+        // every knob the same colour whatever its size or angle.
+        juce::Graphics::ScopedSaveState imageState (g);
+        g.setImageResamplingQuality (juce::Graphics::highResamplingQuality);
         g.drawImageTransformed (img, t, false);
 
         // Centre plate - laid over the spinning body and turned only a fraction
@@ -467,7 +487,7 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
     if (! compactKnob)
     {
         if (const auto img = defaultKnobImage(); img.isValid())
-            drawImageKnob (g, centre, arcRadius * kKnobSizeFrac, angle, img);
+            drawImageKnob (g, centre, arcRadius * kKnobSizeFrac, angle, img, theme.knobBody);
         else
             drawVectorKnob (g, centre, arcRadius * kKnobSizeFrac, angle, theme, slider.isEnabled());
         return;

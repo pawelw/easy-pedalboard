@@ -93,6 +93,19 @@ struct KnobSpec
         switch (a rate that reads note values or milliseconds) can be kept in
         step by re-poking it when that switch moves. */
     std::function<juce::String()> liveValueText;
+
+    /** When set, this paints the value row instead of any text - a little glyph
+        that stands in for a discrete setting (a filter-curve icon for a
+        low/band/high switch, an LFO-waveform icon for a shape morph). Given the
+        value-row rect and the colour the text would have used; re-called on
+        every value change. */
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> valueIcon;
+
+    /** Leave the value row empty until the knob is being turned: the caption is
+        all that shows at rest, and the reading (or `valueIcon`) appears above it
+        only while it is dragged. For a control whose number only matters while
+        it is being set. */
+    bool captionUntilTouched = false;
 };
 
 /** A vertical fader plus the value readout and caption underneath it.
@@ -147,6 +160,15 @@ struct SlideToggleSpec
     /** Colour of the knob and the active label. Unset falls back to the theme
         title colour. */
     std::optional<juce::Colour> accent;
+
+    /** Colour of the two labels. Unset follows `accent`, so the labels match
+        the switch; set it for a face that wants them read as plain text. */
+    std::optional<juce::Colour> labelColour;
+
+    /** Pull the switch left so the resting label's text starts at the component
+        edge, rather than leaving the label box's own slack in front of it. For
+        a switch that has to line up with a panel below it. */
+    bool labelFlushLeft = false;
 };
 
 /** An LFO waveform preview, drawn in a band between the knob row and the pedal
@@ -165,6 +187,27 @@ struct WaveDisplaySpec
         keeps the static, knob-tracking preview. */
     std::function<float()> livePhase;   // [0, 1) LFO phase
     std::function<float()> liveDepth;   // 0..1 Amount * gate
+};
+
+/** A live filter-response scope, drawn in a band between the knob rows and the
+    pedal name. A static curve at the base frequency plus two moving curves whose
+    peak slides with a modulator; all resonant bumps, height set by resonance. */
+struct FilterScopeSpec
+{
+    std::function<float()> baseFreqHz;    // static curve centre, in Hz
+    std::function<float()> resonance01;   // 0..1 -> peak height and width
+    std::function<float()> modL;          // live signed exponent for the left curve
+    std::function<float()> modR;          // ... and the right
+
+    /** Curve colours. Unset keeps the built-in blue static curve and its
+        orange / amber moving pair. */
+    std::optional<juce::Colour> baseColour;    // the static curve at Freq
+    std::optional<juce::Colour> sweepColour;   // both moving curves
+
+    /** peakHz = baseFreqHz * sweepRatioMax^mod. */
+    float sweepRatioMax = 5.0f;
+
+    int height = 64;
 };
 
 /** A small latching button tucked into the gap between two knobs of a row. */
@@ -188,6 +231,11 @@ struct ToggleSpec
         gap after it. */
     bool centeredAbove = false;
 
+    /** Place the button centred below `afterKnobIndex`'s label block - under a
+        knob rather than beside it, the way a Sync switch hangs off a Time
+        knob. */
+    bool centeredBelow = false;
+
     /** Called on a user click of the button (not on automation or host-driven
         state changes), after the toggle state and its parameter have updated.
         Lets a pedal react to a deliberate flip without a parameter listener that
@@ -207,6 +255,13 @@ struct SubKnobSpec
         every change and whenever a sibling button is clicked (so a Time knob can
         flip between milliseconds and note values when Sync moves). */
     std::function<juce::String()> liveValueText;
+
+    /** Paints a glyph in place of the value text - see `KnobSpec::valueIcon`. */
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> valueIcon;
+
+    /** Show the value (or the glyph) only while the knob is being turned - see
+        `KnobSpec::captionUntilTouched`. */
+    bool captionUntilTouched = false;
 
     /** Empty for a plain knob. Otherwise a latching button sits under the knob,
         bound to this bool parameter. */
@@ -256,14 +311,73 @@ struct PedalSpec
     std::optional<SlideToggleSpec> slideToggle;
     bool slideToggleBottom = false;
 
+    /** Centre the sliding switch in its strip rather than pinning it left - for
+        a face where it is the only thing in that strip. */
+    bool slideToggleCentred = false;
+
+    /** Lift the sliding switch this many pixels out of its strip, towards the
+        top edge. For a face that wants the strip tighter than the shared one. */
+    int slideToggleRise = 0;
+
+    /** Vertical gap between knob rows. 0 keeps the shared column gap; a larger
+        value spreads the rows apart, which (because the block stays centred in
+        its area) lifts the top row and drops the bottom one by half of the
+        extra each. For a face with something sitting between the rows. */
+    int knobRowGap = 0;
+
+    /** Lift the whole knob block this many pixels above where centring would put
+        it, for a face that wants its rows closer to the strip above them and
+        further off the pedal name below. */
+    int knobBlockRise = 0;
+
+    /** Artwork centred in the gap between the knob block and the pedal name -
+        a small emblem for the effect itself. Scaled to `titleImageHeight`,
+        keeping its aspect. Leave the image unset for no emblem. */
+    juce::Image titleImage;
+    int titleImageHeight = 36;
+
+    /** Recolours the emblem, keeping its shape - the same treatment the brand
+        logo gets. Leave unset to draw the artwork as it is. Dark lineart on a
+        dark face needs this to read at emblem size. */
+    std::optional<juce::Colour> titleImageTint;
+
+    /** Push each knob this many pixels away from the middle of its row, within
+        its own column. The middle column of an odd row stays put. For a face
+        whose columns are wider than its caps and wants them out at the edges,
+        clear of whatever sits between them. */
+    int knobColumnSpread = 0;
+
+    /** Lift the display band (and everything above it) this many pixels off the
+        bottom of the control area, for a face that wants more air between the
+        band and the pedal name below it. */
+    int displayBandRise = 0;
+
     /** LFO preview band between the knob row and the pedal name. */
     std::optional<WaveDisplaySpec> waveDisplay;
+
+    /** Live filter-response scope band, in the same slot as `waveDisplay`. */
+    std::optional<FilterScopeSpec> filterScope;
 
     /** Main-knob cap diameter override. 0 keeps the shared `kKnobDiameter`; a
         face that has to fit more rows can ask for smaller caps. */
     int knobDiameter = 0;
 
     int knobsPerRow = 3;
+
+    /** Draw a vertical rule down the knob grid, centred in the gap after this
+        many columns. 0 = no rule. For a face whose knobs read as two clusters -
+        the filter on one side of it, its modulation on the other. */
+    int knobDividerAfterColumn = 0;
+
+    /** Put the pedal name on the logo row, to the right of the emblem, instead
+        of on a row of its own above it. Hands the whole name row back to the
+        controls. */
+    bool titleBesideLogo = false;
+
+    /** Push that emblem-and-name pair to the right end of its row, leaving the
+        left of the row for whatever else lives down there - a Mono/Stereo
+        switch. Only meaningful with `titleBesideLogo`. */
+    bool titleRowAlignRight = false;
 
     /** Height is shared across pedals so they line up side by side on a rack;
         only the width follows the number of knobs in a row - use

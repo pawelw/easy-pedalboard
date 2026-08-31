@@ -1680,7 +1680,7 @@ namespace autowah_test
         float inAmp = 0.35f;
         double phase = 0.0;
 
-        void prep (float period, float amount, int type, bool random,
+        void prep (float period, float range, int type,
                    bool stereoOn, float decay01, float shape01 = 0.5f)
         {
             wah.prepare (kSampleRate);
@@ -1689,9 +1689,8 @@ namespace autowah_test
             wah.setFreq01 (0.35f);
             wah.setQ01 (0.55f);
             wah.setMix01 (1.0f);
-            wah.setAmount01 (amount);
+            wah.setRange01 (range);
             wah.setType (type);
-            wah.setRandom (random);
             wah.setStereo (stereoOn);
             wah.setDecay01 (decay01);
             wah.setShape01 (shape01);
@@ -1755,7 +1754,7 @@ void testAutoWahSilence()
     wah.prepare (kSampleRate);
     wah.reset();
     wah.setPeriodSeconds (0.2f);
-    wah.setAmount01 (1.0f);
+    wah.setRange01 (1.0f);
     wah.setMix01 (1.0f);
     wah.setDecay01 (1.0f);   // LFO latched on
     wah.setQ01 (0.7f);
@@ -1787,7 +1786,7 @@ void testAutoWahMixZeroIsDry()
     wah.prepare (kSampleRate);
     wah.reset();
     wah.setPeriodSeconds (0.15f);
-    wah.setAmount01 (1.0f);
+    wah.setRange01 (1.0f);
     wah.setDecay01 (1.0f);
     wah.setMix01 (0.0f);
     wah.setQ01 (0.6f);
@@ -1828,12 +1827,11 @@ void testAutoWahStability()
     wah.prepare (kSampleRate);
     wah.reset();
     wah.setPeriodSeconds (0.03f);   // fastest LFO
-    wah.setAmount01 (1.0f);
+    wah.setRange01 (1.0f);
     wah.setQ01 (1.0f);
     wah.setMix01 (1.0f);
     wah.setDecay01 (1.0f);
     wah.setStereo (true);
-    wah.setRandom (true);
 
     std::mt19937 rng (4471);
     std::uniform_real_distribution<float> dist (-1.5f, 1.5f);
@@ -1866,11 +1864,11 @@ void testAutoWahLfoModulates()
     std::printf ("Auto-wah: the LFO sweeps the filter, and Amount 0 leaves it still\n");
 
     autowah_test::Rig moving;
-    moving.prep (0.25f, 0.85f, /*BP*/ 1, false, false, /*Decay latched*/ 1.0f, 0.5f);
+    moving.prep (0.25f, 0.85f, /*BP*/ 1, false, /*Decay latched*/ 1.0f, 0.5f);
     const auto mv = autowah_test::hopRatios (moving, 200, 60, 8.0);
 
     autowah_test::Rig still;
-    still.prep (0.25f, 0.0f, 1, false, false, 1.0f, 0.5f);
+    still.prep (0.25f, 0.0f, 1, false, 1.0f, 0.5f);
     const auto st = autowah_test::hopRatios (still, 200, 60, 8.0);
 
     const double movSpread = autowah_test::spread (mv);
@@ -1889,7 +1887,7 @@ void testAutoWahStereoOpposes()
     auto lrCorr = [] (bool stereoOn)
     {
         autowah_test::Rig rig;
-        rig.prep (0.3f, 0.85f, 1, false, stereoOn, 1.0f, 0.5f);
+        rig.prep (0.3f, 0.85f, 1, stereoOn, 1.0f, 0.5f);
 
         const int hop = (int) (kSampleRate * 0.008);
         std::vector<float> l ((size_t) hop), r ((size_t) hop);
@@ -1939,7 +1937,7 @@ void testAutoWahFilterType()
         wah.prepare (kSampleRate);
         wah.reset();
         wah.setPeriodSeconds (1.0f);
-        wah.setAmount01 (0.0f);      // hold the cutoff at Freq
+        wah.setRange01 (0.0f);      // hold the cutoff at Freq
         wah.setFreq01 (0.4f);        // ~500 Hz, between the two tones
         wah.setQ01 (0.4f);
         wah.setMix01 (1.0f);
@@ -1999,7 +1997,7 @@ void testAutoWahDecayGate()
         wah.prepare (kSampleRate);
         wah.reset();
         wah.setPeriodSeconds (0.12f);
-        wah.setAmount01 (0.9f);
+        wah.setRange01 (0.9f);
         wah.setFreq01 (0.35f);
         wah.setQ01 (0.55f);
         wah.setMix01 (1.0f);
@@ -2041,39 +2039,121 @@ void testAutoWahDecayGate()
     check (latched > shortDecay * 3.0, "a short Decay flattens the filter once the note stops");
 }
 
-void testAutoWahRandomAperiodic()
+void testAutoWahDecayZeroIsOneShot()
 {
-    std::printf ("Auto-wah: Random makes the sweep aperiodic\n");
+    std::printf ("Auto-wah: Decay 0 gives a single one-way sweep per pluck\n");
 
-    // Compare consecutive LFO-period windows. Shape mode repeats; Random does not.
-    auto periodMatch = [] (bool random)
+    ee::dsp::AutoWah wah;
+    wah.prepare (kSampleRate);
+    wah.reset();
+    wah.setPeriodSeconds (0.28f);   // half of this - one sweep - per pluck
+    wah.setRange01 (0.9f);
+    wah.setFreq01 (0.35f);
+    wah.setQ01 (0.55f);
+    wah.setMix01 (1.0f);
+    wah.setType (1);
+    wah.setDecay01 (0.0f);          // one-shot
+
+    // A quiet continuous 1 kHz probe (below the gate) plus two loud bursts on
+    // top. The probe's 1 kHz band should ripple right after each burst - while
+    // the half cycle plays - then go flat until the next.
+    const int total = (int) (kSampleRate * 1.3);
+    const int b1 = (int) (kSampleRate * 0.15);
+    const int b2 = (int) (kSampleRate * 0.75);
+    const int burst = (int) (kSampleRate * 0.05);
+    const double w = 2.0 * juce::MathConstants<double>::pi * 1000.0 / kSampleRate;
+
+    std::vector<float> out ((size_t) total);
+    for (int n = 0; n < total; ++n)
     {
-        autowah_test::Rig rig;
-        rig.inAmp = 0.004f;   // below the dynamics follower, so the rate stays nominal
-        rig.prep (0.20f, 0.9f, 1, random, false, 1.0f, 0.5f);
-        // 20 hops per 200 ms period at 10 ms hops.
-        const auto r = autowah_test::hopRatios (rig, 200, 120, 10.0);
+        const double probe = 0.004 * std::sin (w * n);
+        const bool on = (n >= b1 && n < b1 + burst) || (n >= b2 && n < b2 + burst);
+        out[(size_t) n] = (float) (probe + (on ? 0.4 * std::sin (w * n) : 0.0));
+    }
+    for (int off = 0; off < total; off += kBlock)
+        wah.process (out.data() + off, nullptr, juce::jmin (kBlock, total - off));
 
-        const int per = 20;
-        double num = 0.0, da = 0.0, db = 0.0, ma = 0.0, mb = 0.0;
-        int n = 0;
-        for (int i = 0; i + per < (int) r.size(); ++i) { ma += r[(size_t) i]; mb += r[(size_t) (i + per)]; ++n; }
-        ma /= n; mb /= n;
-        for (int i = 0; i + per < (int) r.size(); ++i)
+    const int hop = (int) (kSampleRate * 0.02);
+    auto ripple = [&] (double s0, double s1)
+    {
+        double lo = 1.0e30, hi = 0.0;
+        for (int a = (int) (s0 * kSampleRate); a + hop <= (int) (s1 * kSampleRate); a += hop)
         {
-            const double a = r[(size_t) i] - ma, b = r[(size_t) (i + per)] - mb;
-            num += a * b; da += a * a; db += b * b;
+            std::vector<float> so (out.begin() + a, out.begin() + a + hop);
+            const double p = goertzelPower (so, 1000.0, kSampleRate);
+            lo = juce::jmin (lo, p);
+            hi = juce::jmax (hi, p);
         }
-        return num / std::sqrt (juce::jmax (da * db, 1.0e-30));
+        return hi / juce::jmax (lo, 1.0e-30);
     };
 
-    const double shaped = periodMatch (false);
-    const double rnd    = periodMatch (true);
-    std::printf ("  period-to-period correlation: Shape = %.2f, Random = %.2f\n", shaped, rnd);
+    const double sweep1 = ripple (0.21, 0.34);   // just after pluck 1
+    const double rest   = ripple (0.45, 0.72);   // long gap - should be flat
+    const double sweep2 = ripple (0.81, 0.94);   // just after pluck 2
 
-    check (std::isfinite (shaped) && std::isfinite (rnd), "auto-wah period correlation is finite");
-    check (shaped > 0.8, "a shaped LFO repeats every period");
-    check (rnd < 0.6, "Random does not repeat");
+    std::printf ("  1 kHz band ripple: sweep 1 = %.2f, rest = %.2f, sweep 2 = %.2f\n",
+                sweep1, rest, sweep2);
+
+    check (std::isfinite (sweep1) && std::isfinite (rest) && std::isfinite (sweep2),
+           "auto-wah one-shot ripple is finite");
+    check (sweep1 > rest * 3.0, "the pluck triggers one sweep, then it flattens");
+    check (sweep2 > rest * 3.0, "the next pluck triggers another single sweep");
+}
+
+/** The one-shot must stop at the bottom of the wave: after a pluck the sweep
+    runs down and stays there until the gate lets go, rather than turning round
+    and climbing back up through the same frequencies. */
+void testAutoWahOneShotIsOneWay()
+{
+    std::printf ("Auto-wah: Decay 0 sweeps one way, with no return leg\n");
+
+    ee::dsp::AutoWah wah;
+    wah.prepare (kSampleRate);
+    wah.reset();
+    wah.setPeriodSeconds (0.30f);
+    wah.setRange01 (0.9f);
+    wah.setFreq01 (0.35f);
+    wah.setQ01 (0.55f);
+    wah.setMix01 (1.0f);
+    wah.setShape01 (0.5f);          // triangle: +1 at the top, -1 half a cycle on
+    wah.setDecay01 (0.0f);
+
+    // One pluck, then silence. Track the sweep exponent the pedal publishes.
+    const int total = (int) (kSampleRate * 0.6);
+    const int burst = (int) (kSampleRate * 0.03);
+    const double w = 2.0 * juce::MathConstants<double>::pi * 220.0 / kSampleRate;
+
+    std::vector<float> buf ((size_t) total);
+    for (int n = 0; n < total; ++n)
+        buf[(size_t) n] = n < burst ? (float) (0.5 * std::sin (w * n)) : 0.0f;
+
+    float peakMod = -1.0e9f, troughMod = 1.0e9f, afterTrough = -1.0e9f;
+    bool haveTrough = false;
+
+    for (int off = 0; off < total; off += kBlock)
+    {
+        const int n = juce::jmin (kBlock, total - off);
+        wah.process (buf.data() + off, nullptr, n);
+
+        const float mod = wah.modL();
+        peakMod = juce::jmax (peakMod, mod);
+
+        if (mod < troughMod && ! haveTrough)
+            troughMod = mod;
+        else if (troughMod < -0.05f)
+            haveTrough = true;      // past the bottom of the sweep
+
+        if (haveTrough)
+            afterTrough = juce::jmax (afterTrough, mod);
+    }
+
+    std::printf ("  sweep exponent: peak = %.3f, trough = %.3f, after = %.3f\n",
+                peakMod, troughMod, afterTrough);
+
+    check (peakMod > 0.2f, "the pluck opens the sweep");
+    check (troughMod < -0.2f, "and it runs down to the bottom of the wave");
+    check (afterTrough < 0.05f,
+           "then the gate lets go - it never climbs back up");
 }
 
 void testAutoWahRateFollowsLevel()
@@ -2087,7 +2167,7 @@ void testAutoWahRateFollowsLevel()
         autowah_test::Rig rig;
         rig.inAmp = amp;
         rig.probeHz = 300.0;
-        rig.prep (0.25f, 0.9f, 1, false, false, /*Decay latched*/ 1.0f, 0.5f);
+        rig.prep (0.25f, 0.9f, 1, false, /*Decay latched*/ 1.0f, 0.5f);
 
         std::vector<float> buf (kBlock);
         for (int b = 0; b < 120; ++b) { rig.fill (buf.data(), nullptr, kBlock); rig.wah.process (buf.data(), nullptr, kBlock); }
@@ -2122,7 +2202,7 @@ void testAutoWahRetrigger()
     wah.prepare (kSampleRate);
     wah.reset();
     wah.setPeriodSeconds (0.30f);   // slow enough that a reset is unmistakable
-    wah.setAmount01 (0.9f);
+    wah.setRange01 (0.9f);
     wah.setFreq01 (0.35f);
     wah.setQ01 (0.55f);
     wah.setMix01 (1.0f);
@@ -2172,7 +2252,7 @@ void testAutoWahHoldsLevel()
     wah.prepare (kSampleRate);
     wah.reset();
     wah.setPeriodSeconds (0.3f);
-    wah.setAmount01 (0.6f);
+    wah.setRange01 (0.6f);
     wah.setFreq01 (0.35f);
     wah.setQ01 (0.4f);
     wah.setMix01 (1.0f);
@@ -2205,6 +2285,65 @@ void testAutoWahHoldsLevel()
     check (std::isfinite (ratio), "auto-wah level ratio is finite");
     check (ratio > 0.55, "the wah does not gut the level");
     check (ratio < 2.5, "the make-up does not blow the level up");
+}
+
+void testAutoWahMixRampIsSmooth()
+{
+    std::printf ("Auto-wah: a Mix jump ramps rather than steps (no tick)\n");
+
+    // Worst case: a resonant band-pass whose wet output is out of phase with the
+    // dry. An un-smoothed Mix jump from 0 to 1 would step the output by roughly
+    // |wet - dry| in a single sample; the ramp must keep every step near the
+    // wet signal's own steady sample-to-sample slope.
+    auto run = [] (bool jumpMidway)
+    {
+        ee::dsp::AutoWah wah;
+        wah.prepare (kSampleRate);
+        wah.reset();
+        wah.setPeriodSeconds (0.25f);
+        wah.setFreq01 (0.4f);
+        wah.setQ01 (0.5f);
+        wah.setRange01 (0.9f);
+        wah.setType (1);
+        wah.setDecay01 (1.0f);
+        wah.setMix01 (jumpMidway ? 0.0f : 1.0f);
+
+        const double w = 2.0 * juce::MathConstants<double>::pi * 520.0 / kSampleRate;
+        double phase = 0.0;
+        std::vector<float> buf (kBlock);
+
+        for (int b = 0; b < 200; ++b)
+        {
+            for (int i = 0; i < kBlock; ++i) { buf[i] = 0.5f * (float) std::sin (phase); phase += w; }
+            wah.process (buf.data(), nullptr, kBlock);
+        }
+
+        if (jumpMidway)
+            wah.setMix01 (1.0f);
+
+        float maxStep = 0.0f;
+        float prev = 0.0f;
+        for (int b = 0; b < 24; ++b)   // ~130 ms - covers the 15 ms ramp
+        {
+            for (int i = 0; i < kBlock; ++i) { buf[i] = 0.5f * (float) std::sin (phase); phase += w; }
+            wah.process (buf.data(), nullptr, kBlock);
+            for (int i = 0; i < kBlock; ++i)
+            {
+                if (b > 0 || i > 0)
+                    maxStep = juce::jmax (maxStep, std::abs (buf[i] - prev));
+                prev = buf[i];
+            }
+        }
+        return maxStep;
+    };
+
+    const float steady = run (false);
+    const float acrossJump = run (true);
+    std::printf ("  largest sample step: steady wet = %.4f, across the Mix jump = %.4f\n",
+                steady, acrossJump);
+
+    check (std::isfinite (acrossJump), "auto-wah mix-jump step is finite");
+    check (acrossJump < steady * 1.5f + 0.02f, "the Mix jump does not step the output");
 }
 } // namespace
 
@@ -2286,13 +2425,16 @@ int main()
     std::printf ("\n");
     testAutoWahDecayGate();
     std::printf ("\n");
-    testAutoWahRandomAperiodic();
+    testAutoWahDecayZeroIsOneShot();
+    testAutoWahOneShotIsOneWay();
     std::printf ("\n");
     testAutoWahRateFollowsLevel();
     std::printf ("\n");
     testAutoWahRetrigger();
     std::printf ("\n");
     testAutoWahHoldsLevel();
+    std::printf ("\n");
+    testAutoWahMixRampIsSmooth();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

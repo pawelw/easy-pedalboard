@@ -45,10 +45,10 @@ public:
     /** Text under the Type knob - "Low" / "Band" / "High". */
     juce::String typeReadout() const;
 
-    /** Live LFO phase [0, 1) and effective depth (Amount * gate), for the scope
-        in the editor. Written from the audio thread, read on the message thread. */
-    std::atomic<float> lfoPhaseUi { 0.0f };
-    std::atomic<float> lfoDepthUi { 0.0f };
+    /** Live per-channel cutoff-sweep exponent (Amount * gate * lfo), for the
+        response scope in the editor. Written from the audio thread. */
+    std::atomic<float> lfoModLUi { 0.0f };
+    std::atomic<float> lfoModRUi { 0.0f };
 
     /** Called by the editor when the Sync button is clicked: parks the Time knob
         where the mode being left had it and recalls the new mode's spot. */
@@ -59,7 +59,7 @@ private:
 
     static constexpr int kMaxChannels = 2;
 
-    std::atomic<float>* amountParam = nullptr;
+    std::atomic<float>* rangeParam = nullptr;
     std::atomic<float>* freqParam = nullptr;
     std::atomic<float>* qParam = nullptr;
     std::atomic<float>* mixParam = nullptr;
@@ -68,7 +68,6 @@ private:
     std::atomic<float>* shapeParam = nullptr;
     std::atomic<float>* timeParam = nullptr;
     std::atomic<float>* typeParam = nullptr;
-    std::atomic<float>* randomParam = nullptr;
     std::atomic<float>* syncParam = nullptr;
     std::atomic<float>* onParam = nullptr;
 
