@@ -17,6 +17,17 @@ if(APPLE)
     endif()
 endif()
 
+# Shared code compiles into every plugin target (see shared/CMakeLists.txt), so the
+# same translation units are built a dozen-odd times. A compiler cache turns the
+# repeats into hits and is the single biggest win on an incremental build. Used
+# only if it is installed - `brew install ccache`.
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(JUCE
