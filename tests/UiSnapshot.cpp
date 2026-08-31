@@ -242,7 +242,13 @@ ee::ui::PedalSpec makeEqSpec()
         { .parameterID = "hicut", .compact = true, .cutSide = ee::ui::CutSide::high,
           .invertedArc = true },
     };
-    spec.width = 340;
+    spec.groupTrims = {
+        { .caption = "LOW", .sliderIndices = { 1, 2 } },
+        { .caption = "MID", .sliderIndices = { 3, 4, 5 } },
+        { .caption = "HI",  .sliderIndices = { 6, 7 } },
+    };
+    spec.width = 442;
+    spec.compactKnobDiameter = 62;
     return spec;
 }
 
@@ -269,7 +275,7 @@ public:
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "shape", 1 }, "Shape", percent, 50.0f, percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "bias", 1 }, "Bias", percent, 0.0f, percentAttributes));
+            juce::ParameterID { "bias", 1 }, "Tube", percent, 0.0f, percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterBool> (
             juce::ParameterID { "mode", 1 }, "Panning", false));
@@ -288,7 +294,7 @@ ee::ui::PedalSpec makeTremPanSpec()
     spec.name = "Easy Trem & Pan";
     spec.version = "v0.10.0";
     spec.knobs = { { "amount", "Amount" }, { "rate", "Rate" }, { "shape", "Shape" },
-                   { "bias", "Bias" } };
+                   { "bias", "Tube" } };
 
     const juce::Colour cream { 0xfffee1b8 };
     spec.slideToggle = ee::ui::SlideToggleSpec {

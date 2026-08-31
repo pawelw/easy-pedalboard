@@ -102,6 +102,19 @@ struct SliderSpec
     float axisHz = 0.0f;
 };
 
+/** A small knob that nudges a group of faders together. It carries no parameter
+    of its own: turning it applies the change in its own position as a relative
+    offset (in the faders' own units) to every listed fader, clamped to each
+    fader's range. Sits in the strip above the fader grid, to the left, mirroring
+    the corner cut knobs on the right. Only meaningful on a fader pedal. */
+struct GroupTrimSpec
+{
+    juce::String caption;
+
+    /** Indices into `sliders` of the faders this knob moves. */
+    std::vector<int> sliderIndices;
+};
+
 /** A big sliding two-way switch in a strip above the knob rows: a label on each
     side of a dark track with a light knob that sits left (off) or right (on).
     Latching, bound to a bool parameter. Pinned to the top-left. */
@@ -172,6 +185,14 @@ struct PedalSpec
         that belongs "between" them. Laid out on top of the row grid, in the
         gap the caps leave in the middle. */
     std::optional<KnobSpec> centreKnob;
+
+    /** Group-trim knobs pinned to the top-left of the fader strip, opposite the
+        corner cut knobs. A divider is drawn between the two clusters. */
+    std::vector<GroupTrimSpec> groupTrims;
+
+    /** Cap diameter for the compact knobs - the corner cut knobs and the group
+        trims. 0 keeps the shared default; a wider face can carry larger caps. */
+    int compactKnobDiameter = 0;
 
     std::vector<SliderSpec> sliders;
     std::vector<ToggleSpec> toggles;

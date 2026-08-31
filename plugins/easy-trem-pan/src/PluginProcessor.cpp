@@ -130,8 +130,9 @@ EasyTremPanProcessor::createParameterLayout() {
 
   // 0 % is the clean opto tremolo; turning it up crossfades in the bias-tube
   // stage. Defaults off so the pedal still opens sounding like it always did.
+  // Labelled "Tube" on the face; the parameter ID stays "bias" for the DSP.
   layout.add(std::make_unique<juce::AudioParameterFloat>(
-      juce::ParameterID{kBiasID, 1}, "Bias", percent, 0.0f, percentAttributes));
+      juce::ParameterID{kBiasID, 1}, "Tube", percent, 0.0f, percentAttributes));
 
   layout.add(std::make_unique<juce::AudioParameterBool>(
       juce::ParameterID{kModeID, 1}, "Panning", false));
@@ -300,11 +301,16 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
   wasPlaying = isPlaying;
 
   // Self-heal if a bad host value ever slipped a non-finite into the state -
-  // otherwise a single NaN here would stick and roar.
+  // otherwise a single NaN here would stick and roar. Every running state
+  // variable that feeds the next block has to be covered: the bias-tube DC
+  // blocker latches just as hard as the LFO phase does.
   if (!std::isfinite(lfoPhase))
     lfoPhase = 0.0;
   if (!std::isfinite(modZ1))
     modZ1 = 0.0f;
+  for (auto &s : biasDcState)
+    if (!std::isfinite(s))
+      s = 0.0f;
 
   depth.setTargetValue(amount01);
   // Only the tremolo law ducks; the panning branch is already equal-power, so
@@ -415,6 +421,12 @@ void EasyTremPanProcessor::processBlock(juce::AudioBuffer<float> &buffer,
     for (int ch = 0; ch < numCh; ++ch) {
       float *out = buffer.getWritePointer(ch, i);
       *out = *out * wet + dryBuffer.getSample(ch, i) * dry;
+
+      // Never hand a non-finite downstream: a feedback effect after this one
+      // (a reverb) would latch it into its tail and roar. The internal state
+      // self-heals above; this covers the output sample the bad block produced.
+      if (!std::isfinite(*out))
+        *out = 0.0f;
     }
   }
 }
@@ -430,7 +442,7 @@ juce::AudioProcessorEditor *EasyTremPanProcessor::createEditor() {
        .caption = "Rate",
        .liveValueText = [this] { return rateReadout(); }},
       {kShapeID, "Shape"},
-      {kBiasID, "Bias"},
+      {kBiasID, "Tube"},
   };
 
   const juce::Colour cream{0xfffee1b8};

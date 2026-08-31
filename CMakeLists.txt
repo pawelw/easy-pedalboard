@@ -41,6 +41,23 @@ FetchContent_MakeAvailable(DaisySP)
 # but pin it explicitly so a compiler default can't change it underneath us.
 set_target_properties(DaisySP PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 
+# chowdsp_wdf is the header-only Wave Digital Filter library behind Easy
+# Overdrive's diode-clipper stage. It is pure headers, so we only fetch the
+# sources and wrap them in our own INTERFACE target - its bundled CMake declares
+# `cmake_minimum_required(VERSION 3.1)`, which current CMake rejects, and it is
+# not needed for a header-only include. SOURCE_SUBDIR points at a directory with
+# no CMakeLists.txt so FetchContent skips add_subdirectory entirely.
+FetchContent_Declare(chowdsp_wdf
+    GIT_REPOSITORY https://github.com/Chowdhury-DSP/chowdsp_wdf.git
+    GIT_TAG v1.0.0
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
+    SOURCE_SUBDIR include)
+FetchContent_MakeAvailable(chowdsp_wdf)
+
+add_library(chowdsp_wdf INTERFACE)
+target_include_directories(chowdsp_wdf INTERFACE ${chowdsp_wdf_SOURCE_DIR}/include)
+
 # Fonts are compiled in rather than installed, so the pedal looks the same on a
 # machine that has never seen them.
 juce_add_binary_data(ee_assets SOURCES

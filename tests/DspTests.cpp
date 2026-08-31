@@ -1017,6 +1017,67 @@ void testOverdriveToneTilt()
     check (std::isfinite (dark) && std::isfinite (bright), "overdrive tone ratio is finite");
     check (bright > dark * 1.5f, "Tone up makes the pedal clearly brighter");
 }
+
+/** Goertzel power (magnitude squared, unnormalised) at one frequency. */
+double goertzelPower (const std::vector<float>& x, double freq, double fs)
+{
+    const double w = 2.0 * juce::MathConstants<double>::pi * freq / fs;
+    const double coeff = 2.0 * std::cos (w);
+    double s1 = 0.0, s2 = 0.0;
+    for (float v : x)
+    {
+        const double s0 = (double) v + coeff * s1 - s2;
+        s2 = s1;
+        s1 = s0;
+    }
+    return s1 * s1 + s2 * s2 - coeff * s1 * s2;
+}
+
+void testOverdriveAntiAliasing()
+{
+    std::printf ("Overdrive: the oversampler keeps clipping aliases out of the band\n");
+
+    // A 7 kHz tone hammered by the clipper would, without oversampling, fold
+    // strong difference tones down to 1 kHz / 6 kHz / 13 kHz. With the 2x
+    // oversampled clip stage those should stay far below the harmonics.
+    ee::dsp::Overdrive od;
+    od.prepare (kSampleRate);
+    od.reset();
+    od.setDrive01 (0.9f);
+    od.setTone01 (0.5f);
+
+    const double f0 = 7000.0;
+    const double w = 2.0 * juce::MathConstants<double>::pi * f0 / kSampleRate;
+
+    std::vector<float> buf (kBlock);
+    double phase = 0.0;
+    for (int b = 0; b < 40; ++b)   // settle the filters
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = 0.3f * (float) std::sin (phase); phase += w; }
+        od.process (buf.data(), nullptr, kBlock);
+    }
+
+    std::vector<float> out;
+    out.reserve (1 << 16);
+    while ((int) out.size() < (1 << 16))
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = 0.3f * (float) std::sin (phase); phase += w; }
+        od.process (buf.data(), nullptr, kBlock);
+        for (int i = 0; i < kBlock; ++i) out.push_back (buf[i]);
+    }
+
+    const double fund = goertzelPower (out, 7000.0, kSampleRate);
+    const double aliasLow  = goertzelPower (out, 1000.0, kSampleRate);
+    const double aliasMid  = goertzelPower (out, 6000.0, kSampleRate);
+    const double aliasHigh = goertzelPower (out, 13000.0, kSampleRate);
+    const double worstAlias = juce::jmax (aliasLow, aliasMid, aliasHigh);
+
+    const double aliasDb = 10.0 * std::log10 (worstAlias / juce::jmax (fund, 1.0e-30));
+    std::printf ("  worst fold-down tone is %.1f dB below the 7 kHz fundamental\n", aliasDb);
+
+    check (std::isfinite (aliasDb), "overdrive alias level is finite");
+    check (aliasDb < -30.0, "overdrive clipping aliases stay >30 dB down");
+}
 } // namespace
 
 int main()
@@ -1058,6 +1119,8 @@ int main()
     testOverdriveAddsHarmonics();
     std::printf ("\n");
     testOverdriveToneTilt();
+    std::printf ("\n");
+    testOverdriveAntiAliasing();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

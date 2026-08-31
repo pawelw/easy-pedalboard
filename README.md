@@ -240,7 +240,7 @@ it there and rebuild.
 
 ### Easy Overdrive
 
-A soft-clipping overdrive with a Boss-OD voicing. Mono or stereo, in and out -
+A diode-clipper overdrive with a Boss-OD voicing. Mono or stereo, in and out -
 each channel is driven independently. Three knobs, on the small Easy Reverb
 footprint: **Level** and **Drive** across the top, **Tone** centred in a row of
 its own below.
@@ -251,25 +251,36 @@ its own below.
 | **Drive** | 0 - 100 %    | Gain into the clipper, swept exponentially. Always a little hair at 0; slammed and compressed at 100 |
 | **Tone**  | 0 - 100 %    | A tilt around ~640 Hz: dark and thick at the bottom, bright and cutting at the top, near-flat in the middle |
 
-The path per sample is a one-pole high-pass ahead of the clipper (~190 Hz, the
-Tube-Screamer trick that keeps the low strings out of the distortion so chords
-stay defined), an exponential gain stage (`×2.5` – `×260`), an asymmetric `tanh`
-clip with a small DC bias for even harmonics, then the removed sub-bass folded
-back in unclipped so the note keeps its body. After the clip comes the tilt tone
-control, a fixed 11 kHz low-pass to tame the buzz (the stage does **not**
-oversample - the clipper is soft and, at any real instrument level, fed nowhere
-near a hard corner), and a DC blocker. The engine loudness-compensates Drive
-roughly so winding it up trades headroom for saturation rather than volume; the
-Level knob trims the rest.
+The clipping stage is the circuit an SD-1 / Tube Screamer clips with, solved
+sample-accurately as a **Wave Digital Filter** with
+[`chowdsp_wdf`](https://github.com/Chowdhury-DSP/chowdsp_wdf): a driven voltage
+source through a 2.2 kΩ series resistor into a node holding a 10 nF capacitor and
+an anti-parallel silicon diode pair (`DiodePairT`, Werner model) to ground. The
+diode I-V curve gives the soft knee; the cap across the diodes (~7 kHz corner)
+rolls the fizz off the distortion the way the op-amp feedback cap does in the
+real pedal, so it reads as *overdrive*, not *fuzz*.
+
+Around it: a one-pole high-pass ahead of the clipper (~190 Hz, the Tube-Screamer
+"flub filter" that keeps the low strings out of the distortion so chords stay
+defined); an exponential gain stage (`×1.4` – `×300`) standing in for the op-amp
+gain; a small asymmetry shaper (`y − k·y·|y|`, exactly zero at zero) for the
+even-harmonic warmth an SD-1 gets from its uneven diode legs; then the tilt tone
+control, a fixed 12 kHz low-pass and a DC blocker. The gain stage and the WDF
+clipper run at **2× oversampling** with a 4th-order Butterworth anti-imaging /
+anti-aliasing pair, so the hard part of the diode curve does not fold aliases
+into the top octave (measured >30 dB down). A mild make-up lifts the clip output
+- which rides near the diode clamp voltage - back to a usable level; the Level
+knob trims the rest.
 
 Like the other pedals it has no on/off switch of its own - the `on` parameter
 crossfades to the dry signal so the host's device on/off never clicks. The face
 uses a new `yellow()` theme: a warm `#e8b400` amber panel with a near-black
 legend and a deep brown-amber value arc on black caps.
 
-The full voicing - drive gain range, clip bias, pre-clip high-pass, tilt pivot
-and band gains, post low-pass, loudness-compensation trim, knob defaults - lives
-in `shared/include/ee/dsp/OverdriveConfig.h`; retune it there and rebuild.
+The full voicing - drive gain range, diode and RC values, asymmetry, pre-clip
+high-pass, oversampling, tilt pivot and band gains, post low-pass, make-up, knob
+defaults - lives in `shared/include/ee/dsp/OverdriveConfig.h`; retune it there
+and rebuild.
 
 ## Requirements
 
@@ -278,8 +289,9 @@ in `shared/include/ee/dsp/OverdriveConfig.h`; retune it there and rebuild.
 
 ## Setting up on another Mac
 
-The repo vendors no dependencies — JUCE and DaisySP (the pitch shifter behind
-Easy Reverb's shimmer) are both fetched by CMake at configure time against
+The repo vendors no dependencies — JUCE, DaisySP (the pitch shifter behind Easy
+Reverb's shimmer) and chowdsp_wdf (the Wave Digital Filter behind Easy
+Overdrive's diode clipper) are all fetched by CMake at configure time against
 pinned tags, so the first configure needs an internet connection.
 
 ```bash
@@ -363,7 +375,7 @@ plugins/
   easy-delay/        processor + tape colour stage
   easy-eq/           processor + juce::dsp IIR band filters
   easy-trem-pan/     processor + phase-accumulator LFO, hand-written trem/pan
-  easy-overdrive/    processor + soft-clipping drive stage
+  easy-overdrive/    processor + WDF diode-clipper drive stage (chowdsp_wdf)
 tests/               offline DSP tests and the UI snapshot renderer
 ```
 

@@ -417,7 +417,13 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
 
     for (int s = 0; s < numSamples; ++s)
     {
-        predelayLine.write (monoIn[s]);
+        // A single non-finite sample fed into the network gets stored in the
+        // feedback delay lines and re-circulates forever - a roar that only a
+        // reset clears. Scrub the input on the way in, and (below) bail to a
+        // full reset if the network output ever goes non-finite anyway.
+        const float in = std::isfinite (monoIn[s]) ? monoIn[s] : 0.0f;
+
+        predelayLine.write (in);
         const float predelayed = predelayLine.read (predelaySmooth.getNextValue());
         predelayLine.advance();
 
@@ -501,6 +507,12 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
             shimmerFeedbackL = shimmerFeedbackR = 0.0f;
         }
 
+        // The shimmer path closes its own feedback loop through a pitch shifter;
+        // keep a stray non-finite from being injected back into the network on
+        // the next sample.
+        if (! std::isfinite (shimmerFeedbackL)) shimmerFeedbackL = 0.0f;
+        if (! std::isfinite (shimmerFeedbackR)) shimmerFeedbackR = 0.0f;
+
         float l = sumL * scale;
         float r = sumR * scale;
         for (int i = 0; i < kDecorrelators; ++i)
@@ -540,6 +552,19 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
             outL[s] += config::kWetLowShelf * wetLowShelfState[0];
             wetLowShelfState[1] += wetLowShelfCoeff * (outR[s] - wetLowShelfState[1]);
             outR[s] += config::kWetLowShelf * wetLowShelfState[1];
+        }
+
+        // Last line of defence: if anything in the feedback network has gone
+        // non-finite, the delay lines are now poisoned and every following
+        // sample would roar. Silence the rest of the block and clear the whole
+        // network so the next block starts clean - one glitched block, then
+        // recovery, rather than a stuck blow-up.
+        if (! std::isfinite (outL[s]) || ! std::isfinite (outR[s]))
+        {
+            for (int k = s; k < numSamples; ++k)
+                outL[k] = outR[k] = 0.0f;
+            reset();
+            return;
         }
 
         hadamard16 (v.data());

@@ -29,9 +29,11 @@ namespace
     constexpr int kFaderWidth = 48;   // strip width; the cap drawn inside is narrower
     constexpr int kFaderRowGap = 12;
 
-    // Strip carved off the top of the fader band for the reset button and any
-    // corner knobs.
-    constexpr int kResetStripHeight = 24;
+    // Drop below the strip of corner knobs / group trims before the fader grid,
+    // so the grid does not sit tight against the caps.
+    constexpr int kFaderGridGap = 16;
+
+    // The fader RESET pill, which sits below the grid on the pedal-name row.
     constexpr int kResetButtonWidth = 54;
     constexpr int kResetButtonHeight = 20;
 
@@ -81,7 +83,78 @@ namespace
 
         return out;
     }
+
+    // Group-trim range, in the faders' own units (dB on a graphic EQ). Full
+    // travel from rest to either end applies +/- this to every band it drives.
+    constexpr double kGroupTrimSpan = 15.0;
 }
+
+//==============================================================================
+/** Small rotary that nudges a set of faders together. Holds no parameter: each
+    move applies the change in its own value as a delta to the faders it drives,
+    so it reads as a relative group trim. Styled to match the compact corner
+    knobs. */
+class GroupTrim : public juce::Component
+{
+public:
+    GroupTrim (juce::String captionText, const PedalTheme& themeToUse)
+        : caption (std::move (captionText)), theme (themeToUse)
+    {
+        slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
+        slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
+        slider.setRotaryParameters (juce::MathConstants<float>::pi * 1.2f,
+                                    juce::MathConstants<float>::pi * 2.8f, true);
+        slider.setRange (-kGroupTrimSpan, kGroupTrimSpan, 0.1);
+        slider.setValue (0.0, juce::dontSendNotification);
+        slider.setDoubleClickReturnValue (true, 0.0);
+        addAndMakeVisible (slider);
+
+        slider.onValueChange = [this]
+        {
+            const double v = slider.getValue();
+            const double delta = v - lastValue;
+            lastValue = v;
+            if (onDelta && std::abs (delta) > 1.0e-9)
+                onDelta (delta);
+        };
+    }
+
+    /** Back to centre without driving the faders (used by the RESET button,
+        which flattens the faders itself). */
+    void resetToCentre()
+    {
+        lastValue = 0.0;
+        slider.setValue (0.0, juce::dontSendNotification);
+    }
+
+    void resized() override
+    {
+        auto area = getLocalBounds();
+        area.removeFromBottom (Knob::compactLabelHeight);
+        slider.setBounds (area);
+    }
+
+    void paint (juce::Graphics& g) override
+    {
+        auto area = getLocalBounds().toFloat();
+        const auto textArea = area.removeFromBottom (static_cast<float> (Knob::compactLabelHeight));
+
+        g.setColour (theme.textPrimary);
+        g.setFont (theme.bodyFont (12.0f));
+        g.drawText (caption.toUpperCase(), textArea, juce::Justification::centred, false);
+    }
+
+    /** Called with the signed change in the knob's value on every move. */
+    std::function<void (double)> onDelta;
+
+private:
+    juce::Slider slider;
+    juce::String caption;
+    const PedalTheme& theme;
+    double lastValue = 0.0;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GroupTrim)
+};
 
 //==============================================================================
 /** The pedal face: everything the old editor drew and laid out, at design size.
@@ -126,11 +199,17 @@ private:
     std::vector<std::unique_ptr<Knob>> knobs;
     std::unique_ptr<Knob> centreKnob;
     std::vector<std::unique_ptr<Knob>> cornerKnobs;
+    std::vector<std::unique_ptr<GroupTrim>> groupTrims;
     std::vector<std::unique_ptr<FaderStrip>> faders;
     std::vector<std::unique_ptr<MiniToggle>> toggles;
     std::unique_ptr<SlideToggle> slideToggle;
     std::unique_ptr<WaveDisplay> waveDisplay;
     std::unique_ptr<juce::TextButton> faderResetButton;
+
+    /** Vertical rule between the group-trim cluster and the corner cut knobs.
+        Empty when either cluster is absent. */
+    juce::Rectangle<int> groupTrimDivider;
+
     std::unique_ptr<juce::Component> sidePanel;
     int sidePanelWidth = 0;
     juce::Image grain;
@@ -175,6 +254,30 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
         knob->onValueChanged = [this] { repaint(); };   // the cut masks track it
         addAndMakeVisible (*knob);
         cornerKnobs.push_back (std::move (knob));
+    }
+
+    // Group-trim knobs: each pushes its listed faders by the same delta.
+    for (const auto& trimSpec : spec.groupTrims)
+    {
+        auto trim = std::make_unique<GroupTrim> (trimSpec.caption, theme);
+        const std::vector<int> indices = trimSpec.sliderIndices;
+
+        trim->onDelta = [this, indices] (double delta)
+        {
+            for (const int i : indices)
+            {
+                if (i < 0 || i >= static_cast<int> (faders.size()))
+                    continue;
+
+                auto& s = faders[static_cast<size_t> (i)]->getSlider();
+                s.setValue (juce::jlimit (s.getMinimum(), s.getMaximum(), s.getValue() + delta),
+                            juce::sendNotificationSync);
+            }
+            repaint();   // the response curve follows the faders
+        };
+
+        addAndMakeVisible (*trim);
+        groupTrims.push_back (std::move (trim));
     }
 
     // A pedal driven by faders gets a reset that flattens them all. It lives in
@@ -620,6 +723,11 @@ void PedalEditor::Face::resetFaders()
         s.setValue (s.getDoubleClickReturnValue(), juce::sendNotificationSync);
     };
 
+    // Recentre the group trims first, silently: the faders are flattened just
+    // below, so there is nothing for their delta to push.
+    for (auto& trim : groupTrims)
+        trim->resetToCentre();
+
     for (auto& fader : faders)
         toDefault (fader->getSlider());
 
@@ -703,6 +811,13 @@ void PedalEditor::Face::paint (juce::Graphics& g)
 
     // Sits under the fader children, which paint their stems and nodes on top.
     paintFaderGraph (g);
+
+    // Rule separating the group-trim cluster from the corner cut knobs.
+    if (! groupTrimDivider.isEmpty())
+    {
+        g.setColour (theme.outline.withAlpha (0.3f));
+        g.fillRect (groupTrimDivider);
+    }
 
     // Name sits under the knobs, the way it is screened onto a real pedal.
     // That also keeps the top of the face free instead of carrying a header.
@@ -805,41 +920,69 @@ void PedalEditor::Face::resized()
         if (count > 0)
             area.removeFromTop (kFaderRowGap);
 
-        // Reset (hard left) and any corner cut knobs (hard right) share a strip
-        // in the gap above the grid.
+        // Group-trim knobs (hard left) and any corner cut knobs (hard right)
+        // share a strip in the gap above the grid. A wide face can ask for a
+        // larger cap; the cell keeps the same text padding either way.
+        const int compactDia = spec.compactKnobDiameter > 0 ? spec.compactKnobDiameter
+                                                            : kCornerKnobDiameter;
+        const int cornerCellW = compactDia + (kCornerKnobWidth - kCornerKnobDiameter);
+        const int compactKnobH = compactDia + Knob::compactLabelHeight;
+
         int stripH = 0;
-        if (faderResetButton != nullptr)
-            stripH = juce::jmax (stripH, kResetStripHeight);
+        if (! groupTrims.empty())
+            stripH = juce::jmax (stripH, compactKnobH);
         if (! cornerKnobs.empty())
-            stripH = juce::jmax (stripH, kCornerKnobDiameter + Knob::compactLabelHeight);
+            stripH = juce::jmax (stripH, compactKnobH);
+
+        groupTrimDivider = {};
 
         if (stripH > 0)
         {
             const auto strip = area.removeFromTop (stripH);
 
-            // Line the reset button up with the centre of the corner knob caps,
-            // not the centre of the whole strip (the caps sit above their
-            // value readouts).
-            const int controlsCentreY = cornerKnobs.empty()
-                ? strip.getCentreY()
-                : strip.getY() + kCornerKnobDiameter / 2;
+            // Trims carry only a short caption, so their cell is just the cap
+            // width - narrower than a corner knob's text-padded cell, which
+            // leaves room for the divider beside the cut knobs.
+            const int trimW = compactDia;
 
-            if (faderResetButton != nullptr)
-                faderResetButton->setBounds (
-                    juce::Rectangle<int> (kResetButtonWidth, kResetButtonHeight)
-                        .withPosition (strip.getX(),
-                                       controlsCentreY - kResetButtonHeight / 2));
+            int leftX = strip.getX();
+            for (auto& trim : groupTrims)
+            {
+                trim->setBounds (leftX, strip.getY(), trimW, compactKnobH);
+                leftX += trimW + kCornerKnobGap;
+            }
 
-            int x = strip.getRight() - kCornerKnobWidth;
+            int x = strip.getRight() - cornerCellW;
             for (auto it = cornerKnobs.rbegin(); it != cornerKnobs.rend(); ++it)
             {
-                (*it)->setBounds (x, strip.getY(), kCornerKnobWidth,
-                                  kCornerKnobDiameter + Knob::compactLabelHeight);
-                x -= kCornerKnobWidth + kCornerKnobGap;
+                (*it)->setBounds (x, strip.getY(), cornerCellW, compactKnobH);
+                x -= cornerCellW + kCornerKnobGap;
+            }
+
+            // Rule halfway between the two clusters, as tall as the caps.
+            if (! groupTrims.empty() && ! cornerKnobs.empty())
+            {
+                const int groupsRight = leftX - kCornerKnobGap;
+                const int knobsLeft = x + cornerCellW + kCornerKnobGap;
+                groupTrimDivider = juce::Rectangle<int> ((groupsRight + knobsLeft) / 2,
+                                                         strip.getY() + 2, 1,
+                                                         compactDia - 4);
             }
         }
 
+        // Nudge the grid down, clear of the strip caps.
+        area.removeFromTop (kFaderGridGap);
+
         layOutFaders (area);
+    }
+
+    // Fader RESET: below the grid, left-aligned, level with the pedal name.
+    if (faderResetButton != nullptr)
+    {
+        const auto title = titleArea();
+        faderResetButton->setBounds (
+            juce::Rectangle<int> (kResetButtonWidth, kResetButtonHeight)
+                .withPosition (title.getX(), title.getCentreY() - kResetButtonHeight / 2));
     }
 
     // A toggle either straddles the gap after `afterKnobIndex` or sits centred

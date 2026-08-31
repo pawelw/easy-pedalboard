@@ -106,3 +106,36 @@ target_include_directories(ee_delay_match
 target_link_libraries(ee_delay_match
     PRIVATE EasyDelay ee_shared juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
+
+# Sweeps the Trem & Pan processor over every parameter combo and adverse input,
+# watching for a non-finite or runaway output.
+juce_add_console_app(ee_trempan_stress PRODUCT_NAME "ee_trempan_stress")
+
+target_sources(ee_trempan_stress PRIVATE TremPanStress.cpp)
+
+target_compile_definitions(ee_trempan_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_include_directories(ee_trempan_stress
+    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-trem-pan/src)
+
+target_link_libraries(ee_trempan_stress
+    PRIVATE EasyTremPan ee_shared
+    PUBLIC juce::juce_recommended_config_flags)
+
+# Sweeps the FDN reverb over extreme settings and adverse input, watching for a
+# non-finite or runaway tail.
+juce_add_console_app(ee_reverb_stress PRODUCT_NAME "ee_reverb_stress")
+
+target_sources(ee_reverb_stress PRIVATE ReverbStress.cpp)
+
+target_compile_definitions(ee_reverb_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_reverb_stress
+    PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)

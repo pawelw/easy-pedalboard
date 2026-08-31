@@ -300,8 +300,20 @@ juce::AudioProcessorEditor *EasyEqProcessor::createEditor() {
        .invertedArc = true},
   };
 
-  // Same width as Easy Reverb so the two line up on a rack.
-  spec.width = 340;
+  // Group trims on the left of the fader strip: each nudges its span of bands
+  // together. Indices are into spec.sliders (0 = LEVEL, 1..7 = the bands).
+  spec.groupTrims = {
+      {.caption = "LOW", .sliderIndices = {1, 2}},
+      {.caption = "MID", .sliderIndices = {3, 4, 5}},
+      {.caption = "HI", .sliderIndices = {6, 7}},
+  };
+
+  // Wider than the other pedals (30% over the 340 rack width) so the fader
+  // columns and the strip knobs can both breathe.
+  spec.width = 442;
+
+  // The extra width buys bigger caps for the strip knobs.
+  spec.compactKnobDiameter = 62;
 
   // Shares Easy Delay's theme so the two pedals sit together on a rack.
   return new ee::ui::PedalEditor(*this, apvts, spec, ee::ui::PedalTheme::silver());
