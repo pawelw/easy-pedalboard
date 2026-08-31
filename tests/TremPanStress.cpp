@@ -1,4 +1,4 @@
-// Hammers the Easy Trem & Pan processor across every parameter combination and
+// Hammers the Peak Trem & Pan processor across every parameter combination and
 // a batch of adverse inputs, watching for a non-finite or runaway output - the
 // "exploding noise" class of bug.
 #include "PluginProcessor.h"
@@ -22,7 +22,7 @@ namespace
                     bool panning, bool sync, bool on,
                     int inputKind, int blocks)
     {
-        EasyTremPanProcessor proc;
+        PeakTremPanProcessor proc;
         proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
         proc.prepareToPlay (sampleRate, blockSize);
 
@@ -104,10 +104,36 @@ int main()
 {
     juce::ScopedJuceInitialiser_GUI juceInit;
 
-    std::printf ("=== Easy Trem & Pan stress ===\n");
+    std::printf ("=== Peak Trem & Pan stress ===\n");
 
     int cases = 0, bad = 0;
     float worstPeak = 0.0f;
+
+    // Degenerate prepare: a host probing with prepareToPlay(0, 0) must not wedge
+    // the audio thread (the old free-run wrap spun forever on the resulting inf
+    // phase increment). If this returns at all, there is no hang.
+    {
+        PeakTremPanProcessor proc;
+        proc.setPlayConfigDetails (2, 2, 0.0, 0);
+        proc.prepareToPlay (0.0, 0);
+        setParam (proc.apvts, "bias", 1.0f);
+        setParam (proc.apvts, "amount", 1.0f);
+        juce::AudioBuffer<float> buf (2, 128);
+        juce::MidiBuffer midi;
+        bool ok = true;
+        for (int b = 0; b < 8; ++b)
+        {
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 128; ++i)
+                    buf.setSample (ch, i, 0.5f);
+            proc.processBlock (buf, midi);
+            for (int ch = 0; ch < 2; ++ch)
+                for (int i = 0; i < 128; ++i)
+                    ok &= std::isfinite (buf.getSample (ch, i));
+        }
+        std::printf ("degenerate prepare(0,0): %s\n", ok ? "returned, output finite" : "returned, OUTPUT NON-FINITE");
+        if (! ok) ++bad;
+    }
 
     const double rates[] = { 48000.0, 96000.0 };
     const int    blocks[] = { 32, 256 };

@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT/build-universal"
 DIST="$ROOT/dist"
-STAGE="$DIST/EasyEffects"
+STAGE="$DIST/SynthPeak"
 
 cmake -B "$BUILD_DIR" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
@@ -20,9 +20,9 @@ mkdir -p "$STAGE"
 
 # "<artefacts dir>:<product name>" for every pedal in the repo.
 PLUGINS=(
-    "easy-reverb/EasyReverb_artefacts:Easy Reverb"
-    "easy-delay/EasyDelay_artefacts:Easy Delay"
-    "easy-eq/EasyEq_artefacts:Easy EQ"
+    "peak-reverb/PeakReverb_artefacts:Peak Reverb"
+    "peak-delay/PeakDelay_artefacts:Peak Delay"
+    "peak-eq/PeakEq_artefacts:Peak EQ"
 )
 
 for entry in "${PLUGINS[@]}"; do
@@ -44,8 +44,8 @@ while IFS= read -r bundle; do
 done < <(find "$STAGE" -maxdepth 1 -mindepth 1)
 
 cat > "$STAGE/INSTALL.txt" <<'EOF'
-Easy Effects - install on macOS
-===============================
+Synth Peak - install on macOS
+=============================
 
 1. Copy the bundles into place:
 
@@ -67,9 +67,9 @@ Easy Effects - install on macOS
 Universal binaries: run on both Apple Silicon and Intel.
 EOF
 
-ZIP="$DIST/EasyEffects-macOS.zip"
+ZIP="$DIST/SynthPeak-macOS.zip"
 rm -f "$ZIP"
-(cd "$DIST" && zip -qr "$(basename "$ZIP")" "EasyEffects")
+(cd "$DIST" && zip -qr "$(basename "$ZIP")" "SynthPeak")
 
 echo
 echo "Architectures:"

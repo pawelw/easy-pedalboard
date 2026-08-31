@@ -33,7 +33,7 @@ juce::String hertzToText (float value, int)
     return juce::String (juce::roundToInt (value)) + " Hz";
 }
 
-/** Minimal host-free processor carrying the same parameters as Easy Reverb. */
+/** Minimal host-free processor carrying the same parameters as Peak Reverb. */
 class SnapshotProcessor : public juce::AudioProcessor
 {
 public:
@@ -99,7 +99,7 @@ public:
 ee::ui::PedalSpec makeSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Easy Reverb";
+    spec.name = "Peak Reverb";
     spec.tagline = "Decay drives room size and predelay";
     spec.version = "v0.10.0";
     spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" },
@@ -111,7 +111,7 @@ ee::ui::PedalSpec makeSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Easy Delay. */
+/** Minimal host-free processor carrying the same parameters as Peak Delay. */
 class DelaySnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -146,7 +146,7 @@ public:
 ee::ui::PedalSpec makeDelaySpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Easy Delay";
+    spec.name = "Peak Delay";
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v0.10.0";
     const juce::Colour tapeCap { 0xff375916 };
@@ -183,7 +183,7 @@ juce::String hiCutToText (float hz, int)
     return hz >= 19999.5f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e")) : freqToText (hz);
 }
 
-/** Minimal host-free processor carrying the same parameters as Easy EQ. */
+/** Minimal host-free processor carrying the same parameters as Peak EQ. */
 class EqSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -223,7 +223,7 @@ public:
 ee::ui::PedalSpec makeEqSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Easy EQ";
+    spec.name = "Peak EQ";
     spec.tagline = "Seven-band graphic EQ";
     spec.version = "v0.10.0";
     spec.sliders = {
@@ -252,7 +252,7 @@ ee::ui::PedalSpec makeEqSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Easy Trem & Pan. */
+/** Minimal host-free processor carrying the same parameters as Peak Trem & Pan. */
 class TremPanSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -291,7 +291,7 @@ public:
 ee::ui::PedalSpec makeTremPanSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Easy Trem & Pan";
+    spec.name = "Peak Trem & Pan";
     spec.version = "v0.10.0";
     spec.knobs = { { "amount", "Amount" }, { "rate", "Rate" }, { "shape", "Shape" },
                    { "bias", "Tube" } };
@@ -310,7 +310,7 @@ ee::ui::PedalSpec makeTremPanSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Easy Chorus. */
+/** Minimal host-free processor carrying the same parameters as Peak Chorus. */
 class ChorusSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -350,7 +350,7 @@ public:
 ee::ui::PedalSpec makeChorusSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Easy Chorus";
+    spec.name = "Peak Chorus";
     spec.tagline = "Wide stereo chorus";
     spec.version = "v0.10.0";
     spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" },
@@ -360,7 +360,48 @@ ee::ui::PedalSpec makeChorusSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Easy Overdrive. */
+/** Minimal host-free processor carrying the same parameters as Peak Phase. */
+class PhaseSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    PhaseSnapshotProcessor() : SnapshotProcessor (createPhaseLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createPhaseLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto percentAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+        auto rateRange = juce::NormalisableRange<float> (0.03f, 8.0f);
+        rateRange.setSkewForCentre (0.7f);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "rate", 1 }, "Rate", rateRange, 0.35f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (v, v < 1.0f ? 2 : 1) + " Hz"; })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "depth", 1 }, "Depth", percent, 75.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makePhaseSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Peak Phase";
+    spec.tagline = "Analog-style stereo phaser";
+    spec.version = "v0.10.0";
+    spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" } };
+    spec.knobsPerRow = 1;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+    return spec;
+}
+
+/** Minimal host-free processor carrying the same parameters as Peak Overdrive. */
 class OverdriveSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -394,11 +435,132 @@ public:
 ee::ui::PedalSpec makeOverdriveSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Easy Overdrive";
+    spec.name = "Peak Overdrive";
     spec.tagline = "Soft-clipping overdrive";
     spec.version = "v0.10.0";
     spec.knobs = { { "level", "Level" }, { "drive", "Drive" }, { "tone", "Tone" } };
     spec.knobsPerRow = 2;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+    return spec;
+}
+
+/** Minimal host-free processor carrying the same parameters as Peak Wah. */
+class WahSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    WahSnapshotProcessor() : SnapshotProcessor (createWahLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createWahLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto percentAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+        for (const auto* id : { "amount", "freq", "q", "mix", "decay", "shape" })
+            layout.add (std::make_unique<juce::AudioParameterFloat> (
+                juce::ParameterID { id, 1 }, id, percent, 45.0f, percentAttributes));
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "time", 1 }, "Time",
+            juce::NormalisableRange<float> (0.0f, 1.0f, 0.0001f), 0.5f));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { "ftype", 1 }, "Type",
+            juce::StringArray { "Low", "Band", "High" }, 1));
+        for (const auto* id : { "stereo", "random", "sync" })
+            layout.add (std::make_unique<juce::AudioParameterBool> (
+                juce::ParameterID { id, 1 }, id, false));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeWahSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Peak Wah";
+    spec.tagline = "LFO-driven modulated filter";
+    spec.version = "v0.10.0";
+    spec.knobs = { { "amount", "Amount" }, { "freq", "Freq" }, { "q", "Q" }, { "mix", "Mix" } };
+    spec.knobsPerRow = 4;
+    spec.width = ee::ui::knobRowWidth (4);
+    spec.knobDiameter = 74;
+
+    const juce::Colour lit { 0xffff4f97 };
+    spec.subKnobs = {
+        { .parameterID = "decay", .caption = "Decay" },
+        { .parameterID = "shape", .caption = "Shape",
+          .buttonParameterID = "random", .buttonCaption = "Rnd", .buttonLitColour = lit },
+        { .parameterID = "time", .caption = "Time",
+          .buttonParameterID = "sync", .buttonCaption = "Sync", .buttonLitColour = lit },
+        { .parameterID = "ftype", .caption = "Type" },
+    };
+
+    spec.slideToggle = ee::ui::SlideToggleSpec {
+        .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo", .accent = lit };
+    spec.slideToggleBottom = true;
+
+    spec.waveDisplay = ee::ui::WaveDisplaySpec {
+        .amountID = "amount", .rateID = "time", .shapeID = "shape", .modeID = "stereo",
+        .height = 40 };
+    return spec;
+}
+
+/** Minimal host-free processor carrying the same parameters as Peak Tape. */
+class TapeSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    TapeSnapshotProcessor() : SnapshotProcessor (createTapeLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createTapeLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto percentAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "sat", 1 }, "Saturation", percent, 35.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "wear", 1 }, "Wear", percent, 30.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "flutter", 1 }, "Flutter", percent, 25.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "tone", 1 }, "Tone",
+            juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f), 0.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float, int) { return juce::String ("0 %"); })));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "stereo", 1 }, "Stereo", true));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "noise", 1 }, "Noise", percent, 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeTapeSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Peak Tape";
+    spec.tagline = "Analogue warmth, wobble and wear";
+    spec.version = "v0.10.0";
+    spec.knobs = { { "sat", "Saturation" },
+                   { .parameterID = "tone", .caption = "Tone", .bipolarArc = true,
+                     .centreDetent = true, .diameter = 74 },
+                   { "flutter", "Flutter" },
+                   { "wear", "Wear" },
+                   {},   // spacer: the block keeps its middle column open
+                   { "noise", "Noise" } };
+    spec.slideToggle = ee::ui::SlideToggleSpec {
+        .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo" };
+    spec.knobsPerRow = 3;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
 }
@@ -477,6 +639,27 @@ void renderOverdrive (const juce::File& outputFile)
     ee::ui::PedalEditor editor (processor, processor.apvts, makeOverdriveSpec(), ee::ui::PedalTheme::yellow());
     writePng (editor, outputFile);
 }
+
+void renderPhase (const juce::File& outputFile)
+{
+    PhaseSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makePhaseSpec(), ee::ui::PedalTheme::orange());
+    writePng (editor, outputFile);
+}
+
+void renderWah (const juce::File& outputFile)
+{
+    WahSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeWahSpec(), ee::ui::PedalTheme::pink());
+    writePng (editor, outputFile);
+}
+
+void renderTape (const juce::File& outputFile)
+{
+    TapeSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeTapeSpec(), ee::ui::PedalTheme::green());
+    writePng (editor, outputFile);
+}
 } // namespace
 
 int main (int argc, char* argv[])
@@ -492,6 +675,9 @@ int main (int argc, char* argv[])
     renderTremPan (dir.getChildFile ("trempan.png"));
     renderChorus (dir.getChildFile ("chorus.png"));
     renderOverdrive (dir.getChildFile ("overdrive.png"));
+    renderPhase (dir.getChildFile ("phase.png"));
+    renderWah (dir.getChildFile ("wah.png"));
+    renderTape (dir.getChildFile ("tape.png"));
 
     return 0;
 }

@@ -52,8 +52,18 @@ namespace
     constexpr int kSwitchStripHeight = 30;
     constexpr int kSwitchStripGap = 10;
 
+    // A slide switch parked at the very bottom instead of the top (Peak Wah's
+    // Mono/Stereo), left-aligned in its own thin strip.
+    constexpr int kBottomStripHeight = 26;
+
     // Gap between the LFO preview band and the pedal name below it.
     constexpr int kWaveDisplayGap = 10;
+
+    // Secondary row of small knobs below the main knob block, each optionally
+    // carrying a latching button beneath its label.
+    constexpr int kSubKnobDiameter = 66;
+    constexpr int kSubRowGap = 12;      // between the main rows and the sub row
+    constexpr int kSubButtonGap = 4;    // between a sub knob's label and its button
 
     // Fixed rather than a fraction of the column, so a knob is the same size on
     // every pedal however many of them a row carries.
@@ -64,8 +74,8 @@ namespace
 
     juce::Image brandLogo()
     {
-        static const juce::Image logo = juce::ImageCache::getFromMemory (BinaryData::rocketlogo_png,
-                                                                        BinaryData::rocketlogo_pngSize);
+        static const juce::Image logo = juce::ImageCache::getFromMemory (BinaryData::peaklogo_png,
+                                                                        BinaryData::peaklogo_pngSize);
         return logo;
     }
 
@@ -107,6 +117,11 @@ public:
         slider.setRange (-kGroupTrimSpan, kGroupTrimSpan, 0.1);
         slider.setValue (0.0, juce::dontSendNotification);
         slider.setDoubleClickReturnValue (true, 0.0);
+
+        // Styled as a compact utility knob, so it keeps the vector cap rather
+        // than the full-size photographic artwork.
+        slider.getProperties().set ("compactKnob", true);
+
         addAndMakeVisible (slider);
 
         slider.onValueChange = [this]
@@ -180,8 +195,12 @@ public:
 private:
     juce::Rectangle<int> faceBounds() const;
     juce::Rectangle<int> contentArea() const;
+    bool topSwitch() const;
+    bool bottomSwitch() const;
     juce::Rectangle<int> switchStripArea() const;
     juce::Rectangle<int> waveDisplayArea() const;
+    juce::Rectangle<int> subKnobArea() const;
+    int subRowHeight() const;
     juce::Rectangle<int> knobArea() const;
     juce::Rectangle<int> titleArea() const;
     juce::Rectangle<int> logoArea() const;
@@ -196,9 +215,14 @@ private:
     PedalTheme theme;
     PedalSpec spec;
 
-    std::vector<std::unique_ptr<Knob>> knobs;
+    std::vector<std::unique_ptr<Knob>> knobs;   // a null entry is a spacer column
+
+    /** Bounds of every knob-grid slot, spacers included. */
+    std::vector<juce::Rectangle<int>> knobCells;
     std::unique_ptr<Knob> centreKnob;
     std::vector<std::unique_ptr<Knob>> cornerKnobs;
+    std::vector<std::unique_ptr<Knob>> subKnobs;
+    std::vector<std::unique_ptr<MiniToggle>> subButtons;   // index-aligned with subKnobs; null where none
     std::vector<std::unique_ptr<GroupTrim>> groupTrims;
     std::vector<std::unique_ptr<FaderStrip>> faders;
     std::vector<std::unique_ptr<MiniToggle>> toggles;
@@ -229,10 +253,13 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
     setLookAndFeel (&lnf);
 
     for (const auto& knobSpec : spec.knobs)
-        knobs.push_back (std::make_unique<Knob> (state, knobSpec, theme));
+        knobs.push_back (knobSpec.parameterID.isEmpty()
+                             ? nullptr   // a spacer: holds its column, draws nothing
+                             : std::make_unique<Knob> (state, knobSpec, theme));
 
     for (auto& knob : knobs)
-        addAndMakeVisible (*knob);
+        if (knob != nullptr)
+            addAndMakeVisible (*knob);
 
     // Added after the row knobs so it draws on top where its small cap overlaps
     // their bounds in the middle of the grid.
@@ -302,7 +329,8 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
         toggles.back()->onStateChange = [this]
         {
             for (auto& knob : knobs)
-                knob->refreshValueText();
+                if (knob != nullptr)
+                    knob->refreshValueText();
             if (waveDisplay != nullptr)
                 waveDisplay->repaint();
         };
@@ -313,6 +341,41 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
         addAndMakeVisible (*toggles.back());
     }
 
+    // Secondary knob row, each cell optionally carrying a button beneath it.
+    for (const auto& sub : spec.subKnobs)
+    {
+        KnobSpec knobSpec;
+        knobSpec.parameterID = sub.parameterID;
+        knobSpec.caption = sub.caption;
+        knobSpec.liveValueText = sub.liveValueText;
+        subKnobs.push_back (std::make_unique<Knob> (state, knobSpec, theme));
+        addAndMakeVisible (*subKnobs.back());
+
+        std::unique_ptr<MiniToggle> button;
+        if (sub.buttonParameterID.isNotEmpty())
+        {
+            ToggleSpec tSpec;
+            tSpec.parameterID = sub.buttonParameterID;
+            tSpec.caption = sub.buttonCaption;
+            tSpec.litColour = sub.buttonLitColour;
+
+            button = std::make_unique<MiniToggle> (state, tSpec, theme);
+            button->onStateChange = [this]
+            {
+                // Sync can change what the Time knob's readout means.
+                for (auto& k : subKnobs)
+                    k->refreshValueText();
+                for (auto& k : knobs)
+                    if (k != nullptr)
+                        k->refreshValueText();
+            };
+            if (sub.buttonOnClick)
+                button->onClick = sub.buttonOnClick;
+            addAndMakeVisible (*button);
+        }
+        subButtons.push_back (std::move (button));
+    }
+
     if (spec.slideToggle.has_value())
     {
         slideToggle = std::make_unique<SlideToggle> (state, *spec.slideToggle, theme);
@@ -321,7 +384,8 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
             // The switch can change what a knob's readout means, and what the
             // preview draws.
             for (auto& knob : knobs)
-                knob->refreshValueText();
+                if (knob != nullptr)
+                    knob->refreshValueText();
             if (waveDisplay != nullptr)
                 waveDisplay->repaint();
         };
@@ -394,12 +458,25 @@ juce::Rectangle<int> PedalEditor::Face::contentArea() const
     return area;
 }
 
+bool PedalEditor::Face::topSwitch() const
+{
+    return slideToggle != nullptr && ! spec.slideToggleBottom;
+}
+
+bool PedalEditor::Face::bottomSwitch() const
+{
+    return slideToggle != nullptr && spec.slideToggleBottom;
+}
+
 juce::Rectangle<int> PedalEditor::Face::switchStripArea() const
 {
-    if (slideToggle == nullptr)
-        return {};
+    if (topSwitch())
+        return contentArea().removeFromTop (kSwitchStripHeight);
 
-    return contentArea().removeFromTop (kSwitchStripHeight);
+    if (bottomSwitch())
+        return contentArea().removeFromBottom (kBottomStripHeight);
+
+    return {};
 }
 
 juce::Rectangle<int> PedalEditor::Face::waveDisplayArea() const
@@ -407,19 +484,61 @@ juce::Rectangle<int> PedalEditor::Face::waveDisplayArea() const
     if (waveDisplay == nullptr)
         return {};
 
-    auto band = contentArea().removeFromBottom (spec.waveDisplay->height + kWaveDisplayGap);
+    auto area = contentArea();
+    if (bottomSwitch())
+        area.removeFromBottom (kBottomStripHeight + kSwitchStripGap);
+
+    auto band = area.removeFromBottom (spec.waveDisplay->height + kWaveDisplayGap);
     return band.withTrimmedBottom (kWaveDisplayGap);
+}
+
+int PedalEditor::Face::subRowHeight() const
+{
+    if (subKnobs.empty())
+        return 0;
+
+    int h = kSubKnobDiameter + Knob::labelHeight;
+    for (const auto& b : subButtons)
+        if (b != nullptr)
+        {
+            h += kSubButtonGap + MiniToggle::preferredHeight;
+            break;
+        }
+    return h;
+}
+
+juce::Rectangle<int> PedalEditor::Face::subKnobArea() const
+{
+    if (subKnobs.empty())
+        return {};
+
+    auto area = contentArea();
+    if (topSwitch())
+        area.removeFromTop (kSwitchStripHeight + kSwitchStripGap);
+    if (bottomSwitch())
+        area.removeFromBottom (kBottomStripHeight + kSwitchStripGap);
+    if (waveDisplay != nullptr)
+        area.removeFromBottom (spec.waveDisplay->height + kWaveDisplayGap + kSubRowGap);
+
+    return area.removeFromBottom (subRowHeight());
 }
 
 juce::Rectangle<int> PedalEditor::Face::knobArea() const
 {
     auto area = contentArea();
 
-    if (slideToggle != nullptr)
+    if (topSwitch())
         area.removeFromTop (kSwitchStripHeight + kSwitchStripGap);
 
+    if (bottomSwitch())
+        area.removeFromBottom (kBottomStripHeight + kSwitchStripGap);
+
     if (waveDisplay != nullptr)
-        area.removeFromBottom (spec.waveDisplay->height + kWaveDisplayGap);
+        area.removeFromBottom (spec.waveDisplay->height + kWaveDisplayGap
+                               + (subKnobs.empty() ? 0 : kSubRowGap));
+
+    if (! subKnobs.empty())
+        area.removeFromBottom (subRowHeight() + kSubRowGap);
 
     return area;
 }
@@ -856,7 +975,8 @@ void PedalEditor::Face::resized()
     // Columns span the full content width; the rotary sits centred in its
     // column at a fixed size.
     const int cellWidth = (area.getWidth() - kKnobGap * (perRow - 1)) / perRow;
-    const int knobWidth = juce::jmin (kKnobDiameter, cellWidth);
+    const int maxKnob = spec.knobDiameter > 0 ? spec.knobDiameter : kKnobDiameter;
+    const int knobWidth = juce::jmin (maxKnob, cellWidth);
     const int rowHeight = knobWidth + Knob::labelHeight;
 
     // Centre the knob block when it does not fill the area - a single row with a
@@ -870,6 +990,8 @@ void PedalEditor::Face::resized()
         if (slack > 0)
             area.removeFromTop (slack / 2);
     }
+
+    knobCells.assign (static_cast<size_t> (count), {});
 
     for (int first = 0; first < count; first += perRow)
     {
@@ -890,7 +1012,23 @@ void PedalEditor::Face::resized()
         for (int i = 0; i < inRow; ++i)
         {
             auto cell = knobRow.removeFromLeft (cellWidth);
-            knobs[static_cast<size_t> (first + i)]->setBounds (cell.withSizeKeepingCentre (knobWidth, rowHeight));
+
+            // Kept for every slot, spacers included, so a toggle can be anchored
+            // to an empty cell.
+            knobCells[static_cast<size_t> (first + i)] = cell;
+
+            if (auto& knob = knobs[static_cast<size_t> (first + i)]; knob != nullptr)
+            {
+                // A knob may ask for a smaller cap than the row's. Its bounds
+                // keep the row height, so its cap centre and its label rows
+                // still line up with its neighbours' - it is just a smaller
+                // cap in the same cell.
+                const int own = spec.knobs[static_cast<size_t> (first + i)].diameter;
+                const int width = own > 0 ? juce::jmin (own, knobWidth) : knobWidth;
+
+                knob->setBounds (cell.withSizeKeepingCentre (width, rowHeight));
+            }
+
             if (i < inRow - 1)
                 knobRow.removeFromLeft (kKnobGap);
         }
@@ -903,14 +1041,46 @@ void PedalEditor::Face::resized()
         juce::Rectangle<int> caps;
         for (size_t i = 0; i < knobs.size(); ++i)
         {
+            if (knobs[i] == nullptr)
+                continue;
+
             const auto capBounds =
                 knobs[i]->getBounds().withTrimmedBottom (knobs[i]->getLabelHeight());
-            caps = (i == 0) ? capBounds : caps.getUnion (capBounds);
+            caps = caps.isEmpty() ? capBounds : caps.getUnion (capBounds);
         }
 
         centreKnob->setBounds (juce::Rectangle<int> (kCornerKnobDiameter,
                                                      kCornerKnobDiameter + Knob::compactLabelHeight)
                                    .withCentre (caps.getCentre()));
+    }
+
+    // Secondary knob row: evenly spaced small knobs, each with its button (if
+    // any) pinned centred beneath its label.
+    if (! subKnobs.empty())
+    {
+        auto row = subKnobArea();
+        const int n = static_cast<int> (subKnobs.size());
+        const int cellW = (row.getWidth() - kKnobGap * (n - 1)) / juce::jmax (1, n);
+        const int knobCellH = kSubKnobDiameter + Knob::labelHeight;
+
+        for (int i = 0; i < n; ++i)
+        {
+            auto cell = row.removeFromLeft (cellW);
+            if (i < n - 1)
+                row.removeFromLeft (kKnobGap);
+
+            subKnobs[static_cast<size_t> (i)]->setBounds (
+                cell.removeFromTop (knobCellH).withSizeKeepingCentre (kSubKnobDiameter, knobCellH));
+
+            if (auto& button = subButtons[static_cast<size_t> (i)])
+            {
+                cell.removeFromTop (kSubButtonGap);
+                button->setBounds (juce::Rectangle<int> (MiniToggle::preferredWidth,
+                                                         MiniToggle::preferredHeight)
+                                       .withCentre ({ cell.getCentreX(),
+                                                      cell.getY() + MiniToggle::preferredHeight / 2 }));
+            }
+        }
     }
 
     // Faders take whatever is left below the knob rows. On a knob-less pedal
@@ -992,29 +1162,42 @@ void PedalEditor::Face::resized()
         const auto& tSpec = spec.toggles[t];
         const int index = tSpec.afterKnobIndex;
 
-        const bool haveAnchor = tSpec.centeredAbove
-            ? (index >= 0 && index < count)
-            : (index >= 0 && index + 1 < count);
+        const bool spacerAnchor = index >= 0 && index < count
+                                      && knobs[static_cast<size_t> (index)] == nullptr;
 
-        if (! haveAnchor)
+        const bool haveAnchor = (tSpec.centeredAbove || spacerAnchor)
+            ? (index >= 0 && index < count)
+            : (index >= 0 && index + 1 < count
+               && knobs[static_cast<size_t> (index)] != nullptr
+               && knobs[static_cast<size_t> (index + 1)] != nullptr);
+
+        if (! haveAnchor || index >= static_cast<int> (knobCells.size()))
         {
             toggles[t]->setVisible (false);
             continue;
         }
 
-        const auto anchor = knobs[static_cast<size_t> (index)]->getBounds();
+        const auto cell = knobCells[static_cast<size_t> (index)];
         juce::Point<int> centre;
 
-        if (tSpec.centeredAbove)
+        if (spacerAnchor)
+        {
+            // An empty column: the button takes the middle of it, level with the
+            // caps either side.
+            centre = { cell.getCentreX(),
+                       cell.getY() + (cell.getHeight() - Knob::labelHeight) / 2 };
+        }
+        else if (tSpec.centeredAbove)
         {
             // Just above the cap: the cap fills the knob bounds minus the label
             // block at the bottom.
-            const int capTop = anchor.getY();
+            const auto anchor = knobs[static_cast<size_t> (index)]->getBounds();
             centre = { anchor.getCentreX(),
-                       capTop - MiniToggle::preferredHeight / 2 - 5 };
+                       anchor.getY() - MiniToggle::preferredHeight / 2 - 5 };
         }
         else
         {
+            const auto anchor = knobs[static_cast<size_t> (index)]->getBounds();
             const auto right = knobs[static_cast<size_t> (index + 1)]->getBounds();
             if (right.getY() != anchor.getY())
             {

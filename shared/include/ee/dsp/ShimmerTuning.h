@@ -3,7 +3,7 @@
 namespace ee::dsp
 {
 
-/** Every number that shapes Easy Reverb's shimmer path, in one place.
+/** Every number that shapes Peak Reverb's shimmer path, in one place.
 
     A pitch-shifted tap of the wet tail is folded back into the network, so each
     pass round the loop stacks another octave on top; the Shimmer knob is the

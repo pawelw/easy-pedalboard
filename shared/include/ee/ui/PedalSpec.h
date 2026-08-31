@@ -11,7 +11,7 @@ namespace ee::ui
 
 //==============================================================================
 // Shared face metrics, so every pedal spaces its knob columns identically
-// whatever the row count. These match Easy Reverb's original layout.
+// whatever the row count. These match Peak Reverb's original layout.
 
 /** Frame inset + content padding: the margin every control keeps from the edge. */
 inline constexpr int kFaceContentMargin = 21;
@@ -40,6 +40,9 @@ enum class CutSide { none, low, high };
 
 struct KnobSpec
 {
+    /** Leave empty for a spacer: the entry holds its column in the knob grid
+        and draws nothing, for a face that wants a hole in its block. A toggle
+        anchored to a spacer is centred in the empty cell. */
     juce::String parameterID;
     juce::String caption;
 
@@ -68,6 +71,21 @@ struct KnobSpec
         the maximum as the knob turns down - for a control whose resting place
         is the top of its range (a high cut that idles wide open). */
     bool invertedArc = false;
+
+    /** Grow the value arc out of 12 o'clock instead of out of the minimum, and
+        mark that centre with a tick - for a bipolar control whose resting place
+        is the middle of its range (a tone control that tilts either way). */
+    bool bipolarArc = false;
+
+    /** Snap onto the middle of the range while dragging, so a bipolar control
+        can be put back to dead centre with a flick rather than a nudge. Only
+        affects the mouse: automation and typed values pass through untouched. */
+    bool centreDetent = false;
+
+    /** Cap diameter for this knob alone, in pixels. 0 keeps the shared size.
+        Smaller marks a control out as secondary without moving it off the grid
+        or dropping its caption, the way `compact` would. */
+    int diameter = 0;
 
     /** When set, this replaces the parameter's own text in the value readout.
         Re-queried on every value change, and whenever a parent calls
@@ -141,6 +159,12 @@ struct WaveDisplaySpec
     juce::String modeID;     // bool: false = one trace, true = mirrored pair
 
     int height = 68;
+
+    /** Set both to turn the preview into a live scope: the trace scrolls at the
+        running LFO's phase and its amplitude follows the effective depth. Unset
+        keeps the static, knob-tracking preview. */
+    std::function<float()> livePhase;   // [0, 1) LFO phase
+    std::function<float()> liveDepth;   // 0..1 Amount * gate
 };
 
 /** A small latching button tucked into the gap between two knobs of a row. */
@@ -151,7 +175,9 @@ struct ToggleSpec
 
     /** Index into `knobs`. By default the button sits in the gap to the right of
         that knob (ignored if the next knob starts a new row); with
-        `centeredAbove` it sits centred over that knob's cap instead. */
+        `centeredAbove` it sits centred over that knob's cap instead. Point it at
+        a spacer entry and it takes the middle of that empty cell, whichever of
+        the two is set. */
     int afterKnobIndex = 0;
 
     /** Colour of the bezel and legend while the button is on. Unset falls back
@@ -167,6 +193,29 @@ struct ToggleSpec
         Lets a pedal react to a deliberate flip without a parameter listener that
         writes other parameters. */
     std::function<void()> onClick;
+};
+
+/** A compact knob for a secondary row below the main knob block, with an
+    optional latching button pinned directly beneath it - the LFO random switch
+    under a Shape knob, a tempo Sync switch under a Time knob. */
+struct SubKnobSpec
+{
+    juce::String parameterID;
+    juce::String caption;
+
+    /** Replaces the parameter's own text in the value readout, re-queried on
+        every change and whenever a sibling button is clicked (so a Time knob can
+        flip between milliseconds and note values when Sync moves). */
+    std::function<juce::String()> liveValueText;
+
+    /** Empty for a plain knob. Otherwise a latching button sits under the knob,
+        bound to this bool parameter. */
+    juce::String buttonParameterID;
+    juce::String buttonCaption;
+    std::optional<juce::Colour> buttonLitColour;
+
+    /** Called on a user click of the button, after its parameter has updated. */
+    std::function<void()> buttonOnClick;
 };
 
 /** Declarative description of a pedal face. Add an effect by writing one of these. */
@@ -194,14 +243,25 @@ struct PedalSpec
         trims. 0 keeps the shared default; a wider face can carry larger caps. */
     int compactKnobDiameter = 0;
 
+    /** A row of small knobs below the main knob block, each with an optional
+        button beneath it. For a pedal whose secondary controls (LFO shape,
+        rate, filter type) sit under its headline knobs. */
+    std::vector<SubKnobSpec> subKnobs;
+
     std::vector<SliderSpec> sliders;
     std::vector<ToggleSpec> toggles;
 
-    /** Big sliding switch in a strip carved off the top of the knob area. */
+    /** Big sliding switch in a strip carved off the top of the knob area, or -
+        with `slideToggleBottom` - left-aligned in a strip below everything else. */
     std::optional<SlideToggleSpec> slideToggle;
+    bool slideToggleBottom = false;
 
     /** LFO preview band between the knob row and the pedal name. */
     std::optional<WaveDisplaySpec> waveDisplay;
+
+    /** Main-knob cap diameter override. 0 keeps the shared `kKnobDiameter`; a
+        face that has to fit more rows can ask for smaller caps. */
+    int knobDiameter = 0;
 
     int knobsPerRow = 3;
 

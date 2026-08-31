@@ -2,14 +2,18 @@
 
 #include <cmath>
 #include <cstdio>
+#include <limits>
 #include <random>
 #include <vector>
 
+#include "ee/dsp/AutoWah.h"
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/Phaser.h"
 #include "ee/dsp/Overdrive.h"
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
+#include "ee/dsp/TapeMachine.h"
 
 namespace
 {
@@ -620,6 +624,463 @@ void testTapeCharacter()
 }
 
 //==============================================================================
+// Tape machine (Peak Tape)
+
+/** Puts every control at its resting position - which is what the pedal is at
+    Saturation, Wear, Flutter and Noise 0, Tone centred and Stereo off. */
+void restTapeMachine (ee::dsp::TapeMachine& machine)
+{
+    machine.setWear01 (0.0f);
+    machine.setFlutter01 (0.0f);
+    machine.setTone (0.0f);
+    machine.setStereo01 (0.0f);
+    machine.setNoise01 (0.0f);
+    machine.setSaturation01 (0.0f);
+}
+
+void testTapeMachineAtRest()
+{
+    std::printf ("Tape machine: every control at rest is bit-exact pass-through\n");
+
+    const int total = static_cast<int> (kSampleRate * 2.0);
+    std::mt19937 rng (0x7a9e);
+    std::normal_distribution<float> dist (0.0f, 0.12f);
+
+    std::vector<float> source (total);
+    for (int i = 0; i < total; ++i)
+        source[i] = std::tanh (dist (rng));
+
+    ee::dsp::TapeMachine machine;
+    machine.prepare (kSampleRate);
+    machine.reset();
+    restTapeMachine (machine);
+
+    std::vector<float> l (source), r (source);
+    machine.process (l.data(), r.data(), total);
+
+    const int latency = machine.getLatencySamples();
+    float worst = 0.0f;
+    for (int i = latency; i < total; ++i)
+        worst = juce::jmax (worst, std::abs (l[i] - source[i - latency]));
+
+    std::printf ("  latency %d samples (%.2f ms); largest difference: %.2e\n",
+                 latency, 1000.0 * latency / kSampleRate, worst);
+    check (latency > 0, "tape machine reports its transport latency");
+    check (worst == 0.0f, "tape machine at rest is not bit exact");
+}
+
+void testTapeMachineSilence()
+{
+    std::printf ("Tape machine: with Noise down, silence in -> silence out\n");
+
+    ee::dsp::TapeMachine machine;
+    machine.prepare (kSampleRate);
+    machine.reset();
+    machine.setWear01 (1.0f);
+    machine.setFlutter01 (1.0f);
+    machine.setTone (1.0f);
+    machine.setStereo01 (1.0f);
+    machine.setNoise01 (0.0f);
+    machine.setSaturation01 (1.0f);
+
+    std::vector<float> l (kBlock, 0.0f), r (kBlock, 0.0f);
+    float peak = 0.0f;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 3.0 / kBlock); ++b)
+    {
+        std::fill (l.begin(), l.end(), 0.0f);
+        std::fill (r.begin(), r.end(), 0.0f);
+        machine.process (l.data(), r.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+    }
+
+    std::printf ("  peak from silent input: %.2e\n", peak);
+    check (peak == 0.0f, "tape machine makes noise with the Noise knob down");
+}
+
+void testTapeMachineNoiseIsConstant()
+{
+    std::printf ("Tape machine: the tape floor is constant, playing or not\n");
+
+    const int total = static_cast<int> (kSampleRate * 4.0);
+
+    // Everything but Noise at rest, so the machine is bit-exact apart from the
+    // floor - which makes the floor exactly measurable as output minus input.
+    const auto run = [total] (bool playing, double& noiseRms)
+    {
+        ee::dsp::TapeMachine machine;
+        machine.prepare (kSampleRate);
+        machine.reset();
+        restTapeMachine (machine);
+        machine.setNoise01 (1.0f);
+
+        std::vector<float> source (total, 0.0f);
+        if (playing)
+        {
+            const double w = 2.0 * juce::MathConstants<double>::pi * 220.0 / kSampleRate;
+            for (int i = 0; i < total; ++i)
+                source[i] = 0.3f * (float) std::sin (w * i);
+        }
+
+        std::vector<float> l (source), r (source);
+        machine.process (l.data(), r.data(), total);
+
+        const int latency = machine.getLatencySamples();
+        double sumSq = 0.0;
+        int n = 0;
+
+        for (int i = latency + 2048; i < total; ++i)
+        {
+            const double residual = (double) l[i] - source[i - latency];
+            sumSq += residual * residual;
+            ++n;
+        }
+
+        noiseRms = std::sqrt (sumSq / juce::jmax (1, n));
+    };
+
+    double quiet = 0.0, loud = 0.0;
+    run (false, quiet);
+    run (true, loud);
+
+    const double differenceDb = 20.0 * std::log10 (loud / juce::jmax (quiet, 1.0e-30));
+
+    std::printf ("  floor with nothing playing: %.2e (%.1f dBFS)\n",
+                 quiet, 20.0 * std::log10 (juce::jmax (quiet, 1.0e-30)));
+    std::printf ("  floor under a 220 Hz note:  %.2e (%+.2f dB)\n", loud, differenceDb);
+
+    check (quiet > 1.0e-4, "the tape floor is audible at Noise 100 %");
+    check (std::abs (differenceDb) < 0.5, "the tape floor ducks or swells with the programme");
+}
+
+void testTapeMachineNoiseLoop()
+{
+    std::printf ("Tape machine: the tape floor recording loops without a seam\n");
+
+    // A stand-in for the pedal's embedded floor: two seconds of band-limited
+    // noise, so the loop wraps twice inside the run.
+    const int tableLength = static_cast<int> (kSampleRate * 2.0);
+    std::vector<float> table (static_cast<size_t> (tableLength));
+    {
+        std::mt19937 rng (0x10ad);
+        std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
+        float lp = 0.0f;
+        for (int i = 0; i < tableLength; ++i)
+        {
+            lp += 0.25f * (dist (rng) - lp);
+            table[static_cast<size_t> (i)] = lp * 0.05f;
+        }
+    }
+
+    const float* channelPointers[1] = { table.data() };
+
+    ee::dsp::TapeMachine machine;
+    machine.prepare (kSampleRate);
+    machine.reset();
+    restTapeMachine (machine);
+    machine.setNoiseSample (channelPointers, 1, tableLength, kSampleRate);
+    machine.setNoise01 (1.0f);
+
+    const int total = static_cast<int> (kSampleRate * 6.0);
+    std::vector<float> out (static_cast<size_t> (total), 0.0f);
+
+    for (int offset = 0; offset < total; offset += kBlock)
+        machine.process (out.data() + offset, nullptr, juce::jmin (kBlock, total - offset));
+
+    // The biggest step in the output must not exceed what the recording itself
+    // does - a seam would show up as a click far above it.
+    float tableStep = 0.0f;
+    for (int i = 1; i < tableLength; ++i)
+        tableStep = juce::jmax (tableStep, std::abs (table[static_cast<size_t> (i)]
+                                                     - table[static_cast<size_t> (i - 1)]));
+
+    float outStep = 0.0f;
+    for (int i = 1; i < total; ++i)
+        outStep = juce::jmax (outStep, std::abs (out[static_cast<size_t> (i)]
+                                                 - out[static_cast<size_t> (i - 1)]));
+
+    // Level per second: a loop that restarts or runs dry would show here.
+    double quietest = 1.0e30, loudest = 0.0;
+    const int perSecond = static_cast<int> (kSampleRate);
+    for (int s = perSecond; s + perSecond <= total; s += perSecond)
+    {
+        double sumSq = 0.0;
+        for (int i = 0; i < perSecond; ++i)
+            sumSq += (double) out[static_cast<size_t> (s + i)] * out[static_cast<size_t> (s + i)];
+        const double rms = std::sqrt (sumSq / perSecond);
+        quietest = juce::jmin (quietest, rms);
+        loudest = juce::jmax (loudest, rms);
+    }
+
+    std::printf ("  largest step: recording %.5f, looped output %.5f\n", tableStep, outStep);
+    std::printf ("  level across the run: %.5f .. %.5f (%.2f dB spread)\n",
+                 quietest, loudest, 20.0 * std::log10 (loudest / juce::jmax (quietest, 1.0e-30)));
+
+    check (outStep <= tableStep * 1.2f, "the loop seam clicks");
+    check (quietest > 0.0, "the tape floor runs out instead of looping");
+    check (20.0 * std::log10 (loudest / juce::jmax (quietest, 1.0e-30)) < 1.0,
+           "the looped floor is not a steady level");
+
+    // And with the knob down it is still silent, recording or no recording.
+    machine.setNoise01 (0.0f);
+    std::vector<float> quiet (static_cast<size_t> (total), 0.0f);
+    for (int offset = 0; offset < total; offset += kBlock)
+        machine.process (quiet.data() + offset, nullptr, juce::jmin (kBlock, total - offset));
+
+    float peak = 0.0f;
+    for (int i = total / 2; i < total; ++i)
+        peak = juce::jmax (peak, std::abs (quiet[static_cast<size_t> (i)]));
+
+    std::printf ("  peak with the knob down: %.2e\n", peak);
+    check (peak == 0.0f, "the floor still plays with the Noise knob down");
+}
+
+/** Peak-to-RMS of a steady sine through the machine at one Saturation setting,
+    plus how far the level moved. A falling crest factor means the head really
+    is flattening the wave rather than just turning it down. */
+void tapeSaturationScore (float saturation, float& crest, double& levelDb)
+{
+    ee::dsp::TapeMachine machine;
+    machine.prepare (kSampleRate);
+    machine.reset();
+    restTapeMachine (machine);
+    machine.setSaturation01 (saturation);
+
+    const double freq = 220.0;
+    const double w = 2.0 * juce::MathConstants<double>::pi * freq / kSampleRate;
+    const float amplitude = 0.2f;
+
+    std::vector<float> buf (kBlock);
+    double phase = 0.0;
+
+    for (int b = 0; b < 60; ++b)   // settle the smoothing and the filter states
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = amplitude * (float) std::sin (phase); phase += w; }
+        machine.process (buf.data(), nullptr, kBlock);
+    }
+
+    double sumSq = 0.0;
+    float peak = 0.0f;
+    int n = 0;
+
+    for (int b = 0; b < 200; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = amplitude * (float) std::sin (phase); phase += w; }
+        machine.process (buf.data(), nullptr, kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            sumSq += (double) buf[i] * buf[i];
+            peak = juce::jmax (peak, std::abs (buf[i]));
+            ++n;
+        }
+    }
+
+    const double rms = std::sqrt (sumSq / juce::jmax (1, n));
+    crest = rms > 0.0 ? static_cast<float> (peak / rms) : 0.0f;
+    levelDb = 20.0 * std::log10 (rms / (amplitude / std::sqrt (2.0)));
+}
+
+void testTapeMachineSaturation()
+{
+    std::printf ("Tape machine: Saturation squashes the wave without moving the level\n");
+
+    float lowCrest = 0.0f, highCrest = 0.0f;
+    double lowLevel = 0.0, highLevel = 0.0;
+
+    tapeSaturationScore (0.1f, lowCrest, lowLevel);
+    tapeSaturationScore (1.0f, highCrest, highLevel);
+
+    std::printf ("  crest factor: 10 %% = %.3f, 100 %% = %.3f\n", lowCrest, highCrest);
+    std::printf ("  level change: 10 %% = %+.2f dB, 100 %% = %+.2f dB\n", lowLevel, highLevel);
+
+    check (std::isfinite (lowCrest) && std::isfinite (highCrest), "tape crest factor is finite");
+    check (highCrest < lowCrest - 0.02f, "more Saturation flattens the waveform");
+
+    // The make-up is matched at a reference level for exactly this reason: a
+    // character control that changes the level is a volume control in disguise.
+    check (std::abs (highLevel) < 2.0, "Saturation at 100 % moves the level too far");
+}
+
+/** Output RMS for a steady sine at `freq`, at one Tone setting. Two probes well
+    either side of the pivot score the tilt without a one-pole band split - on
+    white noise that split leaks so much high band into its "low" bucket that a
+    real tilt barely shows. */
+double tapeToneResponse (float tone, double freq)
+{
+    ee::dsp::TapeMachine machine;
+    machine.prepare (kSampleRate);
+    machine.reset();
+    restTapeMachine (machine);
+    machine.setTone (tone);
+
+    const double w = 2.0 * juce::MathConstants<double>::pi * freq / kSampleRate;
+    std::vector<float> buf (kBlock);
+    double phase = 0.0;
+
+    for (int b = 0; b < 120; ++b)   // settle the smoothing and the filter states
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = 0.25f * (float) std::sin (phase); phase += w; }
+        machine.process (buf.data(), nullptr, kBlock);
+    }
+
+    double sumSq = 0.0;
+    int n = 0;
+
+    for (int b = 0; b < 100; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = 0.25f * (float) std::sin (phase); phase += w; }
+        machine.process (buf.data(), nullptr, kBlock);
+
+        for (int i = 0; i < kBlock; ++i) { sumSq += (double) buf[i] * buf[i]; ++n; }
+    }
+
+    return std::sqrt (sumSq / juce::jmax (1, n));
+}
+
+void testTapeMachineToneTilt()
+{
+    std::printf ("Tape machine: Tone tilts dark to bright either side of centre\n");
+
+    const auto ratio = [] (float tone)
+    {
+        return tapeToneResponse (tone, 6000.0) / tapeToneResponse (tone, 200.0);
+    };
+
+    const double dark = ratio (-1.0f);
+    const double flat = ratio (0.0f);
+    const double bright = ratio (1.0f);
+
+    std::printf ("  6 kHz / 200 Hz: dark = %.3f (%+.1f dB), centre = %.3f, bright = %.3f (%+.1f dB)\n",
+                 dark, 20.0 * std::log10 (dark / flat), flat,
+                 bright, 20.0 * std::log10 (bright / flat));
+
+    check (dark < flat * 0.5, "turning Tone down does not darken the balance");
+    check (bright > flat * 2.0, "turning Tone up does not brighten the balance");
+
+    // A centre-detented knob has to lean as far one way as the other.
+    const double downDb = -20.0 * std::log10 (dark / flat);
+    const double upDb = 20.0 * std::log10 (bright / flat);
+    check (std::abs (downDb - upDb) < 2.0, "Tone is lopsided about its centre");
+}
+
+void testTapeMachineStereoWidens()
+{
+    std::printf ("Tape machine: the Stereo switch opens the image\n");
+
+    const auto sideEnergy = [] (bool stereo)
+    {
+        ee::dsp::TapeMachine machine;
+        machine.prepare (kSampleRate);
+        machine.reset();
+        restTapeMachine (machine);
+        machine.setStereo01 (stereo ? 1.0f : 0.0f);
+
+        // A tone, not noise: white noise decorrelates at any offset at all, so
+        // it would score a hair of delay the same as a wide image.
+        const double w = 2.0 * juce::MathConstants<double>::pi * 220.0 / kSampleRate;
+        double phase = 0.0;
+
+        std::vector<float> l (kBlock), r (kBlock);
+        double side = 0.0, mid = 0.0;
+
+        for (int b = 0; b < 600; ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+            {
+                const float s = 0.3f * (float) std::sin (phase);   // mono, fanned to both sides
+                phase += w;
+                l[i] = s;
+                r[i] = s;
+            }
+
+            machine.process (l.data(), r.data(), kBlock);
+
+            if (b < 100)   // let the width modulation get moving
+                continue;
+
+            for (int i = 0; i < kBlock; ++i)
+            {
+                const double d = (double) l[i] - r[i];
+                const double m = (double) l[i] + r[i];
+                side += d * d;
+                mid += m * m;
+            }
+        }
+
+        return 10.0 * std::log10 (juce::jmax (side, 1.0e-30) / juce::jmax (mid, 1.0e-30));
+    };
+
+    const double off = sideEnergy (false);
+    const double on = sideEnergy (true);
+
+    std::printf ("  side vs mid on a mono source: off = %.1f dB, on = %.1f dB\n", off, on);
+
+    // Off, both channels share one transport, so a mono source stays exactly
+    // mono - the difference signal is not small, it is nothing at all.
+    check (off < -200.0, "the two channels are not identical with Stereo off");
+    check (on > off + 40.0, "the Stereo switch does not widen a mono source");
+}
+
+void testTapeMachineStability()
+{
+    std::printf ("Tape machine: recovers from non-finite input\n");
+
+    ee::dsp::TapeMachine machine;
+    machine.prepare (kSampleRate);
+    machine.reset();
+    machine.setWear01 (1.0f);
+    machine.setFlutter01 (1.0f);
+    machine.setTone (0.7f);
+    machine.setStereo01 (1.0f);
+    machine.setNoise01 (0.8f);
+    machine.setSaturation01 (1.0f);
+
+    std::vector<float> l (kBlock), r (kBlock);
+    double phase = 0.0;
+    const double w = 2.0 * juce::MathConstants<double>::pi * 330.0 / kSampleRate;
+
+    bool finite = true;
+    float peak = 0.0f;
+
+    for (int b = 0; b < 300; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+        {
+            float s = 0.6f * (float) std::sin (phase);
+            phase += w;
+
+            // A burst of garbage early on, then a lone NaN once it is running.
+            if (b == 2)
+                s = (i % 2 == 0) ? std::numeric_limits<float>::quiet_NaN()
+                                 : std::numeric_limits<float>::infinity();
+            else if (b == 150 && i == 3)
+                s = std::numeric_limits<float>::quiet_NaN();
+
+            l[i] = s;
+            r[i] = s;
+        }
+
+        machine.process (l.data(), r.data(), kBlock);
+
+        if (b < 6 || (b >= 150 && b < 153))   // the blocks the garbage lands in
+            continue;
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            finite = finite && std::isfinite (l[i]) && std::isfinite (r[i]);
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    std::printf ("  peak after the garbage: %.3f\n", peak);
+    check (finite, "tape machine keeps producing non-finite samples after a NaN");
+    check (peak < 4.0f, "tape machine runs away after a NaN");
+}
+
+//==============================================================================
 // Chorus
 
 void testChorusSilence()
@@ -648,6 +1109,8 @@ void testChorusSilence()
             peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
         }
     }
+
+    std::printf ("  peak from silent input: %.3e\n", peak);
 
     check (finite, "chorus output stays finite on silence");
     check (peak < 1.0e-6f, "chorus is silent on a silent input");
@@ -836,6 +1299,130 @@ void testChorusStereoIsStable()
         check (st.minSideRmsRatio > 0.35f,
                "chorus width never briefly drops out");
     }
+}
+
+//==============================================================================
+// Phaser
+
+void testPhaserSilence()
+{
+    std::printf ("Phaser: silence in -> silence out\n");
+
+    ee::dsp::Phaser phaser;
+    phaser.prepare (kSampleRate);
+    phaser.reset();
+    phaser.setRateHz (1.0f);
+    phaser.setDepth01 (1.0f);
+
+    std::vector<float> in (kBlock, 0.0f), l (kBlock, 0.0f), r (kBlock, 0.0f);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < 400; ++b)
+    {
+        phaser.process (in.data(), in.data(), l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (l[i]) || ! std::isfinite (r[i]))
+                finite = false;
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    check (finite, "phaser output stays finite on silence");
+    check (peak < 1.0e-6f, "phaser is silent on a silent input");
+}
+
+void testPhaserStability()
+{
+    std::printf ("Phaser: bounded and finite under a hot input at full depth\n");
+
+    ee::dsp::Phaser phaser;
+    phaser.prepare (kSampleRate);
+    phaser.reset();
+    phaser.setRateHz (ee::dsp::phaser::kRateMaxHz);
+    phaser.setDepth01 (1.0f);
+
+    std::mt19937 rng (9182);
+    std::uniform_real_distribution<float> dist (-1.5f, 1.5f);   // deliberately over 0 dBFS
+
+    std::vector<float> l (kBlock), r (kBlock);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < 3000; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { l[i] = dist (rng); r[i] = dist (rng); }
+        phaser.process (l.data(), r.data(), l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (l[i]) || ! std::isfinite (r[i]))
+                finite = false;
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    std::printf ("  output peak = %.3f\n", peak);
+    check (finite, "phaser output stays finite under load");
+    check (peak < 4.0f, "phaser output stays bounded under load");
+}
+
+/** Peak-to-trough spread of the block RMS envelope over one full LFO period,
+    for a steady 600 Hz sine. The moving notch sweeps past the tone once per
+    cycle, so a deeper sweep drags the level through a wider range. */
+float phaserEnvelopeSpread (float depth01)
+{
+    constexpr float rateHz = 0.5f;   // 2 s period
+
+    ee::dsp::Phaser phaser;
+    phaser.prepare (kSampleRate);
+    phaser.reset();
+    phaser.setRateHz (rateHz);
+    phaser.setDepth01 (depth01);
+
+    const double freq = 600.0;   // sits inside the sweep band
+    const double w = 2.0 * juce::MathConstants<double>::pi * freq / kSampleRate;
+    double phase = 0.0;
+
+    std::vector<float> buf (kBlock);
+
+    // Six near-unity all-pass sections wrapped in a feedback ring settle slowly,
+    // so give them a generous run before measuring.
+    for (int b = 0; b < 800; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = 0.25f * (float) std::sin (phase); phase += w; }
+        phaser.process (buf.data(), nullptr, buf.data(), buf.data(), kBlock);
+    }
+
+    const int periodBlocks = juce::roundToInt (kSampleRate / (rateHz * kBlock));
+    float loRms = 1.0e9f, hiRms = 0.0f;
+    for (int b = 0; b < 2 * periodBlocks; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { buf[i] = 0.25f * (float) std::sin (phase); phase += w; }
+        phaser.process (buf.data(), nullptr, buf.data(), buf.data(), kBlock);
+
+        double sumSq = 0.0;
+        for (int i = 0; i < kBlock; ++i) sumSq += (double) buf[i] * buf[i];
+        const float rms = (float) std::sqrt (sumSq / kBlock);
+        loRms = juce::jmin (loRms, rms);
+        hiRms = juce::jmax (hiRms, rms);
+    }
+
+    return hiRms - loRms;
+}
+
+void testPhaserSweeps()
+{
+    std::printf ("Phaser: the notch sweeps past the tone, and Depth widens it\n");
+
+    const float narrow = phaserEnvelopeSpread (0.1f);   // small sweep
+    const float wide = phaserEnvelopeSpread (1.0f);      // full sweep
+
+    std::printf ("  envelope spread: narrow = %.4f, wide = %.4f\n", narrow, wide);
+
+    check (std::isfinite (narrow) && std::isfinite (wide), "phaser envelope spread is finite");
+    check (wide > 0.03f, "a running sweep makes the level breathe");
+    check (wide > narrow + 0.01f, "more Depth widens the sweep");
 }
 
 //==============================================================================
@@ -1078,11 +1665,552 @@ void testOverdriveAntiAliasing()
     check (std::isfinite (aliasDb), "overdrive alias level is finite");
     check (aliasDb < -30.0, "overdrive clipping aliases stay >30 dB down");
 }
+
+//==============================================================================
+// Auto-wah (LFO-driven modulated filter)
+
+namespace autowah_test
+{
+    // A steady probe tone through the engine; returns the out/in power at the
+    // probe frequency in each `hopMs` window after `settleBlocks`.
+    struct Rig
+    {
+        ee::dsp::AutoWah wah;
+        double probeHz = 1000.0;
+        float inAmp = 0.35f;
+        double phase = 0.0;
+
+        void prep (float period, float amount, int type, bool random,
+                   bool stereoOn, float decay01, float shape01 = 0.5f)
+        {
+            wah.prepare (kSampleRate);
+            wah.reset();
+            wah.setPeriodSeconds (period);
+            wah.setFreq01 (0.35f);
+            wah.setQ01 (0.55f);
+            wah.setMix01 (1.0f);
+            wah.setAmount01 (amount);
+            wah.setType (type);
+            wah.setRandom (random);
+            wah.setStereo (stereoOn);
+            wah.setDecay01 (decay01);
+            wah.setShape01 (shape01);
+        }
+
+        // Fills L and R (R may be null) with the probe tone for `n` samples.
+        void fill (float* l, float* r, int n)
+        {
+            const double w = 2.0 * juce::MathConstants<double>::pi * probeHz / kSampleRate;
+            for (int i = 0; i < n; ++i)
+            {
+                const float s = inAmp * (float) std::sin (phase);
+                phase += w;
+                l[i] = s;
+                if (r != nullptr) r[i] = s;
+            }
+        }
+    };
+
+    // Per-hop out/in power at the probe, one channel, after settling.
+    std::vector<double> hopRatios (Rig& rig, int settleBlocks, int hops, double hopMs)
+    {
+        const int hop = (int) (kSampleRate * hopMs * 0.001);
+        std::vector<float> buf ((size_t) hop);
+
+        for (int b = 0; b < settleBlocks; ++b)
+        {
+            rig.fill (buf.data(), nullptr, hop);
+            rig.wah.process (buf.data(), nullptr, hop);
+        }
+
+        std::vector<double> out;
+        for (int h = 0; h < hops; ++h)
+        {
+            std::vector<float> in ((size_t) hop);
+            rig.fill (in.data(), nullptr, hop);
+            for (int i = 0; i < hop; ++i) buf[(size_t) i] = in[(size_t) i];
+            rig.wah.process (buf.data(), nullptr, hop);
+
+            const double so = goertzelPower (std::vector<float> (buf.begin(), buf.end()),
+                                             rig.probeHz, kSampleRate);
+            const double si = goertzelPower (in, rig.probeHz, kSampleRate);
+            out.push_back (so / juce::jmax (si, 1.0e-30));
+        }
+        return out;
+    }
+
+    double spread (const std::vector<double>& v)   // max / min
+    {
+        double lo = 1.0e30, hi = 0.0;
+        for (double x : v) { lo = juce::jmin (lo, x); hi = juce::jmax (hi, x); }
+        return hi / juce::jmax (lo, 1.0e-30);
+    }
+}
+
+void testAutoWahSilence()
+{
+    std::printf ("Auto-wah: silence in -> silence out\n");
+
+    ee::dsp::AutoWah wah;
+    wah.prepare (kSampleRate);
+    wah.reset();
+    wah.setPeriodSeconds (0.2f);
+    wah.setAmount01 (1.0f);
+    wah.setMix01 (1.0f);
+    wah.setDecay01 (1.0f);   // LFO latched on
+    wah.setQ01 (0.7f);
+
+    std::vector<float> l (kBlock, 0.0f), r (kBlock, 0.0f);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < 400; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) { l[i] = 0.0f; r[i] = 0.0f; }
+        wah.process (l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (l[i]) || ! std::isfinite (r[i])) finite = false;
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    check (finite, "auto-wah output stays finite on silence");
+    check (peak < 1.0e-6f, "auto-wah is silent on a silent input");
+}
+
+void testAutoWahMixZeroIsDry()
+{
+    std::printf ("Auto-wah: Mix 0 leaves the dry signal untouched\n");
+
+    ee::dsp::AutoWah wah;
+    wah.prepare (kSampleRate);
+    wah.reset();
+    wah.setPeriodSeconds (0.15f);
+    wah.setAmount01 (1.0f);
+    wah.setDecay01 (1.0f);
+    wah.setMix01 (0.0f);
+    wah.setQ01 (0.6f);
+
+    const double w = 2.0 * juce::MathConstants<double>::pi * 300.0 / kSampleRate;
+    double phase = 0.0;
+    float maxDiff = 0.0f;
+    bool finite = true;
+
+    std::vector<float> buf (kBlock), dry (kBlock);
+    for (int b = 0; b < 200; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const float s = 0.5f * (float) std::sin (phase);
+            phase += w;
+            buf[i] = s;
+            dry[i] = s;
+        }
+        wah.process (buf.data(), nullptr, kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (buf[i])) finite = false;
+            maxDiff = juce::jmax (maxDiff, std::abs (buf[i] - dry[i]));
+        }
+    }
+
+    std::printf ("  largest deviation from dry = %.2e\n", (double) maxDiff);
+    check (finite, "auto-wah output stays finite at Mix 0");
+    check (maxDiff < 1.0e-6f, "Mix 0 is bit-exact dry");
+}
+
+void testAutoWahStability()
+{
+    std::printf ("Auto-wah: bounded and finite under a hot input at extreme settings\n");
+
+    ee::dsp::AutoWah wah;
+    wah.prepare (kSampleRate);
+    wah.reset();
+    wah.setPeriodSeconds (0.03f);   // fastest LFO
+    wah.setAmount01 (1.0f);
+    wah.setQ01 (1.0f);
+    wah.setMix01 (1.0f);
+    wah.setDecay01 (1.0f);
+    wah.setStereo (true);
+    wah.setRandom (true);
+
+    std::mt19937 rng (4471);
+    std::uniform_real_distribution<float> dist (-1.5f, 1.5f);
+
+    std::vector<float> l (kBlock), r (kBlock);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < 3000; ++b)
+    {
+        wah.setType (b % 3);                              // sweep LP / BP / HP
+        wah.setFreq01 (0.5f + 0.5f * std::sin ((float) b * 0.05f));
+
+        for (int i = 0; i < kBlock; ++i) { l[i] = dist (rng); r[i] = dist (rng); }
+        wah.process (l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (l[i]) || ! std::isfinite (r[i])) finite = false;
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    std::printf ("  output peak = %.3f\n", peak);
+    check (finite, "auto-wah output stays finite under load");
+    check (peak < 4.0f, "auto-wah output stays bounded under load");
+}
+
+void testAutoWahLfoModulates()
+{
+    std::printf ("Auto-wah: the LFO sweeps the filter, and Amount 0 leaves it still\n");
+
+    autowah_test::Rig moving;
+    moving.prep (0.25f, 0.85f, /*BP*/ 1, false, false, /*Decay latched*/ 1.0f, 0.5f);
+    const auto mv = autowah_test::hopRatios (moving, 200, 60, 8.0);
+
+    autowah_test::Rig still;
+    still.prep (0.25f, 0.0f, 1, false, false, 1.0f, 0.5f);
+    const auto st = autowah_test::hopRatios (still, 200, 60, 8.0);
+
+    const double movSpread = autowah_test::spread (mv);
+    const double stillSpread = autowah_test::spread (st);
+    std::printf ("  probe spread: moving = %.2f, Amount 0 = %.2f\n", movSpread, stillSpread);
+
+    check (std::isfinite (movSpread) && std::isfinite (stillSpread), "auto-wah LFO spreads are finite");
+    check (movSpread > 3.0, "the LFO swings the probe through the filter");
+    check (stillSpread < 1.2, "Amount 0 holds the filter still");
+}
+
+void testAutoWahStereoOpposes()
+{
+    std::printf ("Auto-wah: Stereo runs the two channels' LFOs in opposition\n");
+
+    auto lrCorr = [] (bool stereoOn)
+    {
+        autowah_test::Rig rig;
+        rig.prep (0.3f, 0.85f, 1, false, stereoOn, 1.0f, 0.5f);
+
+        const int hop = (int) (kSampleRate * 0.008);
+        std::vector<float> l ((size_t) hop), r ((size_t) hop);
+
+        for (int b = 0; b < 200; ++b) { rig.fill (l.data(), r.data(), hop); rig.wah.process (l.data(), r.data(), hop); }
+
+        std::vector<double> el, er;
+        for (int h = 0; h < 90; ++h)
+        {
+            std::vector<float> inl ((size_t) hop);
+            rig.fill (inl.data(), nullptr, hop);
+            for (int i = 0; i < hop; ++i) { l[(size_t) i] = inl[(size_t) i]; r[(size_t) i] = inl[(size_t) i]; }
+            rig.wah.process (l.data(), r.data(), hop);
+            const double si = juce::jmax (goertzelPower (inl, rig.probeHz, kSampleRate), 1.0e-30);
+            el.push_back (goertzelPower (std::vector<float> (l.begin(), l.end()), rig.probeHz, kSampleRate) / si);
+            er.push_back (goertzelPower (std::vector<float> (r.begin(), r.end()), rig.probeHz, kSampleRate) / si);
+        }
+
+        double ml = 0.0, mr = 0.0;
+        for (size_t i = 0; i < el.size(); ++i) { ml += el[i]; mr += er[i]; }
+        ml /= (double) el.size(); mr /= (double) er.size();
+        double num = 0.0, dl = 0.0, dr = 0.0;
+        for (size_t i = 0; i < el.size(); ++i)
+        {
+            const double a = el[i] - ml, b = er[i] - mr;
+            num += a * b; dl += a * a; dr += b * b;
+        }
+        return num / std::sqrt (juce::jmax (dl * dr, 1.0e-30));
+    };
+
+    const double wide = lrCorr (true);
+    const double mono = lrCorr (false);
+    std::printf ("  L/R probe-envelope correlation: Stereo = %.2f, Mono = %.2f\n", wide, mono);
+
+    check (std::isfinite (wide) && std::isfinite (mono), "auto-wah stereo correlation is finite");
+    check (mono > 0.9, "Mono keeps the channels together");
+    check (wide < 0.0, "Stereo pushes the channels into opposite phase");
+}
+
+void testAutoWahFilterType()
+{
+    std::printf ("Auto-wah: Type picks low- / band- / high-pass\n");
+
+    auto lowHighRatio = [] (int type)
+    {
+        ee::dsp::AutoWah wah;
+        wah.prepare (kSampleRate);
+        wah.reset();
+        wah.setPeriodSeconds (1.0f);
+        wah.setAmount01 (0.0f);      // hold the cutoff at Freq
+        wah.setFreq01 (0.4f);        // ~500 Hz, between the two tones
+        wah.setQ01 (0.4f);
+        wah.setMix01 (1.0f);
+        wah.setDecay01 (1.0f);
+        wah.setType (type);
+
+        const double wLo = 2.0 * juce::MathConstants<double>::pi * 150.0 / kSampleRate;
+        const double wHi = 2.0 * juce::MathConstants<double>::pi * 4000.0 / kSampleRate;
+        double p = 0.0;
+        std::vector<float> buf (kBlock);
+
+        for (int b = 0; b < 600; ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+            { buf[i] = 0.4f * (float) (std::sin (wLo * (p + i)) + std::sin (wHi * (p + i))); }
+            p += kBlock;
+            wah.process (buf.data(), nullptr, kBlock);
+        }
+
+        std::vector<float> out;
+        for (int b = 0; b < 200; ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+            { buf[i] = 0.4f * (float) (std::sin (wLo * (p + i)) + std::sin (wHi * (p + i))); }
+            p += kBlock;
+            wah.process (buf.data(), nullptr, kBlock);
+            for (int i = 0; i < kBlock; ++i) out.push_back (buf[i]);
+        }
+
+        const double lo = goertzelPower (out, 150.0, kSampleRate);
+        const double hi = goertzelPower (out, 4000.0, kSampleRate);
+        return lo / juce::jmax (hi, 1.0e-30);
+    };
+
+    const double lp = lowHighRatio (0);
+    const double bp = lowHighRatio (1);
+    const double hp = lowHighRatio (2);
+    std::printf ("  low/high energy ratio: LP = %.2f, BP = %.2f, HP = %.3f\n", lp, bp, hp);
+
+    check (std::isfinite (lp) && std::isfinite (bp) && std::isfinite (hp), "auto-wah type ratios are finite");
+    check (lp > bp * 2.0, "low-pass keeps the low tone over the high");
+    check (hp < bp * 0.5, "high-pass keeps the high tone over the low");
+}
+
+void testAutoWahDecayGate()
+{
+    std::printf ("Auto-wah: Decay sets how fast the wobble flattens after a note\n");
+
+    // A sub-gate 1 kHz probe runs the whole time, with a loud 0-250 ms burst on
+    // top to open the gate. In the 400-750 ms window the burst is long gone, so
+    // only the probe is left: with a short Decay the gate has closed and the
+    // filter sits still (small band ripple), with Decay latched the LFO keeps
+    // sweeping the probe (large band ripple).
+    auto afterRipple = [] (float decay01)
+    {
+        ee::dsp::AutoWah wah;
+        wah.prepare (kSampleRate);
+        wah.reset();
+        wah.setPeriodSeconds (0.12f);
+        wah.setAmount01 (0.9f);
+        wah.setFreq01 (0.35f);
+        wah.setQ01 (0.55f);
+        wah.setMix01 (1.0f);
+        wah.setType (1);
+        wah.setDecay01 (decay01);
+
+        const int total = (int) (kSampleRate * 1.0);
+        const int burstEnd = (int) (kSampleRate * 0.25);
+        const double w = 2.0 * juce::MathConstants<double>::pi * 1000.0 / kSampleRate;
+
+        std::vector<float> out ((size_t) total);
+        for (int n = 0; n < total; ++n)
+        {
+            const double probe = 0.004 * std::sin (w * n);            // below the gate
+            const double burst = n < burstEnd ? 0.4 * std::sin (w * n) : 0.0;
+            out[(size_t) n] = (float) (probe + burst);
+        }
+        for (int off = 0; off < total; off += kBlock)
+            wah.process (out.data() + off, nullptr, juce::jmin (kBlock, total - off));
+
+        const int hop = (int) (kSampleRate * 0.02);
+        double lo = 1.0e30, hi = 0.0;
+        for (int a = (int) (kSampleRate * 0.40); a + hop <= (int) (kSampleRate * 0.75); a += hop)
+        {
+            std::vector<float> so (out.begin() + a, out.begin() + a + hop);
+            const double p = goertzelPower (so, 1000.0, kSampleRate);
+            lo = juce::jmin (lo, p);
+            hi = juce::jmax (hi, p);
+        }
+        return hi / juce::jmax (lo, 1.0e-30);   // band ripple over the window
+    };
+
+    const double shortDecay = afterRipple (0.05f);
+    const double latched     = afterRipple (1.0f);
+    std::printf ("  1 kHz band ripple after the note: short Decay = %.2f, latched = %.2f\n",
+                shortDecay, latched);
+
+    check (std::isfinite (shortDecay) && std::isfinite (latched), "auto-wah decay ripple is finite");
+    check (latched > shortDecay * 3.0, "a short Decay flattens the filter once the note stops");
+}
+
+void testAutoWahRandomAperiodic()
+{
+    std::printf ("Auto-wah: Random makes the sweep aperiodic\n");
+
+    // Compare consecutive LFO-period windows. Shape mode repeats; Random does not.
+    auto periodMatch = [] (bool random)
+    {
+        autowah_test::Rig rig;
+        rig.inAmp = 0.004f;   // below the dynamics follower, so the rate stays nominal
+        rig.prep (0.20f, 0.9f, 1, random, false, 1.0f, 0.5f);
+        // 20 hops per 200 ms period at 10 ms hops.
+        const auto r = autowah_test::hopRatios (rig, 200, 120, 10.0);
+
+        const int per = 20;
+        double num = 0.0, da = 0.0, db = 0.0, ma = 0.0, mb = 0.0;
+        int n = 0;
+        for (int i = 0; i + per < (int) r.size(); ++i) { ma += r[(size_t) i]; mb += r[(size_t) (i + per)]; ++n; }
+        ma /= n; mb /= n;
+        for (int i = 0; i + per < (int) r.size(); ++i)
+        {
+            const double a = r[(size_t) i] - ma, b = r[(size_t) (i + per)] - mb;
+            num += a * b; da += a * a; db += b * b;
+        }
+        return num / std::sqrt (juce::jmax (da * db, 1.0e-30));
+    };
+
+    const double shaped = periodMatch (false);
+    const double rnd    = periodMatch (true);
+    std::printf ("  period-to-period correlation: Shape = %.2f, Random = %.2f\n", shaped, rnd);
+
+    check (std::isfinite (shaped) && std::isfinite (rnd), "auto-wah period correlation is finite");
+    check (shaped > 0.8, "a shaped LFO repeats every period");
+    check (rnd < 0.6, "Random does not repeat");
+}
+
+void testAutoWahRateFollowsLevel()
+{
+    std::printf ("Auto-wah: the LFO runs faster the harder you play\n");
+
+    // Free-run LFO cycles completed over 3 s of a steady tone, latched Decay so
+    // the LFO never stops. Count phase wraps.
+    auto cyclesFor = [] (float amp)
+    {
+        autowah_test::Rig rig;
+        rig.inAmp = amp;
+        rig.probeHz = 300.0;
+        rig.prep (0.25f, 0.9f, 1, false, false, /*Decay latched*/ 1.0f, 0.5f);
+
+        std::vector<float> buf (kBlock);
+        for (int b = 0; b < 120; ++b) { rig.fill (buf.data(), nullptr, kBlock); rig.wah.process (buf.data(), nullptr, kBlock); }
+
+        double prev = rig.wah.phase();
+        double cycles = 0.0;
+        const int blocks = (int) (kSampleRate * 3.0 / kBlock);
+        for (int b = 0; b < blocks; ++b)
+        {
+            rig.fill (buf.data(), nullptr, kBlock);
+            rig.wah.process (buf.data(), nullptr, kBlock);
+            const double p = rig.wah.phase();
+            if (p < prev) cycles += 1.0;
+            prev = p;
+        }
+        return cycles;
+    };
+
+    const double quiet = cyclesFor (0.03f);
+    const double loud  = cyclesFor (0.6f);
+    std::printf ("  LFO cycles in 3 s: quiet = %.0f, loud = %.0f\n", quiet, loud);
+
+    check (std::isfinite (quiet) && std::isfinite (loud), "auto-wah cycle counts are finite");
+    check (loud > quiet * 1.08, "a hard hit speeds the LFO up");
+}
+
+void testAutoWahRetrigger()
+{
+    std::printf ("Auto-wah: every string hit restarts the LFO at its top\n");
+
+    ee::dsp::AutoWah wah;
+    wah.prepare (kSampleRate);
+    wah.reset();
+    wah.setPeriodSeconds (0.30f);   // slow enough that a reset is unmistakable
+    wah.setAmount01 (0.9f);
+    wah.setFreq01 (0.35f);
+    wah.setQ01 (0.55f);
+    wah.setMix01 (1.0f);
+    wah.setType (1);
+    wah.setDecay01 (0.3f);          // not latched
+
+    const int total = (int) (kSampleRate * 1.2);
+    const int b1 = (int) (kSampleRate * 0.20);
+    const int b2 = (int) (kSampleRate * 0.70);
+    const int burst = (int) (kSampleRate * 0.06);
+    const double w = 2.0 * juce::MathConstants<double>::pi * 300.0 / kSampleRate;
+
+    std::vector<float> buf ((size_t) total);
+    for (int n = 0; n < total; ++n)
+    {
+        const bool on = (n >= b1 && n < b1 + burst) || (n >= b2 && n < b2 + burst);
+        buf[(size_t) n] = on ? 0.5f * (float) std::sin (w * n) : 0.0f;
+    }
+
+    const int lo = (int) (kSampleRate * 0.003);
+    const int hi = (int) (kSampleRate * 0.055);
+    double minAfter1 = 1.0e9, minAfter2 = 1.0e9;
+
+    for (int off = 0; off < total; off += kBlock)
+    {
+        const int len = juce::jmin (kBlock, total - off);
+        wah.process (buf.data() + off, nullptr, len);
+        const double ph = wah.phase();
+        const int mid = off + len / 2;
+        if (mid >= b1 + lo && mid < b1 + hi) minAfter1 = juce::jmin (minAfter1, ph);
+        if (mid >= b2 + lo && mid < b2 + hi) minAfter2 = juce::jmin (minAfter2, ph);
+    }
+
+    std::printf ("  lowest LFO phase just after each hit: pluck 1 = %.3f, pluck 2 = %.3f\n",
+                minAfter1, minAfter2);
+
+    check (std::isfinite (minAfter1) && std::isfinite (minAfter2), "auto-wah retrigger phases are finite");
+    check (minAfter1 < 0.15, "the first hit restarts the LFO near phase 0");
+    check (minAfter2 < 0.15, "the second hit restarts it too");
+}
+
+void testAutoWahHoldsLevel()
+{
+    std::printf ("Auto-wah: the wet path stays near the dry level, not way down\n");
+
+    ee::dsp::AutoWah wah;
+    wah.prepare (kSampleRate);
+    wah.reset();
+    wah.setPeriodSeconds (0.3f);
+    wah.setAmount01 (0.6f);
+    wah.setFreq01 (0.35f);
+    wah.setQ01 (0.4f);
+    wah.setMix01 (1.0f);
+    wah.setDecay01 (1.0f);
+    wah.setType (1);
+
+    std::mt19937 rng (2027);
+    std::normal_distribution<float> dist (0.0f, 0.2f);
+
+    std::vector<float> buf (kBlock);
+    double inSq = 0.0, outSq = 0.0;
+
+    for (int b = 0; b < 1200; ++b)
+    {
+        for (int i = 0; i < kBlock; ++i) buf[i] = dist (rng);
+        std::vector<float> dry (buf.begin(), buf.end());
+        wah.process (buf.data(), nullptr, kBlock);
+
+        if (b >= 200)
+            for (int i = 0; i < kBlock; ++i)
+            {
+                inSq  += (double) dry[i] * dry[i];
+                outSq += (double) buf[i] * buf[i];
+            }
+    }
+
+    const double ratio = std::sqrt (outSq / juce::jmax (inSq, 1.0e-30));
+    std::printf ("  wet / dry RMS = %.2f\n", ratio);
+
+    check (std::isfinite (ratio), "auto-wah level ratio is finite");
+    check (ratio > 0.55, "the wah does not gut the level");
+    check (ratio < 2.5, "the make-up does not blow the level up");
+}
 } // namespace
 
 int main()
 {
-    std::printf ("=== Easy Effects DSP tests ===\n\n");
+    std::printf ("=== Synth Peak DSP tests ===\n\n");
 
     testDecayAccuracy();
     std::printf ("\n");
@@ -1104,6 +2232,22 @@ int main()
     std::printf ("\n");
     testTapeCharacter();
     std::printf ("\n");
+    testTapeMachineAtRest();
+    std::printf ("\n");
+    testTapeMachineSilence();
+    std::printf ("\n");
+    testTapeMachineSaturation();
+    std::printf ("\n");
+    testTapeMachineNoiseIsConstant();
+    std::printf ("\n");
+    testTapeMachineNoiseLoop();
+    std::printf ("\n");
+    testTapeMachineToneTilt();
+    std::printf ("\n");
+    testTapeMachineStereoWidens();
+    std::printf ("\n");
+    testTapeMachineStability();
+    std::printf ("\n");
     testChorusSilence();
     std::printf ("\n");
     testChorusBypassIsUnity();
@@ -1111,6 +2255,12 @@ int main()
     testChorusWidensImage();
     std::printf ("\n");
     testChorusStereoIsStable();
+    std::printf ("\n");
+    testPhaserSilence();
+    std::printf ("\n");
+    testPhaserStability();
+    std::printf ("\n");
+    testPhaserSweeps();
     std::printf ("\n");
     testOverdriveSilence();
     std::printf ("\n");
@@ -1121,6 +2271,28 @@ int main()
     testOverdriveToneTilt();
     std::printf ("\n");
     testOverdriveAntiAliasing();
+    std::printf ("\n");
+    testAutoWahSilence();
+    std::printf ("\n");
+    testAutoWahMixZeroIsDry();
+    std::printf ("\n");
+    testAutoWahStability();
+    std::printf ("\n");
+    testAutoWahLfoModulates();
+    std::printf ("\n");
+    testAutoWahStereoOpposes();
+    std::printf ("\n");
+    testAutoWahFilterType();
+    std::printf ("\n");
+    testAutoWahDecayGate();
+    std::printf ("\n");
+    testAutoWahRandomAperiodic();
+    std::printf ("\n");
+    testAutoWahRateFollowsLevel();
+    std::printf ("\n");
+    testAutoWahRetrigger();
+    std::printf ("\n");
+    testAutoWahHoldsLevel();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

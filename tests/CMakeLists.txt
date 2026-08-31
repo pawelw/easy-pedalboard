@@ -26,17 +26,17 @@ target_link_libraries(ee_ui_snapshot
 
 if(EE_TAPE_TUNER)
     target_sources(ee_ui_snapshot PRIVATE
-        ${CMAKE_SOURCE_DIR}/plugins/easy-delay/src/TapeTunerPanel.cpp)
+        ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src/TapeTunerPanel.cpp)
     target_include_directories(ee_ui_snapshot
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-delay/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
     target_compile_definitions(ee_ui_snapshot PUBLIC EE_TAPE_TUNER=1)
 endif()
 
 if(EE_SHIMMER_TUNER)
     target_sources(ee_ui_snapshot PRIVATE
-        ${CMAKE_SOURCE_DIR}/plugins/easy-reverb/src/ShimmerTunerPanel.cpp)
+        ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src/ShimmerTunerPanel.cpp)
     target_include_directories(ee_ui_snapshot
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-reverb/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src)
     target_compile_definitions(ee_ui_snapshot PUBLIC EE_SHIMMER_TUNER=1)
 endif()
 
@@ -52,10 +52,10 @@ target_compile_definitions(ee_reverb_match PUBLIC
     JUCE_STANDALONE_APPLICATION=1)
 
 target_include_directories(ee_reverb_match
-    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-reverb/src)
+    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src)
 
 target_link_libraries(ee_reverb_match
-    PRIVATE EasyReverb ee_shared juce::juce_audio_formats
+    PRIVATE PeakReverb ee_shared juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
 # Renders a file through the tape colour stage alone, for voicing it against a
@@ -84,10 +84,10 @@ target_compile_definitions(ee_eq_match PUBLIC
     JUCE_STANDALONE_APPLICATION=1)
 
 target_include_directories(ee_eq_match
-    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-eq/src)
+    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-eq/src)
 
 target_link_libraries(ee_eq_match
-    PRIVATE EasyEq ee_shared juce::juce_audio_formats
+    PRIVATE PeakEq ee_shared juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
 # Renders a file through the whole delay processor, chain and all.
@@ -101,10 +101,10 @@ target_compile_definitions(ee_delay_match PUBLIC
     JUCE_STANDALONE_APPLICATION=1)
 
 target_include_directories(ee_delay_match
-    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-delay/src)
+    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
 
 target_link_libraries(ee_delay_match
-    PRIVATE EasyDelay ee_shared juce::juce_audio_formats
+    PRIVATE PeakDelay ee_shared juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
 # Sweeps the Trem & Pan processor over every parameter combo and adverse input,
@@ -119,10 +119,10 @@ target_compile_definitions(ee_trempan_stress PUBLIC
     JUCE_STANDALONE_APPLICATION=1)
 
 target_include_directories(ee_trempan_stress
-    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/easy-trem-pan/src)
+    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-trem-pan/src)
 
 target_link_libraries(ee_trempan_stress
-    PRIVATE EasyTremPan ee_shared
+    PRIVATE PeakTremPan ee_shared
     PUBLIC juce::juce_recommended_config_flags)
 
 # Sweeps the FDN reverb over extreme settings and adverse input, watching for a
@@ -138,4 +138,34 @@ target_compile_definitions(ee_reverb_stress PUBLIC
 
 target_link_libraries(ee_reverb_stress
     PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)
+
+# Sweeps the tape machine over every knob combination and adverse input,
+# watching for a non-finite or runaway output.
+juce_add_console_app(ee_tape_stress PRODUCT_NAME "ee_tape_stress")
+
+target_sources(ee_tape_stress PRIVATE TapeStress.cpp)
+
+target_compile_definitions(ee_tape_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_tape_stress
+    PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)
+
+# Renders a file through the whole tape machine, for voicing it against a
+# reference recording. Every knob is a command-line argument.
+juce_add_console_app(ee_tape_render PRODUCT_NAME "ee_tape_render")
+
+target_sources(ee_tape_render PRIVATE TapeMachineRender.cpp)
+
+target_compile_definitions(ee_tape_render PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_tape_render
+    PRIVATE ee_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)

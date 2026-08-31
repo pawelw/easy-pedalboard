@@ -36,6 +36,16 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
     if (spec.invertedArc)
         slider.getProperties().set ("invertedArc", true);
 
+    if (spec.bipolarArc)
+        slider.getProperties().set ("bipolarArc", true);
+
+    slider.detent = spec.centreDetent;
+
+    // Small utility knobs (corner cuts, the centre "reso") keep the vector cap;
+    // only the full-size knobs get the photographic artwork.
+    if (compact)
+        slider.getProperties().set ("compactKnob", true);
+
     // The wet/dry control shows a small spoon instead of the plain position dot.
     // Keyed off the parameter ID so every pedal with a "mix" knob picks it up
     // without touching its spec.

@@ -1,4 +1,4 @@
-// Renders a file through the whole Easy Delay processor, so the chain can be
+// Renders a file through the whole Peak Delay processor, so the chain can be
 // checked end to end rather than a stage at a time.
 #include <juce_audio_formats/juce_audio_formats.h>
 
@@ -48,7 +48,7 @@ int main (int argc, char* argv[])
     if (reader->numChannels == 1)
         buffer.copyFrom (1, 0, buffer, 0, 0, numSamples);
 
-    EasyDelayProcessor processor;
+    PeakDelayProcessor processor;
 
     setParam (processor.apvts, "tape", tape);
     setParam (processor.apvts, "mix", mix);

@@ -17,6 +17,116 @@ namespace
         return img;
     }
 
+    /** The knob artwork: upright, square, its own pointer baked in at 12
+        o'clock. The knob body's outer radius is `kKnobImageRadiusFrac` of the
+        image width. Loaded once. */
+    juce::Image defaultKnobImage()
+    {
+        static const juce::Image img = juce::ImageCache::getFromMemory (BinaryData::knob_png,
+                                                                        BinaryData::knob_pngSize);
+        return img;
+    }
+    constexpr float kKnobImageRadiusFrac = 0.948f;
+
+    /** The static centre plate, laid over the (spinning) knob body and never
+        rotated. Loaded once. */
+    juce::Image knobPlateImage()
+    {
+        static const juce::Image img = juce::ImageCache::getFromMemory (BinaryData::plate_png,
+                                                                        BinaryData::plate_pngSize);
+        return img;
+    }
+    /** Plate radius as a fraction of the knob radius `R` - sized to cover the
+        knob artwork's own metal centre. */
+    constexpr float kPlateRadiusFrac = 0.44f;
+
+    /** Plate spin relative to the knob body: negative = opposite direction,
+        magnitude < 1 = slower, 0 = fully static. */
+    constexpr float kPlateSpinFactor = 0.0f;
+
+    /** A soft specular glint on the plate, orbiting as the knob turns. The
+        factor is its angular rate relative to the knob, the alpha its strength. */
+    constexpr float kPlateGlintSpinFactor = 0.6f;
+    constexpr float kPlateGlintAlpha      = 0.32f;
+
+    /** Knob artwork radius as a fraction of the value-arc radius. Below 1 leaves
+        the progress ring visible around the knob. */
+    constexpr float kKnobSizeFrac = 0.87f;
+
+    /** Draws the knob artwork rotated to the value, scaled so the body's outer
+        edge lands at `R`. The baked-in pointer turns with it. */
+    void drawImageKnob (juce::Graphics& g, juce::Point<float> centre, float R,
+                        float angle, const juce::Image& img)
+    {
+        const float imgKnobR = kKnobImageRadiusFrac * static_cast<float> (img.getWidth()) * 0.5f;
+        const float scale    = R / imgKnobR;
+
+        const auto t = juce::AffineTransform::translation (img.getWidth() * -0.5f,
+                                                           img.getHeight() * -0.5f)
+                           .scaled (scale)
+                           .rotated (angle)
+                           .translated (centre.x, centre.y);
+        g.drawImageTransformed (img, t, false);
+
+        // Centre plate - laid over the spinning body and turned only a fraction
+        // of the way (and the other direction), so its brushed grain drifts
+        // slowly against the knob rather than tracking it.
+        if (const auto plate = knobPlateImage(); plate.isValid())
+        {
+            const float plateR = R * kPlateRadiusFrac;
+            const float ps = (plateR * 2.0f) / static_cast<float> (plate.getWidth());
+            const auto pt = juce::AffineTransform::translation (plate.getWidth() * -0.5f,
+                                                                plate.getHeight() * -0.5f)
+                                .scaled (ps)
+                                .rotated (angle * kPlateSpinFactor)
+                                .translated (centre.x, centre.y);
+            juce::Graphics::ScopedSaveState s (g);
+            juce::Path pc;
+            pc.addEllipse (juce::Rectangle<float> (plateR * 2.0f, plateR * 2.0f).withCentre (centre));
+            g.reduceClipRegion (pc);
+            g.drawImageTransformed (plate, pt, false);
+
+            // Specular glint that orbits the plate as the knob turns.
+            const float ga = angle * kPlateGlintSpinFactor;
+            const juce::Point<float> gp (centre.x + plateR * 0.5f * std::sin (ga),
+                                         centre.y - plateR * 0.5f * std::cos (ga));
+            const auto glow = juce::Rectangle<float> (plateR * 1.8f, plateR * 1.8f).withCentre (gp);
+            juce::ColourGradient gg (juce::Colours::white.withAlpha (kPlateGlintAlpha), gp.x, gp.y,
+                                     juce::Colours::transparentWhite,
+                                     gp.x, gp.y + plateR * 0.9f, true);
+            gg.addColour (0.35, juce::Colours::white.withAlpha (kPlateGlintAlpha * 0.4f));
+            g.setGradientFill (gg);
+            g.fillEllipse (glow);
+        }
+
+        // A whisper of top-down light, screen-space so it stays at 12 o'clock
+        // however far the knob is turned.
+        {
+            const auto lit = juce::Rectangle<float> (R * 2.0f, R * 2.0f).withCentre (centre)
+                                 .reduced (R * 0.06f);
+            juce::Graphics::ScopedSaveState state (g);
+            juce::Path clip;
+            clip.addEllipse (lit);
+            g.reduceClipRegion (clip);
+
+            juce::ColourGradient sheen (juce::Colours::white.withAlpha (0.16f),
+                                        lit.getCentreX(), lit.getY(),
+                                        juce::Colours::transparentWhite,
+                                        lit.getCentreX(), lit.getCentreY() + lit.getHeight() * 0.18f,
+                                        false);
+            g.setGradientFill (sheen);
+            g.fillEllipse (lit);
+
+            juce::ColourGradient shade (juce::Colours::transparentBlack,
+                                        lit.getCentreX(), lit.getCentreY() + lit.getHeight() * 0.2f,
+                                        juce::Colours::black.withAlpha (0.13f),
+                                        lit.getCentreX(), lit.getBottom(),
+                                        false);
+            g.setGradientFill (shade);
+            g.fillEllipse (lit);
+        }
+    }
+
     /** Draws the spoon as the position pointer: the handle tip sits on the knob
         centre and the scoop points radially outward along `angle`, reaching
         `length` from the centre. Replaces the dot entirely. */
@@ -42,6 +152,161 @@ namespace
                 .translated (at.x, at.y);
 
         g.drawImageTransformed (img, place, false);
+    }
+
+    /** Flat graphic knob: a black disc, a black cog ring with a thin light
+        outline, and a big brushed-metal centre. Drawn upright; only the white
+        marker turns with `angle`. `R` is the outer radius. */
+    void drawVectorKnob (juce::Graphics& g, juce::Point<float> centre, float R,
+                         float angle, const PedalTheme& theme, bool enabled)
+    {
+        using juce::Colour;
+        namespace Colours = juce::Colours;
+        const float pi  = juce::MathConstants<float>::pi;
+        const float tau = juce::MathConstants<float>::twoPi;
+
+        // ---- proportions --------------------------------------------
+        const float cogTip  = R * 0.85f;
+        const float cogRoot = R * 0.70f;
+        const float metalR  = R * 0.60f;
+        const int   teeth   = 8;
+        const float markIn  = R * 0.64f;
+        const float markOut = R * 0.955f;
+        const float markW   = R * 0.155f;
+
+        auto disc = [centre] (float rad)
+        { return juce::Rectangle<float> (rad * 2.0f, rad * 2.0f).withCentre (centre); };
+        auto pol = [centre] (float rad, float th)
+        { return juce::Point<float> (centre.x + rad * std::sin (th), centre.y - rad * std::cos (th)); };
+
+        // gear outline radius as a function of angle: rounded teeth
+        auto cogPath = [&] (float scaleTip, float scaleRoot)
+        {
+            juce::Path p;
+            const int steps = 480;
+            for (int i = 0; i <= steps; ++i)
+            {
+                const float th = tau * i / (float) steps;
+                float f = 0.5f + 0.5f * std::cos (teeth * th);          // 1 tooth, 0 notch
+                f = juce::jlimit (0.0f, 1.0f, (f - 0.16f) / 0.26f);      // wide flats, small notch
+                f = f * f * (3.0f - 2.0f * f);                           // smoothstep -> rounded
+                f = f * f * (3.0f - 2.0f * f);
+                const float rr = cogRoot * scaleRoot + (cogTip * scaleTip - cogRoot * scaleRoot) * f;
+                const auto pt = pol (rr, th);
+                if (i == 0) p.startNewSubPath (pt); else p.lineTo (pt);
+            }
+            p.closeSubPath();
+            return p;
+        };
+
+        // ---- outer black disc -------------------------------------
+        {
+            juce::ColourGradient gd (Colour (0xff272727), centre.x, centre.y - R,
+                                     Colour (0xff0c0c0c), centre.x, centre.y + R, false);
+            gd.addColour (0.55, Colour (0xff161616));
+            g.setGradientFill (gd);
+            g.fillEllipse (disc (R));
+            g.setColour (Colours::black.withAlpha (0.9f));
+            g.drawEllipse (disc (R).reduced (0.75f), 1.5f);
+        }
+
+        // ---- cog ring -------------------------------------------
+        const auto cog = cogPath (1.0f, 1.0f);
+        g.setColour (Colour (0xff141414));
+        g.fillPath (cog);
+
+        // gentle top-to-bottom shading on the cog face
+        {
+            juce::Graphics::ScopedSaveState s (g);
+            g.reduceClipRegion (cog);
+            juce::ColourGradient sh (Colours::white.withAlpha (0.05f), centre.x, centre.y - cogTip,
+                                     Colours::transparentWhite, centre.x, centre.y, false);
+            g.setGradientFill (sh);
+            g.fillEllipse (disc (cogTip));
+            juce::ColourGradient dk (Colours::transparentBlack, centre.x, centre.y,
+                                     Colours::black.withAlpha (0.28f), centre.x, centre.y + cogTip, false);
+            g.setGradientFill (dk);
+            g.fillEllipse (disc (cogTip));
+        }
+
+        // thin light thread outline round the cog
+        g.setColour (Colour (0xff9a9a9a).withAlpha (0.6f));
+        g.strokePath (cog, juce::PathStrokeType (juce::jmax (1.2f, R * 0.016f)));
+
+        // ---- recess the metal sits in --------------------------
+        g.setColour (Colour (0xff0a0a0a));
+        g.fillEllipse (disc (metalR + R * 0.035f));
+        g.setColour (Colours::black.withAlpha (0.5f));
+        g.drawEllipse (disc (metalR + R * 0.02f), juce::jmax (1.0f, R * 0.02f));
+
+        // ---- brushed-metal centre -----------------------------
+        {
+            const auto mB = disc (metalR);
+
+            juce::ColourGradient base (Colour (0xfff0f0f0), centre.x, centre.y,
+                                       Colour (0xffa4a4a4), centre.x, centre.y + metalR, true);
+            base.addColour (0.8, Colour (0xffc0c0c0));
+            g.setGradientFill (base);
+            g.fillEllipse (mB);
+
+            // spun sheen: two bright sweeps, two dark, via thin wedges
+            {
+                juce::Graphics::ScopedSaveState s (g);
+                juce::Path clip; clip.addEllipse (mB);
+                g.reduceClipRegion (clip);
+                const int wedges = 360;
+                for (int i = 0; i < wedges; ++i)
+                {
+                    const float a0 = tau * i / (float) wedges;
+                    const float a1 = tau * (i + 2.0f) / (float) wedges;   // overlap = smooth
+                    float b = 0.64f + 0.26f * std::cos (2.0f * (a0 + 0.55f))
+                                    + 0.07f * std::cos (a0 - 0.3f);
+                    b = juce::jlimit (0.40f, 0.98f, b);
+                    juce::Path w;
+                    w.startNewSubPath (centre);
+                    w.lineTo (pol (metalR * 1.05f, a0));
+                    w.lineTo (pol (metalR * 1.05f, a1));
+                    w.closeSubPath();
+                    g.setColour (Colour::greyLevel (b).withAlpha (0.5f));
+                    g.fillPath (w);
+                }
+                // fine turned rings
+                juce::Random rng (0x9e3d);
+                for (int i = 1; i <= 46; ++i)
+                {
+                    const float rr = metalR * (i / 47.0f);
+                    g.setColour ((i % 2 ? Colours::white : Colours::black)
+                                     .withAlpha (0.03f + 0.02f * rng.nextFloat()));
+                    g.drawEllipse (disc (rr), 1.0f);
+                }
+                // slight darkening at the rim
+                juce::ColourGradient vg (Colours::transparentBlack, centre.x, centre.y,
+                                         Colours::black.withAlpha (0.18f), centre.x + metalR, centre.y, true);
+                vg.addColour (0.8, Colours::transparentBlack);
+                g.setGradientFill (vg);
+                g.fillEllipse (mB);
+            }
+
+            g.setColour (Colour (0xff7c7c7c));
+            g.drawEllipse (mB.reduced (1.0f), juce::jmax (1.0f, R * 0.008f));
+            g.setColour (Colour (0xff0d0d0d));
+            g.drawEllipse (mB.expanded (juce::jmax (1.0f, R * 0.006f)), juce::jmax (1.0f, R * 0.014f));
+        }
+
+        // ---- white marker -----------------------------------
+        {
+            juce::Path mk;
+            mk.addRoundedRectangle (-markW * 0.5f, -(markOut - markIn),
+                                    markW, markOut - markIn, markW * 0.28f);
+            const auto t = juce::AffineTransform::rotation (angle)
+                               .translated (pol ((markIn + markOut) * 0.5f, angle));
+            g.setColour (Colours::black.withAlpha (0.4f));
+            g.fillPath (mk, t.translated (0.0f, 1.6f));
+            g.setColour (enabled ? Colours::white : Colours::white.withAlpha (0.5f));
+            g.fillPath (mk, t);
+            g.setColour (Colours::black.withAlpha (0.3f));
+            g.strokePath (mk, juce::PathStrokeType (1.2f), t);
+        }
     }
 }
 
@@ -81,6 +346,12 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
                                               juce::PathStrokeType::rounded);
 
     const bool inverted = static_cast<bool> (slider.getProperties().getWithDefault ("invertedArc", false));
+
+    // A centre-detent control (one knob carrying a low cut one way and a high
+    // cut the other) grows its arc out of 12 o'clock in whichever direction it
+    // is turned, rather than filling from the minimum.
+    const bool bipolar = static_cast<bool> (slider.getProperties().getWithDefault ("bipolarArc", false));
+    const float centreAngle = (rotaryStartAngle + rotaryEndAngle) * 0.5f;
 
     // The wet/dry knob swaps its position dot for a small spoon pointer.
     const bool spoonPointer = static_cast<bool> (slider.getProperties().getWithDefault ("spoonPointer", false));
@@ -126,6 +397,27 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
             g.strokePath (value, stroke);
         }
     }
+    else if (bipolar)
+    {
+        // A tick at 12 o'clock, so the detent reads even with the arc empty.
+        const float tickInner = arcRadius - track * 0.5f - 2.0f;
+        const float tickOuter = arcRadius + track * 0.5f + 2.0f;
+        const auto tickDirection = juce::Point<float> (std::sin (centreAngle), -std::cos (centreAngle));
+
+        g.setColour (theme.textSecondary.withAlpha (0.7f));
+        g.drawLine (juce::Line<float> (centre + tickDirection * tickInner,
+                                       centre + tickDirection * tickOuter), 1.6f);
+
+        if (std::abs (angle - centreAngle) > 0.001f)
+        {
+            juce::Path value;
+            value.addCentredArc (centre.x, centre.y, arcRadius, arcRadius, 0.0f,
+                                 juce::jmin (centreAngle, angle), juce::jmax (centreAngle, angle), true);
+
+            g.setColour (slider.isEnabled() ? arcColour : theme.accentDim);
+            g.strokePath (value, stroke);
+        }
+    }
     else if (sliderPos > 0.001f)
     {
         juce::Path value;
@@ -164,6 +456,20 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
             t = t.rotated (angle);
 
         g.drawImageTransformed (theme.knobImage, t.translated (centre), false);
+        return;
+    }
+
+    // Full-size knobs get the vector knob, drawn upright and lit from the top so
+    // only the position line turns. Compact utility knobs keep the vector cap
+    // below. The value arc is already drawn underneath, so its ring still shows.
+    const bool compactKnob = static_cast<bool> (slider.getProperties().getWithDefault ("compactKnob", false));
+
+    if (! compactKnob)
+    {
+        if (const auto img = defaultKnobImage(); img.isValid())
+            drawImageKnob (g, centre, arcRadius * kKnobSizeFrac, angle, img);
+        else
+            drawVectorKnob (g, centre, arcRadius * kKnobSizeFrac, angle, theme, slider.isEnabled());
         return;
     }
 

@@ -51,7 +51,29 @@ private:
 
     std::function<juce::String()> liveValueText;
 
-    juce::Slider slider;
+    /** A slider that pulls onto the middle of its range while being dragged.
+        JUCE routes every mouse-driven value through snapValue(), and nothing
+        else, so automation and typed entry are unaffected. */
+    struct DetentSlider : juce::Slider
+    {
+        double snapValue (double attemptedValue, DragMode dragMode) override
+        {
+            if (! detent || dragMode == notDragging)
+                return attemptedValue;
+
+            const double centre = (getMinimum() + getMaximum()) * 0.5;
+            const double window = (getMaximum() - getMinimum()) * kDetentFraction;
+
+            return std::abs (attemptedValue - centre) < window ? centre : attemptedValue;
+        }
+
+        /** Half-width of the pull, as a fraction of the whole range. */
+        static constexpr double kDetentFraction = 0.02;
+
+        bool detent = false;
+    };
+
+    DetentSlider slider;
     juce::String valueText;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> attachment;

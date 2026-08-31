@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-project(EasyEffects VERSION 0.10.0 LANGUAGES C CXX)
+project(SynthPeak VERSION 0.10.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -26,7 +26,7 @@ FetchContent_Declare(JUCE
     GIT_PROGRESS TRUE)
 FetchContent_MakeAvailable(JUCE)
 
-# DaisySP supplies the time-domain pitch shifter that feeds Easy Reverb's
+# DaisySP supplies the time-domain pitch shifter that feeds Peak Reverb's
 # shimmer path. Pinned like JUCE; only the `DaisySP` static library target is
 # defined by its CMake, so nothing else leaks into the build.
 FetchContent_Declare(DaisySP
@@ -41,7 +41,7 @@ FetchContent_MakeAvailable(DaisySP)
 # but pin it explicitly so a compiler default can't change it underneath us.
 set_target_properties(DaisySP PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 
-# chowdsp_wdf is the header-only Wave Digital Filter library behind Easy
+# chowdsp_wdf is the header-only Wave Digital Filter library behind Peak
 # Overdrive's diode-clipper stage. It is pure headers, so we only fetch the
 # sources and wrap them in our own INTERFACE target - its bundled CMake declares
 # `cmake_minimum_required(VERSION 3.1)`, which current CMake rejects, and it is
@@ -62,26 +62,41 @@ target_include_directories(chowdsp_wdf INTERFACE ${chowdsp_wdf_SOURCE_DIR}/inclu
 # machine that has never seen them.
 juce_add_binary_data(ee_assets SOURCES
     assets/fonts/Birthstone-Regular.ttf
-    assets/images/rocket-logo.png
+    assets/images/peak-logo.png
+    assets/images/knob.png
+    assets/images/plate.png
     assets/images/spoon.png)
 set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
+# Peak Tape's noise floor is a recording played in a loop rather than
+# synthesised hiss, and it is several megabytes - so it gets its own binary-data
+# target, linked by that pedal alone instead of riding along in every plugin.
+# Its own namespace and header, or it would collide with ee_assets' BinaryData.
+juce_add_binary_data(ee_tape_noise
+    NAMESPACE TapeNoiseData
+    HEADER_NAME TapeNoiseData.h
+    SOURCES assets/audio/tape-noise.wav)
+set_target_properties(ee_tape_noise PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+
 add_subdirectory(shared)
 
-# Bolts a live tuning panel onto Easy Reverb's shimmer path. Never turn this on
+# Bolts a live tuning panel onto Peak Reverb's shimmer path. Never turn this on
 # for a build you hand to anyone.
-option(EE_SHIMMER_TUNER "Add the shimmer tuning panel to Easy Reverb (development only)" OFF)
-add_subdirectory(plugins/easy-reverb)
+option(EE_SHIMMER_TUNER "Add the shimmer tuning panel to Peak Reverb (development only)" OFF)
+add_subdirectory(plugins/peak-reverb)
 
-add_subdirectory(plugins/easy-eq)
-add_subdirectory(plugins/easy-trem-pan)
-add_subdirectory(plugins/easy-chorus)
-add_subdirectory(plugins/easy-overdrive)
+add_subdirectory(plugins/peak-eq)
+add_subdirectory(plugins/peak-trem-pan)
+add_subdirectory(plugins/peak-chorus)
+add_subdirectory(plugins/peak-phase)
+add_subdirectory(plugins/peak-overdrive)
+add_subdirectory(plugins/peak-wah)
+add_subdirectory(plugins/peak-tape)
 
-# Bolts a live tuning panel onto Easy Delay. Never turn this on for a build you
+# Bolts a live tuning panel onto Peak Delay. Never turn this on for a build you
 # hand to anyone.
-option(EE_TAPE_TUNER "Add the tape tuning panel to Easy Delay (development only)" OFF)
-add_subdirectory(plugins/easy-delay)
+option(EE_TAPE_TUNER "Add the tape tuning panel to Peak Delay (development only)" OFF)
+add_subdirectory(plugins/peak-delay)
 
 option(EE_BUILD_TESTS "Build the offline DSP test harness" ON)
 if(EE_BUILD_TESTS)

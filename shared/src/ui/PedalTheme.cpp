@@ -176,7 +176,7 @@ PedalTheme PedalTheme::teal()
 
 PedalTheme PedalTheme::gold()
 {
-    // Easy Delay's silver face restruck in light ocean blue.
+    // Peak Delay's silver face restruck in light ocean blue.
     PedalTheme t = silver();
 
     t.panel           = juce::Colour (0xffa4caa8);
@@ -272,6 +272,143 @@ PedalTheme PedalTheme::yellow()
     t.ledRing         = juce::Colour (0xff2a1f0a);
     t.switchBody      = juce::Colour (0xff7a5a1a);
     t.switchHighlight = juce::Colour (0xffe6c060);
+
+    t.cornerRadius = 16.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.35f;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
+PedalTheme PedalTheme::orange()
+{
+    PedalTheme t;
+
+    // Burnt-orange face, near-black legend and black caps - the same
+    // high-contrast recipe as yellow()/teal()/sky(), struck in orange.
+    t.background      = juce::Colour (0xff1a0f0a);
+    t.panel           = juce::Colour (0xffe45d27);
+    t.outline         = juce::Colour (0xff5a2410);
+    t.bezel           = juce::Colour (0xfff08a5e);   // lighter tint of the panel
+
+    t.textPrimary     = juce::Colour (0xff2a1206);
+    t.textSecondary   = juce::Colour (0xff2a1206);
+    t.title           = juce::Colour (0xff1f0d04);
+
+    // Black caps with a warm off-white pointer.
+    t.knobBody        = juce::Colour (0xff120b08);
+    t.knobFill        = juce::Colour (0xff1a120d);
+    t.knobOutline     = juce::Colour (0xff05060a);
+    t.knobPointer     = juce::Colour (0xfff7ecdc);
+
+    // Warm off-white groove with a deep red-brown value arc - bright enough to
+    // read against the black cap, dark enough to read against the orange face.
+    t.knobTrack       = juce::Colour (0xfff4ddc8);
+    t.accent          = juce::Colour (0xff5e2109);
+    t.accentDim       = juce::Colour (0xffa8613f);
+    t.glow            = juce::Colour (0xff9a3f18);
+
+    t.ledOn           = juce::Colour (0xffff7a3a);
+    t.ledOff          = juce::Colour (0xffa85a3a);
+    t.ledRing         = juce::Colour (0xff2a1206);
+    t.switchBody      = juce::Colour (0xff7a3a1a);
+    t.switchHighlight = juce::Colour (0xfff0a878);
+
+    t.cornerRadius = 16.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.35f;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
+PedalTheme PedalTheme::pink()
+{
+    PedalTheme t;
+
+    // Light-pink (#ffb6c1) face, near-black legend and black caps - the same
+    // high-contrast recipe as orange()/yellow()/teal()/sky(), struck in pink.
+    t.background      = juce::Colour (0xff1a1013);
+    t.panel           = juce::Colour (0xffffb6c1);
+    t.outline         = juce::Colour (0xff7a4a55);
+    t.bezel           = juce::Colour (0xffffd3da);   // lighter tint of the panel
+
+    t.textPrimary     = juce::Colour (0xff2a1016);
+    t.textSecondary   = juce::Colour (0xff2a1016);
+    t.title           = juce::Colour (0xff200b11);
+
+    // Black caps with a warm off-white pointer.
+    t.knobBody        = juce::Colour (0xff130a0c);
+    t.knobFill        = juce::Colour (0xff1b0f12);
+    t.knobOutline     = juce::Colour (0xff05060a);
+    t.knobPointer     = juce::Colour (0xfffbe6ea);
+
+    // Pink-tinted off-white groove with a deep wine value arc - bright enough to
+    // read against the black cap, dark enough to read against the pale-pink face.
+    t.knobTrack       = juce::Colour (0xfff8e2e6);
+    t.accent          = juce::Colour (0xff8a1f47);
+    t.accentDim       = juce::Colour (0xffc06b88);
+    t.glow            = juce::Colour (0xffd94f86);
+
+    t.ledOn           = juce::Colour (0xffff4f97);
+    t.ledOff          = juce::Colour (0xffbf6f88);
+    t.ledRing         = juce::Colour (0xff2a1016);
+    t.switchBody      = juce::Colour (0xff8a3a5a);
+    t.switchHighlight = juce::Colour (0xfff6bacd);
+
+    t.cornerRadius = 16.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.35f;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
+PedalTheme PedalTheme::green()
+{
+    PedalTheme t;
+
+    // Peak Tape's face, struck in the deep green of Peak Delay's Tape cap - the
+    // one knob on the board that is already a tape machine. The only dark-panel
+    // face in the range, which is the point: it reads as the machine rather than
+    // as another pedal.
+    t.background      = juce::Colour (0xff0d1206);
+    t.panel           = juce::Colour (0xff3f6419);
+    t.outline         = juce::Colour (0xff17280b);   // the Tape cap's own border
+    t.bezel           = juce::Colour (0xff8fbf5a);   // lighter tint of the panel
+
+    // Light legend, the inverse of the pale faces - a deep panel cannot carry a
+    // near-black one.
+    t.textPrimary     = juce::Colour (0xfff2f7e6);
+    t.textSecondary   = juce::Colour (0xffd3e3b4);
+    t.title           = juce::Colour (0xfff6faec);
+
+    // Black caps with a pale pointer, the same recipe as every other face.
+    t.knobBody        = juce::Colour (0xff11150c);
+    t.knobFill        = juce::Colour (0xff1a2012);
+    t.knobOutline     = juce::Colour (0xff05080a);
+    t.knobPointer     = juce::Colour (0xfff2f7e6);
+
+    // Dark olive groove with a bright lime value arc. Polarity is flipped from
+    // the pale faces on purpose: on a deep panel the arc has to be the light
+    // half of the pair to read at a glance.
+    t.knobTrack       = juce::Colour (0xff26330f);
+    t.accent          = juce::Colour (0xffc8e06a);
+    t.accentDim       = juce::Colour (0xff6c8543);
+    t.glow            = juce::Colour (0xffd8f088);
+
+    t.ledOn           = juce::Colour (0xffc8e06a);
+    t.ledOff          = juce::Colour (0xff2c3a1b);
+    t.ledRing         = juce::Colour (0xff0b1206);
+    t.switchBody      = juce::Colour (0xff2a3a17);
+    t.switchHighlight = juce::Colour (0xff6f8f43);
 
     t.cornerRadius = 16.0f;
     t.knobThickness = 3.0f;

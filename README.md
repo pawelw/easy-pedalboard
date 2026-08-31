@@ -1,4 +1,6 @@
-# Easy Effects
+# Synth Peak
+
+[synthpeak.com](https://synthpeak.com)
 
 Guitar pedal-style audio plugins for Ableton Live, built with JUCE. Designed to
 sit after an amp sim like NAM.
@@ -7,7 +9,7 @@ Builds as **VST3**, **AU** and a **Standalone** app.
 
 ## Plugins
 
-### Easy Reverb
+### Peak Reverb
 
 A modulated feedback delay network reverb. Mono in, stereo out. Four knobs, plus
 a small **Resonance** cap in the middle of them:
@@ -42,9 +44,9 @@ unity. At 0 % neither shifter runs and the reverb is exactly what it was.
 
 The full shimmer voicing lives in `shared/include/ee/dsp/ShimmerTuning.h`; the
 defaults there are a tuned setting. Configure with `-DEE_SHIMMER_TUNER=ON` (and
-flip `showTuner` in `PluginProcessor.cpp`) to open Easy Reverb with a side panel
+flip `showTuner` in `PluginProcessor.cpp`) to open Peak Reverb with a side panel
 of live sliders for every value plus a copy-paste-ready readout of the struct —
-a development build only, the way `-DEE_TAPE_TUNER=ON` works for Easy Delay.
+a development build only, the way `-DEE_TAPE_TUNER=ON` works for Peak Delay.
 
 The pedal carries no on/off switch of its own — use the host's device on/off.
 The `on` parameter has **trails**: bypassing stops feeding the network but leaves
@@ -53,7 +55,7 @@ the wet path open, so the existing tail rings out instead of being cut off.
 High and low frequency decay rates are fixed internally (lows ring slightly
 longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
 
-### Easy Delay
+### Peak Delay
 
 A tempo-synced stereo delay with independent left and right times. Six controls:
 
@@ -111,7 +113,7 @@ Like the reverb it has no on/off switch of its own, and the `on` parameter has
 trails: bypassing fades the tape off the dry path and closes the delay input,
 letting the repeats run out.
 
-### Easy EQ
+### Peak EQ
 
 A seven-band graphic EQ modelled on the Boss GE-7, driven by vertical faders
 instead of knobs. Mono or stereo, in and out. Eight faders:
@@ -150,10 +152,10 @@ Like the other pedals it carries no on/off switch of its own — use the host's
 device on/off. The `on` parameter crossfades to the clean dry signal so
 toggling it never clicks.
 
-The face reuses Easy Delay's `silver()` theme, and is the same width and height
-as Easy Reverb, so the pedals line up on a rack.
+The face reuses Peak Delay's `silver()` theme, and is the same width and height
+as Peak Reverb, so the pedals line up on a rack.
 
-### Easy Trem & Pan
+### Peak Trem & Pan
 
 One LFO that either chops the level (tremolo) or sweeps the stereo position
 (auto-pan), modelled on Ableton's Auto Pan. Mono or stereo in, stereo out.
@@ -176,7 +178,7 @@ Two switches sit above the knobs:
 
 - A **Tremolo / Panning** slider, top-left: a light knob on a dark track (about
   two circles wide), left for tremolo (default), right for panning.
-- A **Sync** button centred above the **Rate** knob - Easy Delay's `MiniToggle`,
+- A **Sync** button centred above the **Rate** knob - Peak Delay's `MiniToggle`,
   with the same amber lit colour. Lit locks **Rate** to the host tempo (note
   divisions); off runs it free, where the knob reads one LFO cycle in
   milliseconds (10 ms - 2 s). Turning the knob up speeds the LFO up either way.
@@ -205,7 +207,7 @@ crossfades to the dry signal so the host's device on/off never clicks. The face
 uses a new `teal()` theme: a `#2d8a8e` panel with `#fee1b8` legend and a darker
 teal value arc on black caps.
 
-### Easy Chorus
+### Peak Chorus
 
 A wide stereo chorus. Mono or stereo in, stereo out. Four knobs:
 
@@ -238,10 +240,10 @@ The full voicing - voice count, per-voice base delays, depth range, wet filter
 corners, knob defaults - lives in `shared/include/ee/dsp/ChorusConfig.h`; retune
 it there and rebuild.
 
-### Easy Overdrive
+### Peak Overdrive
 
 A diode-clipper overdrive with a Boss-OD voicing. Mono or stereo, in and out -
-each channel is driven independently. Three knobs, on the small Easy Reverb
+each channel is driven independently. Three knobs, on the small Peak Reverb
 footprint: **Level** and **Drive** across the top, **Tone** centred in a row of
 its own below.
 
@@ -282,6 +284,160 @@ high-pass, oversampling, tilt pivot and band gains, post low-pass, make-up, knob
 defaults - lives in `shared/include/ee/dsp/OverdriveConfig.h`; retune it there
 and rebuild.
 
+### Peak Wah
+
+An LFO-driven modulated filter that plays with your picking - the auto-wah's
+tank, swept by a wave (or a random step) that speeds up when you dig in and
+restarts from its peak on every note. Mono or stereo, in and out. Two knob rows,
+a live LFO scope, and a Mono/Stereo switch bottom-left.
+
+| Knob       | Range        | What it does                                                                                  |
+| ---------- | ------------ | ------------------------------------------------------------------------------------------- |
+| **Amount** | 0 - 100 %    | Depth of the sweep - how far the LFO pushes the cutoff either side of Freq (up to ~2.3 octaves) |
+| **Freq**   | 200 - 1600 Hz | Centre cutoff the LFO sweeps around. Readout shows the mapped Hz                              |
+| **Q**      | 0 - 100 %    | Resonance of the tank - a broad tone-shaping sweep at the bottom, a sharp vocal peak at the top |
+| **Mix**    | 0 - 100 %    | Dry / wet blend (the spoon cap). 0 is bit-exact dry                                           |
+
+| Small knob | What it does                                                                                     |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| **Decay**  | How fast the wobble flattens once you stop playing. Fully up **latches the LFO on** so it runs continuously; below ~90 % it fades out over 60 ms - 3 s after the last note |
+| **Shape**  | Morphs the LFO through the shared anchors - exp decay, ramp, triangle, soft square, hard chop. **Rnd** button: replaces the wave with a new random height latched twice a cycle (a square wave with random tops), slewed so it never clicks |
+| **Time**   | LFO rate. **Sync** button locks it to the host tempo - the readout flips from milliseconds to note divisions, and each mode remembers its own knob position |
+| **Type**   | Low-pass, band-pass or high-pass, read off three taps of the one tank solve                     |
+
+**Mono / Stereo** (the switch): Mono runs one LFO for both channels; Stereo runs
+the right channel half a cycle out of phase, with its own random stream.
+
+Two touches make it feel played rather than mechanical, both always on:
+
+- **the LFO speeds up with your picking** - a dynamics follower lifts the rate by
+  up to 15 % on a hard hit, so the wobble breathes;
+- **every note restarts the LFO at its peak** - a transient detector resets the
+  phase to 0 (where the wave is at +1) on each pluck, so the sweep always kicks
+  from the top. In Stereo the left channel starts at the peak, the right at its
+  opposite.
+
+The **scope** above the pedal name is a live trace: it scrolls at the running
+LFO, snaps back on each retrigger, and its height follows the gate - so it
+collapses toward flat as the modulation fades out and springs back when you
+play. The processor publishes the LFO phase and depth to it each block.
+
+The filter is a real wah's **LC tank** - a series RLC solved sample-accurately
+as a **Wave Digital Filter** with
+[`chowdsp_wdf`](https://github.com/Chowdhury-DSP/chowdsp_wdf), the same library
+behind Peak Overdrive. One solve gives all three responses: the voltage across
+the capacitor is a low-pass, across the resistor a band-pass, across the
+inductor a high-pass. A fixed 0.5 H inductor plus a swept capacitor set the
+centre frequency and the resistor sets Q; `C` and `R` are re-solved per channel
+every 16 samples from `C = 1 / ((2πf₀)²L)`, `R = (1/Q)·√(L/C)`.
+
+The LFO free-runs on a phase accumulator (aligned to the host grid when Sync is
+on, the same snap/pull as Peak Delay). A gate - a fast follower on the
+high-passed, rectified, noise-floored input - scales the modulation depth, with
+its release set by Decay and a floor under it that the top of the Decay knob
+ramps up to 1, so `cutoff = Freq · 5^(Amount · gate · lfo)`.
+
+After the tank: a per-type make-up gain (a band-pass tap throws away everything
+off the peak and needs the most lift; the low- and high-pass taps keep a whole
+half of the spectrum and need less), a `tanh` that is unity at normal levels and
+only rounds the hottest peaks, then a DC blocker and a mild low-pass.
+
+Like the other pedals it has no on/off switch of its own - the `on` parameter
+crossfades to the dry signal so the host's device on/off never clicks. The face
+uses a `pink()` theme: a light-pink (`#ffb6c1`) panel with a near-black legend
+and a deep wine value arc on black caps, the same high-contrast recipe as the
+orange and yellow faces.
+
+The full voicing - gate high-pass / noise floor / sensitivity, attack and decay
+range, the Decay latch knee, the dynamics follower and rate depth, the retrigger
+thresholds, random slew, stereo offset, frequency range and sweep ratio,
+inductor value, Q range, control-block size, per-type make-up, grit, output
+filtering, knob defaults - lives in `shared/include/ee/dsp/AutoWahConfig.h` (and
+the LFO rate range in `plugins/peak-wah/src/RateMap.h`); retune there and
+rebuild.
+
+### Peak Tape
+
+A tape machine as a pedal. Mono or stereo, in and out. Five knobs and a switch
+on the Peak Delay footprint:
+
+| Control        | Range        | What it does                                                                                     |
+| -------------- | ------------ | ------------------------------------------------------------------------------------------------ |
+| **Saturation** | 0 - 100 %    | How hard the record head is driven. Level-matched, so the knob adds harmonics and squash rather than volume |
+| **Tone**       | -100 - 100 % | Tilt around a fixed 700 Hz pivot, on a smaller centre-detented cap between the two big ones: left is dark, right is bright, `0 %` is flat and the stage is bypassed exactly |
+| **Flutter**    | 0 - 100 %    | Depth of the wobble riding the transport — a pure ~2 Hz sine, voiced off a reference recording: 1.6 ms of excursion at 100 %, ~35 cents of pitch |
+| **Wear**       | 0 - 100 %    | How tired the tape is. This *is* Peak Delay's **Tape** knob — the same stage, the same voicing, on a knob of its own |
+| **Noise**      | 0 - 100 %    | The tape floor: a recording of a real one, looped. 100 % is that recording at the level it was made |
+| **Mono / Stereo** | switch    | Mono, both channels read one transport and a mono source stays exactly mono. Stereo, they read a slow modulation a third of a cycle apart and the image opens out, chorus-like. Stereo by default |
+
+Peak Delay already has a **Tape** knob — one macro voiced against a reference
+machine, a colour you dial in behind a delay. Peak Tape is the machine around
+it: the transport in front, the record head, the floor and the tone control
+after, each on its own control, with that same stage carrying Wear. It is not a
+second model of it — `TapeMachine` drives `TapeCharacter` directly, so the two
+pedals cannot drift apart: retuning `shared/include/ee/dsp/TapeTuning.h` moves
+both.
+
+Signal path, per sample, per channel:
+
+1. the whole signal is read off a delay line whose length wanders — a ~2 Hz sine
+   (**Flutter**) plus the second, slower modulation the **Stereo** switch opens.
+   Nothing else: a real transport has filtered noise riding the wobble too, and
+   an earlier voicing had it, but it roughens the vibe rather than adding to it;
+2. the **record head**: drive into an asymmetric `tanh`, 2x oversampled, wrapped
+   in a record-EQ shelf and its *exact* inverse — so the treble arrives at the
+   head hotter than the bass and distorts first, which is what a real machine
+   does with its record EQ;
+3. the **tape**: `TapeCharacter`, driven by Wear;
+4. the **tape floor**, looped from the recording with a crossfaded seam;
+5. the **tilt** tone control;
+6. a DC blocker, engaged with the saturation that can leave an offset.
+
+The floor is not gated and does not ride the programme — a floor that ducks when
+you play is a noise gate, not a tape, so it is there whether anything is playing
+or not. The recording lives in `assets/audio/tape-noise.wav` and is embedded in
+its own binary-data target (`ee_tape_noise`), linked by this pedal alone rather
+than riding along in every plugin. The engine itself stays pure DSP: the pedal
+hands it the decoded samples, and with none supplied it falls back to
+synthesised band-limited hiss.
+
+Tone has no dead band around its centre — a hair off flat is not flat. Instead
+the knob **snaps onto the middle** while you drag it (`KnobSpec::centreDetent`),
+so landing on `0 %` is a flick rather than a nudge, and only exactly-centred
+bypasses the stage.
+
+Every stage except the floor is bypassed *exactly* at its resting position, and
+the delay read lands on a whole sample when the transport is still — so with
+Saturation, Wear, Flutter and Noise at 0 and Tone centred, the pedal is
+bit-exact pass-through. Its latency (the transport line plus the tape stage's
+own, 6 ms at 48 kHz) is constant whatever the controls do, and reported to the
+host so it is compensated.
+
+The face uses a new `green()` theme, struck in the deep green of Peak Delay's
+Tape cap — the only dark-panel face in the range, which is the point. Tone's
+value arc grows out of 12 o'clock in whichever direction it is turned, with a
+tick marking the detent (`KnobSpec::bipolarArc`), and it takes a smaller cap
+than its neighbours (`KnobSpec::diameter`) because it is the trim among them.
+The middle of the bottom row is a spacer entry in the knob grid (a `KnobSpec`
+with no parameter ID), and the Mono/Stereo switch is the same `SlideToggle` Peak
+Trem & Pan uses for its mode, in the strip above the knobs.
+
+The voicing — transport rate and depth, the width modulation, drive range, bias,
+record-EQ pivot and gain, tilt gains, loop crossfade, control defaults — lives in
+`shared/include/ee/dsp/TapeMachineConfig.h`; Wear's is the delay's own in
+`TapeTuning.h`. Retune either and rebuild.
+
+To voice it against a recording, `ee_tape_render` puts a file through the engine
+with every control on the command line:
+
+```bash
+./build/tests/ee_tape_render_artefacts/Release/ee_tape_render dry.wav out.wav 0 0 100 0 0 0
+```
+
+Flutter was voiced that way: render the dry take with Flutter at 100 and
+everything else at 0, track the result against the dry file, and the 2 Hz line
+lands on the reference recording's (70.1 samples against 70.3).
+
 ## Requirements
 
 - macOS with Xcode Command Line Tools
@@ -289,15 +445,15 @@ and rebuild.
 
 ## Setting up on another Mac
 
-The repo vendors no dependencies — JUCE, DaisySP (the pitch shifter behind Easy
-Reverb's shimmer) and chowdsp_wdf (the Wave Digital Filter behind Easy
+The repo vendors no dependencies — JUCE, DaisySP (the pitch shifter behind Peak
+Reverb's shimmer) and chowdsp_wdf (the Wave Digital Filter behind Peak
 Overdrive's diode clipper) are all fetched by CMake at configure time against
 pinned tags, so the first configure needs an internet connection.
 
 ```bash
 xcode-select --install          # if you have never installed the CLT
 brew install cmake ninja
-git clone <this repo> easy-effects && cd easy-effects
+git clone <this repo> synth-peak && cd synth-peak
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
 cmake --build build
 ```
@@ -339,8 +495,8 @@ notarised. macOS flags anything transferred by AirDrop, download or iCloud with
 free of malware"*. Clear it on the receiving machine:
 
 ```bash
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Easy Reverb.vst3"
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Easy Reverb.component"
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Peak Reverb.vst3"
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Peak Reverb.component"
 ```
 
 Cloning the source and building there avoids the whole problem.
@@ -350,10 +506,19 @@ Cloning the source and building there avoids the whole problem.
 ```bash
 ./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests   # DSP: decay accuracy, stability, levels
 ./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp   # renders the UI to PNG
-auval -v aufx Ervb Eefx                                     # Apple's AU validation
-auval -v aufx Etpn Eefx                                     # Easy Trem & Pan
-auval -v aufx Echr Eefx                                     # Easy Chorus
-auval -v aufx Eovd Eefx                                     # Easy Overdrive
+auval -v aufx Prvb Peak                                     # Apple's AU validation
+auval -v aufx Ptpn Peak                                     # Peak Trem & Pan
+auval -v aufx Pchr Peak                                     # Peak Chorus
+auval -v aufx Povd Peak                                     # Peak Overdrive
+auval -v aufx Pwah Peak                                     # Peak Wah
+auval -v aufx Ptap Peak                                     # Peak Tape
+```
+
+The tape machine also has its own sweep, which walks every knob combination and
+a handful of adverse inputs looking for a non-finite or runaway output:
+
+```bash
+./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress
 ```
 
 `pluginval` (`brew install --cask pluginval`) covers the VST3:
@@ -361,7 +526,7 @@ auval -v aufx Eovd Eefx                                     # Easy Overdrive
 ```bash
 /Applications/pluginval.app/Contents/MacOS/pluginval \
   --strictness-level 10 --validate-in-process \
-  --validate ~/Library/Audio/Plug-Ins/VST3/"Easy Reverb.vst3"
+  --validate ~/Library/Audio/Plug-Ins/VST3/"Peak Reverb.vst3"
 ```
 
 ## Layout
@@ -371,11 +536,13 @@ shared/
   include/ee/dsp/    reusable DSP primitives + the reverb engine
   include/ee/ui/     the pedal UI framework
 plugins/
-  easy-reverb/       processor + parameter definitions
-  easy-delay/        processor + tape colour stage
-  easy-eq/           processor + juce::dsp IIR band filters
-  easy-trem-pan/     processor + phase-accumulator LFO, hand-written trem/pan
-  easy-overdrive/    processor + WDF diode-clipper drive stage (chowdsp_wdf)
+  peak-reverb/       processor + parameter definitions
+  peak-delay/        processor + tape colour stage
+  peak-eq/           processor + juce::dsp IIR band filters
+  peak-trem-pan/     processor + phase-accumulator LFO, hand-written trem/pan
+  peak-overdrive/    processor + WDF diode-clipper drive stage (chowdsp_wdf)
+  peak-wah/          processor + LFO-swept WDF LC-tank filter, LP/BP/HP (chowdsp_wdf)
+  peak-tape/         processor + the full tape machine: transport, record head, floor
 tests/               offline DSP tests and the UI snapshot renderer
 ```
 
@@ -390,7 +557,7 @@ The UI is data-driven, so a new pedal needs no editor code. Describe the face:
 
 ```cpp
 ee::ui::PedalSpec spec;
-spec.name = "Easy Drive";
+spec.name = "Peak Drive";
 spec.tagline = "...";
 spec.knobs = { { "gain", "Gain" }, { "tone", "Tone" }, { "level", "Level" } };
 
@@ -399,15 +566,27 @@ return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::dark());
 
 For a pedal with vertical faders instead of knobs (a graphic EQ), fill
 `spec.sliders` instead of `spec.knobs` — same `{ parameterID, caption }` pairs.
-They lay out in one row across the face. `plugins/easy-eq` is the worked
+They lay out in one row across the face. `plugins/peak-eq` is the worked
 example.
 
 `spec.centreKnob` drops one small cap into the middle of the knob block for a
-secondary trim (`plugins/easy-reverb` puts Resonance there). Give it
+secondary trim (`plugins/peak-reverb` puts Resonance there). Give it
 `compact = true` for the small size and `compactCaption = true` to print the
 caption on its one text line instead of the value.
 
-Then copy `plugins/easy-reverb/CMakeLists.txt`, change `PLUGIN_CODE` and
+A `KnobSpec` with no parameter ID is a **spacer**: it holds its column in the
+grid and draws nothing, so a face can leave a hole in its block (`peak-tape`
+leaves the middle of its bottom row open). Point a toggle's `afterKnobIndex` at
+a spacer and the button is centred in that empty cell.
+
+Three more `KnobSpec` fields suit a control that rests at its centre, all of
+which `peak-tape` uses on Tone: `bipolarArc` grows the value arc out of 12
+o'clock either way with a tick on the detent, `centreDetent` makes the knob snap
+onto the middle while dragging (mouse only — automation and typed values pass
+through), and `diameter` gives that one knob a smaller cap without moving it off
+the grid or dropping its caption the way `compact` would.
+
+Then copy `plugins/peak-reverb/CMakeLists.txt`, change `PLUGIN_CODE` and
 `PRODUCT_NAME`, and add it to the top-level `CMakeLists.txt`.
 
 ## Resizing

@@ -21,7 +21,8 @@ namespace ee::ui
 */
 class WaveDisplay : public juce::Component,
                     private juce::AudioProcessorValueTreeState::Listener,
-                    private juce::AsyncUpdater
+                    private juce::AsyncUpdater,
+                    private juce::Timer
 {
 public:
     WaveDisplay (juce::AudioProcessorValueTreeState& state,
@@ -35,6 +36,8 @@ public:
 private:
     void parameterChanged (const juce::String&, float) override;
     void handleAsyncUpdate() override;
+    void timerCallback() override;
+    void paintLive (juce::Graphics&, juce::Rectangle<float> bounds);
 
     float normalised (const juce::String& paramID) const;
 
