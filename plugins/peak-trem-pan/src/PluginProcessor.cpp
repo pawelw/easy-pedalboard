@@ -3,10 +3,15 @@
 #include "RateMap.h"
 
 #include "ee/dsp/Lfo.h"
+#include "ee/plugin/Bypass.h"
+#include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
 namespace
 {
+using ee::plugin::kRampSeconds;
+using ee::plugin::percentToText;
+
 constexpr const char* kAmountID = "amount";
 constexpr const char* kRateID = "rate";
 constexpr const char* kShapeID = "shape";
@@ -18,8 +23,6 @@ constexpr const char* kOnID = "on";
 // State-tree properties for the remembered per-mode Rate positions.
 constexpr const char* kStoredSyncRateProp = "storedSyncRate01";
 constexpr const char* kStoredFreeRateProp = "storedFreeRate01";
-
-constexpr float kRampSeconds = 0.02f;
 
 // Where the Rate knob lands the first time it is switched to free mode.
 constexpr float kDefaultFreePeriodMs = 124.0f;
@@ -45,11 +48,6 @@ constexpr float kBiasDrive = 10.0f;   // peak extra drive into the tanh at the b
 constexpr float kBiasAsym = 0.7f;     // one-sided bias offset - the pulsing even harmonics
 constexpr float kBiasTrim = 5.0f;     // output trim that tracks the drive, leaving a little sag
 constexpr float kBiasDcHz = 20.0f;    // DC-blocker corner: below the lowest note, above the LFO's pump
-
-juce::String percentToText (float value, int)
-{
-    return juce::String (juce::roundToInt (value)) + " %";
-}
 
 // Gain that keeps the perceived level roughly constant as the tremolo depth
 // comes up. The tremolo law pins its peak at unity and only ever ducks, so the
@@ -432,22 +430,7 @@ void PeakTremPanProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 
     // Crossfade to the untouched dry copy when bypassed, so the host on/off never
     // clicks.
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const float wet = wetMix.getNextValue();
-        const float dry = 1.0f - wet;
-        for (int ch = 0; ch < numCh; ++ch)
-        {
-            float* out = buffer.getWritePointer (ch, i);
-            *out = *out * wet + dryBuffer.getSample (ch, i) * dry;
-
-            // Never hand a non-finite downstream: a feedback effect after this one
-            // (a reverb) would latch it into its tail and roar. The internal state
-            // self-heals above; this covers the output sample the bad block produced.
-            if (! std::isfinite (*out))
-                *out = 0.0f;
-        }
-    }
+    ee::plugin::crossfadeToDry (buffer, dryBuffer, wetMix, numCh, numSamples);
 }
 
 juce::AudioProcessorEditor* PeakTremPanProcessor::createEditor()

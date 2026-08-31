@@ -4,12 +4,17 @@
 
 #include "ee/dsp/AutoWahConfig.h"
 #include "ee/dsp/Lfo.h"
+#include "ee/plugin/Bypass.h"
+#include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
 #include <cmath>
 
 namespace
 {
+using ee::plugin::percentToText;
+
+using ee::plugin::kRampSeconds;
 
 /** Height of one of the three response shapes at 0..1 across the band.
     tap: 0 = low-pass, 1 = band-pass, 2 = high-pass. */
@@ -79,13 +84,7 @@ constexpr const char* kTypeID = "ftype"; // 0 % = Low, 50 % = Band, 100 % = High
 constexpr const char* kSyncID = "sync";
 constexpr const char* kOnID = "on";
 
-constexpr float kRampSeconds = 0.02f;
 constexpr float kDefaultFreePeriodMs = 400.0f;
-
-juce::String percentToText (float value, int)
-{
-    return juce::String (juce::roundToInt (value)) + " %";
-}
 
 juce::String hzToText (float value, int)
 {
@@ -356,18 +355,7 @@ void PeakWahProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     lfoModRUi.store (wah.modR(), std::memory_order_relaxed);
 
     wetMix.setTargetValue (engaged ? 1.0f : 0.0f);
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const float wet = wetMix.getNextValue();
-        const float dry = 1.0f - wet;
-        for (int ch = 0; ch < numCh; ++ch)
-        {
-            float* outSample = buffer.getWritePointer (ch, i);
-            *outSample = *outSample * wet + dryBuffer.getSample (ch, i) * dry;
-            if (! std::isfinite (*outSample))
-                *outSample = 0.0f;
-        }
-    }
+    ee::plugin::crossfadeToDry (buffer, dryBuffer, wetMix, numCh, numSamples);
 }
 
 juce::AudioProcessorEditor* PeakWahProcessor::createEditor()

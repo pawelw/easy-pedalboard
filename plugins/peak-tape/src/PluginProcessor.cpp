@@ -1,6 +1,8 @@
 #include "PluginProcessor.h"
 
 #include "ee/dsp/TapeMachineConfig.h"
+#include "ee/plugin/Bypass.h"
+#include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
 #include "TapeAssets.h"
@@ -11,6 +13,9 @@
 
 namespace
 {
+using ee::plugin::kRampSeconds;
+using ee::plugin::percentToText;
+
 constexpr const char* kWearID = "wear";
 constexpr const char* kFlutterID = "flutter";
 constexpr const char* kToneID = "tone";
@@ -18,13 +23,6 @@ constexpr const char* kStereoID = "stereo";
 constexpr const char* kNoiseID = "noise";
 constexpr const char* kSaturationID = "sat";
 constexpr const char* kOnID = "on";
-
-constexpr float kRampSeconds = 0.02f;
-
-juce::String percentToText (float value, int)
-{
-    return juce::String (juce::roundToInt (value)) + " %";
-}
 
 /** Tone rests in the middle, and reads 0 there: a bipolar control should
         print the number it is on, with the sign carrying the direction. */
@@ -219,17 +217,7 @@ void PeakTapeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
     // Crossfade to the untouched dry copy when bypassed, so the host on/off
     // never clicks. The machine keeps running underneath either way, so coming
     // back on does not restart the transport mid-wobble.
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const float wet = wetMix.getNextValue();
-        const float dry = 1.0f - wet;
-
-        for (int ch = 0; ch < numCh; ++ch)
-        {
-            float* outSample = buffer.getWritePointer (ch, i);
-            *outSample = *outSample * wet + dryBuffer.getSample (ch, i) * dry;
-        }
-    }
+    ee::plugin::crossfadeToDry (buffer, dryBuffer, wetMix, numCh, numSamples);
 }
 
 juce::AudioProcessorEditor* PeakTapeProcessor::createEditor()

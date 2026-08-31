@@ -1,26 +1,24 @@
 #include "PluginProcessor.h"
 
+#include "ee/plugin/Bypass.h"
+#include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
 namespace
 {
+using ee::plugin::kRampSeconds;
+using ee::plugin::percentToText;
+
 constexpr const char* kLevelID = "level";
 constexpr const char* kToneID = "tone";
 constexpr const char* kDriveID = "drive";
 constexpr const char* kOnID = "on";
-
-constexpr float kRampSeconds = 0.02f;
 
 // Output knob travel. The engine already roughly loudness-compensates Drive, so
 // this is a trim: unity at noon, a little boost on tap for slamming the amp in
 // front, and enough cut to tuck the pedal under a clean sound.
 constexpr float kLevelMinDb = -30.0f;
 constexpr float kLevelMaxDb = 6.0f;
-
-juce::String percentToText (float value, int)
-{
-    return juce::String (juce::roundToInt (value)) + " %";
-}
 
 juce::String decibelsToText (float value, int)
 {
@@ -136,17 +134,7 @@ void PeakOverdriveProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 
     // Output level, then a crossfade to the untouched dry copy when bypassed so
     // the host on/off never clicks.
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const float g = levelGain.getNextValue();
-        const float wet = wetMix.getNextValue();
-        const float dry = 1.0f - wet;
-        for (int ch = 0; ch < numCh; ++ch)
-        {
-            float* outSample = buffer.getWritePointer (ch, i);
-            *outSample = (*outSample * g) * wet + dryBuffer.getSample (ch, i) * dry;
-        }
-    }
+    ee::plugin::crossfadeToDry (buffer, dryBuffer, wetMix, numCh, numSamples, &levelGain);
 }
 
 juce::AudioProcessorEditor* PeakOverdriveProcessor::createEditor()

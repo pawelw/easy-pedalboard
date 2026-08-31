@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 
+#include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
 #if EE_SHIMMER_TUNER
@@ -8,6 +9,8 @@
 
 namespace
 {
+using ee::plugin::percentToText;
+
 constexpr const char* kDecayID = "decay";
 constexpr const char* kMixID = "mix";
 constexpr const char* kLowCutID = "locut";
@@ -28,11 +31,6 @@ constexpr float kGainRampSeconds = 0.02f;
 juce::String secondsToText (float value, int)
 {
     return juce::String (value, value < 1.0f ? 2 : 1) + " s";
-}
-
-juce::String percentToText (float value, int)
-{
-    return juce::String (juce::roundToInt (value)) + " %";
 }
 
 juce::String hertzToText (float value, int)

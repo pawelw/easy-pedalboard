@@ -1,9 +1,12 @@
 #include "PluginProcessor.h"
 
+#include "ee/plugin/Bypass.h"
 #include "ee/ui/PedalEditor.h"
 
 namespace
 {
+using ee::plugin::kRampSeconds;
+
 constexpr const char* kLevelID = "level";
 constexpr const char* kLoCutID = "locut";
 constexpr const char* kHiCutID = "hicut";
@@ -45,7 +48,6 @@ constexpr std::array<const char*, PeakEqProcessor::kNumBands> kBandCaptions { { 
 constexpr float kBandQ = 1.4f;
 
 constexpr float kGainDb = 15.0f; // +/- travel on every fader
-constexpr float kRampSeconds = 0.02f;
 
 juce::String decibelsToText (float value, int)
 {
@@ -268,18 +270,7 @@ void PeakEqProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
     }
 
     // Make-up level, then crossfade to the dry copy when bypassed.
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const float g = levelGain.getNextValue();
-        const float wet = wetMix.getNextValue();
-        const float dry = 1.0f - wet;
-
-        for (int ch = 0; ch < numCh; ++ch)
-        {
-            float* out = buffer.getWritePointer (ch, i);
-            *out = (*out * g) * wet + dryBuffer.getSample (ch, i) * dry;
-        }
-    }
+    ee::plugin::crossfadeToDry (buffer, dryBuffer, wetMix, numCh, numSamples, &levelGain);
 }
 
 juce::AudioProcessorEditor* PeakEqProcessor::createEditor()

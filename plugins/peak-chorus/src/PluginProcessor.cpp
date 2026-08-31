@@ -1,27 +1,21 @@
 #include "PluginProcessor.h"
 
 #include "ee/dsp/ChorusConfig.h"
+#include "ee/plugin/Bypass.h"
+#include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
 namespace
 {
+using ee::plugin::hzToText;
+using ee::plugin::kRampSeconds;
+using ee::plugin::percentToText;
+
 constexpr const char* kRateID = "rate";
 constexpr const char* kDepthID = "depth";
 constexpr const char* kPhaseID = "phase";
 constexpr const char* kMixID = "mix";
 constexpr const char* kOnID = "on";
-
-constexpr float kRampSeconds = 0.02f;
-
-juce::String percentToText (float value, int)
-{
-    return juce::String (juce::roundToInt (value)) + " %";
-}
-
-juce::String hzToText (float value, int)
-{
-    return juce::String (value, value < 1.0f ? 2 : 1) + " Hz";
-}
 
 juce::String degreesToText (float value, int)
 {
@@ -176,16 +170,7 @@ void PeakChorusProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     // Crossfade to the untouched dry copy when bypassed, so the host on/off never
     // clicks.
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const float wet = wetMix.getNextValue();
-        const float dry = 1.0f - wet;
-        for (int ch = 0; ch < numCh; ++ch)
-        {
-            float* outSample = buffer.getWritePointer (ch, i);
-            *outSample = *outSample * wet + dryBuffer.getSample (ch, i) * dry;
-        }
-    }
+    ee::plugin::crossfadeToDry (buffer, dryBuffer, wetMix, numCh, numSamples);
 }
 
 juce::AudioProcessorEditor* PeakChorusProcessor::createEditor()

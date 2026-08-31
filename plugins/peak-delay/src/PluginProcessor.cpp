@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include "ee/dsp/TempoDivision.h"
+#include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
 #if EE_TAPE_TUNER
@@ -9,6 +10,8 @@
 
 namespace
 {
+using ee::plugin::percentToText;
+
 constexpr const char* kLeftTimeID = "ltime";
 constexpr const char* kRightTimeID = "rtime";
 constexpr const char* kSyncID = "sync";
@@ -21,11 +24,6 @@ constexpr const char* kOnID = "on";
 constexpr int kDefaultDivision = 5; // 1/8
 
 constexpr float kGainRampSeconds = 0.02f;
-
-juce::String percentToText (float value, int)
-{
-    return juce::String (juce::roundToInt (value)) + " %";
-}
 
 float divisionSeconds (int index, double bpm) noexcept
 {
