@@ -4,35 +4,35 @@
 #include "ee/ui/PedalEditor.h"
 
 #if EE_TAPE_TUNER
- #include "TapeTunerPanel.h"
+#include "TapeTunerPanel.h"
 #endif
 
 namespace
 {
-    constexpr const char* kLeftTimeID  = "ltime";
-    constexpr const char* kRightTimeID = "rtime";
-    constexpr const char* kSyncID      = "sync";
-    constexpr const char* kFeedbackID  = "fb";
-    constexpr const char* kMixID       = "mix";
-    constexpr const char* kModID       = "mod";
-    constexpr const char* kTapeID      = "tape";
-    constexpr const char* kOnID        = "on";
+constexpr const char* kLeftTimeID = "ltime";
+constexpr const char* kRightTimeID = "rtime";
+constexpr const char* kSyncID = "sync";
+constexpr const char* kFeedbackID = "fb";
+constexpr const char* kMixID = "mix";
+constexpr const char* kModID = "mod";
+constexpr const char* kTapeID = "tape";
+constexpr const char* kOnID = "on";
 
-    constexpr int kDefaultDivision = 5; // 1/8
+constexpr int kDefaultDivision = 5; // 1/8
 
-    constexpr float kGainRampSeconds = 0.02f;
+constexpr float kGainRampSeconds = 0.02f;
 
-    juce::String percentToText (float value, int)
-    {
-        return juce::String (juce::roundToInt (value)) + " %";
-    }
-
-    float divisionSeconds (int index, double bpm) noexcept
-    {
-        const int i = juce::jlimit (0, ee::dsp::kNumTempoDivisions - 1, index);
-        return ee::dsp::kTempoDivisions[i].beats * static_cast<float> (60.0 / bpm);
-    }
+juce::String percentToText (float value, int)
+{
+    return juce::String (juce::roundToInt (value)) + " %";
 }
+
+float divisionSeconds (int index, double bpm) noexcept
+{
+    const int i = juce::jlimit (0, ee::dsp::kNumTempoDivisions - 1, index);
+    return ee::dsp::kTempoDivisions[i].beats * static_cast<float> (60.0 / bpm);
+}
+} // namespace
 
 PeakDelayProcessor::PeakDelayProcessor()
     : juce::AudioProcessor (BusesProperties()
@@ -40,14 +40,14 @@ PeakDelayProcessor::PeakDelayProcessor()
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    leftTimeParam  = apvts.getRawParameterValue (kLeftTimeID);
+    leftTimeParam = apvts.getRawParameterValue (kLeftTimeID);
     rightTimeParam = apvts.getRawParameterValue (kRightTimeID);
-    syncParam      = apvts.getRawParameterValue (kSyncID);
-    feedbackParam  = apvts.getRawParameterValue (kFeedbackID);
-    mixParam       = apvts.getRawParameterValue (kMixID);
-    modParam       = apvts.getRawParameterValue (kModID);
-    tapeParam      = apvts.getRawParameterValue (kTapeID);
-    onParam        = apvts.getRawParameterValue (kOnID);
+    syncParam = apvts.getRawParameterValue (kSyncID);
+    feedbackParam = apvts.getRawParameterValue (kFeedbackID);
+    mixParam = apvts.getRawParameterValue (kMixID);
+    modParam = apvts.getRawParameterValue (kModID);
+    tapeParam = apvts.getRawParameterValue (kTapeID);
+    onParam = apvts.getRawParameterValue (kOnID);
 
     apvts.addParameterListener (kLeftTimeID, this);
     apvts.addParameterListener (kRightTimeID, this);
@@ -67,37 +67,31 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
 
     const auto divisions = ee::dsp::tempoDivisionLabels();
 
-    layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { kLeftTimeID, 1 }, "Left Time", divisions, kDefaultDivision));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kLeftTimeID, 1 }, "Left Time",
+                                                              divisions, kDefaultDivision));
 
-    layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { kRightTimeID, 1 }, "Right Time", divisions, kDefaultDivision));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kRightTimeID, 1 }, "Right Time",
+                                                              divisions, kDefaultDivision));
 
-    layout.add (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { kSyncID, 1 }, "Sync L/R", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kSyncID, 1 }, "Sync L/R", true));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kFeedbackID, 1 }, "Feedback",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
+        juce::ParameterID { kFeedbackID, 1 }, "Feedback", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kMixID, 1 }, "Mix",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
+        juce::ParameterID { kMixID, 1 }, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kModID, 1 }, "Mod",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
+        juce::ParameterID { kModID, 1 }, "Mod", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kTapeID, 1 }, "Tape",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
+        juce::ParameterID { kTapeID, 1 }, "Tape", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
-    layout.add (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { kOnID, 1 }, "On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
 
     return layout;
 }
@@ -120,9 +114,7 @@ void PeakDelayProcessor::parameterChanged (const juce::String& parameterID, floa
 {
     // Read the button from the callback argument rather than the cached value:
     // the two are not guaranteed to be in step at this point.
-    const bool synced = parameterID == kSyncID
-                            ? newValue > 0.5f
-                            : (syncParam != nullptr && syncParam->load() > 0.5f);
+    const bool synced = parameterID == kSyncID ? newValue > 0.5f : (syncParam != nullptr && syncParam->load() > 0.5f);
 
     if (! synced)
         return;
@@ -307,17 +299,15 @@ juce::AudioProcessorEditor* PeakDelayProcessor::createEditor()
     const juce::Colour tapeBorder { 0xff17280b };
     const juce::Colour syncAmber { 0xffffaa33 };
 
-    spec.knobs = {
-        { kLeftTimeID,  "Left Time" },
-        { kRightTimeID, "Right Time" },
-        { kFeedbackID,  "Feedback" },
-        { kMixID,       "Mix" },
-        { kModID,       "Mod" },
-        { kTapeID,      "Tape", tapeCap, tapeBorder, tapeCap }
-    };
+    spec.knobs = { { kLeftTimeID, "Left Time" },
+                   { kRightTimeID, "Right Time" },
+                   { kFeedbackID, "Feedback" },
+                   { kMixID, "Mix" },
+                   { kModID, "Mod" },
+                   { kTapeID, "Tape", tapeCap, tapeBorder, tapeCap } };
     spec.toggles = { { kSyncID, "Sync", 0, syncAmber } };
     spec.knobsPerRow = 3;
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);   // same column spacing as Peak Reverb
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow); // same column spacing as Peak Reverb
 
     auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::gold());
 
@@ -326,9 +316,8 @@ juce::AudioProcessorEditor* PeakDelayProcessor::createEditor()
     constexpr bool showTuner = false;
 
     if (showTuner)
-        editor->setSidePanel (std::make_unique<TapeTunerPanel> (
-                                  tape.getTuning(),
-                                  [this] (const ee::dsp::TapeTuning& t) { tape.setTuning (t); }),
+        editor->setSidePanel (std::make_unique<TapeTunerPanel> (tape.getTuning(), [this] (const ee::dsp::TapeTuning& t)
+                                                                { tape.setTuning (t); }),
                               TapeTunerPanel::preferredWidth);
 #endif
 

@@ -5,8 +5,7 @@
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
 
-class PeakDelayProcessor : public juce::AudioProcessor,
-                             private juce::AudioProcessorValueTreeState::Listener
+class PeakDelayProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     PeakDelayProcessor();

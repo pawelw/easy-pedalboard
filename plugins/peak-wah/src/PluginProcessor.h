@@ -74,7 +74,7 @@ private:
     ee::dsp::AutoWah wah;
 
     juce::AudioBuffer<float> dryBuffer;
-    juce::SmoothedValue<float> wetMix;   // 1 = processed, 0 = clean dry (bypass)
+    juce::SmoothedValue<float> wetMix; // 1 = processed, 0 = clean dry (bypass)
 
     // The Time knob is shared between free and synced modes; each mode's last
     // position is remembered so flipping Sync restores where that mode was left.

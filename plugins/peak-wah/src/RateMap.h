@@ -42,8 +42,7 @@ inline int syncedDivisionIndex (float rate01) noexcept
 {
     const int last = ee::dsp::kNumTempoDivisions - 1;
     return juce::jlimit (0, last,
-                         juce::roundToInt ((1.0f - juce::jlimit (0.0f, 1.0f, rate01))
-                                           * static_cast<float> (last)));
+                         juce::roundToInt ((1.0f - juce::jlimit (0.0f, 1.0f, rate01)) * static_cast<float> (last)));
 }
 
 /** Length of the current synced division, in quarter notes. */
@@ -67,8 +66,7 @@ inline juce::String rateToText (float rate01, bool synced)
         return ee::dsp::kTempoDivisions[syncedDivisionIndex (rate01)].label;
 
     const float ms = freePeriodMs (rate01);
-    return ms >= 100.0f ? juce::String (juce::roundToInt (ms)) + " ms"
-                        : juce::String (ms, 1) + " ms";
+    return ms >= 100.0f ? juce::String (juce::roundToInt (ms)) + " ms" : juce::String (ms, 1) + " ms";
 }
 
 } // namespace ee::peakwah

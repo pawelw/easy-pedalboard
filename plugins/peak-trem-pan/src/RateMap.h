@@ -66,8 +66,7 @@ inline juce::String rateToText (float rate01, bool synced)
         return ee::dsp::kTempoDivisions[syncedDivisionIndex (rate01)].label;
 
     const float ms = freePeriodMs (rate01);
-    return ms >= 100.0f ? juce::String (juce::roundToInt (ms)) + " ms"
-                        : juce::String (ms, 1) + " ms";
+    return ms >= 100.0f ? juce::String (juce::roundToInt (ms)) + " ms" : juce::String (ms, 1) + " ms";
 }
 
 } // namespace ee::trempan

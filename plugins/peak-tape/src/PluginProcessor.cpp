@@ -11,33 +11,33 @@
 
 namespace
 {
-    constexpr const char* kWearID       = "wear";
-    constexpr const char* kFlutterID    = "flutter";
-    constexpr const char* kToneID       = "tone";
-    constexpr const char* kStereoID     = "stereo";
-    constexpr const char* kNoiseID      = "noise";
-    constexpr const char* kSaturationID = "sat";
-    constexpr const char* kOnID         = "on";
+constexpr const char* kWearID = "wear";
+constexpr const char* kFlutterID = "flutter";
+constexpr const char* kToneID = "tone";
+constexpr const char* kStereoID = "stereo";
+constexpr const char* kNoiseID = "noise";
+constexpr const char* kSaturationID = "sat";
+constexpr const char* kOnID = "on";
 
-    constexpr float kRampSeconds = 0.02f;
+constexpr float kRampSeconds = 0.02f;
 
-    juce::String percentToText (float value, int)
-    {
-        return juce::String (juce::roundToInt (value)) + " %";
-    }
-
-    /** Tone rests in the middle, and reads 0 there: a bipolar control should
-        print the number it is on, with the sign carrying the direction. */
-    juce::String toneToText (float value, int)
-    {
-        const int rounded = juce::roundToInt (value);
-
-        if (rounded == 0)
-            return "0 %";
-
-        return (rounded > 0 ? "+" : "") + juce::String (rounded) + " %";
-    }
+juce::String percentToText (float value, int)
+{
+    return juce::String (juce::roundToInt (value)) + " %";
 }
+
+/** Tone rests in the middle, and reads 0 there: a bipolar control should
+        print the number it is on, with the sign carrying the direction. */
+juce::String toneToText (float value, int)
+{
+    const int rounded = juce::roundToInt (value);
+
+    if (rounded == 0)
+        return "0 %";
+
+    return (rounded > 0 ? "+" : "") + juce::String (rounded) + " %";
+}
+} // namespace
 
 PeakTapeProcessor::PeakTapeProcessor()
     : juce::AudioProcessor (BusesProperties()
@@ -45,13 +45,13 @@ PeakTapeProcessor::PeakTapeProcessor()
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    wearParam       = apvts.getRawParameterValue (kWearID);
-    flutterParam    = apvts.getRawParameterValue (kFlutterID);
-    toneParam       = apvts.getRawParameterValue (kToneID);
-    stereoParam     = apvts.getRawParameterValue (kStereoID);
-    noiseParam      = apvts.getRawParameterValue (kNoiseID);
+    wearParam = apvts.getRawParameterValue (kWearID);
+    flutterParam = apvts.getRawParameterValue (kFlutterID);
+    toneParam = apvts.getRawParameterValue (kToneID);
+    stereoParam = apvts.getRawParameterValue (kStereoID);
+    noiseParam = apvts.getRawParameterValue (kNoiseID);
     saturationParam = apvts.getRawParameterValue (kSaturationID);
-    onParam         = apvts.getRawParameterValue (kOnID);
+    onParam = apvts.getRawParameterValue (kOnID);
 
     loadNoiseSample();
 }
@@ -68,10 +68,9 @@ void PeakTapeProcessor::loadNoiseSample()
     std::unique_ptr<juce::AudioFormatReader> reader (wav.createReaderFor (stream.release(), true));
 
     if (reader == nullptr || reader->lengthInSamples <= 0)
-        return;   // no recording: the engine falls back to synthesised hiss
+        return; // no recording: the engine falls back to synthesised hiss
 
-    const int numSamples = static_cast<int> (juce::jmin (reader->lengthInSamples,
-                                                         juce::int64 (10 * 60 * 44100)));
+    const int numSamples = static_cast<int> (juce::jmin (reader->lengthInSamples, juce::int64 (10 * 60 * 44100)));
     const int numChannels = juce::jlimit (1, 2, static_cast<int> (reader->numChannels));
 
     noiseSample.setSize (numChannels, numSamples);
@@ -92,48 +91,40 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakTapeProcessor::createPar
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
     const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
-    const auto percentAttributes =
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+    const auto percentAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
 
     // How tired the tape is. This is Peak Delay's Tape stage - the same engine
     // and the same voicing - on its own knob.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kWearID, 1 }, "Wear", percent,
-        tape::kDefaultWearPct, percentAttributes));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kWearID, 1 }, "Wear", percent,
+                                                             tape::kDefaultWearPct, percentAttributes));
 
     // Depth of the wow, flutter and scrape riding the transport.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kFlutterID, 1 }, "Flutter", percent,
-        tape::kDefaultFlutterPct, percentAttributes));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kFlutterID, 1 }, "Flutter", percent,
+                                                             tape::kDefaultFlutterPct, percentAttributes));
 
     // Tilt around a fixed pivot, on a knob that rests in the middle: left is
     // dark, right is bright, dead centre is flat and bypasses the stage.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kToneID, 1 }, "Tone",
-        juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
-        tape::kDefaultTonePct,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (toneToText)));
+        juce::ParameterID { kToneID, 1 }, "Tone", juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+        tape::kDefaultTonePct, juce::AudioParameterFloatAttributes().withStringFromValueFunction (toneToText)));
 
     // Width, as a switch rather than a knob: mono is one transport under both
     // channels, stereo opens them onto different points of a slow modulation.
     // On by default - the machine is a stereo one unless you ask otherwise.
-    layout.add (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { kStereoID, 1 }, "Stereo", tape::kDefaultStereoOn));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kStereoID, 1 }, "Stereo",
+                                                            tape::kDefaultStereoOn));
 
     // The tape floor: a recording of a real one, looped, there whether anything
     // is playing or not. Not gated, and it does not ride the programme. The knob
     // is a straight gain on it, so 100 % is the recording as it was made.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kNoiseID, 1 }, "Noise", percent,
-        tape::kDefaultNoisePct, percentAttributes));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kNoiseID, 1 }, "Noise", percent,
+                                                             tape::kDefaultNoisePct, percentAttributes));
 
     // How hard the record head is driven.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kSaturationID, 1 }, "Saturation", percent,
-        tape::kDefaultSaturationPct, percentAttributes));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kSaturationID, 1 }, "Saturation",
+                                                             percent, tape::kDefaultSaturationPct, percentAttributes));
 
-    layout.add (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { kOnID, 1 }, "On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
 
     return layout;
 }
@@ -253,27 +244,26 @@ juce::AudioProcessorEditor* PeakTapeProcessor::createEditor()
     // Tone, and carrying an empty column just pushed the knobs away from the
     // edges - so the face is a whole column narrower than Peak Delay's.
     spec.knobs = {
-        { kSaturationID, "Saturation" },
-        { kFlutterID,    "Flutter" },
-        { kWearID,       "Wear" },
-        { kNoiseID,      "Noise" }
+        { kSaturationID, "Saturation" }, { kFlutterID, "Flutter" }, { kWearID, "Wear" }, { kNoiseID, "Noise" }
     };
 
     // Tone gets Peak Reverb's RESO treatment: a small vector cap dead centre of
     // the block with its caption alone under it, rather than a cell of its own.
     // Its arc still grows out of 12 o'clock either way, the centre carries a
     // detent tick, and the knob snaps onto it.
-    spec.centreKnob = ee::ui::KnobSpec {
-        .parameterID = kToneID, .caption = "Tone", .compact = true,
-        .compactCaption = true, .bipolarArc = true, .centreDetent = true };
+    spec.centreKnob = ee::ui::KnobSpec { .parameterID = kToneID,
+                                         .caption = "Tone",
+                                         .compact = true,
+                                         .compactCaption = true,
+                                         .bipolarArc = true,
+                                         .centreDetent = true };
 
     // Width is one thing or the other, so it is the big sliding switch Peak
     // Trem & Pan uses for its mode - centred in the strip above the knobs,
     // since it is the only thing in it and Tone sits under it on the same axis.
-    spec.slideToggle = ee::ui::SlideToggleSpec {
-        .parameterID = kStereoID, .labelOff = "Mono", .labelOn = "Stereo" };
+    spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = kStereoID, .labelOff = "Mono", .labelOn = "Stereo" };
     spec.slideToggleCentred = true;
-    spec.slideToggleRise = 8;    // tighter to the top edge than the shared strip
+    spec.slideToggleRise = 8; // tighter to the top edge than the shared strip
 
     // The shared row gap: a small centre cap needs no more room between the rows
     // than Peak Reverb's RESO does, which leaves the height for the caps.
@@ -300,8 +290,7 @@ juce::AudioProcessorEditor* PeakTapeProcessor::createEditor()
     spec.knobColumnSpread = 10;
 
     // A small reel above the name, centred in the gap the knobs leave.
-    spec.titleImage = juce::ImageCache::getFromMemory (TapeAssets::tape_png,
-                                                      TapeAssets::tape_pngSize);
+    spec.titleImage = juce::ImageCache::getFromMemory (TapeAssets::tape_png, TapeAssets::tape_pngSize);
     spec.titleImageHeight = 60;
     spec.titleImageTint = juce::Colours::white;
 

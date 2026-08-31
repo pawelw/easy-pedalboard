@@ -58,7 +58,7 @@ private:
     double noiseSampleRate = 44100.0;
 
     juce::AudioBuffer<float> dryBuffer;
-    juce::SmoothedValue<float> wetMix;   // 1 = through the machine, 0 = clean dry (bypass)
+    juce::SmoothedValue<float> wetMix; // 1 = through the machine, 0 = clean dry (bypass)
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PeakTapeProcessor)
 };
