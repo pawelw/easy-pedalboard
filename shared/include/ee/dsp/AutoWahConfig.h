@@ -127,15 +127,18 @@ constexpr int   kControlBlock = 16;
 // ============================================================================
 // OUTPUT STAGE
 // ============================================================================
-// Per-tap make-up, crossfaded with the taps themselves so the level holds as
-// Type is turned: a band-pass tap throws away everything off the peak and
-// needs the biggest lift; the low- and high-pass taps keep a whole half of the
-// spectrum and need less. kGritDrive is a tanh soft-clip - unity at normal
-// levels, only rounding the hottest peaks so the make-up can't run away. Then a
-// DC blocker and a mild low-pass.
-constexpr float kMakeupDbLP = 4.0f;
-constexpr float kMakeupDbBP = 16.0f;
-constexpr float kMakeupDbHP = 7.0f;
+// Per-tap make-up, crossfaded in dB with the taps themselves so the level holds
+// both as Type is turned and as Mix is turned up: a band-pass tap throws away
+// everything off the peak and needs the biggest lift; the low- and high-pass
+// taps keep a whole half of the spectrum and need less. Set so that a wet-only
+// path measures near the dry level at every position of the Type knob (see
+// "the wet path stays near the dry level" in the DSP tests) - turning Mix up
+// should change the voicing, not the volume. kGritDrive is a tanh soft-clip -
+// unity at normal levels, only rounding the hottest peaks so the make-up can't
+// run away. Then a DC blocker and a mild low-pass.
+constexpr float kMakeupDbLP = 9.0f;
+constexpr float kMakeupDbBP = 20.0f;
+constexpr float kMakeupDbHP = 5.0f;
 constexpr float kGritDrive  = 0.9f;
 constexpr float kDcBlockerHz = 12.0f;
 constexpr float kOutputLowpassHz = 8000.0f;
@@ -143,13 +146,13 @@ constexpr float kOutputLowpassHz = 8000.0f;
 // ============================================================================
 // DEFAULTS (knob positions the pedal opens on, 0..100 unless noted)
 // ============================================================================
-constexpr float kDefaultRangePct  = 55.0f;
-constexpr float kDefaultFreqPct   = 35.0f;
-constexpr float kDefaultQPct      = 40.0f;
-constexpr float kDefaultMixPct    = 55.0f;
-constexpr float kDefaultDecayPct  = 35.0f;
+constexpr float kDefaultRangePct  = 61.0f;
+constexpr float kDefaultFreqPct   = 48.7f;   // 644 Hz
+constexpr float kDefaultQPct      = 58.0f;
+constexpr float kDefaultMixPct    = 52.0f;
+constexpr float kDefaultDecayPct  = 3.0f;    // one sweep per pluck
 constexpr float kDefaultStereoPct = 0.0f;
-constexpr float kDefaultShapePct  = 50.0f;   // triangle
+constexpr float kDefaultShapePct  = 60.0f;   // triangle, leaning square
 constexpr float kDefaultTypePct   = 50.0f;   // band-pass, midway between LP and HP
 
 } // namespace ee::dsp::autowah

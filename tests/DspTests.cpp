@@ -2248,43 +2248,66 @@ void testAutoWahHoldsLevel()
 {
     std::printf ("Auto-wah: the wet path stays near the dry level, not way down\n");
 
-    ee::dsp::AutoWah wah;
-    wah.prepare (kSampleRate);
-    wah.reset();
-    wah.setPeriodSeconds (0.3f);
-    wah.setRange01 (0.6f);
-    wah.setFreq01 (0.35f);
-    wah.setQ01 (0.4f);
-    wah.setMix01 (1.0f);
-    wah.setDecay01 (1.0f);
-    wah.setType (1);
-
-    std::mt19937 rng (2027);
-    std::normal_distribution<float> dist (0.0f, 0.2f);
-
-    std::vector<float> buf (kBlock);
-    double inSq = 0.0, outSq = 0.0;
-
-    for (int b = 0; b < 1200; ++b)
+    // Measured right across the Type morph and at both ends of Q: the per-tap
+    // make-up is crossfaded with the taps, so no position on the knob may cost
+    // the player level when Mix is turned up.
+    auto ratioFor = [] (float typeMorph, float q01)
     {
-        for (int i = 0; i < kBlock; ++i) buf[i] = dist (rng);
-        std::vector<float> dry (buf.begin(), buf.end());
-        wah.process (buf.data(), nullptr, kBlock);
+        ee::dsp::AutoWah wah;
+        wah.prepare (kSampleRate);
+        wah.reset();
+        wah.setPeriodSeconds (0.3f);
+        wah.setRange01 (0.6f);
+        wah.setFreq01 (0.35f);
+        wah.setQ01 (q01);
+        wah.setMix01 (1.0f);
+        wah.setDecay01 (1.0f);
+        wah.setTypeMorph01 (typeMorph);
 
-        if (b >= 200)
-            for (int i = 0; i < kBlock; ++i)
-            {
-                inSq  += (double) dry[i] * dry[i];
-                outSq += (double) buf[i] * buf[i];
-            }
+        std::mt19937 rng (2027);
+        std::normal_distribution<float> dist (0.0f, 0.2f);
+
+        std::vector<float> buf (kBlock);
+        double inSq = 0.0, outSq = 0.0;
+
+        for (int b = 0; b < 1200; ++b)
+        {
+            for (int i = 0; i < kBlock; ++i) buf[i] = dist (rng);
+            std::vector<float> dry (buf.begin(), buf.end());
+            wah.process (buf.data(), nullptr, kBlock);
+
+            if (b >= 200)
+                for (int i = 0; i < kBlock; ++i)
+                {
+                    inSq  += (double) dry[i] * dry[i];
+                    outSq += (double) buf[i] * buf[i];
+                }
+        }
+
+        return std::sqrt (outSq / juce::jmax (inSq, 1.0e-30));
+    };
+
+    bool allFinite = true, allUp = true, allSane = true;
+
+    for (const float q : { 0.2f, 0.6f })
+    {
+        std::printf ("  wet / dry RMS at Q %.0f %%:", q * 100.0f);
+
+        for (const float morph : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f })
+        {
+            const double ratio = ratioFor (morph, q);
+            std::printf ("  %.0f%%->%.2f", morph * 100.0f, ratio);
+
+            allFinite = allFinite && std::isfinite (ratio);
+            allUp = allUp && ratio > 0.8;
+            allSane = allSane && ratio < 2.0;
+        }
+        std::printf ("\n");
     }
 
-    const double ratio = std::sqrt (outSq / juce::jmax (inSq, 1.0e-30));
-    std::printf ("  wet / dry RMS = %.2f\n", ratio);
-
-    check (std::isfinite (ratio), "auto-wah level ratio is finite");
-    check (ratio > 0.55, "the wah does not gut the level");
-    check (ratio < 2.5, "the make-up does not blow the level up");
+    check (allFinite, "auto-wah level ratios are finite");
+    check (allUp, "no Type position guts the level");
+    check (allSane, "and none of them blows it up");
 }
 
 void testAutoWahMixRampIsSmooth()

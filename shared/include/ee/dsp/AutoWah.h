@@ -370,13 +370,17 @@ private:
         makeupHP = gain (autowah::kMakeupDbHP);
     }
 
-    /** Make-up for the current tap blend - the same crossfade the taps get, so
-        the level holds steady as Type is turned. */
+    /** Make-up for the current tap blend, crossfaded in dB rather than in gain:
+        a straight line between two gains that are 15 dB apart bulges well above
+        either of them in the middle, which is heard as a bump halfway through
+        the Type knob's travel. */
     inline float makeupFor (float morph) const noexcept
     {
-        if (morph <= 0.5f)
-            return makeupLP + (morph * 2.0f) * (makeupBP - makeupLP);
-        return makeupBP + ((morph - 0.5f) * 2.0f) * (makeupHP - makeupBP);
+        const float a = morph <= 0.5f ? makeupLP : makeupBP;
+        const float b = morph <= 0.5f ? makeupBP : makeupHP;
+        const float t = morph <= 0.5f ? morph * 2.0f : (morph - 0.5f) * 2.0f;
+
+        return a * std::pow (b / a, t);
     }
 
     void updateCutoff (int ch, float mod) noexcept
