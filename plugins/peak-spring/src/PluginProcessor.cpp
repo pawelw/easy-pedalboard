@@ -34,6 +34,17 @@ float shapedMix (float percent) noexcept
 {
     return std::pow (juce::jlimit (0.0f, 1.0f, percent * 0.01f), kMixCurve);
 }
+
+/** Wet gain for a shaped mix, including the make-up that offsets how narrow a
+    spring tank is next to the full-range dry it is replacing. Grows with the
+    mix so there is nothing to hear at the dry end and the full amount only at
+    the wet one. */
+float wetGainFor (float mix) noexcept
+{
+    const float makeup = juce::jmin (1.0f + (ee::dsp::spring::kMixMakeupAtFullWet - 1.0f) * mix,
+                                     ee::dsp::spring::kMixMakeupMax);
+    return std::sin (mix * juce::MathConstants<float>::halfPi) * makeup;
+}
 } // namespace
 
 PeakSpringProcessor::PeakSpringProcessor()
@@ -98,7 +109,7 @@ void PeakSpringProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
     const bool engaged = onParam->load() > 0.5f;
 
     dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
-    wetGain.setCurrentAndTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi));
+    wetGain.setCurrentAndTargetValue (wetGainFor (mix));
     inputGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
 }
 
@@ -153,7 +164,7 @@ void PeakSpringProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     // Trails: bypassing stops driving the tank but leaves the wet path open, so
     // whatever is still ringing rings out instead of being cut off.
     dryGain.setTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
-    wetGain.setTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi));
+    wetGain.setTargetValue (wetGainFor (mix));
     inputGain.setTargetValue (engaged ? 1.0f : 0.0f);
 
     for (int offset = 0; offset < numSamples; offset += maxBlock)
@@ -225,7 +236,7 @@ juce::AudioProcessorEditor* PeakSpringProcessor::createEditor()
     // Wide enough that the switch sits the same distance off the Decay cap
     // below it as off the Mix cap above. The shared gap would have the switch
     // overlapping the lower cap outright.
-    spec.knobRowGap = 67;
+    spec.knobRowGap = 64;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
 
     return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::charcoal());

@@ -15,7 +15,8 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
             const KnobSpec& spec,
             const PedalTheme& theme)
     : apvts (state), paramID (spec.parameterID), captionText (spec.caption),
-      pedalTheme (theme), compact (spec.compact), compactCaption (spec.compactCaption),
+      pedalTheme (theme), capStyle (spec.capStyle.value_or (theme.controlStyle)),
+      compact (spec.compact), compactCaption (spec.compactCaption),
       captionUntilTouched (spec.captionUntilTouched),
       liveValueText (spec.liveValueText), valueIcon (spec.valueIcon), capIcon (spec.capIcon)
 {
@@ -48,6 +49,10 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
     // only the full-size knobs get the photographic artwork.
     if (compact)
         slider.getProperties().set ("compactKnob", true);
+
+    // A face can hold one cap back in the other style - see KnobSpec::capStyle.
+    if (spec.capStyle.has_value())
+        slider.getProperties().set ("digitalCap", *spec.capStyle == ControlStyle::digital);
 
     if (spec.endMarker.has_value())
     {
@@ -90,7 +95,7 @@ void Knob::paintOverChildren (juce::Graphics& g)
 {
     // Only the digital cap leaves a clear face to draw on; the analog one is
     // artwork all the way across.
-    if (! capIcon || pedalTheme.controlStyle != ControlStyle::digital)
+    if (! capIcon || capStyle != ControlStyle::digital)
         return;
 
     const auto capBounds = slider.getBounds().toFloat().reduced (2.0f);

@@ -113,7 +113,7 @@ void DigitalKnob::draw (juce::Graphics& g,
             if (endMarker.label.isNotEmpty())
             {
                 const auto at = polar (centre, R * 1.17f, endAngle);
-                const float h = juce::jmax (10.0f, R * 0.36f);
+                const float h = juce::jmax (10.0f, R * 0.468f);
 
                 g.setFont (theme.bodyFont (h).boldened());
                 g.drawText (endMarker.label,

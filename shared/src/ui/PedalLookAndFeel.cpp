@@ -369,8 +369,14 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
     // The digital cap owns its whole cell: the tick ring around it is the scale,
     // so none of the arc drawing below runs. `compactKnob` - the flag the analog
     // style uses to mean "utility cap" - is what picks the smaller of its two
-    // sizes.
-    if (theme.controlStyle == ControlStyle::digital)
+    // sizes. A single knob can be held back in the other style (KnobSpec::capStyle),
+    // which is what the "digitalCap" property carries.
+    bool digitalCap = theme.controlStyle == ControlStyle::digital;
+
+    if (const auto& override_ = slider.getProperties()["digitalCap"]; ! override_.isVoid())
+        digitalCap = static_cast<bool> (override_);
+
+    if (digitalCap)
     {
         const bool compactKnob = static_cast<bool> (slider.getProperties().getWithDefault ("compactKnob", false));
 

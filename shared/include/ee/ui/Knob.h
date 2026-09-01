@@ -62,6 +62,10 @@ private:
     juce::String paramID;
     juce::String captionText;
     const PedalTheme& pedalTheme;
+
+    /** This knob's own style - the theme's unless the spec overrode it. */
+    ControlStyle capStyle = ControlStyle::analog;
+
     bool compact = false;
     bool compactCaption = false;
     bool captionUntilTouched = false;

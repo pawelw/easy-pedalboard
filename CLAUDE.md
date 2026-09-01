@@ -110,18 +110,30 @@ and every control follows it - the two are never mixed on one face.
 
 - **`analog`** (every pedal but Wah): the photographic knob cap from `knob.png`,
   a value arc around it, lit bezel buttons, dark recessed displays.
-- **`digital`** (`PedalTheme::white()`, currently Peak Wah alone): the flat
-  soft-UI look. `DigitalKnob` (white cap, charcoal ring, a tick scale instead of
-  an arc - two sizes, picked from the cap diameter), `DigitalSwitch` (pill
-  track, label either side) and `DigitalScreen` (pale recessed panel with a
-  captioned grid; chrome only - the caller draws its own trace into the plot
-  rect it hands back).
+- **`digital`** (`PedalTheme::white()` on Peak Wah, `PedalTheme::moss()` on Peak
+  Delay): the flat soft-UI look. `DigitalKnob` (pale cap, dark ring, a tick
+  scale instead of an arc - two sizes, picked from the cap diameter),
+  `DigitalSwitch` (pill track, label either side), `DigitalToggle`
+  (rounded-square bezel carrying a glyph or a caption) and `DigitalScreen` (pale
+  recessed panel with a captioned grid; chrome only - the caller draws its own
+  trace into the plot rect it hands back).
+
+The style is a whole palette, not a colour: `white()` and `moss()` are the same
+drawing with every token shifted, so a face keeps its own hue. A digital theme
+must set `softShadow`, `softHighlight`, `recess` and `recessInk` - the analog
+faces never read them, so they are easy to forget.
 
 Nothing else has to change to move a pedal across: the same `PedalSpec` drives
 both. `PedalLookAndFeel::drawRotarySlider`, `FilterScope::paint` and
 `PedalEditor::Face::paint` each branch on the style; `SlideToggle`,
-`DigitalSwitch` and `MiniToggle` all satisfy `SwitchControl`, so the layout code
-places whichever one the theme asked for without knowing which it is.
+`DigitalSwitch`, `DigitalToggle` and `MiniToggle` all satisfy `SwitchControl`,
+so the layout code places whichever one the theme asked for without knowing
+which it is.
+
+One cap can be held back in the other style with `KnobSpec::capStyle` - Peak
+Delay's Tape knob keeps its photographic cap on a face of digital ones, because
+the tape machine is not part of the delay. It travels to the look and feel as
+the slider's `digitalCap` property.
 
 DSP voicing constants live in `*Config.h`, not inline in the processors. When
 changing a sound, change the config header — the tests and the tuning panels read

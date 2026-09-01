@@ -30,6 +30,42 @@ float divisionSeconds (int index, double bpm) noexcept
     const int i = juce::jlimit (0, ee::dsp::kNumTempoDivisions - 1, index);
     return ee::dsp::kTempoDivisions[i].beats * static_cast<float> (60.0 / bpm);
 }
+
+/** A chain link, for the Sync button: two capsule outlines lying along the same
+    diagonal and overlapping in the middle. Sync ties the delay time to the
+    host's tempo, which is a link rather than a word - and the button is too
+    small to print one legibly. */
+void drawLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const float side = juce::jmin (area.getWidth(), area.getHeight());
+    if (side <= 0.0f)
+        return;
+
+    // All of it in fractions of the box, so the glyph is the same drawing at
+    // any size.
+    const float linkW = side * 0.44f;  // capsule across
+    const float linkH = side * 0.74f;  // ... and along
+    const float offset = side * 0.19f; // each capsule off the centre
+    const float stroke = juce::jmax (1.2f, side * 0.11f);
+
+    juce::Path capsule;
+    capsule.addRoundedRectangle (-linkW * 0.5f, -linkH * 0.5f, linkW, linkH, linkW * 0.5f);
+
+    const auto centre = area.getCentre();
+    const float diagonal = offset * juce::MathConstants<float>::sqrt2 * 0.5f;
+
+    g.setColour (colour);
+
+    // Lower-left and upper-right, both turned onto the same 45-degree axis.
+    for (const float sign : { -1.0f, 1.0f })
+    {
+        const auto place = juce::AffineTransform::rotation (juce::MathConstants<float>::pi * 0.25f)
+                               .translated (centre.x - sign * diagonal, centre.y + sign * diagonal);
+
+        g.strokePath (
+            capsule, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), place);
+    }
+}
 } // namespace
 
 PeakDelayProcessor::PeakDelayProcessor()
@@ -291,23 +327,31 @@ juce::AudioProcessorEditor* PeakDelayProcessor::createEditor()
     spec.name = "Peak Delay";
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v" JucePlugin_VersionString;
+
     // Tape is a machine in front of the delay rather than part of it, so its
-    // knob is not one of the black caps - here a deep green.
+    // knob is the odd one out twice over: a deep green cap, and the only
+    // photographic one on a face of digital caps.
     const juce::Colour tapeCap { 0xff375916 };
     const juce::Colour tapeBorder { 0xff17280b };
-    const juce::Colour syncAmber { 0xffffaa33 };
+
+    auto tape = ee::ui::KnobSpec { kTapeID, "Tape", tapeCap, tapeBorder, tapeCap };
+    tape.capStyle = ee::ui::ControlStyle::analog;
 
     spec.knobs = { { kLeftTimeID, "Left Time" },
                    { kRightTimeID, "Right Time" },
                    { kFeedbackID, "Feedback" },
                    { kMixID, "Mix" },
                    { kModID, "Mod" },
-                   { kTapeID, "Tape", tapeCap, tapeBorder, tapeCap } };
-    spec.toggles = { { kSyncID, "Sync", 0, syncAmber } };
+                   tape };
+
+    // Sync carries a chain link rather than a word: lit in the face's ink while
+    // the delay follows the host, pale grey while it does not.
+    spec.toggles = { { .parameterID = kSyncID, .caption = "Sync", .afterKnobIndex = 0, .icon = drawLinkIcon } };
+
     spec.knobsPerRow = 3;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow); // same column spacing as Peak Reverb
 
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::gold());
+    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::moss());
 
 #if EE_TAPE_TUNER
     // Flip to true to bring the tuning panel back without reconfiguring CMake.

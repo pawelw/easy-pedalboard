@@ -194,4 +194,28 @@ constexpr float kWetTrim = 0.47f;
 
 constexpr float kDefaultMixPercent = 35.0f;
 
+// Make-up gain on the WET path as the mix knob comes up. A spring tank is a
+// narrow band-pass - roughly 60 Hz to 6 kHz - so as the knob replaces a
+// full-range dry signal with it, the level sags even though nothing has
+// actually been turned down. This puts it back.
+//
+// It rides the same shaped mix value the wet gain does, so the compensation
+// arrives exactly as the wet does: none at all at mix 0, and the full amount
+// only at mix 100.
+//
+// The value is what the wet is multiplied by at the top of the knob, and it is
+// measured rather than picked: without it the output sags 2.8 dB from dry to
+// fully wet, and 1.38x is what flattens that sweep to within a few tenths.
+//   1.00 = off - the wet is left exactly where the reference tank puts it
+//   1.38 = level holds across the whole knob  <-- default
+constexpr float kMixMakeupAtFullWet = 1.38f;
+
+// Hard ceiling on the above, whatever it is set to. Make-up gain on a reverb
+// is a foot-gun: it is applied blind, with no idea what the source is, so a
+// setting that flatters one guitar can clip another. Doubling is as far as
+// this is allowed to go.
+constexpr float kMixMakeupMax = 2.0f;
+static_assert (kMixMakeupAtFullWet <= kMixMakeupMax,
+               "wet make-up must stay under the x2 ceiling");
+
 } // namespace ee::dsp::spring

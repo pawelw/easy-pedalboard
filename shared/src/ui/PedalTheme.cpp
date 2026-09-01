@@ -557,4 +557,60 @@ PedalTheme PedalTheme::white()
     return t;
 }
 
+PedalTheme PedalTheme::moss()
+{
+    PedalTheme t;
+
+    // The soft-UI face struck in Peak Delay's green rather than in off-white:
+    // the same flat card, the same light from the top-left, but every value
+    // shifted onto the green the pedal already had. The caps are a pale green
+    // too - light enough against the card to read as raised, never white.
+    t.controlStyle = ControlStyle::digital;
+
+    t.background      = juce::Colour (0xff97b39b);   // the page behind the card
+    t.panel           = juce::Colour (0xffb9d4bc);   // the card - Peak Delay's own green
+    t.outline         = juce::Colour (0xff8aa88d);
+    t.bezel           = juce::Colour (0xffcfe4d1);
+
+    t.textPrimary     = juce::Colour (0xff1d2e20);
+    t.textSecondary   = juce::Colour (0xff2a3d2c);
+    t.title           = juce::Colour (0xff17251a);
+
+    // A pale-green cap in a deep-green ring, and the scale of ticks around it
+    // fading to `knobTrack` where the value has not reached.
+    t.knobBody        = juce::Colour (0xff23361f);   // the ring
+    t.knobFill        = juce::Colour (0xffdcead9);   // the cap face
+    t.knobOutline     = juce::Colour (0xff8aa88d);
+    t.knobPointer     = juce::Colour (0xff23361f);
+    t.knobTrack       = juce::Colour (0xff86a189);
+
+    t.accent          = juce::Colour (0xff23361f);
+    t.accentDim       = juce::Colour (0xff9ab39d);
+
+    // The reached ticks, and anything else on the face that carries a reading.
+    // A deeper green than the ring, so it lifts off the card without bringing a
+    // second hue onto it.
+    t.glow            = juce::Colour (0xff2c5e3a);
+
+    t.softShadow      = juce::Colour (0x3a1e3020);
+    t.softHighlight   = juce::Colour (0xfff1f8ef);
+    t.recess          = juce::Colour (0xffa3bfa6);
+    t.recessInk       = juce::Colour (0xff43593f);
+
+    t.ledOn           = juce::Colour (0xff2c5e3a);
+    t.ledOff          = juce::Colour (0xffa3bfa6);
+    t.ledRing         = juce::Colour (0xffa3bfa6);
+    t.switchBody      = juce::Colour (0xffa3bfa6);   // track, off
+    t.switchHighlight = juce::Colour (0xfff1f8ef);   // the sliding knob
+
+    t.cornerRadius = 20.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.0f;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
 } // namespace ee::ui

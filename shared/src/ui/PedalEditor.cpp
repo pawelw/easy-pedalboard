@@ -1,6 +1,7 @@
 #include "ee/ui/PedalEditor.h"
 
 #include "ee/ui/DigitalSwitch.h"
+#include "ee/ui/DigitalToggle.h"
 #include "ee/ui/FilterScope.h"
 #include "ee/ui/SlideToggle.h"
 #include "ee/ui/WaveDisplay.h"
@@ -378,6 +379,12 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
                                                        DigitalSwitch::Size::compact);
             entry.metrics = sw.get();
             entry.button = std::move (sw);
+        }
+        else if (theme.controlStyle == ControlStyle::digital)
+        {
+            auto button = std::make_unique<DigitalToggle> (state, toggleSpec, theme);
+            entry.metrics = button.get();
+            entry.button = std::move (button);
         }
         else
         {

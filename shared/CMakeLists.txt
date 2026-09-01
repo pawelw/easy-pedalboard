@@ -24,6 +24,7 @@ target_sources(ee_ui INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/SlideToggle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/DigitalKnob.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/DigitalSwitch.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/DigitalToggle.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/DigitalScreen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/WaveDisplay.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/FilterScope.cpp

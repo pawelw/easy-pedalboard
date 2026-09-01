@@ -12,11 +12,11 @@
 #include <cmath>
 
 #if EE_TAPE_TUNER
- #include "TapeTunerPanel.h"
+#include "TapeTunerPanel.h"
 #endif
 
 #if EE_SHIMMER_TUNER
- #include "ShimmerTunerPanel.h"
+#include "ShimmerTunerPanel.h"
 #endif
 
 namespace
@@ -75,8 +75,7 @@ public:
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "shimmer", 1 }, "Shimmer", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -107,10 +106,9 @@ ee::ui::PedalSpec makeSpec()
     spec.name = "Peak Reverb";
     spec.tagline = "Decay drives room size and predelay";
     spec.version = "v0.10.0";
-    spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" },
-                   { "shimmer", "Shimmer" }, { "locut", "Low Cut" } };
-    spec.centreKnob = ee::ui::KnobSpec {
-        .parameterID = "res", .caption = "reso", .compact = true, .compactCaption = true };
+    spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" }, { "shimmer", "Shimmer" }, { "locut", "Low Cut" } };
+    spec.centreKnob =
+        ee::ui::KnobSpec { .parameterID = "res", .caption = "reso", .compact = true, .compactCaption = true };
     spec.knobsPerRow = 2;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
@@ -128,25 +126,52 @@ public:
 
         const auto divisions = ee::dsp::tempoDivisionLabels();
 
-        layout.add (std::make_unique<juce::AudioParameterChoice> (
-            juce::ParameterID { "ltime", 1 }, "Left Time", divisions, 5));
-        layout.add (std::make_unique<juce::AudioParameterChoice> (
-            juce::ParameterID { "rtime", 1 }, "Right Time", divisions, 5));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "sync", 1 }, "Sync L/R", true));
+        layout.add (
+            std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "ltime", 1 }, "Left Time", divisions, 5));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "rtime", 1 }, "Right Time",
+                                                                  divisions, 5));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "sync", 1 }, "Sync L/R", true));
 
         for (const auto* id : { "fb", "mix", "mod", "tape" })
             layout.add (std::make_unique<juce::AudioParameterFloat> (
-                juce::ParameterID { id, 1 }, id,
-                juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
+                juce::ParameterID { id, 1 }, id, juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
                 juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
 };
+
+/** Mirrors drawLinkIcon in plugins/peak-delay. */
+void drawDelayLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const float side = juce::jmin (area.getWidth(), area.getHeight());
+    if (side <= 0.0f)
+        return;
+
+    const float linkW = side * 0.44f;
+    const float linkH = side * 0.74f;
+    const float offset = side * 0.19f;
+    const float stroke = juce::jmax (1.2f, side * 0.11f);
+
+    juce::Path capsule;
+    capsule.addRoundedRectangle (-linkW * 0.5f, -linkH * 0.5f, linkW, linkH, linkW * 0.5f);
+
+    const auto centre = area.getCentre();
+    const float diagonal = offset * juce::MathConstants<float>::sqrt2 * 0.5f;
+
+    g.setColour (colour);
+
+    for (const float sign : { -1.0f, 1.0f })
+    {
+        const auto place = juce::AffineTransform::rotation (juce::MathConstants<float>::pi * 0.25f)
+                               .translated (centre.x - sign * diagonal, centre.y + sign * diagonal);
+        g.strokePath (capsule, juce::PathStrokeType (stroke, juce::PathStrokeType::curved,
+                                                     juce::PathStrokeType::rounded),
+                      place);
+    }
+}
 
 ee::ui::PedalSpec makeDelaySpec()
 {
@@ -156,10 +181,21 @@ ee::ui::PedalSpec makeDelaySpec()
     spec.version = "v0.10.0";
     const juce::Colour tapeCap { 0xff375916 };
     const juce::Colour tapeBorder { 0xff17280b };
-    spec.knobs = { { "ltime", "Left Time" }, { "rtime", "Right Time" }, { "fb", "Feedback" },
-                   { "mix", "Mix" }, { "mod", "Mod" },
-                   { "tape", "Tape", tapeCap, tapeBorder, tapeCap } };
-    spec.toggles = { { "sync", "Sync", 0, juce::Colour (0xffffaa33) } };
+
+    // The only photographic cap on a face of digital ones - see the pedal's own
+    // createEditor.
+    auto tape = ee::ui::KnobSpec { "tape", "Tape", tapeCap, tapeBorder, tapeCap };
+    tape.capStyle = ee::ui::ControlStyle::analog;
+
+    spec.knobs = {
+        { "ltime", "Left Time" }, { "rtime", "Right Time" }, { "fb", "Feedback" },
+        { "mix", "Mix" },         { "mod", "Mod" },          tape
+    };
+
+    spec.toggles = { { .parameterID = "sync",
+                       .caption = "Sync",
+                       .afterKnobIndex = 0,
+                       .icon = drawDelayLinkIcon } };
     spec.knobsPerRow = 3;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
@@ -199,12 +235,11 @@ public:
         juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
         const auto dbRange = juce::NormalisableRange<float> (-15.0f, 15.0f, 0.1f);
-        const auto dbAttributes =
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (decibelsToText);
+        const auto dbAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (decibelsToText);
 
         for (const auto* id : { "level", "b100", "b200", "b400", "b800", "b1k6", "b3k2", "b6k4" })
-            layout.add (std::make_unique<juce::AudioParameterFloat> (
-                juce::ParameterID { id, 1 }, id, dbRange, 0.0f, dbAttributes));
+            layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, 1 }, id, dbRange, 0.0f,
+                                                                     dbAttributes));
 
         auto loCutRange = juce::NormalisableRange<float> (20.0f, 1200.0f);
         loCutRange.setSkewForCentre (120.0f);
@@ -218,8 +253,7 @@ public:
             juce::ParameterID { "hicut", 1 }, "High Cut", hiCutRange, 20000.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (hiCutToText)));
 
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -232,25 +266,23 @@ ee::ui::PedalSpec makeEqSpec()
     spec.tagline = "Seven-band graphic EQ";
     spec.version = "v0.10.0";
     spec.sliders = {
-        { .parameterID = "level", .caption = "LEVEL",
-          .fill = juce::Colour (0xffd6d6d6), .joinCurve = false },
-        { .parameterID = "b100", .caption = "100",  .axisHz = 100.0f },
-        { .parameterID = "b200", .caption = "200",  .axisHz = 200.0f },
-        { .parameterID = "b400", .caption = "400",  .axisHz = 400.0f },
-        { .parameterID = "b800", .caption = "800",  .axisHz = 800.0f },
+        { .parameterID = "level", .caption = "LEVEL", .fill = juce::Colour (0xffd6d6d6), .joinCurve = false },
+        { .parameterID = "b100", .caption = "100", .axisHz = 100.0f },
+        { .parameterID = "b200", .caption = "200", .axisHz = 200.0f },
+        { .parameterID = "b400", .caption = "400", .axisHz = 400.0f },
+        { .parameterID = "b800", .caption = "800", .axisHz = 800.0f },
         { .parameterID = "b1k6", .caption = "1.6k", .axisHz = 1600.0f },
         { .parameterID = "b3k2", .caption = "3.2k", .axisHz = 3200.0f },
         { .parameterID = "b6k4", .caption = "6.4k", .axisHz = 6400.0f },
     };
     spec.cornerKnobs = {
         { .parameterID = "locut", .compact = true, .cutSide = ee::ui::CutSide::low },
-        { .parameterID = "hicut", .compact = true, .cutSide = ee::ui::CutSide::high,
-          .invertedArc = true },
+        { .parameterID = "hicut", .compact = true, .cutSide = ee::ui::CutSide::high, .invertedArc = true },
     };
     spec.groupTrims = {
         { .caption = "LOW", .sliderIndices = { 1, 2 } },
         { .caption = "MID", .sliderIndices = { 3, 4, 5 } },
-        { .caption = "HI",  .sliderIndices = { 6, 7 } },
+        { .caption = "HI", .sliderIndices = { 6, 7 } },
     };
     spec.width = 442;
     spec.compactKnobDiameter = 62;
@@ -271,23 +303,20 @@ public:
         const auto percentAttributes =
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
 
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "amount", 1 }, "Amount", percent, 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "amount", 1 }, "Amount", percent,
+                                                                 50.0f, percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "rate", 1 }, "Rate", juce::NormalisableRange<float> (0.0f, 1.0f), 0.5f,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float, int) { return juce::String ("1/8"); })));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "shape", 1 }, "Shape", percent, 50.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "bias", 1 }, "Tube", percent, 0.0f, percentAttributes));
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float, int)
+                                                                               { return juce::String ("1/8"); })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "shape", 1 }, "Shape", percent,
+                                                                 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "bias", 1 }, "Tube", percent, 0.0f,
+                                                                 percentAttributes));
 
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "mode", 1 }, "Panning", false));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "sync", 1 }, "Tempo Sync", true));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "mode", 1 }, "Panning", false));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "sync", 1 }, "Tempo Sync", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -298,18 +327,20 @@ ee::ui::PedalSpec makeTremPanSpec()
     ee::ui::PedalSpec spec;
     spec.name = "Peak Trem & Pan";
     spec.version = "v0.10.0";
-    spec.knobs = { { "amount", "Amount" }, { "rate", "Rate" }, { "shape", "Shape" },
-                   { "bias", "Tube" } };
+    spec.knobs = { { "amount", "Amount" }, { "rate", "Rate" }, { "shape", "Shape" }, { "bias", "Tube" } };
 
     const juce::Colour cream { 0xfffee1b8 };
-    spec.slideToggle = ee::ui::SlideToggleSpec {
-        .parameterID = "mode", .labelOff = "Tremolo", .labelOn = "Panning", .accent = cream };
+    spec.slideToggle =
+        ee::ui::SlideToggleSpec { .parameterID = "mode", .labelOff = "Tremolo", .labelOn = "Panning", .accent = cream };
     spec.toggles = {
-        { .parameterID = "sync", .caption = "Sync", .afterKnobIndex = 1,
-          .litColour = juce::Colour (0xffffaa33), .centeredAbove = true },
+        { .parameterID = "sync",
+          .caption = "Sync",
+          .afterKnobIndex = 1,
+          .litColour = juce::Colour (0xffffaa33),
+          .centeredAbove = true },
     };
-    spec.waveDisplay = ee::ui::WaveDisplaySpec {
-        .amountID = "amount", .rateID = "rate", .shapeID = "shape", .modeID = "mode" };
+    spec.waveDisplay =
+        ee::ui::WaveDisplaySpec { .amountID = "amount", .rateID = "rate", .shapeID = "shape", .modeID = "mode" };
     spec.knobsPerRow = 4;
     spec.width = ee::ui::knobRowWidth (3);
     return spec;
@@ -335,18 +366,16 @@ public:
             juce::ParameterID { "rate", 1 }, "Rate", rateRange, 0.6f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, v < 1.0f ? 2 : 1) + " Hz"; })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "depth", 1 }, "Depth", percent,
+                                                                 45.0f, percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "depth", 1 }, "Depth", percent, 45.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "phase", 1 }, "Phase",
-            juce::NormalisableRange<float> (0.0f, 180.0f, 1.0f), 110.0f,
+            juce::ParameterID { "phase", 1 }, "Phase", juce::NormalisableRange<float> (0.0f, 180.0f, 1.0f), 110.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float v, int) { return juce::String (juce::roundToInt (v))
-                                           + juce::String::fromUTF8 ("\xc2\xb0"); })));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "mix", 1 }, "Mix", percent, 50.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+                [] (float v, int)
+                { return juce::String (juce::roundToInt (v)) + juce::String::fromUTF8 ("\xc2\xb0"); })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mix", 1 }, "Mix", percent, 50.0f,
+                                                                 percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -358,8 +387,7 @@ ee::ui::PedalSpec makeChorusSpec()
     spec.name = "Peak Chorus";
     spec.tagline = "Wide stereo chorus";
     spec.version = "v0.10.0";
-    spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" },
-                   { "phase", "Phase" }, { "mix", "Mix" } };
+    spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" }, { "phase", "Phase" }, { "mix", "Mix" } };
     spec.knobsPerRow = 2;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
@@ -385,10 +413,9 @@ public:
             juce::ParameterID { "rate", 1 }, "Rate", rateRange, 0.35f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, v < 1.0f ? 2 : 1) + " Hz"; })));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "depth", 1 }, "Depth", percent, 75.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "depth", 1 }, "Depth", percent,
+                                                                 75.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -425,10 +452,8 @@ public:
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "mix", 1 }, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "stereo", 1 }, "Stereo", true));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "stereo", 1 }, "Stereo", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -449,7 +474,7 @@ ee::ui::PedalSpec makeSpringSpec()
                        .belowGap = 10,
                        .asSwitch = ee::ui::SlideToggleSpec { .labelOff = "Mono", .labelOn = "Stereo" } } };
     spec.knobsPerRow = 1;
-    spec.knobRowGap = 67;
+    spec.knobRowGap = 56;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
 }
@@ -474,12 +499,11 @@ public:
             juce::ParameterID { "level", 1 }, "Level", levelRange, 0.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 1) + " dB"; })));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "tone", 1 }, "Tone", percent, 50.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "drive", 1 }, "Drive", percent, 35.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "tone", 1 }, "Tone", percent,
+                                                                 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "drive", 1 }, "Drive", percent,
+                                                                 35.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -512,19 +536,16 @@ public:
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
 
         for (const auto* id : { "range", "freq", "q", "mix", "decay", "shape" })
-            layout.add (std::make_unique<juce::AudioParameterFloat> (
-                juce::ParameterID { id, 1 }, id, percent, 45.0f, percentAttributes));
+            layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, 1 }, id, percent, 45.0f,
+                                                                     percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "time", 1 }, "Time",
-            juce::NormalisableRange<float> (0.0f, 1.0f, 0.0001f), 0.5f));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "ftype", 1 }, "Type", percent, 50.0f, percentAttributes));
+            juce::ParameterID { "time", 1 }, "Time", juce::NormalisableRange<float> (0.0f, 1.0f, 0.0001f), 0.5f));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "ftype", 1 }, "Type", percent,
+                                                                 50.0f, percentAttributes));
         for (const auto* id : { "stereo", "sync" })
-            layout.add (std::make_unique<juce::AudioParameterBool> (
-                juce::ParameterID { id, 1 }, id, false));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+            layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, 1 }, id, false));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -543,7 +564,7 @@ ee::ui::PedalSpec makeWahSpec()
     spec.width = 566;
     spec.knobDiameter = 104;
 
-    constexpr int plain = 88;   // the six knobs that carry only a number
+    constexpr int plain = 88; // the six knobs that carry only a number
 
     auto shapeIcon = [] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
     {
@@ -551,16 +572,14 @@ ee::ui::PedalSpec makeWahSpec()
         juce::Path p;
         for (int i = 0; i <= 48; ++i)
         {
-            const float t = (float) i / 48.0f;
+            const float t = (float)i / 48.0f;
             // Mirrored, so the glyph opens upward - see drawLfoShapeIcon in
             // plugins/peak-wah.
             const float y = r.getCentreY() + ee::dsp::lfoValue (t, 0.45f) * r.getHeight() * 0.5f;
-            i == 0 ? p.startNewSubPath (r.getX() + t * r.getWidth(), y)
-                   : p.lineTo (r.getX() + t * r.getWidth(), y);
+            i == 0 ? p.startNewSubPath (r.getX() + t * r.getWidth(), y) : p.lineTo (r.getX() + t * r.getWidth(), y);
         }
         g.setColour (c);
-        g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved,
-                                               juce::PathStrokeType::rounded));
+        g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     };
     auto typeIcon = [] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
     {
@@ -568,63 +587,59 @@ ee::ui::PedalSpec makeWahSpec()
         juce::Path p;
         for (int i = 0; i <= 40; ++i)
         {
-            const float t = (float) i / 40.0f;
-            const float v = std::exp (-0.5f * std::pow ((t - 0.5f) / 0.16f, 2.0f));   // band-pass
+            const float t = (float)i / 40.0f;
+            const float v = std::exp (-0.5f * std::pow ((t - 0.5f) / 0.16f, 2.0f)); // band-pass
             const float y = r.getBottom() - juce::jlimit (0.0f, 1.15f, v) * r.getHeight();
-            i == 0 ? p.startNewSubPath (r.getX() + t * r.getWidth(), y)
-                   : p.lineTo (r.getX() + t * r.getWidth(), y);
+            i == 0 ? p.startNewSubPath (r.getX() + t * r.getWidth(), y) : p.lineTo (r.getX() + t * r.getWidth(), y);
         }
         g.setColour (c);
-        g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved,
-                                               juce::PathStrokeType::rounded));
+        g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     };
 
     // Two clusters of four, split by a rule: the filter on the left, its
     // modulation on the right. Shape and Type carry their glyph on the cap and
     // keep the row's full size; the other six are a size down.
     spec.knobs = {
-        { .parameterID = "mix", .caption = "Mix" },   // full size: the headline control
+        { .parameterID = "mix", .caption = "Mix" }, // full size: the headline control
         { .parameterID = "freq", .caption = "Freq", .diameter = plain },
-        { .parameterID = "decay", .caption = "Decay", .diameter = plain,
+        { .parameterID = "decay",
+          .caption = "Decay",
+          .diameter = plain,
           .endMarker = juce::Colour { 0xff2f6b46 },
           .endMarkerLabel = juce::String::fromUTF8 ("\u221e"),
           .captionUntilTouched = true },
-        { .parameterID = "shape", .caption = "Shape", .captionUntilTouched = true,
-          .capIcon = shapeIcon },
+        { .parameterID = "shape", .caption = "Shape", .captionUntilTouched = true, .capIcon = shapeIcon },
         { .parameterID = "q", .caption = "Q", .diameter = plain },
         { .parameterID = "range", .caption = "Range", .diameter = plain },
-        { .parameterID = "time", .caption = "Time", .diameter = plain,
-          .captionUntilTouched = true },
-        { .parameterID = "ftype", .caption = "Filter Type", .captionUntilTouched = true,
-          .capIcon = typeIcon },
+        { .parameterID = "time", .caption = "Time", .diameter = plain, .captionUntilTouched = true },
+        { .parameterID = "ftype", .caption = "Filter Type", .captionUntilTouched = true, .capIcon = typeIcon },
     };
 
-    spec.toggles = { { .parameterID = "sync", .caption = "Sync",
+    spec.toggles = { { .parameterID = "sync",
+                       .caption = "Sync",
                        .afterKnobIndex = 6,
                        .centeredBelow = true,
-                       .asSwitch = ee::ui::SlideToggleSpec { .labelOff = "ms",
-                                                             .labelOn = "Sync",
-                                                             .invertPosition = true } } };
+                       .asSwitch =
+                           ee::ui::SlideToggleSpec { .labelOff = "ms", .labelOn = "Sync", .invertPosition = true } } };
 
     spec.titleBesideLogo = true;
     spec.titleRowAlignRight = true;
     spec.titleRowRightInset = 34;
 
     spec.slideToggle = ee::ui::SlideToggleSpec {
-        .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo",
-        .labelFlushLeft = true };
+        .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo", .labelFlushLeft = true
+    };
     spec.slideToggleBottom = true;
 
-    spec.filterScope = ee::ui::FilterScopeSpec {
-        .baseFreqHz = [] { return 520.0f; },
-        .resonance01 = [] { return 0.55f; },
-        .modL = [] { return 0.55f; },
-        .modR = [] { return -0.35f; },
-        .sweepDepth01 = [] { return 0.45f; },
-        .baseColour = juce::Colour { 0xffc2562f },
-        .sweepColour = juce::Colour { 0xff9aa0aa },
-        .sweepRatioMax = 5.0f,
-        .height = 66 };
+    spec.filterScope = ee::ui::FilterScopeSpec { .baseFreqHz = [] { return 520.0f; },
+                                                 .resonance01 = [] { return 0.55f; },
+                                                 .modL = [] { return 0.55f; },
+                                                 .modR = [] { return -0.35f; },
+                                                 .sweepDepth01 = [] { return 0.45f; },
+                                                 .baseColour = juce::Colour { 0xffc2562f },
+                                                 .sweepColour = juce::Colour { 0xff9aa0aa },
+                                                 .sweepRatioMax = 5.0f,
+                                                 .height = 66 };
     return spec;
 }
 
@@ -642,23 +657,20 @@ public:
         const auto percentAttributes =
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
 
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "sat", 1 }, "Saturation", percent,
+                                                                 35.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "wear", 1 }, "Wear", percent,
+                                                                 30.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "flutter", 1 }, "Flutter", percent,
+                                                                 25.0f, percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "sat", 1 }, "Saturation", percent, 35.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "wear", 1 }, "Wear", percent, 30.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "flutter", 1 }, "Flutter", percent, 25.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "tone", 1 }, "Tone",
-            juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f), 0.0f,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float, int) { return juce::String ("0 %"); })));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "stereo", 1 }, "Stereo", true));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "noise", 1 }, "Noise", percent, 50.0f, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterBool> (
-            juce::ParameterID { "on", 1 }, "On", true));
+            juce::ParameterID { "tone", 1 }, "Tone", juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f), 0.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float, int)
+                                                                               { return juce::String ("0 %"); })));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "stereo", 1 }, "Stereo", true));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "noise", 1 }, "Noise", percent,
+                                                                 50.0f, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
         return layout;
     }
@@ -670,19 +682,18 @@ ee::ui::PedalSpec makeTapeSpec()
     spec.name = "Peak Tape";
     spec.tagline = "Analogue warmth, wobble and wear";
     spec.version = "v0.10.0";
-    spec.knobs = { { "sat", "Saturation" },
-                   { "flutter", "Flutter" },
-                   { "wear", "Wear" },
-                   { "noise", "Noise" } };
+    spec.knobs = { { "sat", "Saturation" }, { "flutter", "Flutter" }, { "wear", "Wear" }, { "noise", "Noise" } };
 
     // Tone gets Peak Reverb's RESO treatment: a small vector cap between the
     // rows with its caption alone under it, plus the bipolar arc and detent.
-    spec.centreKnob = ee::ui::KnobSpec {
-        .parameterID = "tone", .caption = "Tone", .compact = true,
-        .compactCaption = true, .bipolarArc = true, .centreDetent = true };
+    spec.centreKnob = ee::ui::KnobSpec { .parameterID = "tone",
+                                         .caption = "Tone",
+                                         .compact = true,
+                                         .compactCaption = true,
+                                         .bipolarArc = true,
+                                         .centreDetent = true };
 
-    spec.slideToggle = ee::ui::SlideToggleSpec {
-        .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo" };
+    spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo" };
     spec.slideToggleCentred = true;
     spec.slideToggleRise = 8;
 
@@ -694,8 +705,7 @@ ee::ui::PedalSpec makeTapeSpec()
     spec.knobsPerRow = 2;
     spec.width = (ee::ui::knobRowWidth (spec.knobsPerRow) * 106) / 100;
 
-    spec.titleImage = juce::ImageCache::getFromMemory (TapeAssets::tape_png,
-                                                      TapeAssets::tape_pngSize);
+    spec.titleImage = juce::ImageCache::getFromMemory (TapeAssets::tape_png, TapeAssets::tape_pngSize);
     spec.titleImageHeight = 60;
     spec.titleImageTint = juce::Colours::white;
     return spec;
@@ -726,9 +736,9 @@ void render (const juce::File& outputFile)
     ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), ee::ui::PedalTheme::blue());
 
 #if EE_SHIMMER_TUNER
-    editor.setSidePanel (std::make_unique<ShimmerTunerPanel> (ee::dsp::ShimmerTuning{},
-                                                             [] (const ee::dsp::ShimmerTuning&) {}),
-                         ShimmerTunerPanel::preferredWidth);
+    editor.setSidePanel (
+        std::make_unique<ShimmerTunerPanel> (ee::dsp::ShimmerTuning {}, [] (const ee::dsp::ShimmerTuning&) {}),
+        ShimmerTunerPanel::preferredWidth);
 #endif
 
     writePng (editor, outputFile);
@@ -737,11 +747,10 @@ void render (const juce::File& outputFile)
 void renderDelay (const juce::File& outputFile)
 {
     DelaySnapshotProcessor processor;
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeDelaySpec(), ee::ui::PedalTheme::gold());
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeDelaySpec(), ee::ui::PedalTheme::moss());
 
 #if EE_TAPE_TUNER
-    editor.setSidePanel (std::make_unique<TapeTunerPanel> (ee::dsp::TapeTuning{},
-                                                           [] (const ee::dsp::TapeTuning&) {}),
+    editor.setSidePanel (std::make_unique<TapeTunerPanel> (ee::dsp::TapeTuning {}, [] (const ee::dsp::TapeTuning&) {}),
                          TapeTunerPanel::preferredWidth);
 #endif
 
@@ -809,8 +818,7 @@ int main (int argc, char* argv[])
 {
     juce::ScopedJuceInitialiser_GUI juceInit;
 
-    const juce::File dir = argc > 1 ? juce::File (juce::String (argv[1]))
-                                    : juce::File::getCurrentWorkingDirectory();
+    const juce::File dir = argc > 1 ? juce::File (juce::String (argv[1])) : juce::File::getCurrentWorkingDirectory();
 
     render (dir.getChildFile ("pedal.png"));
     renderDelay (dir.getChildFile ("delay.png"));

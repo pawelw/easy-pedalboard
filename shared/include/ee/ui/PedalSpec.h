@@ -2,6 +2,8 @@
 
 #include <juce_graphics/juce_graphics.h>
 
+#include "ee/ui/PedalTheme.h"
+
 #include <functional>
 #include <optional>
 #include <vector>
@@ -81,6 +83,15 @@ struct KnobSpec
         can be put back to dead centre with a flick rather than a nudge. Only
         affects the mouse: automation and typed values pass through untouched. */
     bool centreDetent = false;
+
+    /** Draw this one cap in the other style, against the theme's own. For a
+        control that is not really part of the same machine as the rest of the
+        row - Peak Delay's Tape knob is a tape machine in front of the delay,
+        and keeps its photographic cap on a face of digital ones.
+
+        Unset follows `PedalTheme::controlStyle`, which is what every other
+        control does. */
+    std::optional<ControlStyle> capStyle;
 
     /** Cap diameter for this knob alone, in pixels. 0 keeps the shared size.
         Smaller marks a control out as secondary without moving it off the grid
@@ -282,6 +293,13 @@ struct ToggleSpec
         Lets a pedal react to a deliberate flip without a parameter listener that
         writes other parameters. */
     std::function<void()> onClick;
+
+    /** When set, the button carries this glyph instead of its caption - given
+        the square inside the bezel and the colour the legend would have used.
+        For a control whose meaning is a picture (a chain link for "follow the
+        host tempo"). Digital faces only; the lit bezel button always prints its
+        caption. */
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> icon;
 
     /** When set, the toggle is drawn as a small two-way sliding switch carrying
         these labels rather than as a lit bezel button. Placement is unchanged -
