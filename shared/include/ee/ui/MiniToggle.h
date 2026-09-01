@@ -5,6 +5,7 @@
 
 #include "ee/ui/PedalSpec.h"
 #include "ee/ui/PedalTheme.h"
+#include "ee/ui/SwitchControl.h"
 
 namespace ee::ui
 {
@@ -14,7 +15,8 @@ namespace ee::ui
     Drawn as a lit bezel around a black face: the frame and the legend carry the
     colour while it is on, and lose it when it is off.
 */
-class MiniToggle : public juce::Button
+class MiniToggle : public juce::Button,
+                   public SwitchControl
 {
 public:
     MiniToggle (juce::AudioProcessorValueTreeState& state,
@@ -25,6 +27,9 @@ public:
 
     static constexpr int preferredWidth = 46;
     static constexpr int preferredHeight = 24;
+
+    int switchWidth() const override  { return preferredWidth; }
+    int switchHeight() const override { return preferredHeight; }
 
 protected:
     void paintButton (juce::Graphics&, bool highlighted, bool down) override;

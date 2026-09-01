@@ -177,3 +177,39 @@ target_compile_definitions(ee_tape_render PUBLIC
 target_link_libraries(ee_tape_render
     PRIVATE ee_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakSpring)
+    # Renders a dry file through the whole spring processor, for voicing it
+    # against a reference recording.
+    juce_add_console_app(ee_spring_match PRODUCT_NAME "ee_spring_match")
+
+    target_sources(ee_spring_match PRIVATE SpringMatch.cpp)
+
+    target_compile_definitions(ee_spring_match PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_spring_match
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-spring/src)
+
+    target_link_libraries(ee_spring_match
+        PRIVATE PeakSpring ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+# Drives silence-then-note through the auto-wah over a spread of settings,
+# looking for a step in the output at the onset - the click that a phase reset
+# or a hard capacitance change in the tank leaves behind.
+juce_add_console_app(ee_wah_stress PRODUCT_NAME "ee_wah_stress")
+
+target_sources(ee_wah_stress PRIVATE WahStress.cpp)
+
+target_compile_definitions(ee_wah_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_wah_stress
+    PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)

@@ -106,6 +106,27 @@ struct KnobSpec
         only while it is dragged. For a control whose number only matters while
         it is being set. */
     bool captionUntilTouched = false;
+
+    /** Marks the top of the travel: the last tick on the scale is drawn fat and
+        in this colour, with `endMarkerLabel` printed just outside it. For a
+        control whose maximum is a different thing rather than more of the same
+        - a Decay that latches the sweep on for ever rather than merely holding
+        it a long time.
+
+        Digital caps only; the analog cap has no tick scale to mark. */
+    std::optional<juce::Colour> endMarker;
+    juce::String endMarkerLabel;
+
+    /** When set, this paints a glyph on the cap itself rather than in a text
+        row - given the clear circle inside the pointer's orbit and the colour
+        to draw in. For a control whose setting is a shape (a filter curve, an
+        LFO waveform): the picture belongs on the knob, where it is always in
+        view, not in a row of text under it.
+
+        Digital caps only. The analog cap is photographic artwork with no clear
+        face to draw on, so this is ignored there - use `valueIcon` for a face
+        in that style. */
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> capIcon;
 };
 
 /** A vertical fader plus the value readout and caption underneath it.
@@ -169,6 +190,12 @@ struct SlideToggleSpec
         edge, rather than leaving the label box's own slack in front of it. For
         a switch that has to line up with a panel below it. */
     bool labelFlushLeft = false;
+
+    /** Put `labelOn` on the left and rest the knob there when the parameter is
+        true, rather than the other way round. For a switch whose reading order
+        puts the set state first - a Sync / MS switch, where "Sync" belongs on
+        the left but is the true state. */
+    bool invertPosition = false;
 };
 
 /** An LFO waveform preview, drawn in a band between the knob row and the pedal
@@ -204,6 +231,14 @@ struct FilterScopeSpec
     std::optional<juce::Colour> baseColour;    // the static curve at Freq
     std::optional<juce::Colour> sweepColour;   // both moving curves
 
+    /** The largest |mod| the modulator can reach - the Range knob on Peak Wah.
+        When set, the whole band the peak can sweep over is shaded behind the
+        curves, so a face shows its range at rest rather than only while
+        something is playing through it. Unset leaves the band undrawn.
+
+        Digital screens only; the analog scope draws its curves alone. */
+    std::function<float()> sweepDepth01;
+
     /** peakHz = baseFreqHz * sweepRatioMax^mod. */
     float sweepRatioMax = 5.0f;
 
@@ -236,11 +271,24 @@ struct ToggleSpec
         knob. */
     bool centeredBelow = false;
 
+    /** Pixels between the anchor's printed text and the top of the button, for
+        `centeredBelow`. The default tucks it right up under the label, which is
+        what a switch hanging off a knob in a crowded row wants; a face with a
+        row underneath needs more, or the button crowds the caps below it. */
+    int belowGap = 4;
+
     /** Called on a user click of the button (not on automation or host-driven
         state changes), after the toggle state and its parameter have updated.
         Lets a pedal react to a deliberate flip without a parameter listener that
         writes other parameters. */
     std::function<void()> onClick;
+
+    /** When set, the toggle is drawn as a small two-way sliding switch carrying
+        these labels rather than as a lit bezel button. Placement is unchanged -
+        `afterKnobIndex`, `centeredBelow` and the rest still decide where it
+        goes; only the shape differs. `parameterID` and `caption` above still
+        drive it, so leave the spec's own `parameterID` empty. */
+    std::optional<SlideToggleSpec> asSwitch;
 };
 
 /** A compact knob for a secondary row below the main knob block, with an
@@ -320,9 +368,11 @@ struct PedalSpec
     int slideToggleRise = 0;
 
     /** Vertical gap between knob rows. 0 keeps the shared column gap; a larger
-        value spreads the rows apart, which (because the block stays centred in
-        its area) lifts the top row and drops the bottom one by half of the
-        extra each. For a face with something sitting between the rows. */
+        value spreads the rows apart and a smaller one pulls them together,
+        which (because the block stays centred in its area) moves the top and
+        bottom rows by half of the difference each. Spread a face that wants
+        something sitting between its rows; tighten one whose rows are two
+        clusters that should read as blocks. */
     int knobRowGap = 0;
 
     /** Lift the whole knob block this many pixels above where centring would put
@@ -378,6 +428,11 @@ struct PedalSpec
         left of the row for whatever else lives down there - a Mono/Stereo
         switch. Only meaningful with `titleBesideLogo`. */
     bool titleRowAlignRight = false;
+
+    /** Pull that right-aligned pair this many pixels back in from the right
+        margin. For a face whose name would otherwise sit hard against the edge
+        the controls above it keep clear of. */
+    int titleRowRightInset = 0;
 
     /** Height is shared across pedals so they line up side by side on a rack;
         only the width follows the number of knobs in a row - use

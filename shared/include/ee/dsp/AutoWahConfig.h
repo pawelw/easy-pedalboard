@@ -86,6 +86,15 @@ constexpr float kOnsetSlowMs = 150.0f;
 constexpr float kOnsetOn     = 0.030f;   // gate running this far ahead of its average arms a retrigger
 constexpr float kOnsetOff    = 0.010f;   // falling back below this re-arms it
 
+// A retrigger snaps the LFO phase, which steps its output - and by the time the
+// onset detector fires, the gate is already open, so that step lands straight on
+// the cutoff and is heard as a click at the start of a note. The jump is carried
+// as an offset that starts equal and opposite to it (so the modulation is
+// continuous through the retrigger) and decays away over this long, leaving the
+// sweep on its new phase. Short enough that the kick is still a kick; long
+// enough that no single sample has to carry the whole step.
+constexpr float kRetriggerGlideMs = 12.0f;
+
 // ============================================================================
 // CUTOFF SWEEP
 // ============================================================================

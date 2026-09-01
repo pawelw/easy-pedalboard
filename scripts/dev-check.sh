@@ -62,6 +62,7 @@ run ee_dsp_tests
 run ee_tape_stress
 run ee_reverb_stress
 run ee_trempan_stress
+run ee_wah_stress
 
 if [[ $status -eq 0 ]]; then
     echo "==> OK"

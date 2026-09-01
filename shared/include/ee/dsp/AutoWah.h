@@ -72,6 +72,7 @@ public:
         aOnSlow = timeCoeff (autowah::kOnsetSlowMs * 0.001f, fs);
         aParam  = timeCoeff (autowah::kParamSmoothMs * 0.001f, fs);
         aOneShotRel = timeCoeff (autowah::kOneShotReleaseMs * 0.001f, fs);
+        aGlide = timeCoeff (autowah::kRetriggerGlideMs * 0.001f, fs);
         updateDecay();
         updateType();
 
@@ -85,6 +86,8 @@ public:
     {
         envHpZ = 0.0f;
         follow = 0.0f;
+        lfoGlideL = 0.0f;
+        lfoGlideR = 0.0f;
         dynEnv = 0.0f;
         onSlow = 0.0f;
         armed = true;
@@ -234,6 +237,19 @@ public:
             if (armed && onset > autowah::kOnsetOn)
             {
                 armed = false;
+
+                // Snapping the phase steps the LFO, and the gate is already
+                // open by the time this fires - so bank the size of the step
+                // and hand it back over kRetriggerGlideMs. The modulation is
+                // continuous across this sample; only where it is heading
+                // changes. Without it the cutoff jumps mid-note and the tank
+                // answers with a click.
+                const float offsetR = stereoOn ? autowah::kStereoOffset : 0.0f;
+                const auto before = static_cast<float> (lfoPhase);
+
+                lfoGlideL = lfoValue (before, shape) - lfoValue (0.0f, shape) + lfoGlideL;
+                lfoGlideR = lfoValue (before + offsetR, shape) - lfoValue (offsetR, shape) + lfoGlideR;
+
                 lfoPhase = 0.0;                     // start the sweep from the top
                 wrapsSinceRetrigger = 0;
                 oneShotGate = 1.0f;
@@ -257,8 +273,11 @@ public:
             const float offset = stereoOn ? autowah::kStereoOffset : 0.0f;
             const auto phF = static_cast<float> (lfoPhase);
 
-            const float lfoL = lfoValue (phF, shape);
-            const float lfoR = stereoOn ? lfoValue (phF + offset, shape) : lfoL;
+            const float lfoL = lfoValue (phF, shape) + lfoGlideL;
+            const float lfoR = stereoOn ? lfoValue (phF + offset, shape) + lfoGlideR : lfoL;
+
+            lfoGlideL -= aGlide * lfoGlideL;
+            lfoGlideR -= aGlide * lfoGlideR;
 
             lfoPhase += phaseInc * (1.0 + autowah::kRateEnvDepth * dyn);
             if (lfoPhase >= 1.0)
@@ -449,6 +468,10 @@ private:
     int wrapsSinceRetrigger = 1;
     float oneShotGate = 0.0f;
     float aOneShotRel = 1.0f;
+
+    // The retrigger's phase jump, handed back over kRetriggerGlideMs.
+    float lfoGlideL = 0.0f, lfoGlideR = 0.0f;
+    float aGlide = 1.0f;
 
     // Swept cutoff.
     std::array<float, 2> f0Smoothed { { autowah::kFreqMinHz, autowah::kFreqMinHz } };

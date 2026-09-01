@@ -406,6 +406,54 @@ ee::ui::PedalSpec makePhaseSpec()
     return spec;
 }
 
+/** Minimal host-free processor carrying the same parameters as Peak Spring. */
+class SpringSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    SpringSnapshotProcessor() : SnapshotProcessor (createSpringLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createSpringLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        auto decayRange = juce::NormalisableRange<float> (0.4f, 8.0f);
+        decayRange.setSkewForCentre (2.2f);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "decay", 1 }, "Decay", decayRange, 1.8f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (v, 2) + " s"; })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "mix", 1 }, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "stereo", 1 }, "Stereo", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (
+            juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeSpringSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Peak Spring";
+    spec.tagline = "Dispersive spring tank";
+    spec.version = "v0.10.0";
+    spec.knobs = { { .parameterID = "mix", .caption = "Mix", .captionUntilTouched = true },
+                   { .parameterID = "decay", .caption = "Decay", .captionUntilTouched = true } };
+    spec.toggles = { { .parameterID = "stereo",
+                       .caption = "Stereo",
+                       .afterKnobIndex = 0,
+                       .centeredBelow = true,
+                       .belowGap = 10,
+                       .asSwitch = ee::ui::SlideToggleSpec { .labelOff = "Mono", .labelOn = "Stereo" } } };
+    spec.knobsPerRow = 1;
+    spec.knobRowGap = 67;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+    return spec;
+}
+
 /** Minimal host-free processor carrying the same parameters as Peak Overdrive. */
 class OverdriveSnapshotProcessor : public SnapshotProcessor
 {
@@ -490,28 +538,33 @@ ee::ui::PedalSpec makeWahSpec()
     spec.knobsPerRow = 4;
     spec.knobDividerAfterColumn = 2;
     spec.knobBlockRise = 10;
-    spec.displayBandRise = 14;
-    spec.width = ee::ui::knobRowWidth (3);
-    spec.knobDiameter = 86;
+    spec.displayBandRise = 8;
+    spec.knobRowGap = 4;
+    spec.width = 566;
+    spec.knobDiameter = 104;
 
-    const juce::Colour lit { 0xffff4f97 };
+    constexpr int plain = 88;   // the six knobs that carry only a number
+
     auto shapeIcon = [] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
     {
-        r = r.reduced (r.getWidth() * 0.24f, r.getHeight() * 0.14f);
+        r = r.reduced (r.getWidth() * 0.10f, r.getHeight() * 0.28f);
         juce::Path p;
         for (int i = 0; i <= 48; ++i)
         {
             const float t = (float) i / 48.0f;
-            const float y = r.getCentreY() - ee::dsp::lfoValue (t, 0.45f) * r.getHeight() * 0.5f;
+            // Mirrored, so the glyph opens upward - see drawLfoShapeIcon in
+            // plugins/peak-wah.
+            const float y = r.getCentreY() + ee::dsp::lfoValue (t, 0.45f) * r.getHeight() * 0.5f;
             i == 0 ? p.startNewSubPath (r.getX() + t * r.getWidth(), y)
                    : p.lineTo (r.getX() + t * r.getWidth(), y);
         }
         g.setColour (c);
-        g.strokePath (p, juce::PathStrokeType (1.6f));
+        g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved,
+                                               juce::PathStrokeType::rounded));
     };
     auto typeIcon = [] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
     {
-        r = r.reduced (r.getWidth() * 0.28f, r.getHeight() * 0.16f);
+        r = r.reduced (r.getWidth() * 0.12f, r.getHeight() * 0.26f);
         juce::Path p;
         for (int i = 0; i <= 40; ++i)
         {
@@ -522,35 +575,43 @@ ee::ui::PedalSpec makeWahSpec()
                    : p.lineTo (r.getX() + t * r.getWidth(), y);
         }
         g.setColour (c);
-        g.strokePath (p, juce::PathStrokeType (1.6f));
+        g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved,
+                                               juce::PathStrokeType::rounded));
     };
 
     // Two clusters of four, split by a rule: the filter on the left, its
-    // modulation on the right, every cap the same size.
+    // modulation on the right. Shape and Type carry their glyph on the cap and
+    // keep the row's full size; the other six are a size down.
     spec.knobs = {
-        { .parameterID = "mix", .caption = "Mix" },
-        { .parameterID = "freq", .caption = "Freq" },
-        { .parameterID = "decay", .caption = "Decay", .captionUntilTouched = true },
-        { .parameterID = "shape", .caption = "Shape", .valueIcon = shapeIcon,
+        { .parameterID = "mix", .caption = "Mix" },   // full size: the headline control
+        { .parameterID = "freq", .caption = "Freq", .diameter = plain },
+        { .parameterID = "decay", .caption = "Decay", .diameter = plain,
+          .endMarker = juce::Colour { 0xff2f6b46 },
+          .endMarkerLabel = juce::String::fromUTF8 ("\u221e"),
           .captionUntilTouched = true },
-        { .parameterID = "q", .caption = "Q" },
-        { .parameterID = "range", .caption = "Range" },
-        { .parameterID = "time", .caption = "Time", .captionUntilTouched = true },
-        { .parameterID = "ftype", .caption = "Type", .valueIcon = typeIcon,
+        { .parameterID = "shape", .caption = "Shape", .captionUntilTouched = true,
+          .capIcon = shapeIcon },
+        { .parameterID = "q", .caption = "Q", .diameter = plain },
+        { .parameterID = "range", .caption = "Range", .diameter = plain },
+        { .parameterID = "time", .caption = "Time", .diameter = plain,
           .captionUntilTouched = true },
+        { .parameterID = "ftype", .caption = "Filter Type", .captionUntilTouched = true,
+          .capIcon = typeIcon },
     };
 
     spec.toggles = { { .parameterID = "sync", .caption = "Sync",
-                       .afterKnobIndex = 6, .litColour = lit,
-                       .centeredBelow = true } };
+                       .afterKnobIndex = 6,
+                       .centeredBelow = true,
+                       .asSwitch = ee::ui::SlideToggleSpec { .labelOff = "ms",
+                                                             .labelOn = "Sync",
+                                                             .invertPosition = true } } };
 
     spec.titleBesideLogo = true;
     spec.titleRowAlignRight = true;
+    spec.titleRowRightInset = 34;
 
     spec.slideToggle = ee::ui::SlideToggleSpec {
         .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo",
-        .accent = juce::Colour { 0xffe8e6df },
-        .labelColour = juce::Colours::black,
         .labelFlushLeft = true };
     spec.slideToggleBottom = true;
 
@@ -559,10 +620,11 @@ ee::ui::PedalSpec makeWahSpec()
         .resonance01 = [] { return 0.55f; },
         .modL = [] { return 0.55f; },
         .modR = [] { return -0.35f; },
-        .baseColour = juce::Colour { 0xff8a1f47 },
-        .sweepColour = juce::Colour { 0xffffaa33 },
+        .sweepDepth01 = [] { return 0.45f; },
+        .baseColour = juce::Colour { 0xffc2562f },
+        .sweepColour = juce::Colour { 0xff9aa0aa },
         .sweepRatioMax = 5.0f,
-        .height = 52 };
+        .height = 66 };
     return spec;
 }
 
@@ -721,10 +783,17 @@ void renderPhase (const juce::File& outputFile)
     writePng (editor, outputFile);
 }
 
+void renderSpring (const juce::File& outputFile)
+{
+    SpringSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeSpringSpec(), ee::ui::PedalTheme::charcoal());
+    writePng (editor, outputFile);
+}
+
 void renderWah (const juce::File& outputFile)
 {
     WahSnapshotProcessor processor;
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeWahSpec(), ee::ui::PedalTheme::pink());
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeWahSpec(), ee::ui::PedalTheme::white());
     writePng (editor, outputFile);
 }
 
@@ -750,6 +819,7 @@ int main (int argc, char* argv[])
     renderChorus (dir.getChildFile ("chorus.png"));
     renderOverdrive (dir.getChildFile ("overdrive.png"));
     renderPhase (dir.getChildFile ("phase.png"));
+    renderSpring (dir.getChildFile ("spring.png"));
     renderWah (dir.getChildFile ("wah.png"));
     renderTape (dir.getChildFile ("tape.png"));
 

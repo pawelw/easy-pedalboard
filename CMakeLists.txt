@@ -99,7 +99,7 @@ add_subdirectory(shared)
 # for iteration. See CLAUDE.md.
 # ---------------------------------------------------------------------------
 set(EE_ALL_PLUGINS
-    peak-reverb peak-delay peak-eq peak-trem-pan peak-chorus
+    peak-reverb peak-spring peak-delay peak-eq peak-trem-pan peak-chorus
     peak-phase peak-overdrive peak-wah peak-tape)
 
 set(EE_PLUGINS "all" CACHE STRING

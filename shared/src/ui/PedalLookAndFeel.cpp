@@ -1,5 +1,6 @@
 #include "ee/ui/PedalLookAndFeel.h"
 
+#include "ee/ui/DigitalKnob.h"
 #include "ee/ui/FaderStrip.h"
 
 #include "BinaryData.h"
@@ -364,6 +365,29 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g, int x, int y, int wi
     const float arcRadius = diameter * 0.5f - track * 0.5f - 1.0f;
     const auto stroke = juce::PathStrokeType (track, juce::PathStrokeType::curved,
                                               juce::PathStrokeType::rounded);
+
+    // The digital cap owns its whole cell: the tick ring around it is the scale,
+    // so none of the arc drawing below runs. `compactKnob` - the flag the analog
+    // style uses to mean "utility cap" - is what picks the smaller of its two
+    // sizes.
+    if (theme.controlStyle == ControlStyle::digital)
+    {
+        const bool compactKnob = static_cast<bool> (slider.getProperties().getWithDefault ("compactKnob", false));
+
+        DigitalKnob::EndMarker marker;
+        if (const auto& argb = slider.getProperties()["endMarker"]; ! argb.isVoid())
+        {
+            marker.present = true;
+            marker.colour = juce::Colour (static_cast<juce::uint32> (static_cast<int> (argb)));
+            marker.label = slider.getProperties().getWithDefault ("endMarkerLabel", juce::String()).toString();
+        }
+
+        DigitalKnob::draw (g, bounds, sliderPos, rotaryStartAngle, rotaryEndAngle,
+                           compactKnob ? DigitalKnob::Size::small
+                                       : DigitalKnob::sizeForDiameter (juce::roundToInt (diameter)),
+                           theme, slider.isEnabled(), marker);
+        return;
+    }
 
     const bool inverted = static_cast<bool> (slider.getProperties().getWithDefault ("invertedArc", false));
 

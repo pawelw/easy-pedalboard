@@ -420,6 +420,52 @@ PedalTheme PedalTheme::green()
     return t;
 }
 
+PedalTheme PedalTheme::charcoal()
+{
+    PedalTheme t;
+
+    // Plain charcoal box, white legend. No hue anywhere on the face - the one
+    // pedal in the range that is a piece of studio equipment rather than a
+    // colour, which suits a spring tank: the thing itself is a steel box.
+    t.background      = juce::Colour (0xff141414);
+    t.panel           = juce::Colour (0xff323232);
+    t.outline         = juce::Colour (0xff1c1c1c);
+    t.bezel           = juce::Colour (0xff5e5e5e);   // lighter tint of the panel
+
+    t.textPrimary     = juce::Colours::white;
+    t.textSecondary   = juce::Colours::white;
+    t.title           = juce::Colours::white;
+
+    // Black caps with a white pointer, the same recipe as every other face.
+    t.knobBody        = juce::Colour (0xff0f0f0f);
+    t.knobFill        = juce::Colour (0xff1a1a1a);
+    t.knobOutline     = juce::Colour (0xff050505);
+    t.knobPointer     = juce::Colours::white;
+
+    // Dark groove with a near-white value arc. Polarity follows green() rather
+    // than the pale faces: on a deep panel the arc has to be the light half of
+    // the pair to read at a glance.
+    t.knobTrack       = juce::Colour (0xff4a4a4a);
+    t.accent          = juce::Colour (0xfff0f0f0);
+    t.accentDim       = juce::Colour (0xff8c8c8c);
+    t.glow            = juce::Colour (0xffffffff);
+
+    t.ledOn           = juce::Colour (0xfff0f0f0);
+    t.ledOff          = juce::Colour (0xff3c3c3c);
+    t.ledRing         = juce::Colour (0xff101010);
+    t.switchBody      = juce::Colour (0xff2a2a2a);
+    t.switchHighlight = juce::Colour (0xff6a6a6a);
+
+    t.cornerRadius = 16.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.35f;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
 PedalTheme PedalTheme::cream()
 {
     PedalTheme t;
@@ -452,6 +498,61 @@ PedalTheme PedalTheme::cream()
 
     t.cornerRadius = 16.0f;
     t.knobThickness = 3.0f;
+
+    return t;
+}
+
+PedalTheme PedalTheme::white()
+{
+    PedalTheme t;
+
+    // The soft-UI face: one flat off-white card on a pale page, every control
+    // shaped by a light from the top-left rather than by colour. Nothing here
+    // carries a hue except the display trace, so the trace is the only thing
+    // on the face that draws the eye.
+    t.controlStyle = ControlStyle::digital;
+
+    t.background      = juce::Colour (0xffe9eaee);   // the page behind the card
+    t.panel           = juce::Colour (0xfffbfbfc);   // the card itself
+    t.outline         = juce::Colour (0xffd8dade);
+    t.bezel           = juce::Colour (0xfff4f5f7);   // barely there: the card has a shadow instead
+
+    t.textPrimary     = juce::Colour (0xff2c2e33);
+    t.textSecondary   = juce::Colour (0xff3a3d43);
+    t.title           = juce::Colour (0xff2c2e33);
+
+    // A white cap inside a charcoal ring, with the scale of ticks around it in
+    // the same charcoal - `knobTrack` is what an unreached tick fades to.
+    t.knobBody        = juce::Colour (0xff2c2e33);   // the ring
+    t.knobFill        = juce::Colour (0xffffffff);   // the cap face
+    t.knobOutline     = juce::Colour (0xffd2d4d9);
+    t.knobPointer     = juce::Colour (0xff2c2e33);
+    t.knobTrack       = juce::Colour (0xffc3c6cd);
+
+    t.accent          = juce::Colour (0xff2c2e33);
+    t.accentDim       = juce::Colour (0xffb9bcc3);
+    t.glow            = juce::Colour (0xffc2562f);   // the one warm colour: the display trace
+
+    t.softShadow      = juce::Colour (0x2a2b3040);
+    t.softHighlight   = juce::Colour (0xffffffff);
+    t.recess          = juce::Colour (0xffdcdee3);
+    t.recessInk       = juce::Colour (0xff8b8f98);
+
+    t.ledOn           = juce::Colour (0xff2c2e33);
+    t.ledOff          = juce::Colour (0xffd7d9de);
+    t.ledRing         = juce::Colour (0xffd7d9de);
+    t.switchBody      = juce::Colour (0xffd0d3da);   // track, off
+    t.switchHighlight = juce::Colour (0xffffffff);   // the sliding knob
+
+    t.cornerRadius = 20.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.0f;
+
+    t.logoTint = t.title;
+
+    // The lettering is shared with every other pedal - the same script for the
+    // name, the same body face for the captions. Only the controls change.
+    t.titleTypefacePtr = birthstone();
 
     return t;
 }

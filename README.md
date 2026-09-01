@@ -55,6 +55,68 @@ the wet path open, so the existing tail rings out instead of being cut off.
 High and low frequency decay rates are fixed internally (lows ring slightly
 longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
 
+### Peak Spring
+
+A dispersive spring tank. Mono in, stereo out, two knobs and a switch:
+
+| Control        | Range       | What it does                                       |
+| -------------- | ----------- | -------------------------------------------------- |
+| **Mix**        | 0 - 100 %   | Blend of dry signal and wet tank                   |
+| **Decay**      | 0.4 - 8 s   | How long the springs ring on after the note stops  |
+| **Mono / Stereo** | switch   | One tank feeding both outputs, or two a few per cent apart |
+
+Each knob prints one line of text: the caption at rest, the reading only while
+you are actually turning it.
+
+**Mono** is the honest setting — a real tank is a single mono device — and it is
+what to use if the mix has to fold down. **Stereo** runs a second tank whose
+springs differ by about three per cent and crosses the two into each other, which
+opens the tail out without either side sounding detuned or hollow in mono.
+
+Where Peak Reverb models a plate, this models the steel box bolted into the
+bottom of an amp. Three springs run in parallel, each a short delay loop with a
+cascade of stretched all-pass sections *inside* the feedback path. Those
+sections are flat in magnitude but not in group delay, so the top of the
+spectrum takes longer round the loop than the bottom: a transient goes in and
+comes back as a rising "boinngg" that stretches further on every bounce. That
+dispersion is the whole sound — take it out and the pedal is a short, dull
+delay.
+
+The tank is driven through a band-pass (a transducer, not a speaker) and loses
+energy on every pass, which is why a spring sits behind a guitar rather than on
+top of it. Each spring's length wanders by a fraction of a per cent so the tank's
+comb never rings on one fixed set of pitches.
+
+The voicing is measured against a reference tank rather than invented. Two
+renders of it — Mix 26 / Decay 3.58 s, and Mix 100 / Decay 8 s — were turned into
+per-band decay times, and those into the per-trip loop gain that would produce
+them. What that says is that a spring's loop is nearly flat right across the
+midrange and falls off a cliff below it: about 4 % lost per trip through the ring
+band and only a little more at 4 kHz, but an order of magnitude more under
+200 Hz. The first attempt here used a one-pole low-pass at 4 kHz in the loop,
+which loses 28 % per trip up there and killed the top of the tail three trips in.
+
+That is why the loop damping is a pair of **shelves** (the shared `LoopDamper`,
+the same absorber the plate reverb uses) rather than rolloffs: a rolloff keeps
+eating the same band on every pass and collapses the top of the tail, where a
+shelf holds a fixed ratio. The low end of a spring still has to die fast, so the
+weight under 250 Hz is put back by a shelf on the finished wet output, outside
+every feedback path — level without decay.
+
+The Decay knob is calibrated against that reference, so 3.58 s on this face means
+the same tail as 3.58 s on theirs. Measured band decay times land within about
+10 % through the ring band, and the stereo tail correlation within 0.02.
+
+Everything above — how many springs, how long, how hard they chirp, where the
+shelves sit — is voicing, and lives in `shared/include/ee/dsp/SpringConfig.h`
+with the trade-offs and the measurements written next to each value.
+`tests/SpringMatch.cpp` (`ee_spring_match`) renders a file through the whole
+processor for A/B-ing against a reference.
+
+Like Peak Reverb, the pedal has no on/off switch of its own and the `on`
+parameter has **trails**: bypassing stops driving the tank but leaves the wet
+path open, so whatever is still ringing rings out.
+
 ### Peak Delay
 
 A tempo-synced stereo delay with independent left and right times. Six controls:

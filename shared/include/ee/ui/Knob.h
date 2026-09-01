@@ -32,6 +32,10 @@ public:
     void resized() override;
     void paint (juce::Graphics&) override;
 
+    /** The cap glyph goes on top of the slider, which is a child - so it is
+        painted here rather than in `paint`, which would put it underneath. */
+    void paintOverChildren (juce::Graphics&) override;
+
     juce::Slider& getSlider() noexcept { return slider; }
 
     /** Re-reads the value text (from `liveValueText` if the spec set one, else
@@ -65,6 +69,7 @@ private:
 
     std::function<juce::String()> liveValueText;
     std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> valueIcon;
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> capIcon;
 
     /** A slider that pulls onto the middle of its range while being dragged.
         JUCE routes every mouse-driven value through snapValue(), and nothing

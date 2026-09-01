@@ -1,5 +1,6 @@
 #include "ee/ui/PedalEditor.h"
 
+#include "ee/ui/DigitalSwitch.h"
 #include "ee/ui/FilterScope.h"
 #include "ee/ui/SlideToggle.h"
 #include "ee/ui/WaveDisplay.h"
@@ -73,6 +74,10 @@ namespace
     // Fixed rather than a fraction of the column, so a knob is the same size on
     // every pedal however many of them a row carries.
     constexpr int kKnobDiameter = 114;
+
+    // The title script's swashes overhang their advance widths, so every
+    // measurement of the pedal name gets this much margin either side.
+    constexpr float kTitleSwash = 1.14f;
 
     constexpr int kTitleHeight = 64;
     constexpr int kLogoHeight = 54;
@@ -216,6 +221,16 @@ private:
     void layOutFaders (juce::Rectangle<int> area);
     juce::Rectangle<int> faderArea() const;
 
+    /** The face the pedal name is set in. The analog faces use a big script at
+        58 px; the digital one has no script - it sets the name in the same
+        geometric sans as the captions, at a size that reads beside them. */
+    juce::Font nameFont() const;
+
+    /** That face, shrunk if the name is wider than the row it has to sit in.
+        A long name on a narrow one-knob-per-row face would otherwise be clipped
+        mid-letter. */
+    juce::Font fittedNameFont (juce::Rectangle<int> area) const;
+
     void paintFaderGraph (juce::Graphics&) const;
     void paintCutMasks (juce::Graphics&, juce::Rectangle<float> grid) const;
     void resetFaders();
@@ -233,8 +248,21 @@ private:
     std::vector<std::unique_ptr<MiniToggle>> subButtons;   // index-aligned with subKnobs; null where none
     std::vector<std::unique_ptr<GroupTrim>> groupTrims;
     std::vector<std::unique_ptr<FaderStrip>> faders;
-    std::vector<std::unique_ptr<MiniToggle>> toggles;
-    std::unique_ptr<SlideToggle> slideToggle;
+    /** A toggle is a lit bezel button, or - where the spec asks for one, or the
+        theme is digital - a small sliding switch. Both are `juce::Button`s of
+        different shapes, so the layout goes through `SwitchControl` rather than
+        through either class. `metrics` always points at `button`. */
+    struct ToggleEntry
+    {
+        std::unique_ptr<juce::Button> button;
+        SwitchControl* metrics = nullptr;
+    };
+
+    std::vector<ToggleEntry> toggles;
+
+    /** The big two-way switch, in whichever style the theme asks for. */
+    std::unique_ptr<juce::Button> slideToggle;
+    SwitchControl* slideToggleMetrics = nullptr;
     std::unique_ptr<WaveDisplay> waveDisplay;
     std::unique_ptr<FilterScope> filterScope;
     std::unique_ptr<juce::TextButton> faderResetButton;
@@ -337,10 +365,29 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
     // Added after the knobs so they sit on top where the two bounds overlap.
     for (const auto& toggleSpec : spec.toggles)
     {
-        toggles.push_back (std::make_unique<MiniToggle> (state, toggleSpec, theme));
+        ToggleEntry entry;
+
+        if (toggleSpec.asSwitch.has_value())
+        {
+            // The toggle's own parameter drives the switch; the nested spec is
+            // only there to carry the two labels and how they are ordered.
+            auto switchSpec = *toggleSpec.asSwitch;
+            switchSpec.parameterID = toggleSpec.parameterID;
+
+            auto sw = std::make_unique<DigitalSwitch> (state, switchSpec, theme,
+                                                       DigitalSwitch::Size::compact);
+            entry.metrics = sw.get();
+            entry.button = std::move (sw);
+        }
+        else
+        {
+            auto button = std::make_unique<MiniToggle> (state, toggleSpec, theme);
+            entry.metrics = button.get();
+            entry.button = std::move (button);
+        }
 
         // A toggle (e.g. tempo sync) can change the unit a knob reads in.
-        toggles.back()->onStateChange = [this]
+        entry.button->onStateChange = [this]
         {
             for (auto& knob : knobs)
                 if (knob != nullptr)
@@ -350,9 +397,10 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
         };
 
         if (toggleSpec.onClick)
-            toggles.back()->onClick = toggleSpec.onClick;
+            entry.button->onClick = toggleSpec.onClick;
 
-        addAndMakeVisible (*toggles.back());
+        addAndMakeVisible (*entry.button);
+        toggles.push_back (std::move (entry));
     }
 
     // Secondary knob row, each cell optionally carrying a button beneath it.
@@ -394,7 +442,19 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
 
     if (spec.slideToggle.has_value())
     {
-        slideToggle = std::make_unique<SlideToggle> (state, *spec.slideToggle, theme);
+        if (theme.controlStyle == ControlStyle::digital)
+        {
+            auto sw = std::make_unique<DigitalSwitch> (state, *spec.slideToggle, theme);
+            slideToggleMetrics = sw.get();
+            slideToggle = std::move (sw);
+        }
+        else
+        {
+            auto sw = std::make_unique<SlideToggle> (state, *spec.slideToggle, theme);
+            slideToggleMetrics = sw.get();
+            slideToggle = std::move (sw);
+        }
+
         slideToggle->onStateChange = [this]
         {
             // The switch can change what a knob's readout means, and what the
@@ -928,6 +988,26 @@ void PedalEditor::Face::layOutFaders (juce::Rectangle<int> area)
     }
 }
 
+juce::Font PedalEditor::Face::nameFont() const
+{
+    return theme.titleFont (58.0f);
+}
+
+juce::Font PedalEditor::Face::fittedNameFont (juce::Rectangle<int> area) const
+{
+    const auto font = nameFont();
+
+    // The title face is a script whose swashes overhang their advance widths,
+    // so measure it with the same margin the beside-logo layout uses.
+    const float needed = juce::GlyphArrangement::getStringWidth (font, spec.name) * kTitleSwash;
+    const float available = static_cast<float> (area.getWidth());
+
+    if (needed <= available || needed <= 0.0f)
+        return font;
+
+    return font.withHeight (font.getHeight() * available / needed);
+}
+
 void PedalEditor::Face::paint (juce::Graphics& g)
 {
     auto bounds = faceBounds().toFloat();
@@ -935,6 +1015,29 @@ void PedalEditor::Face::paint (juce::Graphics& g)
     if (theme.backgroundImage.isValid())
     {
         g.drawImage (theme.backgroundImage, bounds, juce::RectanglePlacement::stretchToFit);
+    }
+    else if (theme.controlStyle == ControlStyle::digital)
+    {
+        // A raised card on a pale page: the soft-UI face has no frame and no
+        // recess, only the shadow it casts on the page below it.
+        g.fillAll (theme.background);
+
+        const auto face = bounds.reduced (kFaceInset);
+
+        juce::Path card;
+        card.addRoundedRectangle (face, theme.cornerRadius);
+        juce::DropShadow (theme.softShadow, kShadowDepth, { 0, kShadowDepth / 3 })
+            .drawForPath (g, card);
+
+        g.setColour (theme.panel);
+        g.fillRoundedRectangle (face, theme.cornerRadius);
+
+        // The light the card catches along its top edge, and the hairline that
+        // keeps it off a page of nearly the same value.
+        g.setColour (theme.softHighlight.withAlpha (0.9f));
+        g.drawRoundedRectangle (face.reduced (0.5f).translated (0.0f, 0.5f), theme.cornerRadius, 1.0f);
+        g.setColour (theme.outline.withAlpha (0.6f));
+        g.drawRoundedRectangle (face.reduced (0.5f), theme.cornerRadius, 1.0f);
     }
     else
     {
@@ -1026,12 +1129,17 @@ void PedalEditor::Face::paint (juce::Graphics& g)
                                  : 1.0f;
 
         auto row = logoSlot;
-        const auto titleFont = theme.titleFont (58.0f);
+        const auto titleFont = nameFont();
         const int logoW = juce::roundToInt (static_cast<float> (row.getHeight()) * aspect);
         // The title face is a script with swashes that overhang its advance
         // widths, so the measured string gets a margin either side of it.
         const int nameW = juce::roundToInt (
-            juce::GlyphArrangement::getStringWidth (titleFont, spec.name) * 1.14f + 10.0f);
+            juce::GlyphArrangement::getStringWidth (titleFont, spec.name) * kTitleSwash + 10.0f);
+
+        // A face that wants the pair off the right margin pulls it back in
+        // before the cluster is cut, so both emblem and name move together.
+        if (spec.titleRowAlignRight)
+            row.removeFromRight (spec.titleRowRightInset);
 
         auto cluster = spec.titleRowAlignRight
                            ? row.removeFromRight (logoW + kLogoNameGap + nameW)
@@ -1043,7 +1151,7 @@ void PedalEditor::Face::paint (juce::Graphics& g)
     }
 
     g.setColour (theme.title);
-    g.setFont (theme.titleFont (58.0f));
+    g.setFont (fittedNameFont (nameArea));
     g.drawText (spec.name, nameArea,
                 spec.titleBesideLogo ? juce::Justification::centredLeft
                                      : juce::Justification::centred,
@@ -1327,6 +1435,9 @@ void PedalEditor::Face::resized()
     {
         const auto& tSpec = spec.toggles[t];
         const int index = tSpec.afterKnobIndex;
+        auto& button = *toggles[t].button;
+        const int toggleW = toggles[t].metrics->switchWidth();
+        const int toggleH = toggles[t].metrics->switchHeight();
 
         const bool spacerAnchor = index >= 0 && index < count
                                       && knobs[static_cast<size_t> (index)] == nullptr;
@@ -1339,7 +1450,7 @@ void PedalEditor::Face::resized()
 
         if (! haveAnchor || index >= static_cast<int> (knobCells.size()))
         {
-            toggles[t]->setVisible (false);
+            button.setVisible (false);
             continue;
         }
 
@@ -1359,7 +1470,7 @@ void PedalEditor::Face::resized()
             // cell, which may carry an empty row the label never uses.
             const auto& anchor = *knobs[static_cast<size_t> (index)];
             centre = { anchor.getBounds().getCentreX(),
-                       anchor.printedTextBottom() + MiniToggle::preferredHeight / 2 + 4 };
+                       anchor.printedTextBottom() + toggleH / 2 + tSpec.belowGap };
         }
         else if (tSpec.centeredAbove)
         {
@@ -1367,7 +1478,7 @@ void PedalEditor::Face::resized()
             // block at the bottom.
             const auto anchor = knobs[static_cast<size_t> (index)]->getBounds();
             centre = { anchor.getCentreX(),
-                       anchor.getY() - MiniToggle::preferredHeight / 2 - 5 };
+                       anchor.getY() - toggleH / 2 - 5 };
         }
         else
         {
@@ -1375,17 +1486,19 @@ void PedalEditor::Face::resized()
             const auto right = knobs[static_cast<size_t> (index + 1)]->getBounds();
             if (right.getY() != anchor.getY())
             {
-                toggles[t]->setVisible (false);
+                button.setVisible (false);
                 continue;
             }
             centre = { (anchor.getRight() + right.getX()) / 2,
                        anchor.getY() + (anchor.getHeight() - Knob::labelHeight) / 2 - kToggleRise };
         }
 
-        toggles[t]->setVisible (true);
-        toggles[t]->setBounds (juce::Rectangle<int> (MiniToggle::preferredWidth,
-                                                     MiniToggle::preferredHeight)
-                                   .withCentre (centre));
+        // Labels of unequal width sit the track off the component's centre;
+        // shifting by that much puts the track itself on the anchor.
+        centre.x -= toggles[t].metrics->switchTrackOffset();
+
+        button.setVisible (true);
+        button.setBounds (juce::Rectangle<int> (toggleW, toggleH).withCentre (centre));
     }
 
     // Sliding switch: top-left of its own strip, or - in bottom mode -
@@ -1398,15 +1511,16 @@ void PedalEditor::Face::resized()
         const auto strip = ! bottomSwitch()      ? switchStripArea()
                          : spec.titleBesideLogo  ? logoArea()
                                                  : titleArea();
-        const int x = spec.slideToggleCentred
-                          ? strip.getCentreX() - SlideToggle::preferredWidth / 2
-                          : strip.getX() - slideToggle->labelInset();
+        const int switchW = slideToggleMetrics->switchWidth();
+        const int switchH = slideToggleMetrics->switchHeight();
 
-        slideToggle->setBounds (juce::Rectangle<int> (SlideToggle::preferredWidth,
-                                                      SlideToggle::preferredHeight)
-                                    .withPosition (x,
-                                                   strip.getCentreY() - SlideToggle::preferredHeight / 2
-                                                       - spec.slideToggleRise));
+        const int x = spec.slideToggleCentred
+                          ? strip.getCentreX() - switchW / 2 - slideToggleMetrics->switchTrackOffset()
+                          : strip.getX() - slideToggleMetrics->switchLabelInset();
+
+        slideToggle->setBounds (juce::Rectangle<int> (switchW, switchH)
+                                    .withPosition (x, strip.getCentreY() - switchH / 2
+                                                          - spec.slideToggleRise));
     }
 
     if (waveDisplay != nullptr)

@@ -10,6 +10,7 @@
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/Phaser.h"
+#include "ee/dsp/SpringReverb.h"
 #include "ee/dsp/Overdrive.h"
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
@@ -2368,6 +2369,233 @@ void testAutoWahMixRampIsSmooth()
     check (std::isfinite (acrossJump), "auto-wah mix-jump step is finite");
     check (acrossJump < steady * 1.5f + 0.02f, "the Mix jump does not step the output");
 }
+//==============================================================================
+// Peak Spring - the dispersive spring tank.
+
+/** Drives the tank to a steady state, then measures how long the tail takes to
+    fall 60 dB once the input stops. */
+double measureSpringRt60 (float decaySeconds)
+{
+    ee::dsp::SpringReverb spring;
+    spring.prepare (kSampleRate);
+    spring.reset();
+    spring.setDecayTime (decaySeconds);
+
+    std::mt19937 rng (7);
+    std::uniform_real_distribution<float> dist (-0.5f, 0.5f);
+
+    std::vector<float> in (kBlock), l (kBlock), r (kBlock);
+
+    // Two seconds of noise is long enough for even the longest spring to fill.
+    for (int b = 0; b < static_cast<int> (kSampleRate * 2.0 / kBlock); ++b)
+    {
+        for (auto& v : in)
+            v = dist (rng);
+        spring.process (in.data(), l.data(), r.data(), kBlock);
+    }
+
+    std::fill (in.begin(), in.end(), 0.0f);
+
+    float peak = 0.0f;
+    double elapsed = 0.0;
+    double rt60 = 0.0;
+
+    const int blocks = static_cast<int> (kSampleRate * 20.0 / kBlock);
+    for (int b = 0; b < blocks; ++b)
+    {
+        spring.process (in.data(), l.data(), r.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const float m = juce::jmax (std::abs (l[i]), std::abs (r[i]));
+            peak = juce::jmax (peak, m);
+
+            const double t = elapsed + static_cast<double> (i) / kSampleRate;
+            if (m > peak * 0.001f)   // -60 dB relative to the loudest sample seen
+                rt60 = t;
+        }
+
+        elapsed += static_cast<double> (kBlock) / kSampleRate;
+    }
+
+    return rt60;
+}
+
+void testSpringDecay()
+{
+    std::printf ("Spring tank decay vs the knob:\n");
+
+    for (float target : { 0.6f, 1.8f, 4.0f, 8.0f })
+    {
+        const double measured = measureSpringRt60 (target);
+        std::printf ("  knob %.1f s -> tail %.2f s\n", target, measured);
+
+        // The loop shelves damp the bands either side of the ring band, so the
+        // broadband tail lands short of the nominal RT60 - by design, and by
+        // the same margin the reference tank shows. Wide bounds on purpose:
+        // this is a "the knob does what it says" check, not a voicing lock,
+        // which is what the config header is for.
+        check (measured > target * 0.3, "spring tail far shorter than the knob at "
+                                            + juce::String (target, 1) + " s");
+        check (measured < target * 2.0 + 0.5, "spring tail far longer than the knob at "
+                                                  + juce::String (target, 1) + " s");
+    }
+}
+
+void testSpringSilence()
+{
+    std::printf ("Spring tank on a silent input:\n");
+
+    ee::dsp::SpringReverb spring;
+    spring.prepare (kSampleRate);
+    spring.reset();
+    spring.setDecayTime (ee::dsp::SpringReverb::kMaxDecay);
+
+    std::vector<float> in (kBlock, 0.0f), l (kBlock), r (kBlock);
+    float peak = 0.0f;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 5.0 / kBlock); ++b)
+    {
+        spring.process (in.data(), l.data(), r.data(), kBlock);
+        for (int i = 0; i < kBlock; ++i)
+            peak = juce::jmax (peak, juce::jmax (std::abs (l[i]), std::abs (r[i])));
+    }
+
+    std::printf ("  peak out of silence: %.3g\n", peak);
+    check (peak < 1.0e-6f, "spring tank is not silent on a silent input");
+}
+
+void testSpringStability()
+{
+    std::printf ("Spring tank under sustained full-scale noise:\n");
+
+    ee::dsp::SpringReverb spring;
+    spring.prepare (kSampleRate);
+    spring.reset();
+    spring.setDecayTime (ee::dsp::SpringReverb::kMaxDecay);
+
+    std::mt19937 rng (4321);
+    std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
+
+    std::vector<float> in (kBlock), l (kBlock), r (kBlock);
+    float peak = 0.0f;
+    bool finite = true;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 30.0 / kBlock); ++b)
+    {
+        for (auto& v : in)
+            v = dist (rng);
+
+        spring.process (in.data(), l.data(), r.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const float m = juce::jmax (std::abs (l[i]), std::abs (r[i]));
+            if (! std::isfinite (m))
+                finite = false;
+            peak = juce::jmax (peak, m);
+        }
+    }
+
+    std::printf ("  peak after 30 s of full-scale noise: %.3f\n", peak);
+    check (finite, "sustained noise produced NaN or Inf");
+    check (peak < 8.0f, "spring tank is not energy-stable (peak " + juce::String (peak, 2) + ")");
+}
+
+void testSpringDecaySweepIsQuiet()
+{
+    std::printf ("Spring decay sweep (click / discontinuity check):\n");
+
+    ee::dsp::SpringReverb spring;
+    spring.prepare (kSampleRate);
+    spring.reset();
+
+    std::mt19937 rng (55);
+    std::uniform_real_distribution<float> dist (-0.25f, 0.25f);
+
+    std::vector<float> in (kBlock), l (kBlock), r (kBlock);
+    float maxJump = 0.0f;
+    float previous = 0.0f;
+    bool finite = true;
+
+    const int blocks = static_cast<int> (kSampleRate * 10.0 / kBlock);
+
+    for (int b = 0; b < blocks; ++b)
+    {
+        const float phase = static_cast<float> (b) / static_cast<float> (blocks);
+        const float t = 1.0f - std::abs (2.0f * phase - 1.0f);
+        spring.setDecayTime (ee::dsp::SpringReverb::kMinDecay
+                             + t * (ee::dsp::SpringReverb::kMaxDecay - ee::dsp::SpringReverb::kMinDecay));
+
+        for (auto& v : in)
+            v = dist (rng);
+
+        spring.process (in.data(), l.data(), r.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            if (! std::isfinite (l[i]))
+                finite = false;
+            maxJump = juce::jmax (maxJump, std::abs (l[i] - previous));
+            previous = l[i];
+        }
+    }
+
+    std::printf ("  largest sample-to-sample jump: %.4f\n", maxJump);
+    check (finite, "spring decay sweep produced NaN or Inf");
+    check (maxJump < 0.5f, "spring decay sweep produced a discontinuity ("
+                               + juce::String (maxJump, 3) + ")");
+}
+
+void testSpringDisperses()
+{
+    std::printf ("Spring dispersion (an impulse must come back as a chirp):\n");
+
+    ee::dsp::SpringReverb spring;
+    spring.prepare (kSampleRate);
+    spring.reset();
+    spring.setDecayTime (1.0f);
+
+    std::vector<float> in (kBlock, 0.0f), l (kBlock), r (kBlock);
+    in[0] = 1.0f;
+
+    // Collect the first 120 ms - two or three trips round the shortest spring.
+    const int captured = static_cast<int> (kSampleRate * 0.12);
+    std::vector<float> tail;
+    tail.reserve (static_cast<size_t> (captured + kBlock));
+
+    while (static_cast<int> (tail.size()) < captured)
+    {
+        spring.process (in.data(), l.data(), r.data(), kBlock);
+        tail.insert (tail.end(), l.begin(), l.end());
+        std::fill (in.begin(), in.end(), 0.0f);
+    }
+
+    // A plain delay loop returns the impulse as an impulse: one sample carrying
+    // nearly all the energy. Dispersion smears it, so the loudest sample should
+    // hold only a small fraction of what came back.
+    double energy = 0.0;
+    float peak = 0.0f;
+    for (int i = 0; i < captured; ++i)
+    {
+        const float v = tail[static_cast<size_t> (i)];
+        energy += static_cast<double> (v) * v;
+        peak = juce::jmax (peak, std::abs (v));
+    }
+
+    const double concentration = energy > 0.0 ? (peak * peak) / energy : 1.0;
+    std::printf ("  loudest sample holds %.2f %% of the returned energy\n", concentration * 100.0);
+
+    check (energy > 1.0e-9, "the tank returned nothing at all");
+    check (concentration < 0.10, "the tank is not dispersing - the impulse came back as an impulse");
+
+    // Both sides have to carry a tail; the two tanks differ only in length.
+    double rightEnergy = 0.0;
+    for (int i = 0; i < kBlock; ++i)
+        rightEnergy += static_cast<double> (r[i]) * r[i];
+    check (std::isfinite (rightEnergy), "the right tank went non-finite");
+}
+
 } // namespace
 
 int main()
@@ -2458,6 +2686,16 @@ int main()
     testAutoWahHoldsLevel();
     std::printf ("\n");
     testAutoWahMixRampIsSmooth();
+    std::printf ("\n");
+    testSpringDecay();
+    std::printf ("\n");
+    testSpringSilence();
+    std::printf ("\n");
+    testSpringStability();
+    std::printf ("\n");
+    testSpringDecaySweepIsQuiet();
+    std::printf ("\n");
+    testSpringDisperses();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

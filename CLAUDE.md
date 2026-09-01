@@ -1,6 +1,6 @@
 # Synth Peak — working notes
 
-Nine JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
+Ten JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
 framework. `README.md` is the user-facing manual (what each pedal does, how to
 install it); this file is the map for working on the code.
 
@@ -15,13 +15,13 @@ cmake --build build-fast
 ```
 
 Measured cold: **5m07s**, versus **25m39s** for the full `dev` build. Both numbers
-are without ccache. Drop `-DEE_PLUGINS` to get all nine pedals, still Standalone
+are without ccache. Drop `-DEE_PLUGINS` to get all ten pedals, still Standalone
 only. Standalone is a real app you can launch and hear — you do not need a host.
 
 The full build, when you want the actual VST3/AU installed into `~/Library`:
 
 ```bash
-cmake --preset dev            # all nine pedals, all three formats, installed
+cmake --preset dev            # all ten pedals, all three formats, installed
 cmake --build build
 cmake --build build --preset tests   # or just the test binaries
 ```
@@ -45,11 +45,13 @@ It exits 0 when the only failures are the two known ones below, so its exit code
 means "something you changed". The individual binaries, if you want one directly:
 
 ```bash
-./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 45 DSP tests, exits non-zero on failure
+./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 48 DSP tests, exits non-zero on failure
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress      # tape knob sweep, non-finite hunt
 ./build/tests/ee_reverb_stress_artefacts/Release/ee_reverb_stress  # reverb tail stability
 ./build/tests/ee_trempan_stress_artefacts/Release/ee_trempan_stress
-./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp # renders all 9 faces to PNG
+./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
+./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
+./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp # renders all 10 faces to PNG
 ```
 
 `auval -v aufx <CODE> Peak` runs Apple's AU validation; the four-letter codes are
@@ -87,7 +89,7 @@ Never reformat a file you are not otherwise changing.
 ```
 shared/include/ee/dsp/    DSP primitives and engines (mostly header-only)
 shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knobs
-shared/src/dsp/           FdnReverb + TapeDelay implementations
+shared/src/dsp/           FdnReverb, SpringReverb + TapeDelay implementations
 shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knob…)
 shared/src/ui/            its implementation
 shared/include/ee/plugin/ the bypass crossfade and shared parameter formatters
@@ -100,6 +102,26 @@ tests/                    offline DSP tests, stress sweeps, UI snapshot renderer
 The UI is data-driven: a pedal describes its face with an `ee::ui::PedalSpec` in
 `createEditor()` and writes no editor code. See "Adding another effect" in
 `README.md` for the `PedalSpec` fields.
+
+### Two control styles
+
+`PedalTheme::controlStyle` picks which family of controls a face is built from,
+and every control follows it - the two are never mixed on one face.
+
+- **`analog`** (every pedal but Wah): the photographic knob cap from `knob.png`,
+  a value arc around it, lit bezel buttons, dark recessed displays.
+- **`digital`** (`PedalTheme::white()`, currently Peak Wah alone): the flat
+  soft-UI look. `DigitalKnob` (white cap, charcoal ring, a tick scale instead of
+  an arc - two sizes, picked from the cap diameter), `DigitalSwitch` (pill
+  track, label either side) and `DigitalScreen` (pale recessed panel with a
+  captioned grid; chrome only - the caller draws its own trace into the plot
+  rect it hands back).
+
+Nothing else has to change to move a pedal across: the same `PedalSpec` drives
+both. `PedalLookAndFeel::drawRotarySlider`, `FilterScope::paint` and
+`PedalEditor::Face::paint` each branch on the style; `SlideToggle`,
+`DigitalSwitch` and `MiniToggle` all satisfy `SwitchControl`, so the layout code
+places whichever one the theme asked for without knowing which it is.
 
 DSP voicing constants live in `*Config.h`, not inline in the processors. When
 changing a sound, change the config header — the tests and the tuning panels read

@@ -7,6 +7,19 @@
 namespace ee::ui
 {
 
+/** Which family of controls a face is built from.
+
+    `analog` is the original hardware look: photographic knob caps, lit bezel
+    buttons, a value arc around every rotary. `digital` is the flat soft-UI
+    look: white knobs ringed by a scale of ticks, pill switches and a pale
+    recessed display. A theme picks one and every control follows it - the two
+    are not mixed on one face. */
+enum class ControlStyle
+{
+    analog,
+    digital
+};
+
 /** All colours, metrics and optional artwork for a pedal face.
 
     Everything the look and feel draws comes from here. To swap in real graphics
@@ -42,6 +55,24 @@ struct PedalTheme
 
     /** Speckle strength on the painted face. 0 = perfectly flat colour. */
     float grain = 0.0f;
+
+    /** Which family of controls this face draws - see `ControlStyle`. */
+    ControlStyle controlStyle = ControlStyle::analog;
+
+    //== Soft-UI tokens. Only read when `controlStyle` is `digital`. =========
+
+    /** The shadow a raised element (a knob, a switch knob, the face itself)
+        casts down and to the right, and the light it catches up and to the
+        left. The whole style is these two against `panel`. */
+    juce::Colour softShadow      { 0x33000000 };
+    juce::Colour softHighlight   { 0xffffffff };
+
+    /** Fill of a recessed element: the display panel, a switch track that is
+        off. What a hole in the face looks like. */
+    juce::Colour recess          { 0xffdcdee3 };
+
+    /** Ink on that recess - the display's grid and axis captions. */
+    juce::Colour recessInk       { 0xff8b8f98 };
 
     juce::Colour ledOn           { 0xffc8e06a };
     juce::Colour ledOff          { 0xff35352f };
@@ -95,6 +126,8 @@ struct PedalTheme
     static PedalTheme orange();
     static PedalTheme pink();
     static PedalTheme green();
+    static PedalTheme charcoal();
+    static PedalTheme white();
 
     /** First installed name from the list, or empty for the JUCE default. */
     static juce::String pickTypeface (const juce::StringArray& preferred);
