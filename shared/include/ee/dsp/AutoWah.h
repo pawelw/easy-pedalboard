@@ -2,6 +2,7 @@
 
 #include "AutoWahConfig.h"
 #include "Lfo.h"
+#include "OnsetGate.h"
 
 #include <chowdsp_wdf/chowdsp_wdf.h>
 
@@ -35,9 +36,9 @@ namespace ee::dsp
          Decay-release follower; the top of the Decay knob ramps a floor under
          it, the bottom crossfades to a one-shot that lasts kOneShotCycles of an
          LFO cycle. Two more detectors make it playable: a dynamics follower
-         lifts the LFO rate up to kRateEnvDepth on a hard hit, and a transient
-         detector resets the LFO phase to 0 on every new note so each pluck
-         kicks the sweep from the top;
+         lifts the LFO rate up to kRateEnvDepth on a hard hit, and an onset
+         detector (ee::dsp::OnsetGate, ported from Cycfi Q) resets the LFO phase
+         to 0 on every new note so each pluck kicks the sweep from the top;
       2. LFO - ee::dsp::lfoValue at the Shape morph; the Stereo switch offsets
          the right channel by half a cycle (anti-phase);
       3. cutoff = fBase * kSweepRatioMax^(Range * gate * lfo), per channel,
@@ -69,11 +70,15 @@ public:
         aF0  = timeCoeff (autowah::kFreqSmoothingMs * 0.001f, fs);
         aDynAtt = timeCoeff (autowah::kDynAttackMs * 0.001f, fs);
         aDynRel = timeCoeff (autowah::kDynReleaseMs * 0.001f, fs);
-        aOnSlow = timeCoeff (autowah::kOnsetSlowMs * 0.001f, fs);
         aParam  = timeCoeff (autowah::kParamSmoothMs * 0.001f, fs);
         aOneShotRel = timeCoeff (autowah::kOneShotReleaseMs * 0.001f, fs);
+        aGlide = timeCoeff (autowah::kRetriggerGlideMs * 0.001f, fs);
         updateDecay();
         updateType();
+
+        onsetGate.prepare (fs, autowah::kOnsetEnvDecayMs, autowah::kOnsetAttackWidthMs,
+                           autowah::kOnsetRiseRatioOn, autowah::kOnsetRiseRatioOff,
+                           autowah::kOnsetMinRise, autowah::kOnsetLockoutMs);
 
         for (auto& tank : tanks)
             tank.prepare (fs);
@@ -85,9 +90,10 @@ public:
     {
         envHpZ = 0.0f;
         follow = 0.0f;
+        lfoGlideL = 0.0f;
+        lfoGlideR = 0.0f;
         dynEnv = 0.0f;
-        onSlow = 0.0f;
-        armed = true;
+        onsetGate.reset();
         lastGate = 0.0f;
         lastModL = lastModR = 0.0f;
         primed = false;
@@ -223,24 +229,28 @@ public:
             const float played = juce::jlimit (0.0f, 1.0f, follow * autowah::kGateSensitivity);
             const float followerGate = juce::jmax (played, decayLatch);
 
-            // Playing-dynamics follower: drives the rate lift and re-arms the
-            // per-note retrigger.
+            // Playing-dynamics follower: drives the LFO rate lift on a hard hit.
             const float aDyn = rect > dynEnv ? aDynAtt : aDynRel;
             dynEnv += aDyn * (rect - dynEnv);
             const float dyn = juce::jlimit (0.0f, 1.0f, dynEnv * autowah::kDynSensitivity);
 
-            onSlow += aOnSlow * (follow - onSlow);
-            const float onset = follow - onSlow;
-            if (armed && onset > autowah::kOnsetOn)
+            if (onsetGate (follow))
             {
-                armed = false;
+                // Snapping the phase steps the LFO, and the gate is already
+                // open by the time this fires - so bank the size of the step
+                // and hand it back over kRetriggerGlideMs. The modulation is
+                // continuous across this sample; only where it is heading
+                // changes. Without it the cutoff jumps mid-note and the tank
+                // answers with a click.
+                const float offsetR = stereoOn ? autowah::kStereoOffset : 0.0f;
+                const auto before = static_cast<float> (lfoPhase);
+
+                lfoGlideL = lfoValue (before, shape) - lfoValue (0.0f, shape) + lfoGlideL;
+                lfoGlideR = lfoValue (before + offsetR, shape) - lfoValue (offsetR, shape) + lfoGlideR;
+
                 lfoPhase = 0.0;                     // start the sweep from the top
                 wrapsSinceRetrigger = 0;
                 oneShotGate = 1.0f;
-            }
-            else if (! armed && onset < autowah::kOnsetOff)
-            {
-                armed = true;
             }
 
             // One-shot: hold full until the LFO has run kOneShotCycles of a
@@ -257,8 +267,11 @@ public:
             const float offset = stereoOn ? autowah::kStereoOffset : 0.0f;
             const auto phF = static_cast<float> (lfoPhase);
 
-            const float lfoL = lfoValue (phF, shape);
-            const float lfoR = stereoOn ? lfoValue (phF + offset, shape) : lfoL;
+            const float lfoL = lfoValue (phF, shape) + lfoGlideL;
+            const float lfoR = stereoOn ? lfoValue (phF + offset, shape) + lfoGlideR : lfoL;
+
+            lfoGlideL -= aGlide * lfoGlideL;
+            lfoGlideR -= aGlide * lfoGlideR;
 
             lfoPhase += phaseInc * (1.0 + autowah::kRateEnvDepth * dyn);
             if (lfoPhase >= 1.0)
@@ -370,13 +383,17 @@ private:
         makeupHP = gain (autowah::kMakeupDbHP);
     }
 
-    /** Make-up for the current tap blend - the same crossfade the taps get, so
-        the level holds steady as Type is turned. */
+    /** Make-up for the current tap blend, crossfaded in dB rather than in gain:
+        a straight line between two gains that are 15 dB apart bulges well above
+        either of them in the middle, which is heard as a bump halfway through
+        the Type knob's travel. */
     inline float makeupFor (float morph) const noexcept
     {
-        if (morph <= 0.5f)
-            return makeupLP + (morph * 2.0f) * (makeupBP - makeupLP);
-        return makeupBP + ((morph - 0.5f) * 2.0f) * (makeupHP - makeupBP);
+        const float a = morph <= 0.5f ? makeupLP : makeupBP;
+        const float b = morph <= 0.5f ? makeupBP : makeupHP;
+        const float t = morph <= 0.5f ? morph * 2.0f : (morph - 0.5f) * 2.0f;
+
+        return a * std::pow (b / a, t);
     }
 
     void updateCutoff (int ch, float mod) noexcept
@@ -433,11 +450,11 @@ private:
 
     // Gate + playing-dynamics detectors.
     float envHpZ = 0.0f, follow = 0.0f;
-    float dynEnv = 0.0f, onSlow = 0.0f;
-    bool armed = true;
+    float dynEnv = 0.0f;
+    OnsetGate onsetGate;
     float lastGate = 0.0f, lastModL = 0.0f, lastModR = 0.0f;
     float aHp = 0.0f, aAtt = 0.0f, aRel = 0.0f;
-    float aDynAtt = 0.0f, aDynRel = 0.0f, aOnSlow = 0.0f;
+    float aDynAtt = 0.0f, aDynRel = 0.0f;
 
     // LFO + one-shot.
     double lfoPhase = 0.0;
@@ -445,6 +462,10 @@ private:
     int wrapsSinceRetrigger = 1;
     float oneShotGate = 0.0f;
     float aOneShotRel = 1.0f;
+
+    // The retrigger's phase jump, handed back over kRetriggerGlideMs.
+    float lfoGlideL = 0.0f, lfoGlideR = 0.0f;
+    float aGlide = 1.0f;
 
     // Swept cutoff.
     std::array<float, 2> f0Smoothed { { autowah::kFreqMinHz, autowah::kFreqMinHz } };

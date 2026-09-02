@@ -1,38 +1,87 @@
 #include "PluginProcessor.h"
 
 #include "ee/dsp/TempoDivision.h"
+#include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
 #if EE_TAPE_TUNER
- #include "TapeTunerPanel.h"
+#include "TapeTunerPanel.h"
 #endif
 
 namespace
 {
-    constexpr const char* kLeftTimeID  = "ltime";
-    constexpr const char* kRightTimeID = "rtime";
-    constexpr const char* kSyncID      = "sync";
-    constexpr const char* kFeedbackID  = "fb";
-    constexpr const char* kMixID       = "mix";
-    constexpr const char* kModID       = "mod";
-    constexpr const char* kTapeID      = "tape";
-    constexpr const char* kOnID        = "on";
+using ee::plugin::percentToText;
 
-    constexpr int kDefaultDivision = 5; // 1/8
+constexpr const char* kLeftTimeID = "ltime";
+constexpr const char* kRightTimeID = "rtime";
+constexpr const char* kSyncID = "sync";
+constexpr const char* kTimeUnitID = "timeunit"; // false = note division text, true = ms
+constexpr const char* kFeedbackID = "fb";
+constexpr const char* kMixID = "mix";
+constexpr const char* kModID = "mod";
+constexpr const char* kTapeID = "tape";
+constexpr const char* kOnID = "on";
 
-    constexpr float kGainRampSeconds = 0.02f;
+constexpr int kDefaultDivision = 5; // 1/8
 
-    juce::String percentToText (float value, int)
+constexpr float kGainRampSeconds = 0.02f;
+
+float divisionSeconds (int index, double bpm) noexcept
+{
+    const int i = juce::jlimit (0, ee::dsp::kNumTempoDivisions - 1, index);
+    return ee::dsp::kTempoDivisions[i].beats * static_cast<float> (60.0 / bpm);
+}
+
+/** A chain link, for the Sync button: two capsule outlines lying along the same
+    diagonal and overlapping in the middle. Sync ties the delay time to the
+    host's tempo, which is a link rather than a word - and the button is too
+    small to print one legibly. */
+void drawLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const float side = juce::jmin (area.getWidth(), area.getHeight());
+    if (side <= 0.0f)
+        return;
+
+    // All of it in fractions of the box, so the glyph is the same drawing at
+    // any size.
+    const float linkW = side * 0.44f;  // capsule across
+    const float linkH = side * 0.74f;  // ... and along
+    const float offset = side * 0.19f; // each capsule off the centre
+    const float stroke = juce::jmax (1.2f, side * 0.11f);
+
+    juce::Path capsule;
+    capsule.addRoundedRectangle (-linkW * 0.5f, -linkH * 0.5f, linkW, linkH, linkW * 0.5f);
+
+    const auto centre = area.getCentre();
+    const float diagonal = offset * juce::MathConstants<float>::sqrt2 * 0.5f;
+
+    g.setColour (colour);
+
+    // Lower-left and upper-right, both turned onto the same 45-degree axis.
+    for (const float sign : { -1.0f, 1.0f })
     {
-        return juce::String (juce::roundToInt (value)) + " %";
-    }
+        const auto place = juce::AffineTransform::rotation (juce::MathConstants<float>::pi * 0.25f)
+                               .translated (centre.x - sign * diagonal, centre.y + sign * diagonal);
 
-    float divisionSeconds (int index, double bpm) noexcept
-    {
-        const int i = juce::jlimit (0, ee::dsp::kNumTempoDivisions - 1, index);
-        return ee::dsp::kTempoDivisions[i].beats * static_cast<float> (60.0 / bpm);
+        g.strokePath (
+            capsule, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), place);
     }
 }
+
+/** A plain "ms" wordmark, for the button that swaps the Time knobs' reading
+    from a note division to that division's length in milliseconds. Text
+    rather than a glyph - there is no obvious picture for "milliseconds" the
+    way a chain link stands for "linked together". The bezel hands us a square;
+    the wordmark is wider than it is tall, so it borrows the width it needs from
+    the rest of the button and is lettered close to the square's height. */
+void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const auto box = area.withSizeKeepingCentre (area.getWidth() * 1.6f, area.getHeight());
+    g.setColour (colour);
+    g.setFont (juce::Font (juce::FontOptions (area.getHeight() * 0.95f)).boldened());
+    g.drawText ("ms", box, juce::Justification::centred, false);
+}
+} // namespace
 
 PeakDelayProcessor::PeakDelayProcessor()
     : juce::AudioProcessor (BusesProperties()
@@ -40,14 +89,15 @@ PeakDelayProcessor::PeakDelayProcessor()
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    leftTimeParam  = apvts.getRawParameterValue (kLeftTimeID);
+    leftTimeParam = apvts.getRawParameterValue (kLeftTimeID);
     rightTimeParam = apvts.getRawParameterValue (kRightTimeID);
-    syncParam      = apvts.getRawParameterValue (kSyncID);
-    feedbackParam  = apvts.getRawParameterValue (kFeedbackID);
-    mixParam       = apvts.getRawParameterValue (kMixID);
-    modParam       = apvts.getRawParameterValue (kModID);
-    tapeParam      = apvts.getRawParameterValue (kTapeID);
-    onParam        = apvts.getRawParameterValue (kOnID);
+    syncParam = apvts.getRawParameterValue (kSyncID);
+    timeUnitParam = apvts.getRawParameterValue (kTimeUnitID);
+    feedbackParam = apvts.getRawParameterValue (kFeedbackID);
+    mixParam = apvts.getRawParameterValue (kMixID);
+    modParam = apvts.getRawParameterValue (kModID);
+    tapeParam = apvts.getRawParameterValue (kTapeID);
+    onParam = apvts.getRawParameterValue (kOnID);
 
     apvts.addParameterListener (kLeftTimeID, this);
     apvts.addParameterListener (kRightTimeID, this);
@@ -67,39 +117,60 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
 
     const auto divisions = ee::dsp::tempoDivisionLabels();
 
-    layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { kLeftTimeID, 1 }, "Left Time", divisions, kDefaultDivision));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kLeftTimeID, 1 }, "Left Time",
+                                                              divisions, kDefaultDivision));
 
-    layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { kRightTimeID, 1 }, "Right Time", divisions, kDefaultDivision));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kRightTimeID, 1 }, "Right Time",
+                                                              divisions, kDefaultDivision));
 
-    layout.add (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { kSyncID, 1 }, "Sync L/R", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kSyncID, 1 }, "Sync L/R", true));
+
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kTimeUnitID, 1 }, "Time Unit", false));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kFeedbackID, 1 }, "Feedback",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
+        juce::ParameterID { kFeedbackID, 1 }, "Feedback", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kMixID, 1 }, "Mix",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
+        juce::ParameterID { kMixID, 1 }, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kModID, 1 }, "Mod",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
+        juce::ParameterID { kModID, 1 }, "Mod", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kTapeID, 1 }, "Tape",
-        juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
+        juce::ParameterID { kTapeID, 1 }, "Tape", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
 
-    layout.add (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { kOnID, 1 }, "On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
 
     return layout;
+}
+
+double PeakDelayProcessor::currentBpm() const
+{
+    double bpm = 120.0;
+
+    if (auto* playHead = getPlayHead())
+        if (const auto position = playHead->getPosition())
+            if (const auto hostBpm = position->getBpm())
+                bpm = *hostBpm;
+
+    return juce::jlimit (20.0, 300.0, bpm);
+}
+
+juce::String PeakDelayProcessor::timeReadout (const std::atomic<float>* timeParam) const
+{
+    const int index = timeParam != nullptr ? static_cast<int> (timeParam->load()) : kDefaultDivision;
+    const auto divisions = ee::dsp::tempoDivisionLabels();
+    const int clamped = juce::jlimit (0, divisions.size() - 1, index);
+
+    if (timeUnitParam == nullptr || timeUnitParam->load() < 0.5f)
+        return divisions[clamped];
+
+    const float ms = divisionSeconds (clamped, currentBpm()) * 1000.0f;
+    return juce::String (juce::roundToInt (ms)) + " ms";
 }
 
 void PeakDelayProcessor::mirrorDivision (const juce::String& from, const juce::String& to)
@@ -120,9 +191,7 @@ void PeakDelayProcessor::parameterChanged (const juce::String& parameterID, floa
 {
     // Read the button from the callback argument rather than the cached value:
     // the two are not guaranteed to be in step at this point.
-    const bool synced = parameterID == kSyncID
-                            ? newValue > 0.5f
-                            : (syncParam != nullptr && syncParam->load() > 0.5f);
+    const bool synced = parameterID == kSyncID ? newValue > 0.5f : (syncParam != nullptr && syncParam->load() > 0.5f);
 
     if (! synced)
         return;
@@ -216,14 +285,7 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     // The time knobs are note values, so a host that reports no tempo still has
     // to land somewhere musical.
-    double bpm = 120.0;
-
-    if (auto* playHead = getPlayHead())
-        if (const auto position = playHead->getPosition())
-            if (const auto hostBpm = position->getBpm())
-                bpm = *hostBpm;
-
-    bpm = juce::jlimit (20.0, 300.0, bpm);
+    const double bpm = currentBpm();
 
     delay.setDelaySeconds (divisionSeconds (static_cast<int> (leftTimeParam->load()), bpm),
                            divisionSeconds (static_cast<int> (rightTimeParam->load()), bpm));
@@ -301,34 +363,50 @@ juce::AudioProcessorEditor* PeakDelayProcessor::createEditor()
     spec.name = "Peak Delay";
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v" JucePlugin_VersionString;
+
     // Tape is a machine in front of the delay rather than part of it, so its
-    // knob is not one of the black caps - here a deep green.
+    // knob is the odd one out twice over: a deep green cap, and the only
+    // photographic one on a face of digital caps.
     const juce::Colour tapeCap { 0xff375916 };
     const juce::Colour tapeBorder { 0xff17280b };
-    const juce::Colour syncAmber { 0xffffaa33 };
 
-    spec.knobs = {
-        { kLeftTimeID,  "Left Time" },
-        { kRightTimeID, "Right Time" },
-        { kFeedbackID,  "Feedback" },
-        { kMixID,       "Mix" },
-        { kModID,       "Mod" },
-        { kTapeID,      "Tape", tapeCap, tapeBorder, tapeCap }
+    auto tape = ee::ui::KnobSpec { kTapeID, "Tape", tapeCap, tapeBorder, tapeCap };
+    tape.capStyle = ee::ui::ControlStyle::analog;
+
+    spec.knobs = { { .parameterID = kLeftTimeID,
+                     .caption = "Left Time",
+                     .liveValueText = [this] { return timeReadout (leftTimeParam); } },
+                   { .parameterID = kRightTimeID,
+                     .caption = "Right Time",
+                     .liveValueText = [this] { return timeReadout (rightTimeParam); } },
+                   { kFeedbackID, "Feedback" },
+                   { kMixID, "Mix" },
+                   { kModID, "Mod" },
+                   tape };
+
+    // Two small buttons share the gap between Left and Right Time, one above
+    // the other: Sync carries a chain link, lit in the face's ink while the two
+    // knobs are held together and pale grey while they move independently; ms
+    // swaps both knobs' reading from a note division to that division's length
+    // at the host tempo, in milliseconds - the toggle itself is silent, only the
+    // text changes, so it needs no `onClick` of its own to react to.
+    spec.toggles = {
+        { .parameterID = kSyncID, .caption = "Sync", .afterKnobIndex = 0, .icon = drawLinkIcon },
+        { .parameterID = kTimeUnitID, .caption = "ms", .afterKnobIndex = 0, .gapRise = -6, .icon = drawMsIcon },
     };
-    spec.toggles = { { kSyncID, "Sync", 0, syncAmber } };
-    spec.knobsPerRow = 3;
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);   // same column spacing as Peak Reverb
 
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::gold());
+    spec.knobsPerRow = 3;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow); // same column spacing as Peak Reverb
+
+    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::moss());
 
 #if EE_TAPE_TUNER
     // Flip to true to bring the tuning panel back without reconfiguring CMake.
     constexpr bool showTuner = false;
 
     if (showTuner)
-        editor->setSidePanel (std::make_unique<TapeTunerPanel> (
-                                  tape.getTuning(),
-                                  [this] (const ee::dsp::TapeTuning& t) { tape.setTuning (t); }),
+        editor->setSidePanel (std::make_unique<TapeTunerPanel> (tape.getTuning(), [this] (const ee::dsp::TapeTuning& t)
+                                                                { tape.setTuning (t); }),
                               TapeTunerPanel::preferredWidth);
 #endif
 

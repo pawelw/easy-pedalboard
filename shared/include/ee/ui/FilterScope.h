@@ -27,6 +27,16 @@ public:
 
 private:
     void timerCallback() override;
+
+    /** The soft-UI face draws the same data on a captioned screen - see
+        `DigitalScreen`. Picked from the theme's `ControlStyle`. */
+    void paintDigital (juce::Graphics&, juce::Rectangle<float> bounds);
+
+    /** One resonant bump, as a path across `plot` on the given dB axis. */
+    juce::Path bumpPath (juce::Rectangle<float> plot,
+                         float fcHz, float peakDb, float bw,
+                         float dbFloor, float dbCeil) const;
+
     void drawBump (juce::Graphics&, juce::Rectangle<float> plot,
                    float fcHz, float peakDb, float bw,
                    juce::Colour colour, float thickness) const;

@@ -48,8 +48,8 @@ private:
     ee::dsp::Overdrive overdrive;
 
     juce::AudioBuffer<float> dryBuffer;
-    juce::SmoothedValue<float> levelGain;   // linear output make-up gain
-    juce::SmoothedValue<float> wetMix;      // 1 = processed, 0 = clean dry (bypass)
+    juce::SmoothedValue<float> levelGain; // linear output make-up gain
+    juce::SmoothedValue<float> wetMix;    // 1 = processed, 0 = clean dry (bypass)
 
     double sampleRate = 44100.0;
 

@@ -1,0 +1,87 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "dev",
+      "displayName": "Dev (Ninja, Release, tests on)",
+      "description": "Day-to-day iteration: all nine pedals, all formats, installed to ~/Library. Release because the DSP tests are unusably slow otherwise; LTO off because it costs minutes per link and buys nothing here.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
+        "EE_BUILD_TESTS": "ON",
+        "EE_LTO": "OFF"
+      }
+    },
+    {
+      "name": "fast",
+      "inherits": "dev",
+      "displayName": "Fast (one pedal, Standalone only, nothing installed)",
+      "description": "The build to iterate against. Add -DEE_PLUGINS=peak-wah to cut it down to the pedal you are working on.",
+      "binaryDir": "${sourceDir}/build-fast",
+      "cacheVariables": {
+        "EE_DEV_FORMATS": "ON",
+        "EE_LTO": "OFF",
+        "EE_INSTALL_PLUGINS": "OFF"
+      }
+    },
+    {
+      "name": "debug",
+      "inherits": "dev",
+      "displayName": "Debug (Ninja, asserts on)",
+      "binaryDir": "${sourceDir}/build-debug",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "release",
+      "displayName": "Release (universal binary, for handing to someone else)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-universal",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "EE_UNIVERSAL_BINARY": "ON",
+        "EE_BUILD_TESTS": "OFF",
+        "EE_LTO": "ON",
+        "EE_INSTALL_PLUGINS": "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "dev",
+      "configurePreset": "dev"
+    },
+    {
+      "name": "fast",
+      "configurePreset": "fast"
+    },
+    {
+      "name": "debug",
+      "configurePreset": "debug"
+    },
+    {
+      "name": "release",
+      "configurePreset": "release"
+    },
+    {
+      "name": "tests",
+      "configurePreset": "dev",
+      "displayName": "Just the test binaries",
+      "targets": [
+        "ee_dsp_tests",
+        "ee_ui_snapshot",
+        "ee_tape_stress",
+        "ee_reverb_stress",
+        "ee_trempan_stress"
+      ]
+    }
+  ]
+}

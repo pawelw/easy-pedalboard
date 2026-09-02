@@ -55,6 +55,68 @@ the wet path open, so the existing tail rings out instead of being cut off.
 High and low frequency decay rates are fixed internally (lows ring slightly
 longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
 
+### Peak Spring
+
+A dispersive spring tank. Mono in, stereo out, two knobs and a switch:
+
+| Control        | Range       | What it does                                       |
+| -------------- | ----------- | -------------------------------------------------- |
+| **Mix**        | 0 - 100 %   | Blend of dry signal and wet tank                   |
+| **Decay**      | 0.4 - 8 s   | How long the springs ring on after the note stops  |
+| **Mono / Stereo** | switch   | One tank feeding both outputs, or two a few per cent apart |
+
+Each knob prints one line of text: the caption at rest, the reading only while
+you are actually turning it.
+
+**Mono** is the honest setting — a real tank is a single mono device — and it is
+what to use if the mix has to fold down. **Stereo** runs a second tank whose
+springs differ by about three per cent and crosses the two into each other, which
+opens the tail out without either side sounding detuned or hollow in mono.
+
+Where Peak Reverb models a plate, this models the steel box bolted into the
+bottom of an amp. Three springs run in parallel, each a short delay loop with a
+cascade of stretched all-pass sections *inside* the feedback path. Those
+sections are flat in magnitude but not in group delay, so the top of the
+spectrum takes longer round the loop than the bottom: a transient goes in and
+comes back as a rising "boinngg" that stretches further on every bounce. That
+dispersion is the whole sound — take it out and the pedal is a short, dull
+delay.
+
+The tank is driven through a band-pass (a transducer, not a speaker) and loses
+energy on every pass, which is why a spring sits behind a guitar rather than on
+top of it. Each spring's length wanders by a fraction of a per cent so the tank's
+comb never rings on one fixed set of pitches.
+
+The voicing is measured against a reference tank rather than invented. Two
+renders of it — Mix 26 / Decay 3.58 s, and Mix 100 / Decay 8 s — were turned into
+per-band decay times, and those into the per-trip loop gain that would produce
+them. What that says is that a spring's loop is nearly flat right across the
+midrange and falls off a cliff below it: about 4 % lost per trip through the ring
+band and only a little more at 4 kHz, but an order of magnitude more under
+200 Hz. The first attempt here used a one-pole low-pass at 4 kHz in the loop,
+which loses 28 % per trip up there and killed the top of the tail three trips in.
+
+That is why the loop damping is a pair of **shelves** (the shared `LoopDamper`,
+the same absorber the plate reverb uses) rather than rolloffs: a rolloff keeps
+eating the same band on every pass and collapses the top of the tail, where a
+shelf holds a fixed ratio. The low end of a spring still has to die fast, so the
+weight under 250 Hz is put back by a shelf on the finished wet output, outside
+every feedback path — level without decay.
+
+The Decay knob is calibrated against that reference, so 3.58 s on this face means
+the same tail as 3.58 s on theirs. Measured band decay times land within about
+10 % through the ring band, and the stereo tail correlation within 0.02.
+
+Everything above — how many springs, how long, how hard they chirp, where the
+shelves sit — is voicing, and lives in `shared/include/ee/dsp/SpringConfig.h`
+with the trade-offs and the measurements written next to each value.
+`tests/SpringMatch.cpp` (`ee_spring_match`) renders a file through the whole
+processor for A/B-ing against a reference.
+
+Like Peak Reverb, the pedal has no on/off switch of its own and the `on`
+parameter has **trails**: bypassing stops driving the tank but leaves the wet
+path open, so whatever is still ringing rings out.
+
 ### Peak Delay
 
 A tempo-synced stereo delay with independent left and right times. Six controls:
@@ -364,6 +426,110 @@ size, per-type make-up, grit, output filtering, knob defaults - lives in
 `shared/include/ee/dsp/AutoWahConfig.h` (and the LFO rate range in
 `plugins/peak-wah/src/RateMap.h`); retune there and rebuild.
 
+### Peak Grain
+
+A granular delay into a plain plate. Mono or stereo in, stereo out. Fifteen
+knobs in four captioned sections, a **Live / Freeze** switch across the top, and
+Reverb and Mix bare underneath.
+
+**Delay** - the echo, and what you do to a frozen buffer:
+
+| Knob         | Range           | What it does                                                              |
+| ------------ | --------------- | ------------------------------------------------------------------------ |
+| **Time**     | 20 ms - 2 s     | How far behind the write head grains are tapped from - the delay. Skewed so the short, rhythmic end gets most of the travel. Scatter sprays grains around this point, so it is the centre of a window rather than one hard offset |
+| **Feedback** | 0 - 92 %        | Share of the granulated output written back into the buffer, so each repeat is granulated again on the way round. Capped below unity - the path is no longer feed-forward, and a gain of 1 would let a stuck level build without bound |
+| **Stretch**  | -100 - +100 %   | **Frozen only.** The rate the read head scans the captured buffer, in multiples of realtime: `+100 %` forward (the delay time holds steady), `0` held on one moment, `-100 %` backwards. Pitch is untouched - only where the next grain is taken from moves. Reads as a dash while playing live |
+
+**Grain** - what one grain is:
+
+| Knob        | Range          | What it does                                                              |
+| ----------- | -------------- | ------------------------------------------------------------------------ |
+| **Size**    | 20 - 500 ms    | Grain length. Under ~40 ms the fragments stop being recognisable and turn into a metallic buzz at the spawn rate; over ~300 ms you hear whole notes come back |
+| **Density** | 1 - 40 /s      | Grains spawned per second. Sparse and countable at the bottom, a continuous cloud at the top. It is not a volume knob - the engine divides out the overlap |
+| **Shape**   | 0 - 100 %      | Grain envelope lean: `0` soft, a long fade-in with the energy spread the whole grain; `100` plucky, a click of an attack with the energy up front. The engine divides the envelope's own energy back out, so this does not double as a volume knob |
+
+**Pitch** - weights against each other, not positions on a scale:
+
+| Knob         | What it does                                                          |
+| ------------ | --------------------------------------------------------------------- |
+| **Low**      | How often a grain lands an octave down (a fourth down in one slot)    |
+| **Unison**   | How often it plays at pitch                                           |
+| **High**     | How often it lands an octave up (a fifth up in one slot)             |
+| **Detune**   | Random detune on every grain, 0 - 100 ct either way. **Off by default**: above zero every grain plays slightly differently, which reads as an unstable cloud rather than as the note that was played |
+
+Any two of Low/Unison/High at once is a chord rather than a transposition, which
+is the whole reason they are separate knobs. All three at zero is treated as
+unison, so a face with no pitch dialled in still makes a sound. Mostly octaves,
+with a fifth up and a fourth down baked into one table slot each; the tables in
+`GrainerTuning.h` will take anything you want, but stray far from those and the
+cloud stops sounding like the note that was played.
+
+**Random**:
+
+| Knob         | Range          | What it does                                                             |
+| ------------ | -------------- | ---------------------------------------------------------------------- |
+| **Reverse**  | 0 - 100 %      | Share of grains that play backwards. Forward-only is much more legible; past halfway the phrase stops being followable at all |
+| **Scatter**  | 0 - 100 %      | One knob over all the timing randomness: how much the gap between grains wanders, and how much each grain's length strays from Size. `0` is a metronome spraying identical grains; wound up the cloud stops repeating |
+| **Stereo**   | 0 - 100 %      | Width of the random pan placement. `0` centres every grain, `100` throws them hard left and right. Equal-power, so the middle does not dip |
+
+| Knob        | Range          | What it does                                                              |
+| ----------- | -------------- | ------------------------------------------------------------------------ |
+| **Reverb**  | 0 - 100 %      | One knob for the plate behind the cloud: it opens the mix and lengthens the decay together. The decay comes in over the top half of the travel, so the bottom half is a short room getting louder |
+| **Mix**     | 0 - 100 %      | Blend of dry signal and the whole wet path, tail included                |
+
+**Live** is a granular delay: the input is recorded into a ten-and-a-half second
+circular buffer, and on a jittered timer the engine spawns a **grain** - a
+windowed voice that reads that buffer from a point `Time` behind the write head
+(scattered either side), at a random rate which is its pitch, in a random
+direction, at a random pan position. Feedback writes the cloud back in, so the
+repeats thicken as they granulate again. Up to 32 grains overlap.
+
+**Freeze** stops the recording and holds the buffer. The read head then scans
+the frozen capture at the **Stretch** rate - forwards at realtime holds the
+delay steady, `0` stutters on one moment, backwards scrubs it - all without
+shifting pitch, because each grain still plays at rate 1. A loud enough input
+retriggers: the engine grabs a fresh `Time` window and re-freezes, so the loop
+starts again on the new sound.
+
+Live, most grains are the **attack**. A plucked string is mostly its first fifty
+milliseconds, and a cloud built from the sustain alone loses whatever made the
+note identifiable. An onset detector (`ee::dsp::OnsetGate`, the same one Peak Wah
+retriggers from) marks where each attack landed, and 70 % of grains are drawn
+from there rather than from the Time window - until `kAttackReachSeconds` after
+the note, when it has rung out and the cloud moves on. Reads are cubic-Hermite,
+the same interpolator the delay lines use - linear would take the top octave off
+every backwards grain.
+
+Each grain has a **percussive envelope**, not a symmetric window: a short
+fade-in and then an exponential decay to zero. That asymmetry is the difference
+between the effect sounding like a guitar and sounding like a tape running
+backwards - a Hann window fades a grain in over its entire first half, which
+throws away the transient and leaves a swell the ear reads as reverse playback.
+Both ends still reach exactly zero, which is what stops a grain clicking whatever
+its content. **Shape** morphs between the two ends the tuning header names.
+
+The feedback path means the engine can, in principle, latch a non-finite value
+or build without bound. Four things stop it: Feedback is capped below unity, the
+fed-back sample is run through `tanh` so it is always under 1, a non-finite
+buffer write is zeroed, and the processor guards its own output on top.
+`ee_grain_stress` sweeps the feedback range against DC and NaN input to keep this
+honest.
+
+Everything about the character that is not on a knob - how Scatter and Shape map
+onto the engine, the interval tables, the output trim - lives in
+`shared/include/ee/dsp/GrainerTuning.h`. Build with `-DEE_GRAIN_TUNER=ON` to get
+a side panel that drives all of it live. `GrainerConfig.h` keeps the structural
+side: the knob ranges, the recording buffer and the voice count.
+
+Behind the cloud is `ee::dsp::FdnReverb`, the same sixteen-line network as Peak
+Reverb, run plain: no shimmer, and its resonance and low cut pinned in the
+tuning header rather than put on the face. It is fed the grains and nothing
+else. Bypass leaves the wet path open, so the cloud and its tail ring out
+instead of being chopped off.
+
+The face is `PedalTheme::onyx()` - the soft-UI style at night, a near-black card
+with black caps, and one pale blue-grey carrying every reading on it.
+
 ### Peak Tape
 
 A tape machine as a pedal. Mono or stereo, in and out. Five knobs and a switch
@@ -450,6 +616,8 @@ lands on the reference recording's (70.1 samples against 70.3).
 
 - macOS with Xcode Command Line Tools
 - CMake and Ninja: `brew install cmake ninja`
+- Optional but recommended: `brew install ccache` — the build picks it up
+  automatically and shared code compiles into every plugin here, so it helps a lot
 
 ## Setting up on another Mac
 
@@ -460,9 +628,9 @@ pinned tags, so the first configure needs an internet connection.
 
 ```bash
 xcode-select --install          # if you have never installed the CLT
-brew install cmake ninja
+brew install cmake ninja ccache
 git clone <this repo> synth-peak && cd synth-peak
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --preset dev
 cmake --build build
 ```
 
@@ -473,18 +641,26 @@ flag, so Gatekeeper stays out of the way.
 ## Build
 
 ```bash
-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --preset dev
 cmake --build build
 ```
 
-`COPY_PLUGIN_AFTER_BUILD` installs to `~/Library/Audio/Plug-Ins/VST3` and
+While working on one pedal, the `fast` preset is about five times quicker — it
+builds Standalone only, without LTO, and installs nothing:
+
+```bash
+cmake --preset fast -DEE_PLUGINS="peak-wah"
+cmake --build build-fast
+```
+
+`EE_INSTALL_PLUGINS` (on by default outside `fast`) installs to `~/Library/Audio/Plug-Ins/VST3` and
 `~/Library/Audio/Plug-Ins/Components` automatically. Rescan in Live to pick up
 changes.
 
 For a build to hand to someone else, produce a universal binary:
 
 ```bash
-cmake -B build-universal -G Ninja -DCMAKE_BUILD_TYPE=Release -DEE_UNIVERSAL_BINARY=ON
+cmake --preset release
 cmake --build build-universal
 ```
 
@@ -594,8 +770,29 @@ onto the middle while dragging (mouse only — automation and typed values pass
 through), and `diameter` gives that one knob a smaller cap without moving it off
 the grid or dropping its caption the way `compact` would.
 
-Then copy `plugins/peak-reverb/CMakeLists.txt`, change `PLUGIN_CODE` and
-`PRODUCT_NAME`, and add it to the top-level `CMakeLists.txt`.
+`spec.knobGroups` sorts the main knobs into captioned boxes — one centred row
+per group, each wrapped in the rounded outline with its name let into the top
+edge. List `{ caption, count }` entries; they consume `spec.knobs` in order and
+any left over form a trailing bare row. `plugins/peak-grain` uses four (Delay,
+Grain, Pitch, Random) with Reverb and Mix bare underneath. Leave it empty for
+the plain `knobsPerRow` grid.
+
+Then give it a `plugins/peak-drive/CMakeLists.txt`:
+
+```cmake
+peak_add_plugin(PeakDrive
+    CODE       Pdrv
+    PRODUCT    "Peak Drive"
+    BUNDLE     com.synthpeak.peakdrive
+    CATEGORIES "Fx Distortion"
+)
+```
+
+`peak_add_plugin` (in `cmake/AddPeakPlugin.cmake`) carries the rest of the
+`juce_add_plugin` boilerplate. Pass `LIBS` for extra link targets and `SOURCES`
+for extra `.cpp` files. Add the directory name to `EE_ALL_PLUGINS` in the
+top-level `CMakeLists.txt`, and mirror the parameter layout into
+`tests/UiSnapshot.cpp` so the pedal renders in the snapshot tool.
 
 ## Resizing
 

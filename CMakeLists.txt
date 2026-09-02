@@ -14,7 +14,59 @@ if(APPLE)
     option(EE_UNIVERSAL_BINARY "Build arm64 + x86_64 universal binaries" OFF)
     if(EE_UNIVERSAL_BINARY)
         set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
+    elseif(NOT CMAKE_OSX_ARCHITECTURES OR CMAKE_OSX_ARCHITECTURES STREQUAL EE_ARCH_AUTOSET)
+        # Build for the machine, not for whatever architecture cmake happens to
+        # be running as.
+        #
+        # An x86_64 cmake on Apple Silicon - easy to end up with, since an Intel
+        # Homebrew in /usr/local takes precedence over /opt/homebrew on a default
+        # PATH - runs under Rosetta and defaults every target to x86_64. The
+        # build succeeds, the plugins install, and then a natively-running DAW
+        # cannot load a single one of them: Logic and Live report only that the
+        # component could not be opened, with nothing about why.
+        #
+        # sysctl reports the hardware whether or not this process is translated,
+        # so it is the one thing here that cannot be fooled by the toolchain.
+        execute_process(COMMAND sysctl -n hw.optional.arm64
+                        OUTPUT_VARIABLE ee_host_is_arm64
+                        OUTPUT_STRIP_TRAILING_WHITESPACE
+                        ERROR_QUIET)
+
+        if(ee_host_is_arm64 STREQUAL "1" AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+            # Both, not just arm64. When the toolchain and the hardware disagree
+            # there is no way to tell from here which architecture the host
+            # application is running as - a DAW on Apple Silicon may be native
+            # or may be launched under Rosetta, and it can only load a plugin
+            # that matches. A thin bundle in either direction is invisible to
+            # half the possibilities, and the failure looks the same both ways:
+            # "this Audio Unit could not be opened", with nothing about why.
+            #
+            # This costs a second compile pass. Installing an arm64 cmake
+            # (`arch -arm64 /opt/homebrew/bin/brew install cmake`) removes the
+            # mismatch and the penalty with it.
+            set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
+
+            # Remembered so a later configure can revise this choice. Without it
+            # the value we forced last time is indistinguishable from one the
+            # user asked for, and would be left alone for ever.
+            set(EE_ARCH_AUTOSET "arm64;x86_64" CACHE INTERNAL "Architectures this project chose by itself")
+
+            message(STATUS
+                "Apple Silicon host with an ${CMAKE_SYSTEM_PROCESSOR} cmake: building universal, "
+                "so the plugins load whether the host runs native or under Rosetta")
+        endif()
     endif()
+endif()
+
+# Shared code compiles into every plugin target (see shared/CMakeLists.txt), so the
+# same translation units are built a dozen-odd times. A compiler cache turns the
+# repeats into hits and is the single biggest win on an incremental build. Used
+# only if it is installed - `brew install ccache`.
+find_program(CCACHE_PROGRAM ccache)
+if(CCACHE_PROGRAM)
+    set(CMAKE_C_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    set(CMAKE_CXX_COMPILER_LAUNCHER "${CCACHE_PROGRAM}")
+    message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
 endif()
 
 include(FetchContent)
@@ -65,6 +117,9 @@ juce_add_binary_data(ee_assets SOURCES
     assets/images/peak-logo.png
     assets/images/knob.png
     assets/images/plate.png
+    assets/images/silver-knob.png
+    assets/images/silver-knob-base-v1.png
+    assets/images/reverb-bg.jpeg
     assets/images/spoon.png)
 set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
@@ -82,23 +137,46 @@ set_target_properties(ee_tape_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)
 
-# Bolts a live tuning panel onto Peak Reverb's shimmer path. Never turn this on
-# for a build you hand to anyone.
+# ---------------------------------------------------------------------------
+# Which pedals get built, in which formats, and what happens to them afterwards.
+# The defaults reproduce a full release build; the "fast" preset turns them down
+# for iteration. See CLAUDE.md.
+# ---------------------------------------------------------------------------
+set(EE_ALL_PLUGINS
+    peak-reverb peak-spring peak-delay peak-eq peak-trem-pan peak-chorus
+    peak-phase peak-overdrive peak-wah peak-tape peak-grain)
+
+set(EE_PLUGINS "all" CACHE STRING
+    "Semicolon-separated pedals to build, or \"all\". e.g. -DEE_PLUGINS=peak-wah;peak-tape")
+option(EE_INSTALL_PLUGINS "Copy built plugins into ~/Library/Audio/Plug-Ins" ON)
+option(EE_DEV_FORMATS "Build Standalone only, skipping VST3 and AU" OFF)
+option(EE_LTO "Link with link-time optimisation (slow; for release builds)" ON)
+
+# Bolt a live tuning panel onto a pedal. Never turn these on for a build you hand
+# to anyone.
 option(EE_SHIMMER_TUNER "Add the shimmer tuning panel to Peak Reverb (development only)" OFF)
-add_subdirectory(plugins/peak-reverb)
-
-add_subdirectory(plugins/peak-eq)
-add_subdirectory(plugins/peak-trem-pan)
-add_subdirectory(plugins/peak-chorus)
-add_subdirectory(plugins/peak-phase)
-add_subdirectory(plugins/peak-overdrive)
-add_subdirectory(plugins/peak-wah)
-add_subdirectory(plugins/peak-tape)
-
-# Bolts a live tuning panel onto Peak Delay. Never turn this on for a build you
-# hand to anyone.
 option(EE_TAPE_TUNER "Add the tape tuning panel to Peak Delay (development only)" OFF)
-add_subdirectory(plugins/peak-delay)
+option(EE_GRAIN_TUNER "Add the grain tuning panel to Peak Grain (development only)" OFF)
+option(EE_GRAIN_TRACE "Log Peak Grain's in/out levels when its output runs away (development only)" OFF)
+
+include(cmake/AddPeakPlugin.cmake)
+
+if(EE_PLUGINS STREQUAL "all")
+    set(EE_PLUGINS_TO_BUILD ${EE_ALL_PLUGINS})
+else()
+    set(EE_PLUGINS_TO_BUILD ${EE_PLUGINS})
+    foreach(plugin ${EE_PLUGINS_TO_BUILD})
+        if(NOT plugin IN_LIST EE_ALL_PLUGINS)
+            message(FATAL_ERROR
+                "EE_PLUGINS: unknown pedal \"${plugin}\". Known: ${EE_ALL_PLUGINS}")
+        endif()
+    endforeach()
+    message(STATUS "Building a subset of the pedals: ${EE_PLUGINS_TO_BUILD}")
+endif()
+
+foreach(plugin ${EE_PLUGINS_TO_BUILD})
+    add_subdirectory(plugins/${plugin})
+endforeach()
 
 option(EE_BUILD_TESTS "Build the offline DSP test harness" ON)
 if(EE_BUILD_TESTS)

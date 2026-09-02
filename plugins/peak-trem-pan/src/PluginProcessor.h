@@ -59,18 +59,18 @@ private:
     std::atomic<float> storedSyncRate01 { 0.5f };
     std::atomic<float> storedFreeRate01 { 0.5f };
 
-    juce::SmoothedValue<float> depth;    // 0..1 LFO amount
-    juce::SmoothedValue<float> makeup;   // gain that offsets the tremolo's level drop
-    juce::SmoothedValue<float> bias;     // 0..1 - crossfade from opto to bias-tube tremolo
-    juce::SmoothedValue<float> wetMix;   // 1 = processed, 0 = clean dry
+    juce::SmoothedValue<float> depth;  // 0..1 LFO amount
+    juce::SmoothedValue<float> makeup; // gain that offsets the tremolo's level drop
+    juce::SmoothedValue<float> bias;   // 0..1 - crossfade from opto to bias-tube tremolo
+    juce::SmoothedValue<float> wetMix; // 1 = processed, 0 = clean dry
 
     juce::AudioBuffer<float> dryBuffer;
-    std::vector<float> modBuffer;        // shaped, slew-limited LFO, per sample
+    std::vector<float> modBuffer; // shaped, slew-limited LFO, per sample
 
     // The LFO free-runs on this phase accumulator; when synced it is nudged
     // (or, on a transport jump, snapped) towards the host timeline so the same
     // bar always plays the same phase.
-    double lfoPhase = 0.0;               // [0, 1)
+    double lfoPhase = 0.0; // [0, 1)
     double expectedPpq = 0.0;
     bool haveExpectedPpq = false;
     bool wasPlaying = false;

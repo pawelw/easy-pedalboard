@@ -40,23 +40,25 @@ if(EE_SHIMMER_TUNER)
     target_compile_definitions(ee_ui_snapshot PUBLIC EE_SHIMMER_TUNER=1)
 endif()
 
-# Renders a dry file through the real processor so its output can be scored
-# against a reference recording.
-juce_add_console_app(ee_reverb_match PRODUCT_NAME "ee_reverb_match")
+if(TARGET PeakReverb)
+    # Renders a dry file through the real processor so its output can be scored
+    # against a reference recording.
+    juce_add_console_app(ee_reverb_match PRODUCT_NAME "ee_reverb_match")
 
-target_sources(ee_reverb_match PRIVATE ReverbMatch.cpp)
+    target_sources(ee_reverb_match PRIVATE ReverbMatch.cpp)
 
-target_compile_definitions(ee_reverb_match PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_STANDALONE_APPLICATION=1)
+    target_compile_definitions(ee_reverb_match PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
 
-target_include_directories(ee_reverb_match
-    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src)
+    target_include_directories(ee_reverb_match
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src)
 
-target_link_libraries(ee_reverb_match
-    PRIVATE PeakReverb ee_shared juce::juce_audio_formats
-    PUBLIC juce::juce_recommended_config_flags)
+    target_link_libraries(ee_reverb_match
+        PRIVATE PeakReverb ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
 
 # Renders a file through the tape colour stage alone, for voicing it against a
 # reference recording.
@@ -73,57 +75,63 @@ target_link_libraries(ee_tape_match
     PRIVATE ee_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
-# Renders audio through the whole EQ processor, band filters and bypass mix.
-juce_add_console_app(ee_eq_match PRODUCT_NAME "ee_eq_match")
+if(TARGET PeakEq)
+    # Renders audio through the whole EQ processor, band filters and bypass mix.
+    juce_add_console_app(ee_eq_match PRODUCT_NAME "ee_eq_match")
 
-target_sources(ee_eq_match PRIVATE EqMatch.cpp)
+    target_sources(ee_eq_match PRIVATE EqMatch.cpp)
 
-target_compile_definitions(ee_eq_match PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_STANDALONE_APPLICATION=1)
+    target_compile_definitions(ee_eq_match PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
 
-target_include_directories(ee_eq_match
-    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-eq/src)
+    target_include_directories(ee_eq_match
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-eq/src)
 
-target_link_libraries(ee_eq_match
-    PRIVATE PeakEq ee_shared juce::juce_audio_formats
-    PUBLIC juce::juce_recommended_config_flags)
+    target_link_libraries(ee_eq_match
+        PRIVATE PeakEq ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
 
-# Renders a file through the whole delay processor, chain and all.
-juce_add_console_app(ee_delay_match PRODUCT_NAME "ee_delay_match")
+if(TARGET PeakDelay)
+    # Renders a file through the whole delay processor, chain and all.
+    juce_add_console_app(ee_delay_match PRODUCT_NAME "ee_delay_match")
 
-target_sources(ee_delay_match PRIVATE DelayMatch.cpp)
+    target_sources(ee_delay_match PRIVATE DelayMatch.cpp)
 
-target_compile_definitions(ee_delay_match PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_STANDALONE_APPLICATION=1)
+    target_compile_definitions(ee_delay_match PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
 
-target_include_directories(ee_delay_match
-    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
+    target_include_directories(ee_delay_match
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
 
-target_link_libraries(ee_delay_match
-    PRIVATE PeakDelay ee_shared juce::juce_audio_formats
-    PUBLIC juce::juce_recommended_config_flags)
+    target_link_libraries(ee_delay_match
+        PRIVATE PeakDelay ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
 
-# Sweeps the Trem & Pan processor over every parameter combo and adverse input,
-# watching for a non-finite or runaway output.
-juce_add_console_app(ee_trempan_stress PRODUCT_NAME "ee_trempan_stress")
+if(TARGET PeakTremPan)
+    # Sweeps the Trem & Pan processor over every parameter combo and adverse input,
+    # watching for a non-finite or runaway output.
+    juce_add_console_app(ee_trempan_stress PRODUCT_NAME "ee_trempan_stress")
 
-target_sources(ee_trempan_stress PRIVATE TremPanStress.cpp)
+    target_sources(ee_trempan_stress PRIVATE TremPanStress.cpp)
 
-target_compile_definitions(ee_trempan_stress PUBLIC
-    JUCE_WEB_BROWSER=0
-    JUCE_USE_CURL=0
-    JUCE_STANDALONE_APPLICATION=1)
+    target_compile_definitions(ee_trempan_stress PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
 
-target_include_directories(ee_trempan_stress
-    PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-trem-pan/src)
+    target_include_directories(ee_trempan_stress
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-trem-pan/src)
 
-target_link_libraries(ee_trempan_stress
-    PRIVATE PeakTremPan ee_shared
-    PUBLIC juce::juce_recommended_config_flags)
+    target_link_libraries(ee_trempan_stress
+        PRIVATE PeakTremPan ee_shared
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
 
 # Sweeps the FDN reverb over extreme settings and adverse input, watching for a
 # non-finite or runaway tail.
@@ -168,4 +176,97 @@ target_compile_definitions(ee_tape_render PUBLIC
 
 target_link_libraries(ee_tape_render
     PRIVATE ee_dsp juce::juce_audio_formats
+    PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakSpring)
+    # Renders a dry file through the whole spring processor, for voicing it
+    # against a reference recording.
+    juce_add_console_app(ee_spring_match PRODUCT_NAME "ee_spring_match")
+
+    target_sources(ee_spring_match PRIVATE SpringMatch.cpp)
+
+    target_compile_definitions(ee_spring_match PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_spring_match
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-spring/src)
+
+    target_link_libraries(ee_spring_match
+        PRIVATE PeakSpring ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+# Drives silence-then-note through the auto-wah over a spread of settings,
+# looking for a step in the output at the onset - the click that a phase reset
+# or a hard capacitance change in the tank leaves behind.
+juce_add_console_app(ee_wah_stress PRODUCT_NAME "ee_wah_stress")
+
+target_sources(ee_wah_stress PRIVATE WahStress.cpp)
+
+target_compile_definitions(ee_wah_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_wah_stress
+    PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)
+
+# Drives the grain cloud into the reverb it feeds, over the knob range and
+# against adverse input. The grainer alone is feed-forward and cannot latch a
+# non-finite; the network behind it can, so they are stressed joined up.
+juce_add_console_app(ee_grain_stress PRODUCT_NAME "ee_grain_stress")
+
+target_sources(ee_grain_stress PRIVATE GrainStress.cpp)
+
+target_compile_definitions(ee_grain_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_grain_stress
+    PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakGrain)
+    # Drives the real processor the way a host does, so the wiring around the
+    # engine is under test and not just the engine.
+    juce_add_console_app(ee_grain_host PRODUCT_NAME "ee_grain_host")
+
+    target_sources(ee_grain_host PRIVATE GrainHost.cpp)
+
+    target_compile_definitions(ee_grain_host PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_grain_host
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-grain/src)
+
+    target_link_libraries(ee_grain_host
+        PRIVATE PeakGrain ee_shared juce::juce_graphics
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+# Loads an installed Audio Unit and runs signal through it. Tests the path a
+# host actually takes - component scan, bus negotiation, the AU wrapper's own
+# buffer handling - which a test that instantiates the processor class directly
+# never touches.
+juce_add_console_app(ee_au_host PRODUCT_NAME "ee_au_host")
+
+target_sources(ee_au_host PRIVATE AuHost.cpp)
+
+target_compile_definitions(ee_au_host PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_PLUGINHOST_AU=1
+    # So the run loop can be pumped between blocks: without it a plugin's
+    # message-thread work (meters, timers, diagnostics) never runs here.
+    JUCE_MODAL_LOOPS_PERMITTED=1
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_au_host
+    PRIVATE juce::juce_audio_processors juce::juce_audio_utils
     PUBLIC juce::juce_recommended_config_flags)

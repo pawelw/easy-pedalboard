@@ -1,5 +1,7 @@
 #include "ee/ui/Knob.h"
 
+#include "ee/ui/DigitalKnob.h"
+
 namespace ee::ui
 {
 namespace
@@ -13,9 +15,10 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
             const KnobSpec& spec,
             const PedalTheme& theme)
     : apvts (state), paramID (spec.parameterID), captionText (spec.caption),
-      pedalTheme (theme), compact (spec.compact), compactCaption (spec.compactCaption),
+      pedalTheme (theme), capStyle (spec.capStyle.value_or (theme.controlStyle)),
+      compact (spec.compact), compactCaption (spec.compactCaption),
       captionUntilTouched (spec.captionUntilTouched),
-      liveValueText (spec.liveValueText), valueIcon (spec.valueIcon)
+      liveValueText (spec.liveValueText), valueIcon (spec.valueIcon), capIcon (spec.capIcon)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
     slider.setTextBoxStyle (juce::Slider::NoTextBox, false, 0, 0);
@@ -47,6 +50,16 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
     if (compact)
         slider.getProperties().set ("compactKnob", true);
 
+    // A face can hold one cap back in the other style - see KnobSpec::capStyle.
+    if (spec.capStyle.has_value())
+        slider.getProperties().set ("digitalCap", *spec.capStyle == ControlStyle::digital);
+
+    if (spec.endMarker.has_value())
+    {
+        slider.getProperties().set ("endMarker", static_cast<int> (spec.endMarker->getARGB()));
+        slider.getProperties().set ("endMarkerLabel", spec.endMarkerLabel);
+    }
+
     // The wet/dry control shows a small spoon instead of the plain position dot.
     // Keyed off the parameter ID so every pedal with a "mix" knob picks it up
     // without touching its spec.
@@ -68,7 +81,7 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
     slider.onValueChange = [this]
     {
         refreshValueText();
-        if (valueIcon)
+        if (valueIcon || capIcon)
             repaint();               // the glyph tracks the value, not the text
         if (onValueChanged)
             onValueChanged();
@@ -77,6 +90,25 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
 }
 
 Knob::~Knob() = default;
+
+void Knob::paintOverChildren (juce::Graphics& g)
+{
+    // Only the digital cap leaves a clear face to draw on; the analog one is
+    // artwork all the way across.
+    if (! capIcon || capStyle != ControlStyle::digital)
+        return;
+
+    const auto capBounds = slider.getBounds().toFloat().reduced (2.0f);
+    const auto size = compact ? DigitalKnob::Size::small
+                              : DigitalKnob::sizeForDiameter (juce::roundToInt (
+                                    juce::jmin (capBounds.getWidth(), capBounds.getHeight())));
+
+    // Well short of the pointer's ink: the glyph is a hint at what the knob
+    // does, and at full strength it reads as the knob's main event instead.
+    const auto ink = pedalTheme.knobPointer.interpolatedWith (pedalTheme.knobFill, 0.45f);
+
+    capIcon (g, DigitalKnob::faceArea (capBounds, size), ink);
+}
 
 void Knob::refreshValueText()
 {

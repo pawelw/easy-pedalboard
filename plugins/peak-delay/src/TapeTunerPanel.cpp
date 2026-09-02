@@ -2,17 +2,17 @@
 
 namespace
 {
-    constexpr int kRowHeight = 22;
-    constexpr int kNameWidth = 132;
-    constexpr int kPad = 8;
-    constexpr int kReadoutHeight = 150;
-    constexpr int kButtonHeight = 24;
+constexpr int kRowHeight = 22;
+constexpr int kNameWidth = 132;
+constexpr int kPad = 8;
+constexpr int kReadoutHeight = 150;
+constexpr int kButtonHeight = 24;
 
-    juce::String literal (float value, int decimals)
-    {
-        return juce::String (value, decimals) + "f";
-    }
+juce::String literal (float value, int decimals)
+{
+    return juce::String (value, decimals) + "f";
 }
+} // namespace
 
 TapeTunerPanel::TapeTunerPanel (const ee::dsp::TapeTuning& initial, ApplyFn applyFn)
     : tuning (initial), defaults (initial), apply (std::move (applyFn))
@@ -29,14 +29,13 @@ TapeTunerPanel::TapeTunerPanel (const ee::dsp::TapeTuning& initial, ApplyFn appl
         rows.addAndMakeVisible (*name);
         names.push_back (std::move (name));
 
-        auto slider = std::make_unique<juce::Slider> (juce::Slider::LinearHorizontal,
-                                                      juce::Slider::TextBoxRight);
+        auto slider = std::make_unique<juce::Slider> (juce::Slider::LinearHorizontal, juce::Slider::TextBoxRight);
         slider->setRange (entry.minimum, entry.maximum);
         slider->setNumDecimalPlacesToDisplay (entry.decimals);
         slider->setTextBoxStyle (juce::Slider::TextBoxRight, false, 68, 18);
         slider->setValue (tuning.*entry.member, juce::dontSendNotification);
 
-        float ee::dsp::TapeTuning::* member = entry.member;
+        float ee::dsp::TapeTuning::*member = entry.member;
         slider->onValueChange = [this, member, raw = slider.get()]
         {
             tuning.*member = static_cast<float> (raw->getValue());
@@ -51,16 +50,12 @@ TapeTunerPanel::TapeTunerPanel (const ee::dsp::TapeTuning& initial, ApplyFn appl
     readout.setMultiLine (true);
     readout.setReadOnly (true);
     readout.setScrollbarsShown (true);
-    readout.setFont (juce::FontOptions (juce::Font::getDefaultMonospacedFontName(), 10.5f,
-                                        juce::Font::plain));
+    readout.setFont (juce::FontOptions (juce::Font::getDefaultMonospacedFontName(), 10.5f, juce::Font::plain));
     readout.setColour (juce::TextEditor::backgroundColourId, juce::Colour (0xff101216));
     readout.setColour (juce::TextEditor::textColourId, juce::Colour (0xffb9e08a));
     addAndMakeVisible (readout);
 
-    copyButton.onClick = [this]
-    {
-        juce::SystemClipboard::copyTextToClipboard (readout.getText());
-    };
+    copyButton.onClick = [this] { juce::SystemClipboard::copyTextToClipboard (readout.getText()); };
     addAndMakeVisible (copyButton);
 
     resetButton.onClick = [this]
@@ -68,8 +63,7 @@ TapeTunerPanel::TapeTunerPanel (const ee::dsp::TapeTuning& initial, ApplyFn appl
         tuning = defaults;
 
         for (size_t i = 0; i < sliders.size(); ++i)
-            sliders[i]->setValue (tuning.*ee::dsp::kTapeTuningEntries[i].member,
-                                  juce::dontSendNotification);
+            sliders[i]->setValue (tuning.*ee::dsp::kTapeTuningEntries[i].member, juce::dontSendNotification);
 
         pushToProcessor();
         refreshReadout();
@@ -92,8 +86,7 @@ void TapeTunerPanel::refreshReadout()
     juce::String text = "// shared/include/ee/dsp/TapeTuning.h\n";
 
     for (const auto& entry : ee::dsp::kTapeTuningEntries)
-        text << "float " << entry.name << " = "
-             << literal (tuning.*entry.member, entry.decimals) << ";\n";
+        text << "float " << entry.name << " = " << literal (tuning.*entry.member, entry.decimals) << ";\n";
 
     readout.setText (text, false);
 }
@@ -107,8 +100,7 @@ void TapeTunerPanel::paint (juce::Graphics& g)
 
     g.setColour (juce::Colours::white.withAlpha (0.75f));
     g.setFont (juce::FontOptions (12.0f).withStyle ("Bold"));
-    g.drawText ("TAPE TUNER  (dev build)",
-                getLocalBounds().reduced (kPad).removeFromTop (18),
+    g.drawText ("TAPE TUNER  (dev build)", getLocalBounds().reduced (kPad).removeFromTop (18),
                 juce::Justification::centredLeft, false);
 }
 

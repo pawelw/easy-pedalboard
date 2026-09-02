@@ -53,8 +53,8 @@ private:
     ee::dsp::Chorus chorus;
 
     juce::AudioBuffer<float> dryBuffer;
-    juce::AudioBuffer<float> scratchBuffer;   // discarded right channel for a mono output bus
-    juce::SmoothedValue<float> wetMix;        // 1 = processed, 0 = clean dry (bypass)
+    juce::AudioBuffer<float> scratchBuffer; // discarded right channel for a mono output bus
+    juce::SmoothedValue<float> wetMix;      // 1 = processed, 0 = clean dry (bypass)
 
     double sampleRate = 44100.0;
 

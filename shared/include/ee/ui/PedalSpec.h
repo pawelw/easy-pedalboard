@@ -2,6 +2,8 @@
 
 #include <juce_graphics/juce_graphics.h>
 
+#include "ee/ui/PedalTheme.h"
+
 #include <functional>
 #include <optional>
 #include <vector>
@@ -82,6 +84,15 @@ struct KnobSpec
         affects the mouse: automation and typed values pass through untouched. */
     bool centreDetent = false;
 
+    /** Draw this one cap in the other style, against the theme's own. For a
+        control that is not really part of the same machine as the rest of the
+        row - Peak Delay's Tape knob is a tape machine in front of the delay,
+        and keeps its photographic cap on a face of digital ones.
+
+        Unset follows `PedalTheme::controlStyle`, which is what every other
+        control does. */
+    std::optional<ControlStyle> capStyle;
+
     /** Cap diameter for this knob alone, in pixels. 0 keeps the shared size.
         Smaller marks a control out as secondary without moving it off the grid
         or dropping its caption, the way `compact` would. */
@@ -106,6 +117,27 @@ struct KnobSpec
         only while it is dragged. For a control whose number only matters while
         it is being set. */
     bool captionUntilTouched = false;
+
+    /** Marks the top of the travel: the last tick on the scale is drawn fat and
+        in this colour, with `endMarkerLabel` printed just outside it. For a
+        control whose maximum is a different thing rather than more of the same
+        - a Decay that latches the sweep on for ever rather than merely holding
+        it a long time.
+
+        Digital caps only; the analog cap has no tick scale to mark. */
+    std::optional<juce::Colour> endMarker;
+    juce::String endMarkerLabel;
+
+    /** When set, this paints a glyph on the cap itself rather than in a text
+        row - given the clear circle inside the pointer's orbit and the colour
+        to draw in. For a control whose setting is a shape (a filter curve, an
+        LFO waveform): the picture belongs on the knob, where it is always in
+        view, not in a row of text under it.
+
+        Digital caps only. The analog cap is photographic artwork with no clear
+        face to draw on, so this is ignored there - use `valueIcon` for a face
+        in that style. */
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> capIcon;
 };
 
 /** A vertical fader plus the value readout and caption underneath it.
@@ -169,6 +201,12 @@ struct SlideToggleSpec
         edge, rather than leaving the label box's own slack in front of it. For
         a switch that has to line up with a panel below it. */
     bool labelFlushLeft = false;
+
+    /** Put `labelOn` on the left and rest the knob there when the parameter is
+        true, rather than the other way round. For a switch whose reading order
+        puts the set state first - a Sync / MS switch, where "Sync" belongs on
+        the left but is the true state. */
+    bool invertPosition = false;
 };
 
 /** An LFO waveform preview, drawn in a band between the knob row and the pedal
@@ -204,6 +242,14 @@ struct FilterScopeSpec
     std::optional<juce::Colour> baseColour;    // the static curve at Freq
     std::optional<juce::Colour> sweepColour;   // both moving curves
 
+    /** The largest |mod| the modulator can reach - the Range knob on Peak Wah.
+        When set, the whole band the peak can sweep over is shaded behind the
+        curves, so a face shows its range at rest rather than only while
+        something is playing through it. Unset leaves the band undrawn.
+
+        Digital screens only; the analog scope draws its curves alone. */
+    std::function<float()> sweepDepth01;
+
     /** peakHz = baseFreqHz * sweepRatioMax^mod. */
     float sweepRatioMax = 5.0f;
 
@@ -223,6 +269,13 @@ struct ToggleSpec
         the two is set. */
     int afterKnobIndex = 0;
 
+    /** In the default gap placement only: how far above the row's vertical
+        midline the button sits. A second toggle anchored to the same gap picks
+        its own rise to stack with the first rather than overlap it - the gap
+        between two knob columns stays the same width top to bottom, so there is
+        room for more than one button in it, just not side by side. */
+    int gapRise = 26;
+
     /** Colour of the bezel and legend while the button is on. Unset falls back
         to the theme's glow. */
     std::optional<juce::Colour> litColour;
@@ -236,11 +289,38 @@ struct ToggleSpec
         knob. */
     bool centeredBelow = false;
 
+    /** Pixels between the anchor's printed text and the top of the button, for
+        `centeredBelow`. The default tucks it right up under the label, which is
+        what a switch hanging off a knob in a crowded row wants; a face with a
+        row underneath needs more, or the button crowds the caps below it. */
+    int belowGap = 4;
+
     /** Called on a user click of the button (not on automation or host-driven
         state changes), after the toggle state and its parameter have updated.
         Lets a pedal react to a deliberate flip without a parameter listener that
         writes other parameters. */
     std::function<void()> onClick;
+
+    /** When set, the button carries this glyph instead of its caption - given
+        the square inside the bezel and the colour the legend would have used.
+        For a control whose meaning is a picture (a chain link for "follow the
+        host tempo"). Digital faces only; the lit bezel button always prints its
+        caption. */
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> icon;
+
+    /** Draw this one button in the other control style, against the theme's own -
+        the soft `DigitalToggle` on an analog face, or the lit `MiniToggle` on a
+        digital one. For a button borrowed wholesale from another pedal, the way
+        `KnobSpec::capStyle` holds one cap back. Unset follows
+        `PedalTheme::controlStyle`, which is what every other button does. */
+    std::optional<ControlStyle> controlStyle;
+
+    /** When set, the toggle is drawn as a small two-way sliding switch carrying
+        these labels rather than as a lit bezel button. Placement is unchanged -
+        `afterKnobIndex`, `centeredBelow` and the rest still decide where it
+        goes; only the shape differs. `parameterID` and `caption` above still
+        drive it, so leave the spec's own `parameterID` empty. */
+    std::optional<SlideToggleSpec> asSwitch;
 };
 
 /** A compact knob for a secondary row below the main knob block, with an
@@ -273,6 +353,16 @@ struct SubKnobSpec
     std::function<void()> buttonOnClick;
 };
 
+/** One captioned box drawn around a run of `PedalSpec::knobs`. The box is the
+    same rounded outline with the caption let into its top edge that
+    `subKnobGroupCaption` gives the sub-knob row - for a face whose main knobs
+    fall into named sections that only read as sections once they are boxed. */
+struct KnobGroupSpec
+{
+    juce::String caption;
+    int count = 0;
+};
+
 /** Declarative description of a pedal face. Add an effect by writing one of these. */
 struct PedalSpec
 {
@@ -280,6 +370,13 @@ struct PedalSpec
     juce::String tagline;
     juce::String version;
     std::vector<KnobSpec> knobs;
+
+    /** When non-empty, the main knob block is laid out one centred row per group
+        (at `knobDiameter`, ignoring `knobsPerRow` for the row split) with a
+        captioned box around each. The groups consume `knobs` in order; any
+        knobs past the last group form a trailing ungrouped row. Leave empty for
+        the plain `knobsPerRow` grid every other pedal uses. */
+    std::vector<KnobGroupSpec> knobGroups;
 
     /** Small knobs pinned to the top-right, above the main control area. Not
         part of the knob-row layout. */
@@ -303,6 +400,15 @@ struct PedalSpec
         rate, filter type) sit under its headline knobs. */
     std::vector<SubKnobSpec> subKnobs;
 
+    /** Draws a rounded outline around the sub-knob row with this caption let
+        into its top edge, so a cluster of knobs reads as one named section
+        rather than as three more controls. Empty leaves the row bare.
+
+        For a group whose members only mean anything against each other - three
+        weights that mix, a pair that trade off - where the box is what says
+        so. */
+    juce::String subKnobGroupCaption;
+
     std::vector<SliderSpec> sliders;
     std::vector<ToggleSpec> toggles;
 
@@ -320,9 +426,11 @@ struct PedalSpec
     int slideToggleRise = 0;
 
     /** Vertical gap between knob rows. 0 keeps the shared column gap; a larger
-        value spreads the rows apart, which (because the block stays centred in
-        its area) lifts the top row and drops the bottom one by half of the
-        extra each. For a face with something sitting between the rows. */
+        value spreads the rows apart and a smaller one pulls them together,
+        which (because the block stays centred in its area) moves the top and
+        bottom rows by half of the difference each. Spread a face that wants
+        something sitting between its rows; tighten one whose rows are two
+        clusters that should read as blocks. */
     int knobRowGap = 0;
 
     /** Lift the whole knob block this many pixels above where centring would put
@@ -378,6 +486,11 @@ struct PedalSpec
         left of the row for whatever else lives down there - a Mono/Stereo
         switch. Only meaningful with `titleBesideLogo`. */
     bool titleRowAlignRight = false;
+
+    /** Pull that right-aligned pair this many pixels back in from the right
+        margin. For a face whose name would otherwise sit hard against the edge
+        the controls above it keep clear of. */
+    int titleRowRightInset = 0;
 
     /** Height is shared across pedals so they line up side by side on a rack;
         only the width follows the number of knobs in a row - use

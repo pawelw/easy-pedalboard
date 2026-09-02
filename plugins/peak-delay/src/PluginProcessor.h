@@ -5,8 +5,7 @@
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
 
-class PeakDelayProcessor : public juce::AudioProcessor,
-                             private juce::AudioProcessorValueTreeState::Listener
+class PeakDelayProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     PeakDelayProcessor();
@@ -37,11 +36,21 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
+    /** Text under a Time knob: the division label ("1/8") normally, or that
+        division's length at the current host tempo in milliseconds when the
+        ms button is on. Re-derives the label rather than reading it off the
+        parameter, so it is correct however this is called. */
+    juce::String timeReadout (const std::atomic<float>* timeParam) const;
+
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     void parameterChanged (const juce::String& parameterID, float newValue) override;
     void mirrorDivision (const juce::String& from, const juce::String& to);
+
+    /** Host tempo, clamped the same way processBlock's own lookup is. Safe off
+        the audio thread - this is only ever called from the editor. */
+    double currentBpm() const;
 
     ee::dsp::TapeCharacter tape;
     ee::dsp::TapeDelay delay;
@@ -49,6 +58,7 @@ private:
     std::atomic<float>* leftTimeParam = nullptr;
     std::atomic<float>* rightTimeParam = nullptr;
     std::atomic<float>* syncParam = nullptr;
+    std::atomic<float>* timeUnitParam = nullptr;
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* mixParam = nullptr;
     std::atomic<float>* modParam = nullptr;
