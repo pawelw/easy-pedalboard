@@ -3,6 +3,8 @@
 #include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
+#include "BinaryData.h"
+
 #if EE_SHIMMER_TUNER
 #include "ShimmerTunerPanel.h"
 #endif
@@ -233,7 +235,24 @@ juce::AudioProcessorEditor* PeakReverbProcessor::createEditor()
     spec.knobsPerRow = 2;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
 
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::blue());
+    // The blue palette, but the four large caps are fixed silver discs in a
+    // brushed-silver bezel rather than the plain photographic cap, a sky fills
+    // the face behind the frame, and the lettering is black to read on it.
+    auto theme = ee::ui::PedalTheme::blue();
+    theme.controlStyle = ee::ui::ControlStyle::analogSilver;
+    theme.backgroundImage = juce::ImageCache::getFromMemory (BinaryData::reverbbg_jpeg, BinaryData::reverbbg_jpegSize);
+    theme.textPrimary = juce::Colours::black;
+    theme.textSecondary = juce::Colour (0xff3a3a3a);
+    theme.title = juce::Colours::black;
+    theme.logoTint = juce::Colours::black;
+
+    // Swap the value arc and its background track: the line takes the pale
+    // colour, the track takes the blue.
+    const auto arcLine = theme.knobTrack;
+    theme.knobTrack = theme.accent;
+    theme.accent = arcLine;
+
+    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, theme);
 
 #if EE_SHIMMER_TUNER
     // Flip to true to bring the panel back without reconfiguring CMake.

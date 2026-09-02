@@ -31,8 +31,10 @@ public:
 
     ~DigitalToggle() override;
 
-    /** A glyph gets a square; a caption gets a wider box to print in. */
-    static constexpr int iconSize = 36;
+    /** A glyph gets a square; a caption gets a wider box to print in. Sized down
+        from the original 36 by 30% - a glyph reads fine small, and it leaves
+        room for a second button in the same gap. */
+    static constexpr int iconSize = 25;
     static constexpr int captionWidth = 52;
     static constexpr int captionHeight = 28;
 

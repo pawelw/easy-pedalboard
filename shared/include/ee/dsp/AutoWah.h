@@ -2,6 +2,7 @@
 
 #include "AutoWahConfig.h"
 #include "Lfo.h"
+#include "OnsetGate.h"
 
 #include <chowdsp_wdf/chowdsp_wdf.h>
 
@@ -35,9 +36,9 @@ namespace ee::dsp
          Decay-release follower; the top of the Decay knob ramps a floor under
          it, the bottom crossfades to a one-shot that lasts kOneShotCycles of an
          LFO cycle. Two more detectors make it playable: a dynamics follower
-         lifts the LFO rate up to kRateEnvDepth on a hard hit, and a transient
-         detector resets the LFO phase to 0 on every new note so each pluck
-         kicks the sweep from the top;
+         lifts the LFO rate up to kRateEnvDepth on a hard hit, and an onset
+         detector (ee::dsp::OnsetGate, ported from Cycfi Q) resets the LFO phase
+         to 0 on every new note so each pluck kicks the sweep from the top;
       2. LFO - ee::dsp::lfoValue at the Shape morph; the Stereo switch offsets
          the right channel by half a cycle (anti-phase);
       3. cutoff = fBase * kSweepRatioMax^(Range * gate * lfo), per channel,
@@ -69,12 +70,15 @@ public:
         aF0  = timeCoeff (autowah::kFreqSmoothingMs * 0.001f, fs);
         aDynAtt = timeCoeff (autowah::kDynAttackMs * 0.001f, fs);
         aDynRel = timeCoeff (autowah::kDynReleaseMs * 0.001f, fs);
-        aOnSlow = timeCoeff (autowah::kOnsetSlowMs * 0.001f, fs);
         aParam  = timeCoeff (autowah::kParamSmoothMs * 0.001f, fs);
         aOneShotRel = timeCoeff (autowah::kOneShotReleaseMs * 0.001f, fs);
         aGlide = timeCoeff (autowah::kRetriggerGlideMs * 0.001f, fs);
         updateDecay();
         updateType();
+
+        onsetGate.prepare (fs, autowah::kOnsetEnvDecayMs, autowah::kOnsetAttackWidthMs,
+                           autowah::kOnsetRiseRatioOn, autowah::kOnsetRiseRatioOff,
+                           autowah::kOnsetMinRise, autowah::kOnsetLockoutMs);
 
         for (auto& tank : tanks)
             tank.prepare (fs);
@@ -89,8 +93,7 @@ public:
         lfoGlideL = 0.0f;
         lfoGlideR = 0.0f;
         dynEnv = 0.0f;
-        onSlow = 0.0f;
-        armed = true;
+        onsetGate.reset();
         lastGate = 0.0f;
         lastModL = lastModR = 0.0f;
         primed = false;
@@ -226,18 +229,13 @@ public:
             const float played = juce::jlimit (0.0f, 1.0f, follow * autowah::kGateSensitivity);
             const float followerGate = juce::jmax (played, decayLatch);
 
-            // Playing-dynamics follower: drives the rate lift and re-arms the
-            // per-note retrigger.
+            // Playing-dynamics follower: drives the LFO rate lift on a hard hit.
             const float aDyn = rect > dynEnv ? aDynAtt : aDynRel;
             dynEnv += aDyn * (rect - dynEnv);
             const float dyn = juce::jlimit (0.0f, 1.0f, dynEnv * autowah::kDynSensitivity);
 
-            onSlow += aOnSlow * (follow - onSlow);
-            const float onset = follow - onSlow;
-            if (armed && onset > autowah::kOnsetOn)
+            if (onsetGate (follow))
             {
-                armed = false;
-
                 // Snapping the phase steps the LFO, and the gate is already
                 // open by the time this fires - so bank the size of the step
                 // and hand it back over kRetriggerGlideMs. The modulation is
@@ -253,10 +251,6 @@ public:
                 lfoPhase = 0.0;                     // start the sweep from the top
                 wrapsSinceRetrigger = 0;
                 oneShotGate = 1.0f;
-            }
-            else if (! armed && onset < autowah::kOnsetOff)
-            {
-                armed = true;
             }
 
             // One-shot: hold full until the LFO has run kOneShotCycles of a
@@ -456,11 +450,11 @@ private:
 
     // Gate + playing-dynamics detectors.
     float envHpZ = 0.0f, follow = 0.0f;
-    float dynEnv = 0.0f, onSlow = 0.0f;
-    bool armed = true;
+    float dynEnv = 0.0f;
+    OnsetGate onsetGate;
     float lastGate = 0.0f, lastModL = 0.0f, lastModR = 0.0f;
     float aHp = 0.0f, aAtt = 0.0f, aRel = 0.0f;
-    float aDynAtt = 0.0f, aDynRel = 0.0f, aOnSlow = 0.0f;
+    float aDynAtt = 0.0f, aDynRel = 0.0f;
 
     // LFO + one-shot.
     double lfoPhase = 0.0;

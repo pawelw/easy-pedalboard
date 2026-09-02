@@ -3,4 +3,5 @@ peak_add_plugin(PeakWah
     PRODUCT    "Peak Wah"
     BUNDLE     com.synthpeak.peakwah
     CATEGORIES "Fx Filter"
+    LIBS       juce::juce_dsp
 )

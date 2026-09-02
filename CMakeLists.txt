@@ -14,6 +14,30 @@ if(APPLE)
     option(EE_UNIVERSAL_BINARY "Build arm64 + x86_64 universal binaries" OFF)
     if(EE_UNIVERSAL_BINARY)
         set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
+    elseif(NOT CMAKE_OSX_ARCHITECTURES)
+        # Build for the machine, not for whatever architecture cmake happens to
+        # be running as.
+        #
+        # An x86_64 cmake on Apple Silicon - easy to end up with, since an Intel
+        # Homebrew in /usr/local takes precedence over /opt/homebrew on a default
+        # PATH - runs under Rosetta and defaults every target to x86_64. The
+        # build succeeds, the plugins install, and then a natively-running DAW
+        # cannot load a single one of them: Logic and Live report only that the
+        # component could not be opened, with nothing about why.
+        #
+        # sysctl reports the hardware whether or not this process is translated,
+        # so it is the one thing here that cannot be fooled by the toolchain.
+        execute_process(COMMAND sysctl -n hw.optional.arm64
+                        OUTPUT_VARIABLE ee_host_is_arm64
+                        OUTPUT_STRIP_TRAILING_WHITESPACE
+                        ERROR_QUIET)
+
+        if(ee_host_is_arm64 STREQUAL "1" AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+            set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+            message(STATUS
+                "Apple Silicon host with an ${CMAKE_SYSTEM_PROCESSOR} cmake: targeting arm64 anyway, "
+                "so the plugins load in a native host")
+        endif()
     endif()
 endif()
 
@@ -76,6 +100,9 @@ juce_add_binary_data(ee_assets SOURCES
     assets/images/peak-logo.png
     assets/images/knob.png
     assets/images/plate.png
+    assets/images/silver-knob.png
+    assets/images/silver-knob-base-v1.png
+    assets/images/reverb-bg.jpeg
     assets/images/spoon.png)
 set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
@@ -88,7 +115,8 @@ juce_add_binary_data(ee_tape_assets
     HEADER_NAME TapeAssets.h
     SOURCES
         assets/audio/tape-noise.wav
-        assets/images/tape.png)
+        assets/images/tape.png
+        assets/images/tape-bg.png)
 set_target_properties(ee_tape_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)
@@ -100,7 +128,7 @@ add_subdirectory(shared)
 # ---------------------------------------------------------------------------
 set(EE_ALL_PLUGINS
     peak-reverb peak-spring peak-delay peak-eq peak-trem-pan peak-chorus
-    peak-phase peak-overdrive peak-wah peak-tape)
+    peak-phase peak-overdrive peak-wah peak-tape peak-grain)
 
 set(EE_PLUGINS "all" CACHE STRING
     "Semicolon-separated pedals to build, or \"all\". e.g. -DEE_PLUGINS=peak-wah;peak-tape")
@@ -112,6 +140,8 @@ option(EE_LTO "Link with link-time optimisation (slow; for release builds)" ON)
 # to anyone.
 option(EE_SHIMMER_TUNER "Add the shimmer tuning panel to Peak Reverb (development only)" OFF)
 option(EE_TAPE_TUNER "Add the tape tuning panel to Peak Delay (development only)" OFF)
+option(EE_GRAIN_TUNER "Add the grain tuning panel to Peak Grain (development only)" OFF)
+option(EE_GRAIN_TRACE "Log Peak Grain's in/out levels when its output runs away (development only)" OFF)
 
 include(cmake/AddPeakPlugin.cmake)
 

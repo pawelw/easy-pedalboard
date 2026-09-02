@@ -4,7 +4,9 @@ A granular scatterer with a plain reverb behind it. Our simplified take on the
 Eventide "Grainer / Stutter": seven knobs instead of thirty, no LFO section, no
 envelope triggering, no shimmer.
 
-Status: **plan only, nothing built yet.**
+Status: **built.** `plugins/peak-grain` compiles, the face renders, and
+`scripts/dev-check.sh peak-grain` is green. What follows is the design as
+built; the three places reality differed from the plan are noted in §9.
 
 ---
 
@@ -159,7 +161,8 @@ leave the wet path open so the existing tail rings out instead of being chopped.
   Nothing catches this automatically.
 - `tests/CMakeLists.txt`, `tests/DspTests.cpp` — new suite entries.
 - `README.md` — user-facing entry for the pedal.
-- `CLAUDE.md` — "Nine JUCE audio plugins" → ten; add to the layout notes.
+- `CLAUDE.md` — "Ten JUCE audio plugins" → eleven, plus the new test binary.
+- `scripts/dev-check.sh` — run `ee_grain_stress` with the rest.
 
 ---
 
@@ -229,7 +232,8 @@ row 2:  Verb   Decay     Mix                <- output stage
   the output block if it reads better.
 - Optionally give `verb` / `decay` a smaller `diameter` to mark them as a
   secondary section without dropping their captions.
-- Theme: pick one not already used by another pedal.
+- Theme: `PedalTheme::pink()`, which was unused. (`gold()` was the first pick
+  and turned out to be a sage green too close to Peak Tape's.)
 - No side panel. `ShimmerTunerPanel` is peak-reverb's and stays there.
 
 ---
@@ -262,3 +266,26 @@ explicit opt-in, not a change to the shared constant.
    interval weights, jitter, the two reverb constants.
 6. Mirror into `tests/UiSnapshot.cpp`, add `ee_grain_stress`, run
    `scripts/dev-check.sh peak-grain`, update `README.md` and `CLAUDE.md`.
+
+---
+
+## 9. Where the build differed from the plan
+
+**The tail estimate was wrong.** `Spray + Size` undercounts it. A backwards
+grain starts one Spray back and then walks *further* back by as much source as
+it spans, which at the top of the interval table is several times its own
+length, and only then plays out. The bound is `Spray + Size x (maxRate + 1)`.
+`testGrainerTailStops` caught this on the first run.
+
+**`ee::dsp::config` is one flat namespace** shared by every engine, and Chorus
+already owned `kDefaultMixPct`. Peak Grain's is `kDefaultGrainMixPct`. Worth
+knowing before adding the next `*Config.h`.
+
+**The ragged last row is centred** by `PedalEditor::Face::resized` already — the
+spacer `KnobSpec` fallback was not needed.
+
+Everything else landed as planned, including the two things flagged as likely to
+bite: the spawn-offset constraint that keeps forward grains behind the write
+head (`testGrainerReadsStayBehindTheWriteHead`, worst jump 4.9 % of peak) and
+the overlap normalisation that stops Density doubling as a volume knob
+(`testGrainerLevelHoldsAcrossDensity`, 0.2 dB across the useful range).

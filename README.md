@@ -426,6 +426,86 @@ size, per-type make-up, grit, output filtering, knob defaults - lives in
 `shared/include/ee/dsp/AutoWahConfig.h` (and the LFO rate range in
 `plugins/peak-wah/src/RateMap.h`); retune there and rebuild.
 
+### Peak Grain
+
+A granular scatterer into a plain plate. Mono or stereo in, stereo out. Eight
+knobs plus a boxed Pitch section of three:
+
+| Knob        | Range          | What it does                                                              |
+| ----------- | -------------- | ------------------------------------------------------------------------ |
+| **Size**    | 20 - 500 ms    | Grain length. Under ~40 ms the fragments stop being recognisable and turn into a metallic buzz at the spawn rate; over ~300 ms you hear whole notes come back |
+| **Density** | 1 - 40 /s      | Grains spawned per second. Sparse and countable at the bottom, a continuous cloud at the top. It is not a volume knob - the engine divides out the overlap |
+| **Decay**   | 50 ms - 8 s    | How long the cloud lasts. It sets how far back into the recording a grain may be drawn from, and fades a grain by how far across that window its source sits - so the fade runs over the whole setting. At 8 s the cloud is still going seven seconds after the input stopped |
+| **Reverse** | 0 - 100 %      | Share of grains that play backwards. Forward-only is much more legible; past halfway the phrase stops being followable at all |
+| **Stereo**  | 0 - 100 %      | How far apart the grains are placed. They alternate - left, right, left, right - rather than landing at random, which clusters and reads as the image wandering instead of as a stereo effect. 0 puts them all in the centre |
+| **Detune**  | 0 - 100 ct     | Random detune on every grain, either way. **Off by default**: at anything above zero every grain plays at a slightly different pitch, which reads as an unstable cloud rather than as the note that was played. A few cents thickens it; wound up it is a chorus of slightly wrong copies |
+| **Reverb**  | 0 - 100 %      | One knob for the plate behind the cloud: it opens the mix and lengthens the decay together, which is the only way the two are ever actually used. The decay comes in over the top half of the travel, so the bottom half is a short room getting louder |
+| **Mix**     | 0 - 100 %      | Blend of dry signal and the whole wet path, tail included                |
+
+**Pitch** is three knobs in a box rather than one control, because they are
+weights against each other rather than positions on a scale:
+
+| Knob         | What it does                                                          |
+| ------------ | --------------------------------------------------------------------- |
+| **Low**      | How often a grain lands an octave down                                |
+| **Unison**   | How often it plays at pitch                                           |
+| **High**     | How often it lands an octave up                                       |
+
+Any two at once is a chord rather than a transposition, which is the whole
+reason they are three knobs. All three at zero is treated as unison, so a face
+with no pitch dialled in still makes a sound. Octaves only, by default - the
+interval tables in `GrainerTuning.h` will take fifths or two octaves if you want
+them, but anything other than an octave stops the cloud sounding like the note
+that was played.
+
+With Detune off and Low and High at zero, every grain plays at exactly the
+pitch it was recorded at. Pitch movement in this pedal is always something you
+asked for.
+
+The input is summed to mono and recorded continuously into a four-and-a-half
+second circular buffer. On a jittered timer the engine spawns a **grain**: a
+Hann-windowed voice that reads that buffer from a random point in the past, at a
+random rate (which is its pitch), in a random direction, placed at a random pan
+position, at a level set by how far across the Decay window its source sits. Up
+to 32 of them overlap, and the sum is a cloud of fragments of what was just
+played.
+
+Most of those fragments are the **attack**. A plucked string is mostly its first
+fifty milliseconds, and a cloud built from the sustain alone loses whatever made
+the note identifiable - it fades away with the string. An onset detector
+(`ee::dsp::OnsetGate`, the same one Peak Wah retriggers from) marks where each
+attack landed in the recording, and 70 % of grains are drawn from there rather
+than from a random point in the window. Those grains are exempt from the age
+fade, so the cloud stays present for as long as the note is ringing instead of
+dying with it. The share is `attackShare` in the tuning header. Reads are
+cubic-Hermite, the same interpolator the delay lines use - linear would take the
+top octave off every backwards grain.
+
+The Hann window is what makes a grain unable to click: it is exactly zero at
+both ends whatever the grain's length or content. The age fade is measured in
+real seconds rather than as a fraction of the Decay window, which is what makes
+Decay a level as well as a length - a short window holds only recent, loud
+fragments, while a long one reaches back to material it has already faded most
+of the way out. A grain is anchored at unity against the newest source the
+current settings can reach, so it can never be louder than the dry signal
+however the knobs are set.
+
+Everything about the character that is not on a knob - the interval tables the
+Low and High groups draw from, how ragged the spawn timing is, the output trim -
+lives in `shared/include/ee/dsp/GrainerTuning.h`. Build with
+`-DEE_GRAIN_TUNER=ON` to get a side panel that drives all of it live and prints
+the header lines for whatever you land on. `GrainerConfig.h` keeps the
+structural side: the knob ranges, the recording buffer and the voice count.
+
+Behind the cloud is `ee::dsp::FdnReverb`, the same sixteen-line network as Peak
+Reverb, run plain: no shimmer, and its resonance and low cut pinned in the
+tuning header rather than put on the face. It is fed the grains and nothing
+else. Bypass leaves the wet path open, so the cloud and its tail ring out
+instead of being chopped off.
+
+The face is `PedalTheme::onyx()` - the soft-UI style at night, a near-black card
+with black caps, and one pale blue-grey carrying every reading on it.
+
 ### Peak Tape
 
 A tape machine as a pedal. Mono or stereo, in and out. Five knobs and a switch

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Configure, build and verify in one command, with one exit code.
 #
-#   scripts/dev-check.sh                 # all nine pedals, Standalone only
+#   scripts/dev-check.sh                 # all eleven pedals, Standalone only
 #   scripts/dev-check.sh peak-wah        # just one pedal - much quicker
 #
 # Uses the "fast" preset: no VST3/AU, no LTO, nothing installed into ~/Library.
@@ -63,6 +63,7 @@ run ee_tape_stress
 run ee_reverb_stress
 run ee_trempan_stress
 run ee_wah_stress
+run ee_grain_stress
 
 if [[ $status -eq 0 ]]; then
     echo "==> OK"

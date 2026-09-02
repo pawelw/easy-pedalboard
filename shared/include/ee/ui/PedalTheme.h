@@ -12,11 +12,17 @@ namespace ee::ui
     `analog` is the original hardware look: photographic knob caps, lit bezel
     buttons, a value arc around every rotary. `digital` is the flat soft-UI
     look: white knobs ringed by a scale of ticks, pill switches and a pale
-    recessed display. A theme picks one and every control follows it - the two
-    are not mixed on one face. */
+    recessed display. A theme picks one and every control follows it - the
+    families are not mixed on one face.
+
+    `analogSilver` is `analog` with one thing swapped: the knob is a black cap
+    recessed in a static brushed-silver bezel ring, keeping the same centre
+    plate, lights and value arc. Everything else on the face - buttons, the
+    filter scope, compact caps - draws exactly as it does under `analog`. */
 enum class ControlStyle
 {
     analog,
+    analogSilver,
     digital
 };
 
@@ -74,6 +80,20 @@ struct PedalTheme
     /** Ink on that recess - the display's grid and axis captions. */
     juce::Colour recessInk       { 0xff8b8f98 };
 
+    /** How far down the cap the rim light fades, in pixels. 0 uses the shared
+        proportional default (an eighth of the cap), which suits a large pale
+        cap; a fixed few pixels reads as a lit edge rather than as a lit dome,
+        which is what a dark cap wants. Only read when `controlStyle` is
+        `digital`. */
+    float capRimLightHeight = 0.0f;
+
+    /** Whether a digital knob's cap is ringed in `knobBody`. True keeps the
+        hard outline (Peak Wah's white cap, which needs it for contrast against
+        a near-white face); false drops the ring and lets the cap's own shadow
+        and rim light carry the edge instead - for a cap that is not near-white
+        and can afford to. */
+    bool knobCapBorder = true;
+
     juce::Colour ledOn           { 0xffc8e06a };
     juce::Colour ledOff          { 0xff35352f };
     juce::Colour switchBody      { 0xff454540 };
@@ -100,6 +120,12 @@ struct PedalTheme
         with a transparent background keeps its ring.
     */
     juce::Image backgroundImage;
+
+    /** When `backgroundImage` is set, stretch it across the whole face and draw
+        no frame, border or recess shadow on top - the art carries the pedal's
+        outline itself. */
+    bool backgroundImageBleed = false;
+
     juce::Image knobImage;
     juce::Image knobFilmstrip;
     int knobFilmstripFrames = 0;
@@ -129,6 +155,7 @@ struct PedalTheme
     static PedalTheme charcoal();
     static PedalTheme white();
     static PedalTheme moss();
+    static PedalTheme onyx();
 
     /** First installed name from the list, or empty for the JUCE default. */
     static juce::String pickTypeface (const juce::StringArray& preferred);

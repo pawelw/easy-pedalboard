@@ -282,7 +282,18 @@ juce::AudioProcessorEditor* PeakTapeProcessor::createEditor()
     spec.titleImageHeight = 60;
     spec.titleImageTint = juce::Colours::white;
 
-    return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::green());
+    // A full-bleed photographic face: the artwork fills the whole pedal and
+    // supplies its own edge, so the shared frame and border are switched off.
+    auto theme = ee::ui::PedalTheme::green();
+    theme.backgroundImage = juce::ImageCache::getFromMemory (TapeAssets::tapebg_png, TapeAssets::tapebg_pngSize);
+    theme.backgroundImageBleed = true;
+
+    // The analog cap's black outer collar has almost no contrast against this
+    // dark panel, so the knob loses its edge - swap it for the brushed-silver
+    // bezel ring, the same fix Peak Reverb uses on its own dark-ish face.
+    theme.controlStyle = ee::ui::ControlStyle::analogSilver;
+
+    return new ee::ui::PedalEditor (*this, apvts, spec, theme);
 }
 
 void PeakTapeProcessor::getStateInformation (juce::MemoryBlock& destData)

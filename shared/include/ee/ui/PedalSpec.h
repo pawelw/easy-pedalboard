@@ -269,6 +269,13 @@ struct ToggleSpec
         the two is set. */
     int afterKnobIndex = 0;
 
+    /** In the default gap placement only: how far above the row's vertical
+        midline the button sits. A second toggle anchored to the same gap picks
+        its own rise to stack with the first rather than overlap it - the gap
+        between two knob columns stays the same width top to bottom, so there is
+        room for more than one button in it, just not side by side. */
+    int gapRise = 26;
+
     /** Colour of the bezel and legend while the button is on. Unset falls back
         to the theme's glow. */
     std::optional<juce::Colour> litColour;
@@ -300,6 +307,13 @@ struct ToggleSpec
         host tempo"). Digital faces only; the lit bezel button always prints its
         caption. */
     std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> icon;
+
+    /** Draw this one button in the other control style, against the theme's own -
+        the soft `DigitalToggle` on an analog face, or the lit `MiniToggle` on a
+        digital one. For a button borrowed wholesale from another pedal, the way
+        `KnobSpec::capStyle` holds one cap back. Unset follows
+        `PedalTheme::controlStyle`, which is what every other button does. */
+    std::optional<ControlStyle> controlStyle;
 
     /** When set, the toggle is drawn as a small two-way sliding switch carrying
         these labels rather than as a lit bezel button. Placement is unchanged -
@@ -368,6 +382,15 @@ struct PedalSpec
         button beneath it. For a pedal whose secondary controls (LFO shape,
         rate, filter type) sit under its headline knobs. */
     std::vector<SubKnobSpec> subKnobs;
+
+    /** Draws a rounded outline around the sub-knob row with this caption let
+        into its top edge, so a cluster of knobs reads as one named section
+        rather than as three more controls. Empty leaves the row bare.
+
+        For a group whose members only mean anything against each other - three
+        weights that mix, a pair that trade off - where the box is what says
+        so. */
+    juce::String subKnobGroupCaption;
 
     std::vector<SliderSpec> sliders;
     std::vector<ToggleSpec> toggles;

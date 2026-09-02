@@ -15,6 +15,7 @@ using ee::plugin::percentToText;
 constexpr const char* kLeftTimeID = "ltime";
 constexpr const char* kRightTimeID = "rtime";
 constexpr const char* kSyncID = "sync";
+constexpr const char* kTimeUnitID = "timeunit"; // false = note division text, true = ms
 constexpr const char* kFeedbackID = "fb";
 constexpr const char* kMixID = "mix";
 constexpr const char* kModID = "mod";
@@ -66,6 +67,20 @@ void drawLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour 
             capsule, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), place);
     }
 }
+
+/** A plain "ms" wordmark, for the button that swaps the Time knobs' reading
+    from a note division to that division's length in milliseconds. Text
+    rather than a glyph - there is no obvious picture for "milliseconds" the
+    way a chain link stands for "linked together". The bezel hands us a square;
+    the wordmark is wider than it is tall, so it borrows the width it needs from
+    the rest of the button and is lettered close to the square's height. */
+void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const auto box = area.withSizeKeepingCentre (area.getWidth() * 1.6f, area.getHeight());
+    g.setColour (colour);
+    g.setFont (juce::Font (juce::FontOptions (area.getHeight() * 0.95f)).boldened());
+    g.drawText ("ms", box, juce::Justification::centred, false);
+}
 } // namespace
 
 PeakDelayProcessor::PeakDelayProcessor()
@@ -77,6 +92,7 @@ PeakDelayProcessor::PeakDelayProcessor()
     leftTimeParam = apvts.getRawParameterValue (kLeftTimeID);
     rightTimeParam = apvts.getRawParameterValue (kRightTimeID);
     syncParam = apvts.getRawParameterValue (kSyncID);
+    timeUnitParam = apvts.getRawParameterValue (kTimeUnitID);
     feedbackParam = apvts.getRawParameterValue (kFeedbackID);
     mixParam = apvts.getRawParameterValue (kMixID);
     modParam = apvts.getRawParameterValue (kModID);
@@ -109,6 +125,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kSyncID, 1 }, "Sync L/R", true));
 
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kTimeUnitID, 1 }, "Time Unit", false));
+
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kFeedbackID, 1 }, "Feedback", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
@@ -128,6 +146,31 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
 
     return layout;
+}
+
+double PeakDelayProcessor::currentBpm() const
+{
+    double bpm = 120.0;
+
+    if (auto* playHead = getPlayHead())
+        if (const auto position = playHead->getPosition())
+            if (const auto hostBpm = position->getBpm())
+                bpm = *hostBpm;
+
+    return juce::jlimit (20.0, 300.0, bpm);
+}
+
+juce::String PeakDelayProcessor::timeReadout (const std::atomic<float>* timeParam) const
+{
+    const int index = timeParam != nullptr ? static_cast<int> (timeParam->load()) : kDefaultDivision;
+    const auto divisions = ee::dsp::tempoDivisionLabels();
+    const int clamped = juce::jlimit (0, divisions.size() - 1, index);
+
+    if (timeUnitParam == nullptr || timeUnitParam->load() < 0.5f)
+        return divisions[clamped];
+
+    const float ms = divisionSeconds (clamped, currentBpm()) * 1000.0f;
+    return juce::String (juce::roundToInt (ms)) + " ms";
 }
 
 void PeakDelayProcessor::mirrorDivision (const juce::String& from, const juce::String& to)
@@ -242,14 +285,7 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     // The time knobs are note values, so a host that reports no tempo still has
     // to land somewhere musical.
-    double bpm = 120.0;
-
-    if (auto* playHead = getPlayHead())
-        if (const auto position = playHead->getPosition())
-            if (const auto hostBpm = position->getBpm())
-                bpm = *hostBpm;
-
-    bpm = juce::jlimit (20.0, 300.0, bpm);
+    const double bpm = currentBpm();
 
     delay.setDelaySeconds (divisionSeconds (static_cast<int> (leftTimeParam->load()), bpm),
                            divisionSeconds (static_cast<int> (rightTimeParam->load()), bpm));
@@ -337,16 +373,27 @@ juce::AudioProcessorEditor* PeakDelayProcessor::createEditor()
     auto tape = ee::ui::KnobSpec { kTapeID, "Tape", tapeCap, tapeBorder, tapeCap };
     tape.capStyle = ee::ui::ControlStyle::analog;
 
-    spec.knobs = { { kLeftTimeID, "Left Time" },
-                   { kRightTimeID, "Right Time" },
+    spec.knobs = { { .parameterID = kLeftTimeID,
+                     .caption = "Left Time",
+                     .liveValueText = [this] { return timeReadout (leftTimeParam); } },
+                   { .parameterID = kRightTimeID,
+                     .caption = "Right Time",
+                     .liveValueText = [this] { return timeReadout (rightTimeParam); } },
                    { kFeedbackID, "Feedback" },
                    { kMixID, "Mix" },
                    { kModID, "Mod" },
                    tape };
 
-    // Sync carries a chain link rather than a word: lit in the face's ink while
-    // the delay follows the host, pale grey while it does not.
-    spec.toggles = { { .parameterID = kSyncID, .caption = "Sync", .afterKnobIndex = 0, .icon = drawLinkIcon } };
+    // Two small buttons share the gap between Left and Right Time, one above
+    // the other: Sync carries a chain link, lit in the face's ink while the two
+    // knobs are held together and pale grey while they move independently; ms
+    // swaps both knobs' reading from a note division to that division's length
+    // at the host tempo, in milliseconds - the toggle itself is silent, only the
+    // text changes, so it needs no `onClick` of its own to react to.
+    spec.toggles = {
+        { .parameterID = kSyncID, .caption = "Sync", .afterKnobIndex = 0, .icon = drawLinkIcon },
+        { .parameterID = kTimeUnitID, .caption = "ms", .afterKnobIndex = 0, .gapRise = -6, .icon = drawMsIcon },
+    };
 
     spec.knobsPerRow = 3;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow); // same column spacing as Peak Reverb

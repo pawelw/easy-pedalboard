@@ -1,0 +1,204 @@
+// Drives the whole Peak Grain chain - the grain cloud into the reverb it feeds
+// - over its knob range against adverse input, hunting for a non-finite or a
+// runaway output.
+//
+// The grainer on its own is feed-forward and cannot latch a NaN. The reverb
+// behind it can, which is the point of testing them joined up rather than
+// separately: whatever the cloud does at the extremes has to stay something the
+// network can survive being fed.
+
+#include <juce_audio_basics/juce_audio_basics.h>
+
+#include <cmath>
+#include <cstdio>
+#include <limits>
+#include <random>
+#include <vector>
+
+#include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/Grainer.h"
+#include "ee/dsp/GrainerConfig.h"
+#include "ee/dsp/GrainerTuning.h"
+
+namespace
+{
+constexpr double kSampleRate = 48000.0;
+constexpr int kBlock = 256;
+
+int failures = 0;
+
+void check (bool condition, const juce::String& what)
+{
+    if (! condition)
+    {
+        std::printf ("  FAIL  %s\n", what.toRawUTF8());
+        ++failures;
+    }
+}
+
+/** What kind of unpleasantness goes in. */
+enum class Input
+{
+    noise,      // full scale, the loudest thing the pedal will ever see
+    dc,         // a stuck offset, which a granular buffer will happily recirculate
+    impulses,   // sparse full-scale spikes, the worst case for a window edge
+    poison      // one NaN, to prove the guard on the way into the buffer holds
+};
+
+const char* nameOf (Input input)
+{
+    switch (input)
+    {
+        case Input::noise:    return "noise";
+        case Input::dc:       return "DC";
+        case Input::impulses: return "impulses";
+        case Input::poison:   return "NaN burst";
+    }
+    return "?";
+}
+
+struct Result
+{
+    float peak = 0.0f;
+    bool finite = true;
+};
+
+Result run (float sizeMs, float densityHz, float decayMs, float pitch, float verbDecaySeconds, float verb, Input input)
+{
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.reset();
+    grainer.setSizeMs (sizeMs);
+    grainer.setDensityHz (densityHz);
+    grainer.setDecayMs (decayMs);
+    grainer.setPitchMix (juce::jmax (0.0f, -pitch), 1.0f - std::abs (pitch), juce::jmax (0.0f, pitch));
+
+    ee::dsp::FdnReverb reverb;
+    reverb.prepare (kSampleRate);
+    reverb.reset();
+    reverb.setDecayTime (verbDecaySeconds);
+    reverb.setResonance (ee::dsp::GrainerTuning{}.verbResonance);
+    reverb.setShimmer (ee::dsp::config::kVerbShimmer);
+    reverb.setLowCut (ee::dsp::GrainerTuning{}.verbLowCutHz);
+
+    const float grainGain = std::cos (verb * juce::MathConstants<float>::halfPi);
+    const float verbGain = std::sin (verb * juce::MathConstants<float>::halfPi) * 1.1f;
+
+    std::mt19937 rng (4242);
+    std::uniform_real_distribution<float> noise (-1.0f, 1.0f);
+
+    std::vector<float> inL (kBlock), inR (kBlock), mono (kBlock), wetL (kBlock), wetR (kBlock);
+
+    Result result;
+    int n = 0;
+
+    // Two seconds of input, then two of silence so the tail is measured too -
+    // that is where a latched non-finite would show itself.
+    const int drivenBlocks = static_cast<int> (kSampleRate * 2.0 / kBlock);
+    const int totalBlocks = drivenBlocks * 2;
+
+    for (int b = 0; b < totalBlocks; ++b)
+    {
+        const bool driven = b < drivenBlocks;
+
+        for (int i = 0; i < kBlock; ++i, ++n)
+        {
+            float s = 0.0f;
+
+            if (driven)
+            {
+                switch (input)
+                {
+                    case Input::noise:    s = noise (rng); break;
+                    case Input::dc:       s = 1.0f; break;
+                    case Input::impulses: s = (n % 4096) == 0 ? 1.0f : 0.0f; break;
+                    case Input::poison:
+                        s = (n % 8192) == 0 ? std::numeric_limits<float>::quiet_NaN() : noise (rng);
+                        break;
+                }
+            }
+
+            inL[static_cast<size_t> (i)] = s;
+            inR[static_cast<size_t> (i)] = s;
+        }
+
+        grainer.process (inL.data(), inR.data(), inL.data(), inR.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+            mono[static_cast<size_t> (i)] = 0.5f * (inL[static_cast<size_t> (i)] + inR[static_cast<size_t> (i)]);
+
+        reverb.process (mono.data(), wetL.data(), wetR.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const float l = inL[static_cast<size_t> (i)] * grainGain + wetL[static_cast<size_t> (i)] * verbGain;
+            const float r = inR[static_cast<size_t> (i)] * grainGain + wetR[static_cast<size_t> (i)] * verbGain;
+
+            if (! std::isfinite (l) || ! std::isfinite (r))
+                result.finite = false;
+
+            result.peak = juce::jmax (result.peak, juce::jmax (std::abs (l), std::abs (r)));
+        }
+    }
+
+    return result;
+}
+} // namespace
+
+int main()
+{
+    namespace cfg = ee::dsp::config;
+
+    std::printf ("Peak Grain stress: grain cloud into the reverb it feeds\n\n");
+
+    const float sizes[] = { cfg::kMinGrainMs, 120.0f, cfg::kMaxGrainMs };
+    const float densities[] = { cfg::kMinDensityHz, 12.0f, cfg::kMaxDensityHz };
+    const float grainDecays[] = { cfg::kMinDecayMs, 400.0f, cfg::kMaxDecayMs };
+    const float pitches[] = { -1.0f, 0.0f, 1.0f };
+    const float decays[] = { ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay };
+    const float verbs[] = { 0.0f, 0.5f, 1.0f };
+    const Input inputs[] = { Input::noise, Input::dc, Input::impulses, Input::poison };
+
+    for (Input input : inputs)
+    {
+        float worstPeak = 0.0f;
+        bool finite = true;
+
+        juce::String worstAt;
+
+        for (float size : sizes)
+            for (float density : densities)
+                for (float grainDecay : grainDecays)
+                    for (float pitch : pitches)
+                        for (float decay : decays)
+                            for (float verb : verbs)
+                            {
+                                const auto result = run (size, density, grainDecay, pitch, decay, verb, input);
+
+                                finite = finite && result.finite;
+
+                                if (result.peak > worstPeak)
+                                {
+                                    worstPeak = result.peak;
+                                    worstAt = "size " + juce::String (size, 0) + " ms, density "
+                                              + juce::String (density, 0) + " /s, decay "
+                                              + juce::String (grainDecay, 0) + " ms, pitch " + juce::String (pitch, 1)
+                                              + ", verb decay " + juce::String (decay, 1) + " s, verb "
+                                              + juce::String (verb, 2);
+                                }
+                            }
+
+        std::printf ("%-10s worst peak %.3g\n", nameOf (input), worstPeak);
+        std::printf ("           at %s\n", worstAt.toRawUTF8());
+
+        check (finite, juce::String (nameOf (input)) + " produced a non-finite sample");
+        check (worstPeak < 8.0f,
+               juce::String (nameOf (input)) + " ran away (peak " + juce::String (worstPeak, 2) + ")");
+    }
+
+    std::printf ("\n%s (%d failure%s)\n",
+                 failures == 0 ? "GRAIN STRESS PASSED" : "GRAIN STRESS FAILED",
+                 failures, failures == 1 ? "" : "s");
+
+    return failures == 0 ? 0 : 1;
+}

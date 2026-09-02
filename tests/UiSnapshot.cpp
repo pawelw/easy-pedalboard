@@ -3,10 +3,12 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/Lfo.h"
 #include "ee/dsp/TempoDivision.h"
 #include "ee/ui/PedalEditor.h"
 
+#include "BinaryData.h"
 #include "TapeAssets.h"
 
 #include <cmath>
@@ -131,6 +133,7 @@ public:
         layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "rtime", 1 }, "Right Time",
                                                                   divisions, 5));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "sync", 1 }, "Sync L/R", true));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "timeunit", 1 }, "Time Unit", false));
 
         for (const auto* id : { "fb", "mix", "mod", "tape" })
             layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -173,6 +176,16 @@ void drawDelayLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Co
     }
 }
 
+/** Mirrors drawMsIcon in plugins/peak-delay and plugins/peak-trem-pan (both
+    carry the same "ms" wordmark on their tempo/unit toggle). */
+void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const auto box = area.withSizeKeepingCentre (area.getWidth() * 1.6f, area.getHeight());
+    g.setColour (colour);
+    g.setFont (juce::Font (juce::FontOptions (area.getHeight() * 0.95f)).boldened());
+    g.drawText ("ms", box, juce::Justification::centred, false);
+}
+
 ee::ui::PedalSpec makeDelaySpec()
 {
     ee::ui::PedalSpec spec;
@@ -188,14 +201,19 @@ ee::ui::PedalSpec makeDelaySpec()
     tape.capStyle = ee::ui::ControlStyle::analog;
 
     spec.knobs = {
-        { "ltime", "Left Time" }, { "rtime", "Right Time" }, { "fb", "Feedback" },
-        { "mix", "Mix" },         { "mod", "Mod" },          tape
+        { .parameterID = "ltime", .caption = "Left Time" },
+        { .parameterID = "rtime", .caption = "Right Time" },
+        { "fb", "Feedback" },
+        { "mix", "Mix" },
+        { "mod", "Mod" },
+        tape,
     };
 
-    spec.toggles = { { .parameterID = "sync",
-                       .caption = "Sync",
-                       .afterKnobIndex = 0,
-                       .icon = drawDelayLinkIcon } };
+    spec.toggles = {
+        { .parameterID = "sync", .caption = "Sync", .afterKnobIndex = 0, .icon = drawDelayLinkIcon },
+        { .parameterID = "timeunit", .caption = "ms", .afterKnobIndex = 0, .gapRise = -6,
+          .icon = drawMsIcon },
+    };
     spec.knobsPerRow = 3;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
     return spec;
@@ -336,8 +354,9 @@ ee::ui::PedalSpec makeTremPanSpec()
         { .parameterID = "sync",
           .caption = "Sync",
           .afterKnobIndex = 1,
-          .litColour = juce::Colour (0xffffaa33),
-          .centeredAbove = true },
+          .centeredAbove = true,
+          .icon = drawMsIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
     };
     spec.waveDisplay =
         ee::ui::WaveDisplaySpec { .amountID = "amount", .rateID = "rate", .shapeID = "shape", .modeID = "mode" };
@@ -390,6 +409,108 @@ ee::ui::PedalSpec makeChorusSpec()
     spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" }, { "phase", "Phase" }, { "mix", "Mix" } };
     spec.knobsPerRow = 2;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+    return spec;
+}
+
+/** Minimal host-free processor carrying the same parameters as Peak Grain. */
+class GrainSnapshotProcessor : public SnapshotProcessor
+{
+public:
+    GrainSnapshotProcessor() : SnapshotProcessor (createGrainLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createGrainLayout()
+    {
+        namespace cfg = ee::dsp::config;
+
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto ms = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return juce::String (juce::roundToInt (v)) + " ms"; });
+
+        auto sizeRange = juce::NormalisableRange<float> (cfg::kMinGrainMs, cfg::kMaxGrainMs);
+        sizeRange.setSkewForCentre (cfg::kGrainSkewMs);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "size", 1 }, "Size", sizeRange,
+                                                                 cfg::kDefaultGrainMs, ms));
+
+        auto densityRange = juce::NormalisableRange<float> (cfg::kMinDensityHz, cfg::kMaxDensityHz);
+        densityRange.setSkewForCentre (cfg::kDensitySkewHz);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "density", 1 }, "Density", densityRange, cfg::kDefaultDensityHz,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (v, v < 10.0f ? 1 : 0) + " /s"; })));
+
+        auto decayRange = juce::NormalisableRange<float> (cfg::kMinDecayMs, cfg::kMaxDecayMs);
+        decayRange.setSkewForCentre (cfg::kDecaySkewMs);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "decay", 1 }, "Decay", decayRange, cfg::kDefaultDecayMs,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int)
+                {
+                    if (v >= 1000.0f)
+                        return juce::String (v * 0.001f, 2) + " s";
+                    return juce::String (juce::roundToInt (v)) + " ms";
+                })));
+
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto percentAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "reverse", 1 }, "Reverse",
+                                                                 percent, cfg::kDefaultReversePct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "stereo", 1 }, "Stereo", percent,
+                                                                 cfg::kDefaultStereoPct, percentAttributes));
+
+        auto detuneRange = juce::NormalisableRange<float> (cfg::kMinDetuneCents, cfg::kMaxDetuneCents);
+        detuneRange.setSkewForCentre (cfg::kDetuneSkewCents);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "detune", 1 }, "Detune", detuneRange, cfg::kDefaultDetuneCents,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (juce::roundToInt (v)) + " ct"; })));
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "plow", 1 }, "Pitch Low", percent,
+                                                                 cfg::kDefaultPitchLowPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "puni", 1 }, "Pitch Unison",
+                                                                 percent, cfg::kDefaultPitchUnisonPct,
+                                                                 percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "phigh", 1 }, "Pitch High",
+                                                                 percent, cfg::kDefaultPitchHighPct,
+                                                                 percentAttributes));
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "reverb", 1 }, "Reverb", percent,
+                                                                 cfg::kDefaultReverbPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mix", 1 }, "Mix", percent,
+                                                                 cfg::kDefaultGrainMixPct, percentAttributes));
+
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
+
+        return layout;
+    }
+};
+
+ee::ui::PedalSpec makeGrainSpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Peak Grain";
+    spec.tagline = "Granular scatterer into a plate";
+    spec.version = "v0.10.0";
+    spec.knobs = {
+        { "size", "Size" },   { "density", "Density" }, { "decay", "Decay" },  { "reverse", "Reverse" },
+        { "stereo", "Stereo" }, { "detune", "Detune" }, { "reverb", "Reverb" }, { "mix", "Mix" },
+    };
+    spec.subKnobs = {
+        { .parameterID = "plow", .caption = "Low" },
+        { .parameterID = "puni", .caption = "Unison" },
+        { .parameterID = "phigh", .caption = "High" },
+    };
+    spec.subKnobGroupCaption = "Pitch";
+    spec.knobsPerRow = 4;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+
+    // Eleven controls is more than the shared face carries. The main caps come
+    // down from the default so two rows of four and the boxed pitch row all
+    // fit, and the face is taller to give that third row somewhere to be.
+    spec.knobDiameter = 92;
+    spec.height = 600;
     return spec;
 }
 
@@ -733,7 +854,22 @@ void writePng (juce::Component& editor, const juce::File& outputFile)
 void render (const juce::File& outputFile)
 {
     SnapshotProcessor processor;
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), ee::ui::PedalTheme::blue());
+    // Mirror PeakReverbProcessor::createEditor: blue palette, silver-bezel caps,
+    // sky background, black lettering.
+    auto theme = ee::ui::PedalTheme::blue();
+    theme.controlStyle = ee::ui::ControlStyle::analogSilver;
+    theme.backgroundImage =
+        juce::ImageCache::getFromMemory (BinaryData::reverbbg_jpeg, BinaryData::reverbbg_jpegSize);
+    theme.textPrimary = juce::Colours::black;
+    theme.textSecondary = juce::Colour (0xff3a3a3a);
+    theme.title = juce::Colours::black;
+    theme.logoTint = juce::Colours::black;
+
+    // Swap the value arc and its background track.
+    const auto arcLine = theme.knobTrack;
+    theme.knobTrack = theme.accent;
+    theme.accent = arcLine;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), theme);
 
 #if EE_SHIMMER_TUNER
     editor.setSidePanel (
@@ -806,10 +942,23 @@ void renderWah (const juce::File& outputFile)
     writePng (editor, outputFile);
 }
 
+void renderGrain (const juce::File& outputFile)
+{
+    GrainSnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeGrainSpec(), ee::ui::PedalTheme::onyx());
+    writePng (editor, outputFile);
+}
+
 void renderTape (const juce::File& outputFile)
 {
     TapeSnapshotProcessor processor;
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeTapeSpec(), ee::ui::PedalTheme::green());
+    // Mirror PeakTapeProcessor::createEditor: green palette, full-bleed artwork
+    // that replaces the frame and border, silver-bezel caps for contrast.
+    auto theme = ee::ui::PedalTheme::green();
+    theme.backgroundImage = juce::ImageCache::getFromMemory (TapeAssets::tapebg_png, TapeAssets::tapebg_pngSize);
+    theme.backgroundImageBleed = true;
+    theme.controlStyle = ee::ui::ControlStyle::analogSilver;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeTapeSpec(), theme);
     writePng (editor, outputFile);
 }
 } // namespace
@@ -820,16 +969,23 @@ int main (int argc, char* argv[])
 
     const juce::File dir = argc > 1 ? juce::File (juce::String (argv[1])) : juce::File::getCurrentWorkingDirectory();
 
-    render (dir.getChildFile ("pedal.png"));
-    renderDelay (dir.getChildFile ("delay.png"));
-    renderEq (dir.getChildFile ("eq.png"));
-    renderTremPan (dir.getChildFile ("trempan.png"));
-    renderChorus (dir.getChildFile ("chorus.png"));
-    renderOverdrive (dir.getChildFile ("overdrive.png"));
-    renderPhase (dir.getChildFile ("phase.png"));
-    renderSpring (dir.getChildFile ("spring.png"));
-    renderWah (dir.getChildFile ("wah.png"));
-    renderTape (dir.getChildFile ("tape.png"));
+    // Optional second arg: render just one face (substring match on the name
+    // below), so an iteration loop does not redraw all eleven.
+    const juce::String only = argc > 2 ? juce::String (argv[2]).toLowerCase() : juce::String();
+    const auto want = [&only] (juce::StringRef name)
+    { return only.isEmpty() || juce::String (name).containsIgnoreCase (only); };
+
+    if (want ("reverb pedal")) render (dir.getChildFile ("pedal.png"));
+    if (want ("delay")) renderDelay (dir.getChildFile ("delay.png"));
+    if (want ("eq")) renderEq (dir.getChildFile ("eq.png"));
+    if (want ("trempan")) renderTremPan (dir.getChildFile ("trempan.png"));
+    if (want ("chorus")) renderChorus (dir.getChildFile ("chorus.png"));
+    if (want ("overdrive")) renderOverdrive (dir.getChildFile ("overdrive.png"));
+    if (want ("phase")) renderPhase (dir.getChildFile ("phase.png"));
+    if (want ("spring")) renderSpring (dir.getChildFile ("spring.png"));
+    if (want ("wah")) renderWah (dir.getChildFile ("wah.png"));
+    if (want ("tape")) renderTape (dir.getChildFile ("tape.png"));
+    if (want ("grain")) renderGrain (dir.getChildFile ("grain.png"));
 
     return 0;
 }

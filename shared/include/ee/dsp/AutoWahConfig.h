@@ -71,20 +71,28 @@ constexpr float kStereoOffset = 0.5f;
 //
 //   * RATE - the LFO runs up to kRateEnvDepth faster at a hard hit, so the
 //     wobble breathes with your picking;
-//   * RETRIGGER - how far the gate follower runs ahead of a slow trailing
-//     average of it (kOnsetSlowMs) is the transient content; a pick makes it
-//     spike. Above kOnsetOn it resets the LFO phase to 0 so the sweep kicks
-//     from the top of the wave; it re-arms once the spike falls back under
-//     kOnsetOff. Built on the peak-following gate rather than the raw signal,
-//     so a low note's own waveform can't false-trigger it.
+//   * RETRIGGER - ee::dsp::OnsetGate, ported from Cycfi Q's onset_gate. It is
+//     fed the smoothed gate follower; a peak follower (kOnsetEnvDecayMs release)
+//     holds it through the ripple and its rise over a fixed kOnsetAttackWidthMs
+//     window, taken as a fraction of the pre-attack level, is the attack. Grow
+//     by kOnsetRiseRatioOn of where it started and it resets the LFO phase to 0
+//     so the sweep kicks from the top of the wave; it re-arms once that ratio
+//     falls back under kOnsetRiseRatioOff, and cannot fire again for
+//     kOnsetLockoutMs so one bloom-y hard pluck kicks the sweep once. The ratio
+//     (rather than an absolute rise) is what keeps a quiet note as detectable as
+//     a loud one; kOnsetMinRise is an absolute floor so noise near silence
+//     can't ratio its way in.
 constexpr float kDynAttackMs   = 5.0f;
 constexpr float kDynReleaseMs  = 180.0f;
 constexpr float kDynSensitivity = 3.0f;
 constexpr float kRateEnvDepth  = 0.15f;
 
-constexpr float kOnsetSlowMs = 150.0f;
-constexpr float kOnsetOn     = 0.030f;   // gate running this far ahead of its average arms a retrigger
-constexpr float kOnsetOff    = 0.010f;   // falling back below this re-arms it
+constexpr float kOnsetEnvDecayMs    = 120.0f;  // release of the onset peak follower
+constexpr float kOnsetAttackWidthMs = 15.0f;   // window the envelope rise is measured over
+constexpr float kOnsetRiseRatioOn   = 0.55f;   // grow by this fraction of the pre-attack level to fire
+constexpr float kOnsetRiseRatioOff  = 0.15f;   // ratio falling back below this re-arms it
+constexpr float kOnsetMinRise       = 0.005f;  // absolute rise the window must also clear (~ -46 dB)
+constexpr float kOnsetLockoutMs     = 90.0f;   // minimum time between retriggers
 
 // A retrigger snaps the LFO phase, which steps its output - and by the time the
 // onset detector fires, the gate is already open, so that step lands straight on
@@ -139,15 +147,16 @@ constexpr int   kControlBlock = 16;
 // Per-tap make-up, crossfaded in dB with the taps themselves so the level holds
 // both as Type is turned and as Mix is turned up: a band-pass tap throws away
 // everything off the peak and needs the biggest lift; the low- and high-pass
-// taps keep a whole half of the spectrum and need less. Set so that a wet-only
-// path measures near the dry level at every position of the Type knob (see
-// "the wet path stays near the dry level" in the DSP tests) - turning Mix up
-// should change the voicing, not the volume. kGritDrive is a tanh soft-clip -
-// unity at normal levels, only rounding the hottest peaks so the make-up can't
-// run away. Then a DC blocker and a mild low-pass.
-constexpr float kMakeupDbLP = 9.0f;
-constexpr float kMakeupDbBP = 20.0f;
-constexpr float kMakeupDbHP = 5.0f;
+// taps keep a whole half of the spectrum and need less. These are half of what
+// full wet-vs-dry RMS parity asks for: matching the level exactly made turning
+// Mix up feel like a volume boost, since the wet peak sits on top of the dry
+// rather than replacing it. Half the compensation lands the blend where the ear
+// expects it. kGritDrive is a tanh soft-clip - unity at normal levels, only
+// rounding the hottest peaks so the make-up can't run away. Then a DC blocker
+// and a mild low-pass.
+constexpr float kMakeupDbLP = 4.5f;
+constexpr float kMakeupDbBP = 10.0f;
+constexpr float kMakeupDbHP = 2.5f;
 constexpr float kGritDrive  = 0.9f;
 constexpr float kDcBlockerHz = 12.0f;
 constexpr float kOutputLowpassHz = 8000.0f;

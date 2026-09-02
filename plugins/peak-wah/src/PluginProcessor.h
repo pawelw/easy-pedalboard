@@ -1,6 +1,9 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
+
+#include <array>
 
 #include "ee/dsp/AutoWah.h"
 
@@ -72,6 +75,14 @@ private:
     std::atomic<float>* onParam = nullptr;
 
     ee::dsp::AutoWah wah;
+
+    // A fixed 2.5 kHz hi-cut across the whole output, always on: the top octave
+    // of the resonant sweep can get fizzy. Applied here by the processor - after
+    // the wet/dry mix, before the bypass crossfade, so a bypassed plugin is
+    // still bit-clean - and it is the same 12 dB/oct roll-off Peak EQ's hi-cut
+    // gives (juce::dsp::IIR::Coefficients::makeLowPass).
+    static constexpr float kHiCutHz = 2500.0f;
+    std::array<juce::dsp::IIR::Filter<float>, kMaxChannels> hiCut;
 
     juce::AudioBuffer<float> dryBuffer;
     juce::SmoothedValue<float> wetMix; // 1 = processed, 0 = clean dry (bypass)

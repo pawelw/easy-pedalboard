@@ -62,6 +62,20 @@ float tremoloMakeupGain (float depth01)
     const float d = juce::jlimit (0.0f, 1.0f, depth01);
     return 1.0f / std::sqrt (1.0f - d + d * d / 3.0f);
 }
+
+/** A plain "ms" wordmark for the tempo-sync button, the same glyph Peak Delay
+    carries on its unit toggle. The Rate knob reads a note division when synced
+    and a period in milliseconds when free, so the button that flips between the
+    two is marked for the free reading rather than lettered "SYNC". The bezel
+    hands us a square; the wordmark is wider than it is tall, so it borrows the
+    width it needs and is lettered close to the square's height. */
+void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const auto box = area.withSizeKeepingCentre (area.getWidth() * 1.6f, area.getHeight());
+    g.setColour (colour);
+    g.setFont (juce::Font (juce::FontOptions (area.getHeight() * 0.95f)).boldened());
+    g.drawText ("ms", box, juce::Justification::centred, false);
+}
 } // namespace
 
 PeakTremPanProcessor::PeakTremPanProcessor()
@@ -453,15 +467,18 @@ juce::AudioProcessorEditor* PeakTremPanProcessor::createEditor()
         .parameterID = kModeID, .labelOff = "Tremolo", .labelOn = "Panning", .accent = cream
     };
 
-    // Tempo-sync toggle centred above the Rate knob, reusing Peak Delay's
-    // MiniToggle and its amber lit colour.
+    // Tempo-sync toggle centred above the Rate knob. It is Peak Delay's own
+    // soft-UI button, borrowed onto this analog face: a rounded-square bezel
+    // carrying the "ms" wordmark rather than a lettered "SYNC", inked while
+    // synced and pale while the Rate knob is running free in milliseconds.
     spec.toggles = {
         { .parameterID = kSyncID,
           .caption = "Sync",
           .afterKnobIndex = 1,
-          .litColour = juce::Colour (0xffffaa33),
           .centeredAbove = true,
-          .onClick = [this] { onSyncToggled(); } },
+          .onClick = [this] { onSyncToggled(); },
+          .icon = drawMsIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
     };
 
     spec.waveDisplay =

@@ -10,12 +10,12 @@ namespace
         cell radius `R`, so a cap is the same drawing at any diameter. */
     struct Metrics
     {
-        float capRadius;     // white face, out to the middle of the ring
-        float ringWidth;     // the charcoal ring around it
-        float tickInner;     // the scale, outside the ring
+        float capRadius; // white face, out to the middle of the ring
+        float ringWidth; // the charcoal ring around it
+        float tickInner; // the scale, outside the ring
         float tickOuter;
         float tickWidth;
-        int   tickCount;
+        int tickCount;
         float pointerReach;  // centre of the pointer, as a fraction of capRadius
         float pointerLength; // ... and its size, likewise
         float pointerWidth;
@@ -33,7 +33,7 @@ namespace
     {
         return { centre.x + radius * std::sin (angle), centre.y - radius * std::cos (angle) };
     }
-}
+} // namespace
 
 juce::Rectangle<float> DigitalKnob::faceArea (juce::Rectangle<float> bounds, Size size)
 {
@@ -96,8 +96,7 @@ void DigitalKnob::draw (juce::Graphics& g,
                 continue;
 
             g.setColour (t <= lit + 1.0e-4f ? litColour : dullColour);
-            g.drawLine (juce::Line<float> (polar (centre, R * m.tickInner, a),
-                                           polar (centre, R * m.tickOuter, a)),
+            g.drawLine (juce::Line<float> (polar (centre, R * m.tickInner, a), polar (centre, R * m.tickOuter, a)),
                         tickW);
         }
 
@@ -116,8 +115,7 @@ void DigitalKnob::draw (juce::Graphics& g,
                 const float h = juce::jmax (10.0f, R * 0.468f);
 
                 g.setFont (theme.bodyFont (h).boldened());
-                g.drawText (endMarker.label,
-                            juce::Rectangle<float> (h * 2.0f, h * 1.4f).withCentre (at),
+                g.drawText (endMarker.label, juce::Rectangle<float> (h * 2.0f, h * 1.4f).withCentre (at),
                             juce::Justification::centred, false);
             }
         }
@@ -125,17 +123,32 @@ void DigitalKnob::draw (juce::Graphics& g,
 
     //== the cap ============================================================
     // A drop shadow down and to the right is what lifts the cap off the face;
-    // there is no outline doing that job.
+    // there is no outline doing that job on a borderless cap, and even a ringed
+    // one wants it for the same reason the reference does - shadow, not a hard
+    // line, is what separates a raised disc from its face.
     {
         juce::Path capPath;
         capPath.addEllipse (disc (capR));
+
+        // A borderless cap has no outline to carry its silhouette, so it leans
+        // on the shadow harder: a soft, nearly symmetric pass right under the
+        // rim first - what a border would have drawn as a hard edge, drawn
+        // instead as a very faint halo all the way round - then the same two
+        // directional passes a ringed cap gets. A bordered cap skips the ambient
+        // pass; its ring already gives the rim definition.
+        if (! theme.knobCapBorder)
+        {
+            juce::DropShadow (theme.softShadow.withMultipliedAlpha (0.4f),
+                              juce::roundToInt (juce::jmax (1.5f, capR * 0.05f)),
+                              { 0, juce::roundToInt (juce::jmax (1.0f, capR * 0.015f)) })
+                .drawForPath (g, capPath);
+        }
 
         // Two passes: a tight one that darkens the ground right under the rim,
         // and a wide one that carries well below the cap. One pass deep enough
         // to read from a distance smears the rim; this keeps the edge crisp and
         // still sits the knob on the face.
-        juce::DropShadow (theme.softShadow,
-                          juce::roundToInt (juce::jmax (3.0f, capR * 0.24f)),
+        juce::DropShadow (theme.softShadow, juce::roundToInt (juce::jmax (3.0f, capR * 0.24f)),
                           { 0, juce::roundToInt (juce::jmax (2.0f, capR * 0.10f)) })
             .drawForPath (g, capPath);
 
@@ -148,21 +161,50 @@ void DigitalKnob::draw (juce::Graphics& g,
     {
         const auto face = disc (capR - ringW * 0.5f);
 
-        juce::ColourGradient fill (theme.softHighlight, face.getCentreX(), face.getY(),
-                                   theme.knobFill.darker (0.045f), face.getCentreX(), face.getBottom(),
+        // Flat enough to read as one plastic surface, not a dome shading all
+        // the way down - the rim light below is what says which way is up. Only
+        // a whisper of gradient, top to bottom.
+        juce::ColourGradient fill (theme.knobFill.interpolatedWith (theme.softHighlight, 0.35f), face.getCentreX(),
+                                   face.getY(), theme.knobFill.darker (0.03f), face.getCentreX(), face.getBottom(),
                                    false);
         g.setGradientFill (fill);
         g.fillEllipse (face);
 
-        // The ring straddles `capR`, so the face and the ring share an edge and
-        // no face colour leaks past it.
-        g.setColour (theme.knobBody.withMultipliedAlpha (dim));
-        g.drawEllipse (disc (capR - ringW * 0.5f), ringW);
+        if (theme.knobCapBorder)
+        {
+            // The ring straddles `capR`, so the face and the ring share an edge
+            // and no face colour leaks past it.
+            g.setColour (theme.knobBody.withMultipliedAlpha (dim));
+            g.drawEllipse (disc (capR - ringW * 0.5f), ringW);
+        }
 
-        // A hairline of the face's own light just inside the ring, so the cap
-        // reads as a dome rather than a flat disc in a hoop.
-        g.setColour (theme.softHighlight.withAlpha (0.55f));
-        g.drawEllipse (disc (capR - ringW * 1.35f), juce::jmax (0.8f, R * 0.008f));
+        // The rim light: a thin highlight right at the top edge of the cap,
+        // screen-space - not tied to `angle`, so it stays fixed at 12 o'clock
+        // exactly however far the knob is turned, the way the pointer does not.
+        // The same top-down-light technique the photographic cap uses
+        // (drawImageKnob's "whisper of light"), pulled in tight: it fades out
+        // within a sliver of the cap rather than a third of it, so it reads as
+        // a bright edge - closer to a border than a lit dome.
+        {
+            juce::Graphics::ScopedSaveState clip (g);
+            juce::Path clipPath;
+            clipPath.addEllipse (face);
+            g.reduceClipRegion (clipPath);
+
+            const auto litColour = theme.softHighlight.interpolatedWith (juce::Colours::white, 0.35f);
+
+            // A theme may pin the fade to a fixed number of pixels instead of a
+            // fraction of the cap. A dark cap wants the light gone within a few
+            // pixels of the top edge; a pale one carries a longer fade.
+            const float sheenHeight = theme.capRimLightHeight > 0.0f ? theme.capRimLightHeight
+                                                                     : face.getHeight() * 0.12f;
+
+            juce::ColourGradient sheen (litColour.withAlpha (0.6f * dim), face.getCentreX(), face.getY(),
+                                        litColour.withAlpha (0.0f), face.getCentreX(),
+                                        face.getY() + sheenHeight, false);
+            g.setGradientFill (sheen);
+            g.fillEllipse (face);
+        }
     }
 
     //== the pointer ========================================================

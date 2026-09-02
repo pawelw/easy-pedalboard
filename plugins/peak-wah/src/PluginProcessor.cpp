@@ -200,8 +200,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakWahProcessor::createPara
                                                              ee::dsp::autowah::kDefaultShapePct, pctAttr));
 
     // One normalised knob; the Sync switch decides what it means, and each mode's
-    // last position is remembered. Up = faster in both modes. The host-facing text
-    // assumes the synced reading; the editor overrides it live.
+    // last position is remembered. Down = fastest, up = slowest in both modes
+    // (Peak Wah runs this knob the other way up - see RateMap.h). The host-facing
+    // text assumes the synced reading; the editor overrides it live.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kTimeID, 1 }, "Time", juce::NormalisableRange<float> (0.0f, 1.0f, 0.0001f), 0.5f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (
@@ -228,6 +229,15 @@ void PeakWahProcessor::prepareToPlay (double newSampleRate, int maximumExpectedS
 
     wah.prepare (newSampleRate);
     wah.reset();
+
+    const juce::dsp::ProcessSpec spec { newSampleRate, static_cast<juce::uint32> (maxBlock), 1 };
+    const auto hiCutCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass (newSampleRate, kHiCutHz);
+    for (auto& filter : hiCut)
+    {
+        filter.prepare (spec);
+        filter.coefficients = hiCutCoeffs;
+        filter.reset();
+    }
 
     dryBuffer.setSize (kMaxChannels, maxBlock, false, false, true);
 
@@ -369,6 +379,17 @@ void PeakWahProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
     // Publish the LFO state for the editor's response scope.
     lfoModLUi.store (wah.modL(), std::memory_order_relaxed);
     lfoModRUi.store (wah.modR(), std::memory_order_relaxed);
+
+    // Fixed 2.5 kHz hi-cut on the wet signal, always on and last in the chain.
+    // It runs every block, bypassed or not, so re-engaging never starts it cold.
+    for (int ch = 0; ch < numCh; ++ch)
+    {
+        auto& filter = hiCut[static_cast<size_t> (ch)];
+        float* data = buffer.getWritePointer (ch);
+        for (int i = 0; i < numSamples; ++i)
+            data[i] = filter.processSample (data[i]);
+        filter.snapToZero();
+    }
 
     wetMix.setTargetValue (engaged ? 1.0f : 0.0f);
     ee::plugin::crossfadeToDry (buffer, dryBuffer, wetMix, numCh, numSamples);

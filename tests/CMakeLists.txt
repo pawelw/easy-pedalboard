@@ -213,3 +213,60 @@ target_compile_definitions(ee_wah_stress PUBLIC
 target_link_libraries(ee_wah_stress
     PRIVATE ee_dsp
     PUBLIC juce::juce_recommended_config_flags)
+
+# Drives the grain cloud into the reverb it feeds, over the knob range and
+# against adverse input. The grainer alone is feed-forward and cannot latch a
+# non-finite; the network behind it can, so they are stressed joined up.
+juce_add_console_app(ee_grain_stress PRODUCT_NAME "ee_grain_stress")
+
+target_sources(ee_grain_stress PRIVATE GrainStress.cpp)
+
+target_compile_definitions(ee_grain_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_grain_stress
+    PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakGrain)
+    # Drives the real processor the way a host does, so the wiring around the
+    # engine is under test and not just the engine.
+    juce_add_console_app(ee_grain_host PRODUCT_NAME "ee_grain_host")
+
+    target_sources(ee_grain_host PRIVATE GrainHost.cpp)
+
+    target_compile_definitions(ee_grain_host PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_grain_host
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-grain/src)
+
+    target_link_libraries(ee_grain_host
+        PRIVATE PeakGrain ee_shared juce::juce_graphics
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+# Loads an installed Audio Unit and runs signal through it. Tests the path a
+# host actually takes - component scan, bus negotiation, the AU wrapper's own
+# buffer handling - which a test that instantiates the processor class directly
+# never touches.
+juce_add_console_app(ee_au_host PRODUCT_NAME "ee_au_host")
+
+target_sources(ee_au_host PRIVATE AuHost.cpp)
+
+target_compile_definitions(ee_au_host PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_PLUGINHOST_AU=1
+    # So the run loop can be pumped between blocks: without it a plugin's
+    # message-thread work (meters, timers, diagnostics) never runs here.
+    JUCE_MODAL_LOOPS_PERMITTED=1
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_au_host
+    PRIVATE juce::juce_audio_processors juce::juce_audio_utils
+    PUBLIC juce::juce_recommended_config_flags)

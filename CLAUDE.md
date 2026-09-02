@@ -1,6 +1,6 @@
 # Synth Peak — working notes
 
-Ten JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
+Eleven JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
 framework. `README.md` is the user-facing manual (what each pedal does, how to
 install it); this file is the map for working on the code.
 
@@ -15,13 +15,13 @@ cmake --build build-fast
 ```
 
 Measured cold: **5m07s**, versus **25m39s** for the full `dev` build. Both numbers
-are without ccache. Drop `-DEE_PLUGINS` to get all ten pedals, still Standalone
+are without ccache. Drop `-DEE_PLUGINS` to get all eleven pedals, still Standalone
 only. Standalone is a real app you can launch and hear — you do not need a host.
 
 The full build, when you want the actual VST3/AU installed into `~/Library`:
 
 ```bash
-cmake --preset dev            # all ten pedals, all three formats, installed
+cmake --preset dev            # all eleven pedals, all three formats, installed
 cmake --build build
 cmake --build build --preset tests   # or just the test binaries
 ```
@@ -45,17 +45,36 @@ It exits 0 when the only failures are the two known ones below, so its exit code
 means "something you changed". The individual binaries, if you want one directly:
 
 ```bash
-./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 48 DSP tests, exits non-zero on failure
+./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 57 DSP tests, exits non-zero on failure
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress      # tape knob sweep, non-finite hunt
 ./build/tests/ee_reverb_stress_artefacts/Release/ee_reverb_stress  # reverb tail stability
 ./build/tests/ee_trempan_stress_artefacts/Release/ee_trempan_stress
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
-./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp # renders all 10 faces to PNG
+./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
+./build/tests/ee_grain_host_artefacts/Release/ee_grain_host        # drives the real processor like a host
+./build/tests/ee_au_host_artefacts/Release/ee_au_host              # runs an *installed* AU, by identifier
+./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp # renders all 11 faces to PNG
 ```
 
 `auval -v aufx <CODE> Peak` runs Apple's AU validation; the four-letter codes are
 in each plugin's `CMakeLists.txt` (`PLUGIN_CODE`).
+
+Three pedals carry a development side panel that drives the part of their
+voicing that is not on the face, and prints the header lines for whatever you
+dial in: `-DEE_SHIMMER_TUNER=ON` (Peak Reverb), `-DEE_TAPE_TUNER=ON` (Peak
+Delay), `-DEE_GRAIN_TUNER=ON` (Peak Grain). Never ship one.
+
+The last two binaries above are diagnostic tools rather than pass/fail suites,
+for the class of bug that only appears in a host. `ee_grain_host` instantiates
+the real processor and drives it the way a host does - `--sr`, `--block`,
+`--ragged` for varying block sizes, `--in noise|dc|burst|silence`, `--editor`,
+`--reprepare` - and prints the output level per second. `ee_au_host` goes one
+further and loads an *installed* component through JUCE's AU host, which is the
+only way to exercise the AU wrapper itself. Address it by identifier
+(`AudioUnit:Effects/aufx,Pgrn,Peak`) rather than by name: a full AU scan loads
+every third-party component into the process and at least one on this machine
+brings it down with a SIGBUS.
 
 ### Known failures — do not chase these
 
@@ -103,23 +122,36 @@ The UI is data-driven: a pedal describes its face with an `ee::ui::PedalSpec` in
 `createEditor()` and writes no editor code. See "Adding another effect" in
 `README.md` for the `PedalSpec` fields.
 
-### Two control styles
+### Control styles
 
 `PedalTheme::controlStyle` picks which family of controls a face is built from,
-and every control follows it - the two are never mixed on one face.
+and every control follows it - the families are never mixed on one face.
 
-- **`analog`** (every pedal but Wah): the photographic knob cap from `knob.png`,
+- **`analog`** (most pedals): the photographic knob cap from `knob.png`,
   a value arc around it, lit bezel buttons, dark recessed displays.
+- **`analogSilver`** (Peak Reverb): `analog` with the knob's black outer collar
+  swapped for a static brushed-silver bezel ring. `silver-knob.png` is
+  `knob.png` minus that collar; `silver-knob-base-v1.png` is the ring that takes
+  its place, so the whole control stays a normal knob size. Same `plate.png`
+  centre, lights and value arc. Everything else - buttons, the filter scope,
+  compact "reso" caps - is drawn exactly as under `analog` (every
+  `== ControlStyle::digital` check treats it as analog). `drawSilverKnob` in
+  `PedalLookAndFeel.cpp` composes the layers; `kSilverCapReachFrac` /
+  `kSilverBezelOuterFrac` line the cap and ring up with `knob.png`'s geometry.
 - **`digital`** (`PedalTheme::white()` on Peak Wah, `PedalTheme::moss()` on Peak
-  Delay): the flat soft-UI look. `DigitalKnob` (pale cap, dark ring, a tick
+  Delay, `PedalTheme::onyx()` on Peak Grain): the flat soft-UI look. `DigitalKnob` (pale cap, dark ring, a tick
   scale instead of an arc - two sizes, picked from the cap diameter),
   `DigitalSwitch` (pill track, label either side), `DigitalToggle`
   (rounded-square bezel carrying a glyph or a caption) and `DigitalScreen` (pale
   recessed panel with a captioned grid; chrome only - the caller draws its own
   trace into the plot rect it hands back).
 
-The style is a whole palette, not a colour: `white()` and `moss()` are the same
-drawing with every token shifted, so a face keeps its own hue. A digital theme
+The style is a whole palette, not a colour: `white()`, `moss()` and `onyx()` are
+the same drawing with every token shifted, so a face keeps its own hue. `onyx()`
+is the dark one, and it inverts the soft-UI pair: `softShadow` goes to near-black
+and `softHighlight` is a grey lift rather than a white one. That highlight is the
+top of the knob-cap gradient, so a bright one there would stop a black cap
+reading as black - the same trap `moss()` documents for green. A digital theme
 must set `softShadow`, `softHighlight`, `recess` and `recessInk` - the analog
 faces never read them, so they are easy to forget.
 
@@ -140,6 +172,32 @@ changing a sound, change the config header — the tests and the tuning panels r
 the same values.
 
 ## Traps
+
+**An x86_64 cmake on an Apple Silicon Mac builds plugins nothing can load.** It
+is easy to end up with: an Intel Homebrew in `/usr/local` takes precedence over
+`/opt/homebrew` on a default PATH, so `which cmake` finds the x86_64 one, it runs
+under Rosetta, and every target defaults to x86_64. The build succeeds, the
+bundles install, and a natively-running Live or Logic then refuses them with
+nothing more than "this Audio Unit could not be opened".
+
+The top-level `CMakeLists.txt` now asks `sysctl -n hw.optional.arm64` - which
+reports the hardware whether or not the process is translated - and forces
+`CMAKE_OSX_ARCHITECTURES=arm64` when the host is Apple Silicon and cmake is not.
+Configure prints a line saying so. `EE_UNIVERSAL_BINARY=ON` still overrides it
+for a release build.
+
+Two things follow. An existing build directory configured before this keeps its
+old architecture until it is reconfigured, so `cmake -S . -B build` once after
+pulling this. And **every build tree installs into the same
+`~/Library/Audio/Plug-Ins`**, because `COPY_PLUGIN_AFTER_BUILD` is on outside the
+`fast` preset - so a build from `build/` overwrites whatever `build-au/` or any
+other tree last installed. If a plugin stops loading, check what is actually
+installed before anything else:
+
+```bash
+lipo -archs ~/Library/Audio/Plug-Ins/Components/"Peak Grain.component"/Contents/MacOS/"Peak Grain"
+```
+
 
 **`tests/UiSnapshot.cpp` duplicates every pedal's parameter layout and PedalSpec.**
 It builds throwaway processors so faces can be rendered without a host. If you

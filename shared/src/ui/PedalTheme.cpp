@@ -568,7 +568,7 @@ PedalTheme PedalTheme::moss()
     t.controlStyle = ControlStyle::digital;
 
     t.background      = juce::Colour (0xff97b39b);   // the page behind the card
-    t.panel           = juce::Colour (0xffb9d4bc);   // the card - Peak Delay's own green
+    t.panel           = juce::Colour (0xffb2cfb5);   // the card - Peak Delay's own green
     t.outline         = juce::Colour (0xff8aa88d);
     t.bezel           = juce::Colour (0xffcfe4d1);
 
@@ -576,10 +576,16 @@ PedalTheme PedalTheme::moss()
     t.textSecondary   = juce::Colour (0xff2a3d2c);
     t.title           = juce::Colour (0xff17251a);
 
-    // A pale-green cap in a deep-green ring, and the scale of ticks around it
-    // fading to `knobTrack` where the value has not reached.
+    // A green cap in a deep-green ring, and the scale of ticks around it fading
+    // to `knobTrack` where the value has not reached.
+    //
+    // The cap is a gradient from `softHighlight` at its top to `knobFill` at its
+    // bottom, so BOTH have to carry the green - a near-white highlight washes
+    // the top half out however green the fill is, and the cap reads white on a
+    // green face. Keep the pair lighter than `panel` all the way down: the drop
+    // shadow does the rest of the lifting.
     t.knobBody        = juce::Colour (0xff23361f);   // the ring
-    t.knobFill        = juce::Colour (0xffdcead9);   // the cap face
+    t.knobFill        = juce::Colour (0xffcce6c2);   // the cap face, at its darkest
     t.knobOutline     = juce::Colour (0xff8aa88d);
     t.knobPointer     = juce::Colour (0xff23361f);
     t.knobTrack       = juce::Colour (0xff86a189);
@@ -593,7 +599,7 @@ PedalTheme PedalTheme::moss()
     t.glow            = juce::Colour (0xff2c5e3a);
 
     t.softShadow      = juce::Colour (0x3a1e3020);
-    t.softHighlight   = juce::Colour (0xfff1f8ef);
+    t.softHighlight   = juce::Colour (0xffe8f4e1);   // the light, green-tinted - see knobFill
     t.recess          = juce::Colour (0xffa3bfa6);
     t.recessInk       = juce::Colour (0xff43593f);
 
@@ -602,6 +608,81 @@ PedalTheme PedalTheme::moss()
     t.ledRing         = juce::Colour (0xffa3bfa6);
     t.switchBody      = juce::Colour (0xffa3bfa6);   // track, off
     t.switchHighlight = juce::Colour (0xfff1f8ef);   // the sliding knob
+
+    t.cornerRadius = 20.0f;
+    t.knobThickness = 3.0f;
+    t.grain = 0.0f;
+
+    // The cap is dark enough against the face to read without a ring around
+    // it - unlike Peak Wah's near-white one, which needs the outline for
+    // contrast. Its edge comes from the shadow and the rim light instead.
+    t.knobCapBorder = false;
+
+    t.logoTint = t.title;
+    t.titleTypefacePtr = birthstone();
+
+    return t;
+}
+
+PedalTheme PedalTheme::onyx()
+{
+    PedalTheme t;
+
+    // The soft-UI face at night: a near-black card on a blacker page, with one
+    // pale blue-grey (#b9d3d9) carrying every reading on it - the lettering,
+    // the pointers, the reached ticks. Nothing else has a hue, so anything that
+    // is that colour is a value you can read.
+    t.controlStyle = ControlStyle::digital;
+
+    t.background      = juce::Colour (0xff0f1315);   // the page behind the card
+    t.panel           = juce::Colour (0xff171d20);   // the card
+    t.outline         = juce::Colour (0xff2a3336);
+    t.bezel           = juce::Colour (0xff222b2e);
+
+    t.textPrimary     = juce::Colour (0xffb9d3d9);
+    t.textSecondary   = juce::Colour (0xff8ba3a9);
+    t.title           = juce::Colour (0xffb9d3d9);
+
+    // A black cap on a black face. The cap is a gradient from `softHighlight`
+    // at its top to `knobFill` at its bottom, so the highlight has to stay a
+    // dark grey - a bright one would make the top half glow and the cap would
+    // stop reading as black. What separates it from the card is the drop
+    // shadow below it and that thin rim light above, not its own lightness.
+    t.knobBody        = juce::Colour (0xff0b0e10);   // the ring
+    t.knobFill        = juce::Colour (0xff191f22);   // the cap face, at its darkest
+    t.knobOutline     = juce::Colour (0xff2f3a3e);
+    t.knobPointer     = juce::Colour (0xffb9d3d9);   // the one thing on the cap you read
+    t.knobTrack       = juce::Colour (0xff39474b);   // a tick the value has not reached
+
+    t.accent          = juce::Colour (0xffb9d3d9);
+    t.accentDim       = juce::Colour (0xff4d5f65);
+
+    // The reached ticks and the value arcs. Full strength, because on a face
+    // this dark it is the only thing carrying information.
+    t.glow            = juce::Colour (0xffb9d3d9);
+
+    // A dark soft-UI inverts the usual pair: the shadow goes to near-black and
+    // the light is a grey lift rather than a white one.
+    t.softShadow      = juce::Colour (0x66000000);
+    t.softHighlight   = juce::Colour (0xff364347);
+    t.recess          = juce::Colour (0xff101416);
+    t.recessInk       = juce::Colour (0xff6c8288);
+
+    // The cap is nowhere near white, so it can carry its own edge - see
+    // `knobCapBorder`. The hard ring the pale caps need would only draw a
+    // black outline on a black cap.
+    t.knobCapBorder = false;
+
+    // Three pixels of rim light, not the proportional eighth of the cap the
+    // pale faces use. On black, a longer fade reads as a grey dome rather than
+    // as a lit edge, and the cap stops looking like one piece.
+    t.capRimLightHeight = 3.0f;
+
+    t.ledOn           = juce::Colour (0xffb9d3d9);
+    t.ledOff          = juce::Colour (0xff222b2e);
+    t.ledRing         = juce::Colour (0xff222b2e);
+    t.switchBody      = juce::Colour (0xff222b2e);   // track, off
+    t.switchHighlight = juce::Colour (0xffb9d3d9);   // the sliding knob
 
     t.cornerRadius = 20.0f;
     t.knobThickness = 3.0f;
