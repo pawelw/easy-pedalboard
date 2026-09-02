@@ -6,9 +6,10 @@
 //
 //   ee_grain_host [--sr 44100] [--block 128] [--in noise|dc|burst|silence]
 //                 [--level -20] [--seconds 30] [--ragged] [--mono]
-//                 [--size 321] [--density 6.2] [--decay 2000] [--reverse 25]
-//                 [--stereo 85] [--detune 6] [--low 0] [--unison 100] [--high 0]
-//                 [--reverb 35] [--mix 50]
+//                 [--size 321] [--density 6.2] [--time 300] [--feedback 30]
+//                 [--stretch 0] [--freeze 0] [--shape 55] [--scatter 25]
+//                 [--reverse 25] [--stereo 85] [--detune 6]
+//                 [--low 0] [--unison 100] [--high 0] [--reverb 35] [--mix 50]
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -80,7 +81,12 @@ int main (int argc, char* argv[])
         else if (arg == "--sweep")    sweep = true;
         else if (arg == "--size")     knobs.emplace_back ("size", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--density")  knobs.emplace_back ("density", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--decay")    knobs.emplace_back ("decay", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--time")     knobs.emplace_back ("time", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--feedback") knobs.emplace_back ("feedback", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--stretch")  knobs.emplace_back ("stretch", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--freeze")   knobs.emplace_back ("freeze", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--shape")    knobs.emplace_back ("shape", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--scatter")  knobs.emplace_back ("scatter", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--reverse")  knobs.emplace_back ("reverse", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--stereo")   knobs.emplace_back ("stereo", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--detune")   knobs.emplace_back ("detune", static_cast<float> (next().getDoubleValue()));
@@ -215,10 +221,12 @@ int main (int argc, char* argv[])
             const auto ramp = [t] (double period) { return 0.5 + 0.5 * std::sin (2.0 * juce::MathConstants<double>::pi * t / period); };
 
             const std::pair<const char*, double> moving[] = {
-                { "size", 3.1 },   { "density", 4.7 }, { "decay", 5.3 },
-                { "reverse", 2.3 }, { "stereo", 3.7 },  { "detune", 4.1 },
-                { "plow", 2.9 },    { "puni", 6.1 },    { "phigh", 3.3 },
-                { "reverb", 7.1 },  { "mix", 8.3 },
+                { "size", 3.1 },     { "density", 4.7 },  { "time", 5.3 },
+                { "feedback", 9.7 }, { "stretch", 2.7 },  { "freeze", 13.1 },
+                { "shape", 3.7 },    { "scatter", 4.3 },
+                { "reverse", 2.3 },  { "stereo", 3.7 },   { "detune", 4.1 },
+                { "plow", 2.9 },     { "puni", 6.1 },     { "phigh", 3.3 },
+                { "reverb", 7.1 },   { "mix", 8.3 },
                 { "on", 11.3 }   // the host's device on/off, which leaves the tail ringing
             };
 

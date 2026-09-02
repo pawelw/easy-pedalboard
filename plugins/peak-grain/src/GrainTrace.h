@@ -67,8 +67,8 @@ private:
         juce::String line;
         line << "peak in " << juce::String (in, 3) << "  peak out " << juce::String (out, 3) << "  |";
 
-        for (const char* id : { "size", "density", "decay", "reverse", "stereo", "detune", "plow", "puni", "phigh",
-                                "reverb", "mix", "on" })
+        for (const char* id : { "size", "density", "time", "feedback", "stretch", "freeze", "shape", "scatter",
+                                "reverse", "stereo", "detune", "plow", "puni", "phigh", "reverb", "mix", "on" })
             if (auto* parameter = state.getParameter (id))
                 line << " " << id << "=" << parameter->getCurrentValueAsText();
 

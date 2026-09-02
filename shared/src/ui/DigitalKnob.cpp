@@ -21,8 +21,8 @@ namespace
         float pointerWidth;
     };
 
-    constexpr Metrics kLarge { 0.800f, 0.040f, 0.905f, 1.000f, 0.012f, 37, 0.705f, 0.200f, 0.120f };
-    constexpr Metrics kSmall { 0.775f, 0.055f, 0.890f, 1.000f, 0.015f, 25, 0.685f, 0.230f, 0.150f };
+    constexpr Metrics kLarge { 0.800f, 0.040f, 0.905f, 1.000f, 0.012f, 37, 0.775f, 0.190f, 0.175f };
+    constexpr Metrics kSmall { 0.775f, 0.055f, 0.890f, 1.000f, 0.015f, 25, 0.755f, 0.220f, 0.205f };
 
     const Metrics& metricsFor (DigitalKnob::Size size)
     {
@@ -130,13 +130,11 @@ void DigitalKnob::draw (juce::Graphics& g,
         juce::Path capPath;
         capPath.addEllipse (disc (capR));
 
-        // A borderless cap has no outline to carry its silhouette, so it leans
-        // on the shadow harder: a soft, nearly symmetric pass right under the
-        // rim first - what a border would have drawn as a hard edge, drawn
-        // instead as a very faint halo all the way round - then the same two
-        // directional passes a ringed cap gets. A bordered cap skips the ambient
-        // pass; its ring already gives the rim definition.
-        if (! theme.knobCapBorder)
+        // No digital cap has an outline carrying its silhouette any more - a
+        // theme's ring, when it asks for one, is a light hairline set well
+        // inside the rim. So every cap leans on the shadow the same way: a
+        // soft, nearly symmetric pass right under the rim first - a very faint
+        // halo all the way round - then the two directional passes below.
         {
             juce::DropShadow (theme.softShadow.withMultipliedAlpha (0.4f),
                               juce::roundToInt (juce::jmax (1.5f, capR * 0.05f)),
@@ -172,10 +170,15 @@ void DigitalKnob::draw (juce::Graphics& g,
 
         if (theme.knobCapBorder)
         {
-            // The ring straddles `capR`, so the face and the ring share an edge
-            // and no face colour leaks past it.
-            g.setColour (theme.knobBody.withMultipliedAlpha (dim));
-            g.drawEllipse (disc (capR - ringW * 0.5f), ringW);
+            // Not an edge ring: two fine concentric hairlines set well inside
+            // the rim, in a mid grey rather than the charcoal of the body. The
+            // cap reads as one white disc with a machined groove near its edge,
+            // and the rim itself is held only by the shadow.
+            const auto ringColour = theme.knobBody.interpolatedWith (theme.knobFill, 0.46f).withMultipliedAlpha (dim);
+            const float hair = juce::jmax (1.0f, R * 0.011f);
+
+            g.setColour (ringColour);
+            g.drawEllipse (disc (capR * 0.90f), hair);
         }
 
         // The rim light: a thin highlight right at the top edge of the cap,
@@ -196,12 +199,12 @@ void DigitalKnob::draw (juce::Graphics& g,
             // A theme may pin the fade to a fixed number of pixels instead of a
             // fraction of the cap. A dark cap wants the light gone within a few
             // pixels of the top edge; a pale one carries a longer fade.
-            const float sheenHeight = theme.capRimLightHeight > 0.0f ? theme.capRimLightHeight
-                                                                     : face.getHeight() * 0.12f;
+            const float sheenHeight =
+                theme.capRimLightHeight > 0.0f ? theme.capRimLightHeight : face.getHeight() * 0.12f;
 
             juce::ColourGradient sheen (litColour.withAlpha (0.6f * dim), face.getCentreX(), face.getY(),
-                                        litColour.withAlpha (0.0f), face.getCentreX(),
-                                        face.getY() + sheenHeight, false);
+                                        litColour.withAlpha (0.0f), face.getCentreX(), face.getY() + sheenHeight,
+                                        false);
             g.setGradientFill (sheen);
             g.fillEllipse (face);
         }

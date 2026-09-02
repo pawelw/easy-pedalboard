@@ -427,6 +427,39 @@ public:
         const auto ms = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
             [] (float v, int) { return juce::String (juce::roundToInt (v)) + " ms"; });
 
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto percentAttributes =
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+        auto timeRange = juce::NormalisableRange<float> (cfg::kMinTimeMs, cfg::kMaxTimeMs);
+        timeRange.setSkewForCentre (cfg::kTimeSkewMs);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "time", 1 }, "Time", timeRange, cfg::kDefaultTimeMs,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int)
+                {
+                    if (v >= 1000.0f)
+                        return juce::String (v * 0.001f, 2) + " s";
+                    return juce::String (juce::roundToInt (v)) + " ms";
+                })));
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "feedback", 1 }, "Feedback",
+                                                                 percent, cfg::kDefaultFeedbackPct, percentAttributes));
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "stretch", 1 }, "Stretch", juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+            cfg::kDefaultStretchPct,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int)
+                {
+                    const int pct = juce::roundToInt (v);
+                    if (pct == 0)
+                        return juce::String ("hold");
+                    return (pct > 0 ? "+" : "") + juce::String (pct) + " %";
+                })));
+
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "freeze", 1 }, "Freeze", false));
+
         auto sizeRange = juce::NormalisableRange<float> (cfg::kMinGrainMs, cfg::kMaxGrainMs);
         sizeRange.setSkewForCentre (cfg::kGrainSkewMs);
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "size", 1 }, "Size", sizeRange,
@@ -439,21 +472,11 @@ public:
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, v < 10.0f ? 1 : 0) + " /s"; })));
 
-        auto decayRange = juce::NormalisableRange<float> (cfg::kMinDecayMs, cfg::kMaxDecayMs);
-        decayRange.setSkewForCentre (cfg::kDecaySkewMs);
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "decay", 1 }, "Decay", decayRange, cfg::kDefaultDecayMs,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float v, int)
-                {
-                    if (v >= 1000.0f)
-                        return juce::String (v * 0.001f, 2) + " s";
-                    return juce::String (juce::roundToInt (v)) + " ms";
-                })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "shape", 1 }, "Shape", percent,
+                                                                 cfg::kDefaultShapePct, percentAttributes));
 
-        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
-        const auto percentAttributes =
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "scatter", 1 }, "Scatter",
+                                                                 percent, cfg::kDefaultScatterPct, percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "reverse", 1 }, "Reverse",
                                                                  percent, cfg::kDefaultReversePct, percentAttributes));
@@ -491,26 +514,36 @@ ee::ui::PedalSpec makeGrainSpec()
 {
     ee::ui::PedalSpec spec;
     spec.name = "Peak Grain";
-    spec.tagline = "Granular scatterer into a plate";
-    spec.version = "v0.10.0";
+    spec.tagline = "Granular delay into a plate";
+    spec.version = "v0.11.0";
     spec.knobs = {
-        { "size", "Size" },   { "density", "Density" }, { "decay", "Decay" },  { "reverse", "Reverse" },
-        { "stereo", "Stereo" }, { "detune", "Detune" }, { "reverb", "Reverb" }, { "mix", "Mix" },
+        { "time", "Time" }, { "feedback", "Feedback" },
+        { .parameterID = "stretch", .caption = "Stretch", .bipolarArc = true, .centreDetent = true },
+
+        { "size", "Size" }, { "density", "Density" }, { "shape", "Shape" },
+
+        { "plow", "Low" }, { "puni", "Unison" }, { "phigh", "High" }, { "detune", "Detune" },
+
+        { "reverse", "Reverse" }, { "scatter", "Scatter" }, { "stereo", "Stereo" },
+
+        { "reverb", "Reverb" }, { "mix", "Mix" },
     };
-    spec.subKnobs = {
-        { .parameterID = "plow", .caption = "Low" },
-        { .parameterID = "puni", .caption = "Unison" },
-        { .parameterID = "phigh", .caption = "High" },
+    spec.knobGroups = {
+        { "Delay", 3 },
+        { "Grain", 3 },
+        { "Pitch", 4 },
+        { "Random", 3 },
     };
-    spec.subKnobGroupCaption = "Pitch";
+    spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "freeze", .labelOff = "Live", .labelOn = "Freeze" };
+    spec.titleBesideLogo = true;
     spec.knobsPerRow = 4;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
 
-    // Eleven controls is more than the shared face carries. The main caps come
-    // down from the default so two rows of four and the boxed pitch row all
-    // fit, and the face is taller to give that third row somewhere to be.
-    spec.knobDiameter = 92;
-    spec.height = 600;
+    // Five ranks of knobs plus the switch strip: smaller caps, a wide row gap so
+    // the captioned boxes clear each other, and a much taller face.
+    spec.knobDiameter = 82;
+    spec.knobRowGap = 38;
+    spec.height = 960;
     return spec;
 }
 
@@ -816,15 +849,15 @@ ee::ui::PedalSpec makeTapeSpec()
 
     spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "stereo", .labelOff = "Mono", .labelOn = "Stereo" };
     spec.slideToggleCentred = true;
-    spec.slideToggleRise = 8;
+    spec.slideToggleRise = 3;
 
-    spec.knobDiameter = 100;
     spec.knobRowGap = 12;
     spec.knobBlockRise = 12;
-    spec.knobColumnSpread = 10;
 
     spec.knobsPerRow = 2;
-    spec.width = (ee::ui::knobRowWidth (spec.knobsPerRow) * 106) / 100;
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
+
+    spec.titleBesideLogo = true;
 
     spec.titleImage = juce::ImageCache::getFromMemory (TapeAssets::tape_png, TapeAssets::tape_pngSize);
     spec.titleImageHeight = 60;
@@ -952,12 +985,12 @@ void renderGrain (const juce::File& outputFile)
 void renderTape (const juce::File& outputFile)
 {
     TapeSnapshotProcessor processor;
-    // Mirror PeakTapeProcessor::createEditor: green palette, full-bleed artwork
-    // that replaces the frame and border, silver-bezel caps for contrast.
+    // Mirror PeakTapeProcessor::createEditor: green palette, silver-bezel caps
+    // for contrast against the dark face.
     auto theme = ee::ui::PedalTheme::green();
-    theme.backgroundImage = juce::ImageCache::getFromMemory (TapeAssets::tapebg_png, TapeAssets::tapebg_pngSize);
-    theme.backgroundImageBleed = true;
     theme.controlStyle = ee::ui::ControlStyle::analogSilver;
+    theme.bezel = juce::Colour (0xff5c8b24);      // the outer frame
+    theme.knobTrack = juce::Colour (0xff8fae6f);  // pale resting ring, not a black halo
     ee::ui::PedalEditor editor (processor, processor.apvts, makeTapeSpec(), theme);
     writePng (editor, outputFile);
 }

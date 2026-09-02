@@ -14,7 +14,7 @@ if(APPLE)
     option(EE_UNIVERSAL_BINARY "Build arm64 + x86_64 universal binaries" OFF)
     if(EE_UNIVERSAL_BINARY)
         set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
-    elseif(NOT CMAKE_OSX_ARCHITECTURES)
+    elseif(NOT CMAKE_OSX_ARCHITECTURES OR CMAKE_OSX_ARCHITECTURES STREQUAL EE_ARCH_AUTOSET)
         # Build for the machine, not for whatever architecture cmake happens to
         # be running as.
         #
@@ -33,10 +33,27 @@ if(APPLE)
                         ERROR_QUIET)
 
         if(ee_host_is_arm64 STREQUAL "1" AND NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
-            set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)
+            # Both, not just arm64. When the toolchain and the hardware disagree
+            # there is no way to tell from here which architecture the host
+            # application is running as - a DAW on Apple Silicon may be native
+            # or may be launched under Rosetta, and it can only load a plugin
+            # that matches. A thin bundle in either direction is invisible to
+            # half the possibilities, and the failure looks the same both ways:
+            # "this Audio Unit could not be opened", with nothing about why.
+            #
+            # This costs a second compile pass. Installing an arm64 cmake
+            # (`arch -arm64 /opt/homebrew/bin/brew install cmake`) removes the
+            # mismatch and the penalty with it.
+            set(CMAKE_OSX_ARCHITECTURES "arm64;x86_64" CACHE STRING "" FORCE)
+
+            # Remembered so a later configure can revise this choice. Without it
+            # the value we forced last time is indistinguishable from one the
+            # user asked for, and would be left alone for ever.
+            set(EE_ARCH_AUTOSET "arm64;x86_64" CACHE INTERNAL "Architectures this project chose by itself")
+
             message(STATUS
-                "Apple Silicon host with an ${CMAKE_SYSTEM_PROCESSOR} cmake: targeting arm64 anyway, "
-                "so the plugins load in a native host")
+                "Apple Silicon host with an ${CMAKE_SYSTEM_PROCESSOR} cmake: building universal, "
+                "so the plugins load whether the host runs native or under Rosetta")
         endif()
     endif()
 endif()
@@ -115,8 +132,7 @@ juce_add_binary_data(ee_tape_assets
     HEADER_NAME TapeAssets.h
     SOURCES
         assets/audio/tape-noise.wav
-        assets/images/tape.png
-        assets/images/tape-bg.png)
+        assets/images/tape.png)
 set_target_properties(ee_tape_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
 add_subdirectory(shared)

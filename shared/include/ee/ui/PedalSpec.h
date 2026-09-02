@@ -353,6 +353,16 @@ struct SubKnobSpec
     std::function<void()> buttonOnClick;
 };
 
+/** One captioned box drawn around a run of `PedalSpec::knobs`. The box is the
+    same rounded outline with the caption let into its top edge that
+    `subKnobGroupCaption` gives the sub-knob row - for a face whose main knobs
+    fall into named sections that only read as sections once they are boxed. */
+struct KnobGroupSpec
+{
+    juce::String caption;
+    int count = 0;
+};
+
 /** Declarative description of a pedal face. Add an effect by writing one of these. */
 struct PedalSpec
 {
@@ -360,6 +370,13 @@ struct PedalSpec
     juce::String tagline;
     juce::String version;
     std::vector<KnobSpec> knobs;
+
+    /** When non-empty, the main knob block is laid out one centred row per group
+        (at `knobDiameter`, ignoring `knobsPerRow` for the row split) with a
+        captioned box around each. The groups consume `knobs` in order; any
+        knobs past the last group form a trailing ungrouped row. Leave empty for
+        the plain `knobsPerRow` grid every other pedal uses. */
+    std::vector<KnobGroupSpec> knobGroups;
 
     /** Small knobs pinned to the top-right, above the main control area. Not
         part of the knob-row layout. */

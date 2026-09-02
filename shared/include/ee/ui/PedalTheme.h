@@ -120,12 +120,6 @@ struct PedalTheme
         with a transparent background keeps its ring.
     */
     juce::Image backgroundImage;
-
-    /** When `backgroundImage` is set, stretch it across the whole face and draw
-        no frame, border or recess shadow on top - the art carries the pedal's
-        outline itself. */
-    bool backgroundImageBleed = false;
-
     juce::Image knobImage;
     juce::Image knobFilmstrip;
     int knobFilmstripFrames = 0;

@@ -2712,11 +2712,12 @@ void testSpringDecaySweepIsQuiet()
 //==============================================================================
 // Grainer
 //
-// The engine is feed-forward, so unlike the reverbs it cannot latch a NaN and
-// there is no stability question to answer. What can go wrong instead is the
-// buffer bookkeeping - a grain overtaking the write head, or walking off the
-// old end of the buffer - and that shows up as a discontinuity rather than as
-// an explosion. Hence the click test.
+// Two things to guard. The buffer bookkeeping - a live grain overtaking the
+// write head, or walking off the old end - shows up as a wrap discontinuity
+// rather than an explosion, hence the click test. And the feedback path, which
+// means the engine is no longer feed-forward and could in principle latch a
+// non-finite value or build without bound; the freeze/stretch tests exercise
+// the frozen read head on top.
 
 struct GrainerRun
 {
@@ -2730,14 +2731,18 @@ struct GrainerRun
 /** Runs `seconds` of a generated input through the engine and measures it.
     `source` is called per sample; return silence to measure a tail. */
 template <typename Source>
-GrainerRun runGrainer (float sizeMs, float densityHz, float decayMs, float pitch, double seconds, Source&& source)
+GrainerRun runGrainer (float sizeMs, float densityHz, float timeMs, float pitch, double seconds, Source&& source,
+                       float feedback = 0.0f, bool freeze = false, float stretch = 1.0f)
 {
     ee::dsp::Grainer grainer;
     grainer.prepare (kSampleRate);
     grainer.reset();
     grainer.setSizeMs (sizeMs);
     grainer.setDensityHz (densityHz);
-    grainer.setDecayMs (decayMs);
+    grainer.setTimeMs (timeMs);
+    grainer.setFeedback (feedback);
+    grainer.setStretch (stretch);
+    grainer.setFreeze (freeze);
 
     // The helper keeps one `pitch` axis for brevity: -1 is the low group only,
     // 0 unison, +1 the high group only.
@@ -2805,7 +2810,7 @@ void testGrainerFiniteUnderSweep()
 
     const float sizes[] = { 20.0f, 60.0f, 120.0f, 300.0f, 500.0f };
     const float densities[] = { 1.0f, 5.0f, 12.0f, 25.0f, 40.0f };
-    const float decays[] = { 50.0f, 100.0f, 800.0f, 2000.0f };
+    const float times[] = { 20.0f, 100.0f, 800.0f, 2000.0f };
     const float pitches[] = { -1.0f, -0.4f, 0.0f, 0.4f, 1.0f };
 
     bool finite = true;
@@ -2814,10 +2819,10 @@ void testGrainerFiniteUnderSweep()
 
     for (float size : sizes)
         for (float density : densities)
-            for (float decay : decays)
+            for (float timeMs : times)
                 for (float pitch : pitches)
                 {
-                    const auto run = runGrainer (size, density, decay, pitch, 0.5,
+                    const auto run = runGrainer (size, density, timeMs, pitch, 0.5,
                                                  [&rng, &noise] (int) { return noise (rng); });
 
                     finite = finite && run.finite;
@@ -2849,12 +2854,12 @@ void testGrainerReadsStayBehindTheWriteHead()
     // grains pitched an octave up (the most source spanned) and the deepest
     // spray with the reversals that come with it.
     const float pitches[] = { 0.0f, 1.0f, -1.0f };
-    const float decays[] = { 50.0f, 2000.0f };
+    const float times[] = { 20.0f, 2000.0f };
 
     for (float pitch : pitches)
-        for (float decay : decays)
+        for (float timeMs : times)
         {
-            const auto run = runGrainer (500.0f, 30.0f, decay, pitch, 4.0, tone);
+            const auto run = runGrainer (500.0f, 30.0f, timeMs, pitch, 4.0, tone);
             const float ratio = run.peak > 0.0f ? run.maxJump / run.peak : 0.0f;
             worstRatio = juce::jmax (worstRatio, ratio);
         }
@@ -2905,19 +2910,24 @@ void testGrainerLevelHoldsAcrossDensity()
 }
 
 /** Runs a burst of noise, then silence, and returns how long the cloud kept
-    going - the time until the output stayed under `floorLevel`. */
-float grainerTailSeconds (float decayMs, float attackShare)
+    going - the time until the output stayed under `floorLevel`. Also reports
+    whether every sample stayed finite and the worst peak seen. */
+struct TailRun
+{
+    float seconds = 0.0f;
+    float peak = 0.0f;
+    bool finite = true;
+};
+
+TailRun grainerTailRun (float timeMs, float feedback)
 {
     ee::dsp::Grainer grainer;
     grainer.prepare (kSampleRate);
     grainer.reset();
     grainer.setSizeMs (120.0f);
     grainer.setDensityHz (20.0f);
-    grainer.setDecayMs (decayMs);
-
-    auto tuning = grainer.getTuning();
-    tuning.attackShare = attackShare;
-    grainer.setTuning (tuning);
+    grainer.setTimeMs (timeMs);
+    grainer.setFeedback (feedback);
 
     std::mt19937 rng (11);
     std::uniform_real_distribution<float> noise (-0.7f, 0.7f);
@@ -2936,44 +2946,56 @@ float grainerTailSeconds (float decayMs, float attackShare)
     std::fill (inR.begin(), inR.end(), 0.0f);
 
     constexpr float floorLevel = 0.002f;
-    float lastLoud = 0.0f;
+    TailRun result;
 
-    const int blocks = static_cast<int> (kSampleRate * 12.0 / kBlock);
+    const int blocks = static_cast<int> (kSampleRate * 20.0 / kBlock);
     for (int b = 0; b < blocks; ++b)
     {
         grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
 
         for (int i = 0; i < kBlock; ++i)
-            if (std::abs (outL[static_cast<size_t> (i)]) > floorLevel)
-                lastLoud = static_cast<float> (b * kBlock + i) / static_cast<float> (kSampleRate);
+        {
+            const float s = outL[static_cast<size_t> (i)];
+            if (! std::isfinite (s))
+                result.finite = false;
+            result.peak = juce::jmax (result.peak, std::abs (s));
+            if (std::abs (s) > floorLevel)
+                result.seconds = static_cast<float> (b * kBlock + i) / static_cast<float> (kSampleRate);
+        }
     }
 
-    return lastLoud;
+    return result;
 }
 
-void testGrainerDecaySetsTheTailLength()
+void testGrainerFeedbackLengthensTail()
 {
-    std::printf ("Grainer tail length across the Decay range:\n");
+    std::printf ("Grainer tail length across the Feedback range:\n");
 
-    // Decay is a tail length, so the fade runs across the window rather than in
-    // absolute time: at the top of the range the cloud has to still be going
-    // seconds after the input stopped, not be gone inside the first one.
-    const float decays[] = { 100.0f, 800.0f, 2000.0f, 8000.0f };
+    // Feedback recirculates the granulated output, so a higher setting has to
+    // ring for longer after the input stops - and stay finite and bounded doing
+    // it, which is the guard the feed-forward engine never needed.
+    const float feedbacks[] = { 0.0f, 0.3f, 0.6f, 0.85f };
 
-    float previous = -1.0f;
-    bool monotonic = true;
+    float dryTail = 0.0f;
+    float longest = -1.0f;
+    bool finite = true;
+    float worstPeak = 0.0f;
 
-    for (float decay : decays)
+    for (float fb : feedbacks)
     {
-        const float tail = grainerTailSeconds (decay, 0.0f);
-        std::printf ("  %6.0f ms -> tail %.2f s\n", decay, tail);
+        const auto run = grainerTailRun (300.0f, fb);
+        std::printf ("  fb %.2f -> tail %.2f s (peak %.3g)\n", fb, run.seconds, run.peak);
 
-        monotonic = monotonic && tail > previous;
-        previous = tail;
+        if (fb == 0.0f)
+            dryTail = run.seconds;
+        longest = juce::jmax (longest, run.seconds);
+        finite = finite && run.finite;
+        worstPeak = juce::jmax (worstPeak, run.peak);
     }
 
-    check (monotonic, "a longer Decay did not make a longer tail");
-    check (previous > 3.0f, "the longest Decay produced a tail under three seconds");
+    check (finite, "the Feedback tail went non-finite");
+    check (worstPeak < 4.0f, "the Feedback tail ran away (peak " + juce::String (worstPeak, 2) + ")");
+    check (longest > dryTail + 0.3f, "more Feedback did not make a longer tail");
 }
 
 void testGrainerAttackCapture()
@@ -2999,7 +3021,8 @@ void testGrainerAttackCapture()
         grainer.reset();
         grainer.setSizeMs (120.0f);
         grainer.setDensityHz (20.0f);
-        grainer.setDecayMs (2000.0f);
+        grainer.setTimeMs (400.0f);
+        grainer.setFeedback (0.0f); // this test is about attack capture, not the feedback tail
 
         auto tuning = grainer.getTuning();
         tuning.attackShare = attackShare;
@@ -3043,7 +3066,7 @@ void testGrainerAttackCapture()
     check (with > without * 1.2f, "drawing grains from the attack did not keep the cloud present");
 }
 
-void testGrainerStereoAlternates()
+void testGrainerStereoIsBalanced()
 {
     std::printf ("Grainer stereo placement:\n");
 
@@ -3055,7 +3078,8 @@ void testGrainerStereoAlternates()
     grainer.reset();
     grainer.setSizeMs (120.0f);
     grainer.setDensityHz (20.0f);
-    grainer.setDecayMs (400.0f);
+    grainer.setTimeMs (400.0f);
+    grainer.setFeedback (0.0f);
     grainer.setStereo (1.0f);
 
     std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
@@ -3082,10 +3106,11 @@ void testGrainerStereoAlternates()
 
     std::printf ("  L/R balance at full width: %.2f dB\n", balanceDb);
 
-    // Grains alternate sides, so the two carry the same energy - give or take
-    // the luck of which side the louder grains landed on, which is why this is
-    // not tighter. What it is really guarding is a placement bug that starves
-    // one side, and that shows up as many decibels, not as a fraction of one.
+    // Grains are panned at random, so the two sides even out over a run of any
+    // length - give or take which side the louder ones happened to land on,
+    // which is why this is not tighter. What it is really guarding is a
+    // placement bug that starves one side, and that shows up as many decibels
+    // rather than as a fraction of one.
     check (std::abs (balanceDb) < 1.5f, "the grain cloud is lopsided (" + juce::String (balanceDb, 2) + " dB)");
 }
 
@@ -3101,7 +3126,8 @@ void testGrainerTailStops()
     grainer.reset();
     grainer.setSizeMs (500.0f);
     grainer.setDensityHz (40.0f);
-    grainer.setDecayMs (2000.0f);
+    grainer.setTimeMs (2000.0f);
+    grainer.setFeedback (0.0f); // with no feedback the cloud must fall to exactly silence
     grainer.setPitchMix (0.0f, 0.0f, 1.0f);
 
     std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
@@ -3154,7 +3180,8 @@ void testGrainerPitchIsActuallyApplied()
         grainer.reset();
         grainer.setSizeMs (200.0f);
         grainer.setDensityHz (20.0f);
-        grainer.setDecayMs (200.0f);
+        grainer.setTimeMs (200.0f);
+        grainer.setFeedback (0.0f);
         grainer.setPitchMix (juce::jmax (0.0f, -pitch), 1.0f - std::abs (pitch), juce::jmax (0.0f, pitch));
 
         std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
@@ -3189,6 +3216,191 @@ void testGrainerPitchIsActuallyApplied()
 
     check (up > unison, "an upward pitch spread did not raise the pitch");
     check (down < unison, "a downward pitch spread did not lower the pitch");
+}
+
+void testGrainerFeedbackStaysFinite()
+{
+    std::printf ("Grainer feedback swept against noise and DC:\n");
+
+    std::mt19937 rng (55);
+    std::uniform_real_distribution<float> noise (-1.0f, 1.0f);
+
+    const float feedbacks[] = { 0.5f, 0.8f, 0.92f };
+
+    bool finite = true;
+    float worst = 0.0f;
+
+    for (float fb : feedbacks)
+    {
+        const auto n = runGrainer (120.0f, 25.0f, 300.0f, 0.0f, 2.0,
+                                   [&rng, &noise] (int) { return noise (rng); }, fb);
+        const auto d = runGrainer (120.0f, 25.0f, 300.0f, 0.0f, 2.0, [] (int) { return 0.9f; }, fb);
+
+        finite = finite && n.finite && d.finite;
+        worst = juce::jmax (worst, juce::jmax (n.peak, d.peak));
+    }
+
+    std::printf ("  worst peak %.3g\n", worst);
+
+    check (finite, "feedback produced NaN or Inf");
+    check (worst < 4.0f, "feedback ran away (peak " + juce::String (worst, 2) + ")");
+}
+
+void testGrainerFreezeHoldsAndRetriggers()
+{
+    std::printf ("Grainer freeze holds the buffer and a loud note recaptures:\n");
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.reset();
+    grainer.setSizeMs (120.0f);
+    grainer.setDensityHz (25.0f);
+    grainer.setTimeMs (300.0f);
+    grainer.setFeedback (0.0f);
+    grainer.setStretch (1.0f);
+    grainer.setReverse (0.0f); // keep the recaptured tone clean for the pitch estimate
+    grainer.setScatter (0.0f);
+
+    std::mt19937 rng (8);
+    std::uniform_real_distribution<float> noise (-0.6f, 0.6f);
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    const auto pushBlocks = [&] (double seconds, auto&& sample)
+    {
+        int n = 0;
+        for (int b = 0; b < static_cast<int> (kSampleRate * seconds / kBlock); ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = sample (n++);
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+        }
+    };
+
+    // Fill the buffer, then freeze and go silent.
+    pushBlocks (1.0, [&] (int) { return noise (rng); });
+    grainer.setFreeze (true);
+
+    double squares = 0.0;
+    long long counted = 0;
+    for (int b = 0; b < static_cast<int> (kSampleRate * 4.0 / kBlock); ++b)
+    {
+        std::fill (inL.begin(), inL.end(), 0.0f);
+        std::fill (inR.begin(), inR.end(), 0.0f);
+        grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            squares += static_cast<double> (outL[static_cast<size_t> (i)]) * outL[static_cast<size_t> (i)];
+            ++counted;
+        }
+    }
+
+    const float frozenRms = static_cast<float> (std::sqrt (squares / static_cast<double> (counted)));
+    std::printf ("  frozen cloud RMS over 4 s of silence: %.4f\n", frozenRms);
+    check (frozenRms > 0.01f, "the frozen cloud fell silent");
+
+    // A loud tone must retrigger the capture, so the cloud now carries it.
+    pushBlocks (2.0, [] (int n)
+                { return 0.9f * std::sin (2.0 * juce::MathConstants<double>::pi * 300.0 * n / kSampleRate); });
+
+    int crossings = 0;
+    float previous = 0.0f;
+    long long samples = 0;
+    for (int b = 0; b < static_cast<int> (kSampleRate * 1.0 / kBlock); ++b)
+    {
+        std::fill (inL.begin(), inL.end(), 0.0f);
+        std::fill (inR.begin(), inR.end(), 0.0f);
+        grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const float s = outL[static_cast<size_t> (i)];
+            if ((s > 0.0f) != (previous > 0.0f))
+                ++crossings;
+            previous = s;
+            ++samples;
+        }
+    }
+
+    const float hz = 0.5f * static_cast<float> (crossings) * static_cast<float> (kSampleRate)
+                     / juce::jmax (1.0f, static_cast<float> (samples));
+    std::printf ("  recaptured cloud pitch estimate: %.0f Hz (fed 300 Hz)\n", hz);
+    check (hz > 150.0f && hz < 600.0f, "a loud note did not retrigger the capture");
+}
+
+void testGrainerStretchScrubsFrozenBuffer()
+{
+    std::printf ("Grainer stretch scans a frozen buffer without shifting pitch:\n");
+
+    const auto tone = [] (int n)
+    { return 0.7f * std::sin (2.0 * juce::MathConstants<double>::pi * 250.0 * n / kSampleRate); };
+
+    const auto pitchAtStretch = [&tone] (float stretch)
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (150.0f);
+        grainer.setDensityHz (25.0f);
+        grainer.setTimeMs (300.0f);
+        grainer.setFeedback (0.0f);
+        grainer.setScatter (0.0f);
+
+        std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+        int n = 0;
+
+        for (int b = 0; b < static_cast<int> (kSampleRate * 1.5 / kBlock); ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = tone (n++);
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+        }
+
+        grainer.setFreeze (true);
+        grainer.setStretch (stretch);
+        std::fill (inL.begin(), inL.end(), 0.0f);
+        std::fill (inR.begin(), inR.end(), 0.0f);
+
+        for (int b = 0; b < static_cast<int> (kSampleRate * 0.5 / kBlock); ++b)
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+        int crossings = 0;
+        float previous = 0.0f;
+        long long samples = 0;
+        bool finite = true;
+        float peak = 0.0f;
+
+        for (int b = 0; b < static_cast<int> (kSampleRate * 2.0 / kBlock); ++b)
+        {
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+            for (int i = 0; i < kBlock; ++i)
+            {
+                const float s = outL[static_cast<size_t> (i)];
+                if (! std::isfinite (s))
+                    finite = false;
+                peak = juce::jmax (peak, std::abs (s));
+                if ((s > 0.0f) != (previous > 0.0f))
+                    ++crossings;
+                previous = s;
+                ++samples;
+            }
+        }
+
+        check (finite, "stretch produced a non-finite sample");
+        check (peak < 4.0f, "stretch ran away (peak " + juce::String (peak, 2) + ")");
+
+        return 0.5f * static_cast<float> (crossings) * static_cast<float> (kSampleRate)
+               / juce::jmax (1.0f, static_cast<float> (samples));
+    };
+
+    const float held = pitchAtStretch (0.0f);
+    const float forward = pitchAtStretch (1.0f);
+    const float backward = pitchAtStretch (-1.0f);
+
+    std::printf ("  pitch: held %.0f Hz, +100%% %.0f Hz, -100%% %.0f Hz (source 250)\n", held, forward, backward);
+
+    for (const float hz : { held, forward, backward })
+        check (hz > 180.0f && hz < 340.0f, "stretch shifted the pitch of the frozen tone");
 }
 
 void testSpringDisperses()
@@ -3355,15 +3567,21 @@ int main()
     std::printf ("\n");
     testGrainerLevelHoldsAcrossDensity();
     std::printf ("\n");
-    testGrainerDecaySetsTheTailLength();
+    testGrainerFeedbackLengthensTail();
+    std::printf ("\n");
+    testGrainerFeedbackStaysFinite();
     std::printf ("\n");
     testGrainerAttackCapture();
     std::printf ("\n");
-    testGrainerStereoAlternates();
+    testGrainerStereoIsBalanced();
     std::printf ("\n");
     testGrainerTailStops();
     std::printf ("\n");
     testGrainerPitchIsActuallyApplied();
+    std::printf ("\n");
+    testGrainerFreezeHoldsAndRetriggers();
+    std::printf ("\n");
+    testGrainerStretchScrubsFrozenBuffer();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

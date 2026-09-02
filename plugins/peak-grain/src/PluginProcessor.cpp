@@ -15,7 +15,12 @@ using ee::plugin::percentToText;
 
 constexpr const char* kSizeID = "size";
 constexpr const char* kDensityID = "density";
-constexpr const char* kDecayID = "decay";
+constexpr const char* kTimeID = "time";
+constexpr const char* kFeedbackID = "feedback";
+constexpr const char* kStretchID = "stretch";
+constexpr const char* kFreezeID = "freeze";
+constexpr const char* kShapeID = "shape";
+constexpr const char* kScatterID = "scatter";
 constexpr const char* kReverseID = "reverse";
 constexpr const char* kStereoID = "stereo";
 constexpr const char* kDetuneID = "detune";
@@ -49,14 +54,24 @@ juce::String grainsPerSecondToText (float value, int)
     return juce::String (value, value < 10.0f ? 1 : 0) + " /s";
 }
 
-/** Decay reads in seconds once it is past one, because past a second it is a
-    tail you wait out rather than a delay you feel. */
-juce::String decayToText (float value, int)
+/** Time reads in seconds once it is past one, because past a second it is a
+    wash you wait out rather than a delay you feel. */
+juce::String timeToText (float value, int)
 {
     if (value >= 1000.0f)
         return juce::String (value * 0.001f, 2) + " s";
 
     return juce::String (juce::roundToInt (value)) + " ms";
+}
+
+/** Stretch is bipolar: a signed percent, or "hold" at the centre detent. */
+juce::String signedPercentToText (float value, int)
+{
+    const int pct = juce::roundToInt (value);
+    if (pct == 0)
+        return "hold";
+
+    return (pct > 0 ? "+" : "") + juce::String (pct) + " %";
 }
 } // namespace
 
@@ -79,7 +94,12 @@ PeakGrainProcessor::PeakGrainProcessor()
 {
     sizeParam = apvts.getRawParameterValue (kSizeID);
     densityParam = apvts.getRawParameterValue (kDensityID);
-    decayParam = apvts.getRawParameterValue (kDecayID);
+    timeParam = apvts.getRawParameterValue (kTimeID);
+    feedbackParam = apvts.getRawParameterValue (kFeedbackID);
+    stretchParam = apvts.getRawParameterValue (kStretchID);
+    freezeParam = apvts.getRawParameterValue (kFreezeID);
+    shapeParam = apvts.getRawParameterValue (kShapeID);
+    scatterParam = apvts.getRawParameterValue (kScatterID);
     reverseParam = apvts.getRawParameterValue (kReverseID);
     stereoParam = apvts.getRawParameterValue (kStereoID);
     detuneParam = apvts.getRawParameterValue (kDetuneID);
@@ -103,8 +123,31 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     const auto msAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (millisecondsToText);
 
-    // Size, Density and Spray are all skewed so their useful low ends get most
-    // of the travel; the top of each range is a special effect, not a setting.
+    const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+    const auto percentAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+
+    // Time, Feedback and Stretch drive the delay half of the effect.
+    auto timeRange = juce::NormalisableRange<float> (cfg::kMinTimeMs, cfg::kMaxTimeMs);
+    timeRange.setSkewForCentre (cfg::kTimeSkewMs);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kTimeID, 1 }, "Time", timeRange, cfg::kDefaultTimeMs,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (timeToText)));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kFeedbackID, 1 }, "Feedback", percent,
+                                                             cfg::kDefaultFeedbackPct, percentAttributes));
+
+    // Bipolar: minus is a backwards scan of the frozen buffer, plus is forward,
+    // zero holds it. Inert while playing live.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kStretchID, 1 }, "Stretch", juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+        cfg::kDefaultStretchPct,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (signedPercentToText)));
+
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kFreezeID, 1 }, "Freeze", false));
+
+    // Size, Density and Scatter are all skewed - or, for Scatter, plain percent -
+    // so their useful low ends get most of the travel; the top of each range is
+    // a special effect, not a setting.
     auto sizeRange = juce::NormalisableRange<float> (cfg::kMinGrainMs, cfg::kMaxGrainMs);
     sizeRange.setSkewForCentre (cfg::kGrainSkewMs);
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kSizeID, 1 }, "Size", sizeRange,
@@ -116,14 +159,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
         juce::ParameterID { kDensityID, 1 }, "Density", densityRange, cfg::kDefaultDensityHz,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (grainsPerSecondToText)));
 
-    auto decayRange = juce::NormalisableRange<float> (cfg::kMinDecayMs, cfg::kMaxDecayMs);
-    decayRange.setSkewForCentre (cfg::kDecaySkewMs);
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kDecayID, 1 }, "Decay", decayRange, cfg::kDefaultDecayMs,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (decayToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kShapeID, 1 }, "Shape", percent,
+                                                             cfg::kDefaultShapePct, percentAttributes));
 
-    const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
-    const auto percentAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kScatterID, 1 }, "Scatter", percent,
+                                                             cfg::kDefaultScatterPct, percentAttributes));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kReverseID, 1 }, "Reverse", percent,
                                                              cfg::kDefaultReversePct, percentAttributes));
@@ -233,6 +273,14 @@ juce::String PeakGrainProcessor::densityReadout() const
     return grainsPerSecondToText (densityParam->load(), 0);
 }
 
+juce::String PeakGrainProcessor::stretchReadout() const
+{
+    if (freezeParam->load() <= 0.5f)
+        return juce::String::fromUTF8 ("\xe2\x80\x94"); // em dash: Stretch does nothing while live
+
+    return signedPercentToText (stretchParam->load(), 0);
+}
+
 void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -255,7 +303,12 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     grainer.setSizeMs (sizeParam->load());
     grainer.setDensityHz (densityParam->load());
-    grainer.setDecayMs (decayParam->load());
+    grainer.setTimeMs (timeParam->load());
+    grainer.setFeedback (feedbackParam->load() * 0.01f);
+    grainer.setStretch (stretchParam->load() * 0.01f);
+    grainer.setFreeze (freezeParam->load() > 0.5f);
+    grainer.setShape (shapeParam->load() * 0.01f);
+    grainer.setScatter (scatterParam->load() * 0.01f);
     grainer.setReverse (reverseParam->load() * 0.01f);
     grainer.setStereo (stereoParam->load() * 0.01f);
     grainer.setDetuneCents (detuneParam->load());
@@ -368,39 +421,61 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
     spec.name = "Peak Grain";
-    spec.tagline = "Granular scatterer into a plate";
+    spec.tagline = "Granular delay into a plate";
     spec.version = "v" JucePlugin_VersionString;
 
+    // Four captioned boxes, one per row, then Reverb and Mix bare underneath.
+    // The knobs are consumed in order by `knobGroups`; the two left over form
+    // the trailing row.
     spec.knobs = {
+        { kTimeID, "Time" },
+        { kFeedbackID, "Feedback" },
+        { .parameterID = kStretchID,
+          .caption = "Stretch",
+          .bipolarArc = true,
+          .centreDetent = true,
+          .liveValueText = [this] { return stretchReadout(); } },
+
         { kSizeID, "Size" },
         { .parameterID = kDensityID, .caption = "Density", .liveValueText = [this] { return densityReadout(); } },
-        { kDecayID, "Decay" },
-        { kReverseID, "Reverse" },
-        { kStereoID, "Stereo" },
+        { kShapeID, "Shape" },
+
+        { .parameterID = kPitchLowID, .caption = "Low" },
+        { .parameterID = kPitchUnisonID, .caption = "Unison" },
+        { .parameterID = kPitchHighID, .caption = "High" },
         { kDetuneID, "Detune" },
+
+        { kReverseID, "Reverse" },
+        { kScatterID, "Scatter" },
+        { kStereoID, "Stereo" },
+
         { kReverbID, "Reverb" },
         { kMixID, "Mix" },
     };
 
-    // The three pitch weights go in the small row underneath, boxed and named:
-    // they only mean anything against each other, and the box is what says so.
-    // Any two of them at once is a chord rather than a transposition, which is
-    // the whole reason they are three knobs and not one.
-    spec.subKnobs = {
-        { .parameterID = kPitchLowID, .caption = "Low" },
-        { .parameterID = kPitchUnisonID, .caption = "Unison" },
-        { .parameterID = kPitchHighID, .caption = "High" },
+    spec.knobGroups = {
+        { "Delay", 3 },
+        { "Grain", 3 },
+        { "Pitch", 4 },
+        { "Random", 3 },
     };
-    spec.subKnobGroupCaption = "Pitch";
 
-    spec.knobsPerRow = 4;
+    // Live / Freeze rides in the strip across the top; the Stretch readout
+    // follows it (a dash while live, a signed percent once frozen).
+    spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = kFreezeID, .labelOff = "Live", .labelOn = "Freeze" };
+
+    // Logo and name share the bottom row, which buys back the title row for the
+    // fifth rank of knobs.
+    spec.titleBesideLogo = true;
+
+    spec.knobsPerRow = 4; // width only; `knobGroups` drives the row layout
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
 
-    // Eleven controls is more than the shared face carries. The main caps come
-    // down from the default so two rows of four and the boxed pitch row all
-    // fit, and the face is taller to give that third row somewhere to be.
-    spec.knobDiameter = 92;
-    spec.height = 600;
+    // Five ranks of knobs plus the switch strip: smaller caps, a wide row gap so
+    // the captioned boxes clear each other, and a much taller face.
+    spec.knobDiameter = 82;
+    spec.knobRowGap = 38;
+    spec.height = 960;
 
     auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::onyx());
 

@@ -45,7 +45,7 @@ It exits 0 when the only failures are the two known ones below, so its exit code
 means "something you changed". The individual binaries, if you want one directly:
 
 ```bash
-./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 57 DSP tests, exits non-zero on failure
+./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 60 DSP tests, exits non-zero on failure
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress      # tape knob sweep, non-finite hunt
 ./build/tests/ee_reverb_stress_artefacts/Release/ee_reverb_stress  # reverb tail stability
 ./build/tests/ee_trempan_stress_artefacts/Release/ee_trempan_stress
@@ -181,10 +181,33 @@ bundles install, and a natively-running Live or Logic then refuses them with
 nothing more than "this Audio Unit could not be opened".
 
 The top-level `CMakeLists.txt` now asks `sysctl -n hw.optional.arm64` - which
-reports the hardware whether or not the process is translated - and forces
-`CMAKE_OSX_ARCHITECTURES=arm64` when the host is Apple Silicon and cmake is not.
-Configure prints a line saying so. `EE_UNIVERSAL_BINARY=ON` still overrides it
-for a release build.
+reports the hardware whether or not the process is translated - and when the
+host is Apple Silicon and cmake is not, forces a **universal** build. Configure
+prints a line saying so. `EE_UNIVERSAL_BINARY=ON` still overrides it, and an
+explicit `-DCMAKE_OSX_ARCHITECTURES=...` wins over both.
+
+Universal rather than plain arm64, which was the first attempt and was wrong: a
+DAW on Apple Silicon may be running native or may have been launched under
+Rosetta - Live 12 ships a universal binary and either is a click away - and it
+can only load a plugin matching the architecture it is *currently* running as.
+A thin bundle is invisible to half the possibilities, and both directions fail
+identically, with the host saying only "could not be opened". Building both is
+the only answer that does not depend on knowing something this build cannot see.
+It costs a second compile pass; installing an arm64 cmake removes the mismatch
+and the cost with it:
+
+```bash
+arch -arm64 /opt/homebrew/bin/brew install cmake
+```
+
+To check what a host is actually running as, `auval` is the fastest oracle - it
+loads a component exactly as a host does, and can be pointed at either
+architecture:
+
+```bash
+arch -arm64  auval -v aufx Pgrn Peak
+arch -x86_64 auval -v aufx Pgrn Peak
+```
 
 Two things follow. An existing build directory configured before this keeps its
 old architecture until it is reconfigured, so `cmake -S . -B build` once after

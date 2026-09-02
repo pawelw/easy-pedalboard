@@ -79,18 +79,18 @@ namespace
     /** Where the silver cap's flutes end, as a fraction of `R` - lined up with
         where `knob.png`'s flutes end, so the whole control is a normal knob
         size. */
-    constexpr float kSilverCapReachFrac = 0.72f;
+    constexpr float kSilverCapReachFrac = 0.8f;
 
     /** Bezel ring outer radius as a fraction of `R` - lined up with `knob.png`'s
         outer edge, so the whole silver control is the size of a normal knob and
         the ring simply takes the place of that collar. */
-    constexpr float kSilverBezelOuterFrac = 1.0f;
+    constexpr float kSilverBezelOuterFrac = 1.05f;
 
     /** The silver cap's static centre plate, as a fraction of `R`. Bigger than
         the analog `kPlateRadiusFrac` on purpose: it reaches almost to the bezel,
         so the black fluted body is only a thin scalloped ring carrying the
         pointer and the face reads as one large fixed silver disc. */
-    constexpr float kSilverPlateRadiusFrac = 0.44f;
+    constexpr float kSilverPlateRadiusFrac = 0.52f;
 
     /** The static centre plate plus its orbiting glint and a screen-space
         top-down sheen, clipped to `plateRadiusFrac * R`. Shared by the analog

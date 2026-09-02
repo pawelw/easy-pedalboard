@@ -673,10 +673,11 @@ PedalTheme PedalTheme::onyx()
     // black outline on a black cap.
     t.knobCapBorder = false;
 
-    // Three pixels of rim light, not the proportional eighth of the cap the
-    // pale faces use. On black, a longer fade reads as a grey dome rather than
-    // as a lit edge, and the cap stops looking like one piece.
-    t.capRimLightHeight = 3.0f;
+    // One pixel of rim light, not the proportional eighth of the cap the pale
+    // faces use. On black, any real fade reads as a grey dome rather than as a
+    // lit edge, and the cap stops looking like one piece - so this is a hairline
+    // catching the light at the top and nothing more.
+    t.capRimLightHeight = 1.0f;
 
     t.ledOn           = juce::Colour (0xffb9d3d9);
     t.ledOff          = juce::Colour (0xff222b2e);

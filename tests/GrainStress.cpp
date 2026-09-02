@@ -2,10 +2,12 @@
 // - over its knob range against adverse input, hunting for a non-finite or a
 // runaway output.
 //
-// The grainer on its own is feed-forward and cannot latch a NaN. The reverb
-// behind it can, which is the point of testing them joined up rather than
-// separately: whatever the cloud does at the extremes has to stay something the
-// network can survive being fed.
+// The grainer used to be feed-forward and unable to latch a NaN; the Feedback
+// knob changed that, so the range is swept here against DC and NaN input with
+// the loop wound to its ceiling. The reverb behind it can latch one too, which
+// is why they are tested joined up: whatever the cloud does at the extremes -
+// feedback wound up, or a frozen buffer scanned by Stretch - has to stay
+// something the network can survive being fed.
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
@@ -63,14 +65,17 @@ struct Result
     bool finite = true;
 };
 
-Result run (float sizeMs, float densityHz, float decayMs, float pitch, float verbDecaySeconds, float verb, Input input)
+Result run (float sizeMs, float densityHz, float timeMs, float pitch, float feedback, bool freeze, float stretch,
+            float verbDecaySeconds, float verb, Input input)
 {
     ee::dsp::Grainer grainer;
     grainer.prepare (kSampleRate);
     grainer.reset();
     grainer.setSizeMs (sizeMs);
     grainer.setDensityHz (densityHz);
-    grainer.setDecayMs (decayMs);
+    grainer.setTimeMs (timeMs);
+    grainer.setFeedback (feedback);
+    grainer.setStretch (stretch);
     grainer.setPitchMix (juce::jmax (0.0f, -pitch), 1.0f - std::abs (pitch), juce::jmax (0.0f, pitch));
 
     ee::dsp::FdnReverb reverb;
@@ -92,14 +97,20 @@ Result run (float sizeMs, float densityHz, float decayMs, float pitch, float ver
     Result result;
     int n = 0;
 
-    // Two seconds of input, then two of silence so the tail is measured too -
-    // that is where a latched non-finite would show itself.
-    const int drivenBlocks = static_cast<int> (kSampleRate * 2.0 / kBlock);
-    const int totalBlocks = drivenBlocks * 2;
+    // A second of input, then a second and a half of silence so the tail is
+    // measured too - that is where a latched non-finite would show itself, and
+    // it shows up in the first moments of one rather than at the end.
+    const int drivenBlocks = static_cast<int> (kSampleRate * 1.0 / kBlock);
+    const int totalBlocks = drivenBlocks + static_cast<int> (kSampleRate * 1.5 / kBlock);
 
     for (int b = 0; b < totalBlocks; ++b)
     {
         const bool driven = b < drivenBlocks;
+
+        // Freeze at the moment the input stops, so Stretch is left scanning the
+        // captured buffer for the whole tail.
+        if (freeze && b == drivenBlocks)
+            grainer.setFreeze (true);
 
         for (int i = 0; i < kBlock; ++i, ++n)
         {
@@ -149,15 +160,30 @@ int main()
 {
     namespace cfg = ee::dsp::config;
 
+    // The grid is deliberately coarse. Every axis is swept to its ends, which is
+    // where the buffer arithmetic and the network's stability actually break,
+    // and the middle of each is left to ee_dsp_tests - which sweeps the engine
+    // far more finely and does it without a reverb attached, so it costs a
+    // fraction of the time. A stress app nobody waits for gets run by nobody.
     std::printf ("Peak Grain stress: grain cloud into the reverb it feeds\n\n");
 
     const float sizes[] = { cfg::kMinGrainMs, 120.0f, cfg::kMaxGrainMs };
-    const float densities[] = { cfg::kMinDensityHz, 12.0f, cfg::kMaxDensityHz };
-    const float grainDecays[] = { cfg::kMinDecayMs, 400.0f, cfg::kMaxDecayMs };
+    const float densities[] = { cfg::kMinDensityHz, cfg::kMaxDensityHz };
+    const float grainTimes[] = { cfg::kMinTimeMs, 400.0f, cfg::kMaxTimeMs };
+    const float feedbacks[] = { 0.0f, cfg::kMaxFeedback };
     const float pitches[] = { -1.0f, 0.0f, 1.0f };
     const float decays[] = { ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay };
-    const float verbs[] = { 0.0f, 0.5f, 1.0f };
+    const float verbs[] = { 0.0f, 1.0f };
     const Input inputs[] = { Input::noise, Input::dc, Input::impulses, Input::poison };
+
+    // Freeze is its own short pass: it does not interact with the reverb tail,
+    // and pairing every stretch rate with the full grid would triple the run.
+    struct FreezeCase
+    {
+        bool freeze;
+        float stretch;
+    };
+    const FreezeCase freezeCases[] = { { false, 1.0f }, { true, 0.0f }, { true, 1.0f }, { true, -1.0f } };
 
     for (Input input : inputs)
     {
@@ -168,25 +194,45 @@ int main()
 
         for (float size : sizes)
             for (float density : densities)
-                for (float grainDecay : grainDecays)
-                    for (float pitch : pitches)
-                        for (float decay : decays)
-                            for (float verb : verbs)
-                            {
-                                const auto result = run (size, density, grainDecay, pitch, decay, verb, input);
-
-                                finite = finite && result.finite;
-
-                                if (result.peak > worstPeak)
+                for (float grainTime : grainTimes)
+                    for (float feedback : feedbacks)
+                        for (float pitch : pitches)
+                            for (float decay : decays)
+                                for (float verb : verbs)
                                 {
-                                    worstPeak = result.peak;
-                                    worstAt = "size " + juce::String (size, 0) + " ms, density "
-                                              + juce::String (density, 0) + " /s, decay "
-                                              + juce::String (grainDecay, 0) + " ms, pitch " + juce::String (pitch, 1)
-                                              + ", verb decay " + juce::String (decay, 1) + " s, verb "
-                                              + juce::String (verb, 2);
+                                    const auto result =
+                                        run (size, density, grainTime, pitch, feedback, false, 1.0f, decay, verb, input);
+
+                                    finite = finite && result.finite;
+
+                                    if (result.peak > worstPeak)
+                                    {
+                                        worstPeak = result.peak;
+                                        worstAt = "size " + juce::String (size, 0) + " ms, density "
+                                                  + juce::String (density, 0) + " /s, time "
+                                                  + juce::String (grainTime, 0) + " ms, fb " + juce::String (feedback, 2)
+                                                  + ", pitch " + juce::String (pitch, 1) + ", verb decay "
+                                                  + juce::String (decay, 1) + " s, verb " + juce::String (verb, 2);
+                                    }
                                 }
-                            }
+
+        for (const auto& fc : freezeCases)
+            for (float size : sizes)
+                for (float pitch : pitches)
+                {
+                    const auto result = run (size, cfg::kMaxDensityHz, 400.0f, pitch, cfg::kMaxFeedback, fc.freeze,
+                                             fc.stretch, ee::dsp::FdnReverb::kMaxDecay, 1.0f, input);
+
+                    finite = finite && result.finite;
+
+                    if (result.peak > worstPeak)
+                    {
+                        worstPeak = result.peak;
+                        worstAt = "freeze " + juce::String (fc.freeze ? 1 : 0) + ", stretch "
+                                  + juce::String (fc.stretch, 1) + ", size " + juce::String (size, 0) + " ms, pitch "
+                                  + juce::String (pitch, 1);
+                    }
+                }
 
         std::printf ("%-10s worst peak %.3g\n", nameOf (input), worstPeak);
         std::printf ("           at %s\n", worstAt.toRawUTF8());

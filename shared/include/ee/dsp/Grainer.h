@@ -13,21 +13,32 @@
 namespace ee::dsp
 {
 
-/** Granular scatterer: stereo in, stereo out, wet only.
+/** Granular delay: stereo in, stereo out, wet only.
 
     Input is summed to mono and recorded into a circular buffer. On a jittered
-    timer a grain is spawned - a Hann-windowed voice that reads that buffer from
-    a random point in the past, at a random rate (which is its pitch), in a
-    random direction, placed at a random pan position. Many overlap, and the sum
-    is a cloud of fragments of what was just played.
+    timer a grain is spawned - a windowed voice that reads that buffer from a
+    point Time behind the write head (scattered a little either side), at a
+    random rate which is its pitch, in a random direction, placed at a random
+    pan position. Many overlap, and the sum is a cloud of fragments of what was
+    played Time ago.
 
-    The signal path is strictly feed-forward, so unlike a reverb it cannot latch
-    a NaN: a non-finite input is zeroed on the way into the buffer and nothing
-    downstream of that can produce one.
+    Feedback writes that cloud back into the buffer, so each repeat is
+    granulated again on the way round. Freeze stops the recording and holds the
+    buffer; the read head then scans the frozen capture at the Stretch rate -
+    forwards, held still, or backwards - and a loud enough input retriggers a
+    fresh capture.
 
-    Everything about the character that is not on a knob - the interval tables,
-    the spawn jitter, the output trim - is in GrainerTuning.h, and can be driven
-    live by the development panel.
+    The feedback path means this is no longer strictly feed-forward, so it could
+    in principle latch a non-finite value. Four things stop it: the feedback
+    gain is hard-capped below unity (config::kMaxFeedback), the fed-back sample
+    is run through tanh so its magnitude is always < 1, the value written into
+    the buffer is zeroed if it is not finite, and the processor guards its own
+    output on top. `ee_grain_stress` sweeps the feedback range against DC and
+    noise to keep this honest.
+
+    Everything about the character that is not on a knob - how Scatter and Shape
+    map onto the engine, the interval tables, the output trim - is in
+    GrainerTuning.h, and can be driven live by the development panel.
 */
 class Grainer
 {
@@ -50,10 +61,7 @@ public:
         onsetGate.prepare (fs, kOnsetEnvDecayMs, kOnsetAttackWidthMs, kOnsetRiseRatioOn, kOnsetRiseRatioOff,
                            kOnsetMinRise, kOnsetLockoutMs);
 
-        // Touch the window table here rather than letting the first grain pay
-        // for building it on the audio thread.
-        windowTable();
-
+        updateTimeOffset();
         updateDerived();
         reset();
     }
@@ -62,6 +70,7 @@ public:
     {
         std::fill (buffer.begin(), buffer.end(), 0.0f);
         writeIndex = 0;
+        readHead = 0.0;
 
         for (auto& g : grains)
             g.active = false;
@@ -69,17 +78,27 @@ public:
         spawnCountdown = 1;
         rngState = kRngSeed;
         smoothedNorm = normTarget;
+        feedbackSample = 0.0f;
+        recordedSamples = 0;
+
+        frozen = false;
+        capturing = false;
+        captureRemaining = 0;
+        pendingCaptureLen = 0;
+        scanPos = 0.0;
+        freezeLoopStart = 0;
+        freezeLoopLen = 1;
 
         onsetGate.reset();
         follower = 0.0f;
         attackIndex = -1;
         sinceAttack = 0;
-        panLeft = false;
     }
 
     //==========================================================================
-    // The four knobs. All are latched by the next grain to spawn; none of them
-    // disturbs a grain already in flight, so none of them can click.
+    // The knobs. All are latched by the next grain to spawn (or, for Feedback
+    // and Stretch, read per sample); none of them disturbs a grain already in
+    // flight, so none of them can click.
 
     /** Grain length in milliseconds. */
     void setSizeMs (float ms) noexcept
@@ -95,12 +114,60 @@ public:
         updateDerived();
     }
 
-    /** How long the cloud lasts, in milliseconds. Sets how far back a grain may
-        be drawn from and how far its level falls off with how old its source
-        is, which are the same thing heard from either end. */
-    void setDecayMs (float ms) noexcept
+    /** The delay: how far behind the write head grains are tapped from. */
+    void setTimeMs (float ms) noexcept
     {
-        decayMs = std::clamp (ms, config::kMinDecayMs, config::kMaxDecayMs);
+        timeMs = std::clamp (ms, config::kMinTimeMs, config::kMaxTimeMs);
+        updateTimeOffset();
+    }
+
+    /** Share of the granulated output written back into the buffer, 0 to
+        config::kMaxFeedback. */
+    void setFeedback (float amount01) noexcept
+    {
+        feedback = std::clamp (amount01, 0.0f, config::kMaxFeedback);
+    }
+
+    /** Read-head scan rate while frozen, in multiples of realtime. +1 forward,
+        0 held, -1 backwards. Ignored while playing live. */
+    void setStretch (float rate) noexcept
+    {
+        stretch = std::clamp (rate, -1.0f, 1.0f);
+    }
+
+    /** Freeze the buffer: stop recording and hold it, and let Stretch scan the
+        capture. A loud input still retriggers a fresh capture. */
+    void setFreeze (bool shouldFreeze) noexcept
+    {
+        if (shouldFreeze && ! frozen)
+        {
+            // Loop the most recent audio, never more of the buffer than has
+            // actually been written - so Stretch cannot scan into the unwritten
+            // tail and read silence.
+            const int cap = std::max (1, size - 2 * config::kGrainReadMarginSamples);
+            const int wanted = static_cast<int> (config::kFreezeLoopSeconds * sampleRate);
+            const int len = recordedSamples > 0 ? std::min (recordedSamples, std::min (wanted, cap)) : cap;
+
+            beginFreezeWindow (len);
+        }
+
+        frozen = shouldFreeze;
+        if (! frozen)
+            capturing = false;
+    }
+
+    /** Grain-envelope lean, 0 (soft) to 1 (plucky). */
+    void setShape (float amount01) noexcept
+    {
+        shape = std::clamp (amount01, 0.0f, 1.0f);
+        updateDerived();
+    }
+
+    /** Timing randomness, 0 (metronomic, identical grains) to 1. Drives both
+        the spawn-gap jitter and the per-grain size jitter. */
+    void setScatter (float amount01) noexcept
+    {
+        scatter = std::clamp (amount01, 0.0f, 1.0f);
     }
 
     /** Share of grains that play backwards, 0 to 1. */
@@ -160,27 +227,75 @@ public:
             const float l = inL != nullptr ? inL[i] : 0.0f;
             const float r = inR != nullptr ? inR[i] : l;
             const float mono = 0.5f * (l + r);
-
             const float sample = std::isfinite (mono) ? mono : 0.0f;
-            buffer[static_cast<size_t> (writeIndex)] = sample;
 
-            // Mark where the attack landed, so grains can be drawn from it
-            // rather than from wherever the window happens to reach.
-            const float rectified = std::abs (sample);
-            follower = rectified > follower ? rectified : rectified + followerCoeff * (follower - rectified);
+            const bool recording = ! frozen || capturing;
 
-            if (onsetGate (follower))
+            if (recording)
             {
-                attackIndex = writeIndex;
-                sinceAttack = 0;
-            }
-            else if (attackIndex >= 0 && sinceAttack < size)
-            {
-                ++sinceAttack;
-            }
+                float written = sample + feedback * feedbackSample;
+                if (! std::isfinite (written))
+                    written = 0.0f;
 
-            if (++writeIndex >= size)
-                writeIndex = 0;
+                buffer[static_cast<size_t> (writeIndex)] = written;
+
+                if (recordedSamples < size)
+                    ++recordedSamples;
+
+                // Mark where the attack landed, so live grains can be drawn from
+                // it rather than from wherever the tap window happens to reach.
+                const float rectified = std::abs (sample);
+                follower = rectified > follower ? rectified : rectified + followerCoeff * (follower - rectified);
+
+                if (onsetGate (follower))
+                {
+                    attackIndex = writeIndex;
+                    sinceAttack = 0;
+                }
+                else if (attackIndex >= 0 && sinceAttack < size)
+                {
+                    ++sinceAttack;
+                }
+
+                if (++writeIndex >= size)
+                    writeIndex = 0;
+
+                readHead = static_cast<double> (writeIndex);
+
+                if (capturing && --captureRemaining <= 0)
+                {
+                    // Fresh capture done - re-freeze and loop just what was
+                    // grabbed, from its start.
+                    capturing = false;
+                    beginFreezeWindow (pendingCaptureLen);
+                }
+            }
+            else
+            {
+                // Frozen: the buffer is held. Still watch the input so a loud
+                // enough note can start the capture cycle over again.
+                const float rectified = std::abs (sample);
+                follower = rectified > follower ? rectified : rectified + followerCoeff * (follower - rectified);
+
+                if (onsetGate (follower))
+                {
+                    const int wanted = timeOffsetSamples + maxGrainSamples + config::kGrainReadMarginSamples;
+                    pendingCaptureLen = std::clamp (wanted,
+                                                    static_cast<int> (config::kMinRecaptureSeconds * sampleRate),
+                                                    std::max (1, size - 2 * config::kGrainReadMarginSamples));
+                    captureRemaining = pendingCaptureLen;
+                    capturing = true;
+                }
+
+                // Scan within the freeze window and wrap inside it, so Stretch
+                // never runs off the captured audio.
+                scanPos += static_cast<double> (stretch) * config::kStretchMax;
+                scanPos = std::fmod (scanPos, static_cast<double> (freezeLoopLen));
+                if (scanPos < 0.0)
+                    scanPos += static_cast<double> (freezeLoopLen);
+
+                readHead = std::fmod (static_cast<double> (freezeLoopStart) + scanPos, static_cast<double> (size));
+            }
 
             if (--spawnCountdown <= 0)
             {
@@ -196,7 +311,7 @@ public:
                 if (! g.active)
                     continue;
 
-                const float windowed = read (g.position) * windowAt (g.windowPhase);
+                const float windowed = read (g.position) * envelopeOf (g);
 
                 sumL += windowed * g.gainL;
                 sumR += windowed * g.gainR;
@@ -207,8 +322,6 @@ public:
                 else if (g.position < 0.0)
                     g.position += static_cast<double> (size);
 
-                g.windowPhase += g.windowInc;
-
                 if (++g.age >= g.length)
                     g.active = false;
             }
@@ -217,20 +330,30 @@ public:
             // Density does. Smoothed so those knobs do not step the level.
             smoothedNorm += (normTarget - smoothedNorm) * kNormSmoothing;
 
-            outL[i] = sumL * smoothedNorm;
-            outR[i] = sumR * smoothedNorm;
+            const float wetL = sumL * smoothedNorm;
+            const float wetR = sumR * smoothedNorm;
+
+            outL[i] = wetL;
+            outR[i] = wetR;
+
+            // What goes back round next sample. tanh bounds it to (-1, 1)
+            // whatever the cloud does, so the recirculation cannot build
+            // without limit; a non-finite cloud feeds back nothing.
+            const float cloudMono = 0.5f * (wetL + wetR);
+            feedbackSample = std::isfinite (cloudMono) ? std::tanh (cloudMono) : 0.0f;
         }
     }
 
-    /** How long the cloud keeps going after the input stops.
-
-        Spray alone undercounts it. A backwards grain starts one Spray back and
-        then walks further back still, by as much source as it spans - which at
-        the top of the interval table is several times its own length - and only
-        then does it have to play out. */
+    /** How long the cloud keeps going after the input stops. A frozen buffer
+        never stops on its own, so that is reported as a long fixed tail. */
     float getTailSeconds() const noexcept
     {
-        return (decayMs + sizeMs * static_cast<float> (kMaxRate + 1.0)) * 0.001f;
+        if (frozen)
+            return kFrozenTailSeconds;
+
+        const float repeats = 1.0f / std::max (0.08f, 1.0f - feedback);
+        const float seconds = (timeMs * repeats + sizeMs * static_cast<float> (kMaxRate + 1.0)) * 0.001f;
+        return std::min (seconds, kFrozenTailSeconds);
     }
 
     /** Grains currently sounding. For the tests - the pool must never overflow
@@ -249,8 +372,9 @@ private:
     {
         double position = 0.0;   // fractional index into buffer
         double rate = 1.0;       // samples of source per sample of output; negative plays backwards
-        float windowPhase = 0.0f;
-        float windowInc = 0.0f;
+        int attackSamples = 1;   // length of the fade-in
+        float decayEnv = 1.0f;   // running exponential, stepped once per sample
+        float decayMul = 1.0f;
         float gainL = 0.0f;
         float gainR = 0.0f;
         int age = 0;
@@ -265,6 +389,15 @@ private:
 
     static constexpr float kNormSmoothing = 0.0005f;
 
+    // A frozen buffer rings for ever; the host still wants a number.
+    static constexpr float kFrozenTailSeconds = 30.0f;
+
+    /** RMS of a Hann window, which is the envelope `outputTrim` was originally
+        calibrated against. Keeping it as the reference means the trim still
+        means what it used to, and only the envelope's own energy is divided
+        out. sqrt(3/8). */
+    static constexpr float kEnvelopeReferenceRms = 0.6124f;
+
     // Envelope follower feeding the attack detector, and the detector's own
     // voicing. The same numbers Peak Wah's retrigger uses - a pluck is a pluck.
     static constexpr float kFollowerSeconds = 0.010f;
@@ -278,36 +411,27 @@ private:
 
     //==========================================================================
 
-    static const std::array<float, config::kWindowPoints>& windowTable()
+    /** Amplitude of a grain at its current age, and steps its decay on.
+
+        Asymmetric on purpose. A symmetric window fades the grain in over its
+        whole first half, which is fatal here: the transient a plucked string is
+        mostly made of gets thrown away, and what is left is a swell that sounds
+        for all the world like the note was reversed. So the fade-in is only as
+        long as Shape asks for - a millisecond or three - and everything after
+        it is an exponential decay.
+
+        The decay is stepped by a multiply rather than recomputed, and it is
+        offset so it reaches exactly zero at the end of the grain. Zero at both
+        ends is what makes a grain unable to click whatever its content. */
+    float envelopeOf (Grain& g) const noexcept
     {
-        static const std::array<float, config::kWindowPoints> table = []
-        {
-            std::array<float, config::kWindowPoints> t {};
-            const double denom = static_cast<double> (config::kWindowPoints - 1);
-            for (int i = 0; i < config::kWindowPoints; ++i)
-                t[static_cast<size_t> (i)] =
-                    static_cast<float> (0.5 - 0.5 * std::cos (2.0 * 3.14159265358979323846 * i / denom));
-            return t;
-        }();
-        return table;
-    }
+        if (g.age < g.attackSamples)
+            return static_cast<float> (g.age) / static_cast<float> (g.attackSamples);
 
-    /** Hann amplitude at a fractional table position. Both ends of the table are
-        exactly zero, which is what makes a grain unable to click whatever its
-        length or its content. */
-    static float windowAt (float phase) noexcept
-    {
-        const auto& table = windowTable();
+        const float env = (g.decayEnv - decayFloor) * decayScale;
+        g.decayEnv *= g.decayMul;
 
-        if (phase <= 0.0f)
-            return 0.0f;
-        if (phase >= static_cast<float> (config::kWindowPoints - 1))
-            return 0.0f;
-
-        const int i = static_cast<int> (phase);
-        const float frac = phase - static_cast<float> (i);
-
-        return table[static_cast<size_t> (i)] * (1.0f - frac) + table[static_cast<size_t> (i + 1)] * frac;
+        return env > 0.0f ? env : 0.0f;
     }
 
     /** Four-point Hermite read, the same interpolator ModDelayLine uses. Linear
@@ -353,19 +477,75 @@ private:
 
     int nextInterval() noexcept
     {
+        const float jitterFrac = scatter * tuning.scatterMaxJitter;
         const float nominal = static_cast<float> (sampleRate) / densityHz;
-        const float jittered = nominal * (1.0f + tuning.spawnJitter * nextBipolar());
+        const float jittered = nominal * (1.0f + jitterFrac * nextBipolar());
 
         return std::max (1, static_cast<int> (jittered));
     }
 
+    /** Point the frozen read head at the last `len` samples before the write
+        head and start it scanning from the tap point inside that window. */
+    void beginFreezeWindow (int len) noexcept
+    {
+        freezeLoopLen = std::clamp (len, 1, std::max (1, size - 2 * config::kGrainReadMarginSamples));
+
+        int start = (writeIndex - freezeLoopLen) % size;
+        if (start < 0)
+            start += size;
+        freezeLoopStart = start;
+
+        scanPos = static_cast<double> (std::min (timeOffsetSamples, freezeLoopLen - 1));
+        if (scanPos < 0.0)
+            scanPos = 0.0;
+
+        readHead = std::fmod (static_cast<double> (freezeLoopStart) + scanPos, static_cast<double> (size));
+    }
+
+    void updateTimeOffset() noexcept
+    {
+        if (size <= 0)
+            return;
+
+        const int wanted = static_cast<int> (timeMs * 0.001f * static_cast<float> (sampleRate));
+        const int minOff = config::kGrainReadMarginSamples + 1;
+        const int maxOff = size - maxGrainSamples - config::kGrainReadMarginSamples - 1;
+
+        timeOffsetSamples = std::clamp (wanted, minOff, std::max (minOff, maxOff));
+    }
+
     void updateDerived() noexcept
     {
+        // Shape morphs the grain envelope between the two ends the tuning names.
+        curDecayShape = tuning.shapeDecayShapeSoft + shape * (tuning.shapeDecayShapeHard - tuning.shapeDecayShapeSoft);
+        curAttackMs = tuning.shapeAttackMsSoft + shape * (tuning.shapeAttackMsHard - tuning.shapeAttackMsSoft);
+
         // Expected number of grains sounding at once. Below one there is nothing
         // to normalise - grains are not even touching - so the divisor floors at
         // unity rather than turning into a boost.
         const float overlap = std::max (1.0f, densityHz * sizeMs * 0.001f);
-        normTarget = tuning.outputTrim / std::sqrt (overlap);
+
+        // Offset and rescale the decay so it starts at exactly 1 and lands on
+        // exactly 0, whatever shape is dialled in.
+        decayFloor = std::exp (-curDecayShape);
+        decayScale = 1.0f / std::max (1.0e-6f, 1.0f - decayFloor);
+
+        // A steeper decay puts less energy in the grain, so without this the
+        // Shape control would double as a volume control and there would be no
+        // judging it by ear. The envelope's own RMS is known in closed form:
+        // for env(u) = (e^-ku - f) / (1 - f) with f = e^-k,
+        //
+        //   mean square = [ (1-f^2)/2k - 2f(1-f)/k + f^2 ] / (1-f)^2
+        //
+        // The short attack is ignored - a millisecond against a grain measured
+        // in tens of them.
+        const float k = std::max (0.05f, curDecayShape);
+        const float f = decayFloor;
+        const float meanSquare =
+            ((1.0f - f * f) / (2.0f * k) - 2.0f * f * (1.0f - f) / k + f * f) / std::max (1.0e-6f, (1.0f - f) * (1.0f - f));
+        const float envelopeRms = std::sqrt (std::max (1.0e-6f, meanSquare));
+
+        normTarget = tuning.outputTrim * (kEnvelopeReferenceRms / envelopeRms) / std::sqrt (overlap);
     }
 
     /** Picks a playback rate: one of the three pitch groups in proportion to
@@ -400,19 +580,18 @@ private:
         return std::clamp (ratio, 1.0 / kMaxRate, kMaxRate);
     }
 
-    /** The one place the buffer bookkeeping can go wrong, so all of it is here.
+    /** Where the next grain reads from, and the bookkeeping that keeps that
+        read legal.
 
-        A forward grain reads towards the write head faster than the head moves
-        whenever its rate is above 1, and if it starts too close it catches up
-        and reads samples that have not been written yet. A backwards grain has
-        the opposite problem: it walks towards the oldest end of the buffer and
-        can run off it. Both are prevented by where the grain is allowed to
-        start, so the read loop itself never has to check.
+        Live, a forward grain reads towards the write head faster than the head
+        moves whenever its rate is above 1, and if it starts too close it
+        catches up and reads samples that have not been written yet. A backwards
+        grain has the opposite problem: it walks towards the oldest end of the
+        buffer and can run off it. Both are prevented by where the grain is
+        allowed to start.
 
-        One consequence is visible on the face: a long grain pitched an octave
-        up spans a second of source, so it cannot start less than that far back
-        however low Spray is set. Spray 0 is a stutter on the present only while
-        the grains are short enough to be one. */
+        Frozen, the buffer is full and static, so any position holds real
+        content - the read loop wraps and there is nothing to guard. */
     void spawnGrain() noexcept
     {
         Grain* slot = nullptr;
@@ -445,92 +624,92 @@ private:
         if (slot == nullptr)
             return;
 
-        const int length = std::clamp (static_cast<int> (sizeMs * 0.001f * static_cast<float> (sampleRate)),
-                                       minGrainSamples, maxGrainSamples);
+        // Grain length, strayed from Size by Scatter.
+        float lengthF = sizeMs * 0.001f * static_cast<float> (sampleRate);
+        lengthF *= 1.0f + scatter * tuning.scatterSizeJitter * nextBipolar();
+        const int length = std::clamp (static_cast<int> (lengthF), minGrainSamples, maxGrainSamples);
 
         const bool backwards = nextFloat() < reverse;
         const double rate = pickRate();
 
-        // Source samples this grain spans, whichever way it runs.
-        const int consumed = static_cast<int> (std::ceil (rate * length)) + config::kGrainReadMarginSamples;
-        const int margin = config::kGrainReadMarginSamples;
+        double position = 0.0;
 
-        // How far behind the write head the read may start, in samples.
-        int minOffset = margin;
-        int maxOffset = size - length - margin;
-
-        if (backwards)
-            maxOffset -= consumed;              // room to walk backwards without leaving the buffer
-        else
-            minOffset = std::max (margin, consumed - length + margin);   // stay behind the write head
-
-        if (maxOffset <= minOffset)
-            return;
-
-        const int decaySamples = static_cast<int> (decayMs * 0.001f * static_cast<float> (sampleRate));
-        const int spread = std::min (decaySamples, maxOffset - minOffset);
-
-        int offset = minOffset + (spread > 0 ? static_cast<int> (nextFloat() * static_cast<float> (spread)) : 0);
-        bool fromAttack = false;
-
-        // Most grains come from the last attack, if there was one recently
-        // enough to still be in the window. That is what keeps the cloud
-        // sounding like the note that was struck rather than like its sustain.
-        if (attackIndex >= 0 && sinceAttack <= decaySamples && nextFloat() < tuning.attackShare)
+        if (frozen && ! capturing)
         {
-            const int jitter = static_cast<int> (config::kAttackJitterMs * 0.001f * static_cast<float> (sampleRate));
-            const int wanted = sinceAttack + (jitter > 0 ? static_cast<int> (nextFloat() * static_cast<float> (jitter))
-                                                         : 0);
+            // Scan position, scattered a little either side.
+            const double jitter =
+                static_cast<double> (scatter) * static_cast<double> (timeOffsetSamples) * 0.5 * static_cast<double> (nextBipolar());
 
-            // Only if the attack sits somewhere this grain is allowed to read
-            // from - the buffer rules are not negotiable.
-            if (wanted >= minOffset && wanted <= maxOffset)
+            position = std::fmod (readHead + jitter, static_cast<double> (size));
+            if (position < 0.0)
+                position += static_cast<double> (size);
+        }
+        else
+        {
+            // Source samples this grain spans, whichever way it runs.
+            const int consumed = static_cast<int> (std::ceil (rate * length)) + config::kGrainReadMarginSamples;
+            const int margin = config::kGrainReadMarginSamples;
+
+            int minOffset = margin;
+            int maxOffset = size - length - margin;
+
+            if (backwards)
+                maxOffset -= consumed;
+            else
+                minOffset = std::max (margin, consumed - length + margin);
+
+            if (maxOffset <= minOffset)
+                return;
+
+            int offset = timeOffsetSamples;
+
+            const int spread = static_cast<int> (scatter * static_cast<float> (timeOffsetSamples) * 0.5f);
+            if (spread > 0)
+                offset += static_cast<int> (nextBipolar() * static_cast<float> (spread));
+
+            // Most grains come from the last attack, if there was one recently
+            // enough that the note is still ringing. That is what keeps the
+            // cloud sounding like the note that was struck rather than like its
+            // sustain - but it lapses after kAttackReachSeconds so a long
+            // silence really does fall silent.
+            const int attackReach = static_cast<int> (config::kAttackReachSeconds * static_cast<float> (sampleRate));
+
+            if (attackIndex >= 0 && sinceAttack <= attackReach && sinceAttack <= maxOffset
+                && nextFloat() < tuning.attackShare)
             {
-                offset = wanted;
-                fromAttack = true;
+                const int jitterSamples = static_cast<int> (config::kAttackJitterMs * 0.001f * static_cast<float> (sampleRate));
+                const int wanted =
+                    sinceAttack + (jitterSamples > 0 ? static_cast<int> (nextFloat() * static_cast<float> (jitterSamples)) : 0);
+
+                if (wanted >= minOffset && wanted <= maxOffset)
+                    offset = wanted;
             }
+
+            offset = std::clamp (offset, minOffset, maxOffset);
+
+            position = static_cast<double> (writeIndex - offset);
+            if (position < 0.0)
+                position += static_cast<double> (size);
         }
 
-        double position = static_cast<double> (writeIndex - offset);
-        if (position < 0.0)
-            position += static_cast<double> (size);
-
-        // Alternating rather than random: successive grains ping left, right,
-        // left, right. Random placement clusters - three in a row on the same
-        // side is common - and the ear hears that as the image wandering
-        // rather than as a stereo effect.
-        panLeft = ! panLeft;
-        const float pan = (panLeft ? -1.0f : 1.0f) * stereo;
+        const float pan = nextBipolar() * stereo;
         const float angle = (pan + 1.0f) * 0.25f * 3.14159265358979323846f;
-
-        // The older the source, the quieter the grain. This is the audible half
-        // of Decay: without it a long window is just a wider scatter at the
-        // same level, and the cloud stops rather than fading.
-        // How far across the Decay window this grain's source sits, and the
-        // level that costs it. Measured against the window rather than in
-        // absolute seconds, so Decay is a real tail length: at 8 s the cloud
-        // fades over eight seconds instead of being gone inside the first one.
-        //
-        // Anchored on the newest source these settings can reach, not on the
-        // present, which keeps the headroom - a grain is never louder than
-        // unity - and stops a long grain pitched up, which cannot start near
-        // the present, from being quiet purely because of that.
-        //
-        // A grain taken from the attack is exempt: it is placed where it is on
-        // purpose, and fading it by how long ago the note was struck would make
-        // the whole feature inaudible a second in.
-        const float span = static_cast<float> (std::max (1, spread));
-        const float age = std::min (1.0f, static_cast<float> (offset - minOffset) / span);
-        const float ageGain = fromAttack ? 1.0f : std::pow (config::kOldestGrainGain, age);
 
         slot->position = position;
         slot->rate = backwards ? -rate : rate;
         slot->length = length;
         slot->age = 0;
-        slot->windowPhase = 0.0f;
-        slot->windowInc = static_cast<float> (config::kWindowPoints - 1) / static_cast<float> (length);
-        slot->gainL = std::cos (angle) * ageGain;
-        slot->gainR = std::sin (angle) * ageGain;
+
+        // Just enough fade-in not to click, and never more than half the grain -
+        // a 20 ms grain cannot afford a 5 ms attack.
+        const int attackSamples = std::clamp (
+            static_cast<int> (curAttackMs * 0.001f * static_cast<float> (sampleRate)), 1, std::max (1, length / 2));
+
+        slot->attackSamples = attackSamples;
+        slot->decayEnv = 1.0f;
+        slot->decayMul = std::exp (-curDecayShape / static_cast<float> (std::max (1, length - attackSamples)));
+        slot->gainL = std::cos (angle);
+        slot->gainR = std::sin (angle);
         slot->active = true;
     }
 
@@ -541,16 +720,22 @@ private:
     std::vector<float> buffer;
     int size = 0;
     int writeIndex = 0;
+    double readHead = 0.0;
 
     std::array<Grain, config::kMaxGrains> grains {};
     int spawnCountdown = 1;
 
     int minGrainSamples = 1;
     int maxGrainSamples = 1;
+    int timeOffsetSamples = 1;
 
     float sizeMs = config::kDefaultGrainMs;
     float densityHz = config::kDefaultDensityHz;
-    float decayMs = config::kDefaultDecayMs;
+    float timeMs = config::kDefaultTimeMs;
+    float feedback = config::kDefaultFeedbackPct * 0.01f;
+    float stretch = config::kDefaultStretchPct * 0.01f;
+    float shape = config::kDefaultShapePct * 0.01f;
+    float scatter = config::kDefaultScatterPct * 0.01f;
     float reverse = config::kDefaultReversePct * 0.01f;
     float stereo = config::kDefaultStereoPct * 0.01f;
     float detuneCents = config::kDefaultDetuneCents;
@@ -559,10 +744,32 @@ private:
     float pitchUnison = config::kDefaultPitchUnisonPct;
     float pitchHigh = config::kDefaultPitchHighPct;
 
+    bool frozen = false;
+    bool capturing = false;
+    int captureRemaining = 0;
+    int pendingCaptureLen = 0;
+
+    // Samples of real audio written since the last reset, so a Freeze never
+    // loops more of the buffer than has been recorded into.
+    int recordedSamples = 0;
+
+    // The stretch of buffer a Freeze loops: [freezeLoopStart, +freezeLoopLen),
+    // modulo size. scanPos is the read head's offset into it.
+    double scanPos = 0.0;
+    int freezeLoopStart = 0;
+    int freezeLoopLen = 1;
+
+    float feedbackSample = 0.0f;
+
     GrainerTuning tuning;
 
     float normTarget = 1.0f;
     float smoothedNorm = 1.0f;
+
+    float curDecayShape = 4.0f;
+    float curAttackMs = 1.0f;
+    float decayFloor = 0.0f;
+    float decayScale = 1.0f;
 
     std::uint32_t rngState = kRngSeed;
 
@@ -573,9 +780,6 @@ private:
     float followerCoeff = 0.0f;
     int attackIndex = -1;
     int sinceAttack = 0;
-
-    /** Which side the next grain goes to - see the pan comment in spawnGrain. */
-    bool panLeft = false;
 };
 
 } // namespace ee::dsp

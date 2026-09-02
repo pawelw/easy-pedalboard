@@ -1,16 +1,16 @@
 #pragma once
 
 /**
- * Voicing for ee::dsp::Grainer, the granular scatterer behind Peak Grain.
+ * Voicing for ee::dsp::Grainer, the granular delay behind Peak Grain.
  *
  * This file holds the structural side: the knob ranges, the buffer the engine
  * records into, and how many grains may sound at once. Changing one of these
  * changes what the knobs can ask for.
  *
  * The *voicing* - how many grains run backwards, where they land across the
- * image, which intervals the pitched ones snap to, how ragged the timing is -
- * lives in GrainerTuning.h instead, because the development tuning panel drives
- * those live (-DEE_GRAIN_TUNER=ON).
+ * image, how the grain envelope morphs, which intervals the pitched ones snap
+ * to - lives in GrainerTuning.h instead, because the development tuning panel
+ * drives those live (-DEE_GRAIN_TUNER=ON).
  *
  * TO USE:
  *   1. Change a value.
@@ -24,17 +24,16 @@ namespace ee::dsp::config
 // ============================================================================
 // BUFFER AND VOICES
 // ============================================================================
-// How much of the past the engine keeps. This has to cover the longest Spray,
+// How much of the past the engine keeps. This has to cover the longest Time,
 // plus one longest grain of output, plus the source that grain spans at the
 // fastest playback rate (an octave up eats two source samples per output
-// sample), plus a guard. Everything below is bounded by these three, and the
-// figure is deliberately loose enough that a backwards grain at the longest
-// Spray still fits without being clamped back.
+// sample), plus a guard. Everything below is bounded by these, and the figure
+// is deliberately loose enough that a backwards grain drawn from the far end of
+// the Time window still fits without being clamped back.
 constexpr float kGrainBufferSeconds = 10.5f;
 
 constexpr float kMinGrainSeconds    = 0.020f;
 constexpr float kMaxGrainSeconds    = 0.500f;
-constexpr float kMaxDecaySeconds    = 8.000f;
 
 // Concurrent grains. At the top of the Density range with the longest grains
 // the engine wants density x size = 40 x 0.5 = 20 of them, so 32 leaves room
@@ -68,25 +67,57 @@ constexpr float kGrainSkewMs    = 120.0f;
 constexpr float kDefaultGrainMs = 120.0f;
 
 // ============================================================================
-// DECAY
+// TIME
 // ============================================================================
-// How long the cloud keeps going. Two things at once, because they are the
-// same thing heard from either end: it sets how far back into the recording a
-// grain may be drawn from, and how far a grain's level falls off with how old
-// its source is. So a long Decay is a long tail, and the far end of that tail
-// is quiet - the fragments fade out rather than stopping.
-constexpr float kMinDecayMs     = 50.0f;
-constexpr float kMaxDecayMs     = kMaxDecaySeconds * 1000.0f;
-constexpr float kDecaySkewMs    = 700.0f;
-constexpr float kDefaultDecayMs = 400.0f;
+// The delay: how far behind the write head grains are tapped from. Skewed so
+// the short, rhythmic end gets most of the travel; the top is a long wash.
+// Grains are still scattered around this point by Scatter, so Time is the
+// centre of the tap window rather than a single hard offset.
+constexpr float kMinTimeMs     = 20.0f;
+constexpr float kMaxTimeMs     = 2000.0f;
+constexpr float kTimeSkewMs    = 300.0f;
+constexpr float kDefaultTimeMs = 300.0f;
 
-// Level a grain drawn from the far end of the Decay window plays at, as a
-// gain. The falloff runs across the window, so Decay is a genuine tail length:
-// at 8 s the grains fade over eight seconds, not over the first one of them.
-//   0.10 = -20 dB by the end, the tail stays present a long time
-//   0.03 = -30 dB by the end                               <-- default
-//   0.005 = the far end drops away sharply
-constexpr float kOldestGrainGain = 0.03f;
+// ============================================================================
+// FEEDBACK
+// ============================================================================
+// Share of the granulated output written back into the buffer, so each repeat
+// is granulated again on its way round. Hard-capped below unity: the path is no
+// longer feed-forward and a gain of 1 would let a stuck level or a denormal
+// build without bound.
+//   0.30 = a couple of audible repeats                       <-- default
+//   0.92 = a long, self-thickening wash (the ceiling)
+constexpr float kDefaultFeedbackPct = 30.0f;
+constexpr float kMaxFeedback        = 0.92f;
+
+// ============================================================================
+// STRETCH  (frozen only)
+// ============================================================================
+// With Freeze engaged the read head scans the captured buffer at this rate,
+// in multiples of realtime. The knob is bipolar: +1 scans forward at the
+// speed it was recorded (the delay time holds steady), 0 holds the read head
+// still (a stutter on one moment), -1 scans backwards. Pitch is untouched
+// either way - only where the next grain is taken from moves.
+constexpr float kStretchMax        = 1.0f;
+constexpr float kDefaultStretchPct = 0.0f;
+
+// ============================================================================
+// SHAPE
+// ============================================================================
+// Morphs the grain envelope between the two ends the tuning header names:
+//   0   = soft - a long fade-in, energy spread the whole grain
+//   100 = plucky - a click of an attack, most of the energy up front
+// A symmetric window is deliberately not on the travel: it throws the
+// transient away and a plucked note comes back sounding reversed.
+constexpr float kDefaultShapePct = 55.0f;
+
+// ============================================================================
+// SCATTER
+// ============================================================================
+// One knob over all the timing randomness: how much the gap between grains
+// wanders, and how much each grain's length strays from Size. 0 is a metronome
+// spraying identical grains; wound up the cloud stops repeating.
+constexpr float kDefaultScatterPct = 25.0f;
 
 // ============================================================================
 // ATTACK
@@ -94,8 +125,10 @@ constexpr float kOldestGrainGain = 0.03f;
 // A plucked string is mostly its first fifty milliseconds, and a cloud built
 // from the sustain alone loses whatever made the note identifiable. An onset
 // detector marks where each attack landed in the recording, and this share of
-// grains is drawn from there rather than from a random point in the window.
-//   0.00 = the old behaviour, every grain placed at random
+// grains is drawn from there rather than from a random point in the Time
+// window. Live only: a frozen buffer plays from wherever Stretch has the read
+// head, attack or not.
+//   0.00 = every grain placed by Time and Scatter alone
 //   0.70 = the attack is the voice of the cloud            <-- default
 //   1.00 = nothing but the attack, over and over
 constexpr float kDefaultAttackShare = 0.70f;
@@ -103,6 +136,22 @@ constexpr float kDefaultAttackShare = 0.70f;
 // How far into the attack a grain may start, in milliseconds - a little spread
 // so the repeats are not all bit-identical.
 constexpr float kAttackJitterMs = 12.0f;
+
+// How long after an attack grains may still be drawn from it. Past this the note
+// has rung out and the cloud moves on to whatever the Time window currently
+// holds, so a long silence really does fall silent.
+constexpr float kAttackReachSeconds = 3.5f;
+
+// When a loud input retriggers a frozen buffer, how much fresh audio is
+// captured before it re-freezes and loops again - a Time window plus a grain,
+// floored so a very short Time still grabs something to work with.
+constexpr float kMinRecaptureSeconds = 0.5f;
+
+// The longest stretch of the buffer a plain Freeze loops. The read head scans
+// this window and wraps inside it, so Stretch never runs off the recorded
+// audio into the unwritten tail of the buffer. A retrigger loops only what it
+// just captured instead.
+constexpr float kFreezeLoopSeconds = 3.0f;
 
 // ============================================================================
 // REVERSE, STEREO, DETUNE

@@ -47,6 +47,11 @@ private:
 
     juce::String densityReadout() const;
 
+    /** Stretch reads as a dash while playing live - it only bites once the
+        buffer is frozen - and as a signed percent, or "hold" at the detent,
+        when it does. */
+    juce::String stretchReadout() const;
+
     /** The single Reverb knob drives the network's decay as well as its mix -
         one control, because the two are never usefully set apart. */
     static float reverbDecaySeconds (float percent) noexcept;
@@ -56,7 +61,12 @@ private:
 
     std::atomic<float>* sizeParam = nullptr;
     std::atomic<float>* densityParam = nullptr;
-    std::atomic<float>* decayParam = nullptr;
+    std::atomic<float>* timeParam = nullptr;
+    std::atomic<float>* feedbackParam = nullptr;
+    std::atomic<float>* stretchParam = nullptr;
+    std::atomic<float>* freezeParam = nullptr;
+    std::atomic<float>* shapeParam = nullptr;
+    std::atomic<float>* scatterParam = nullptr;
     std::atomic<float>* reverseParam = nullptr;
     std::atomic<float>* stereoParam = nullptr;
     std::atomic<float>* detuneParam = nullptr;

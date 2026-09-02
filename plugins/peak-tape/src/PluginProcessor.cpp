@@ -251,47 +251,43 @@ juce::AudioProcessorEditor* PeakTapeProcessor::createEditor()
     // since it is the only thing in it and Tone sits under it on the same axis.
     spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = kStereoID, .labelOff = "Mono", .labelOn = "Stereo" };
     spec.slideToggleCentred = true;
-    spec.slideToggleRise = 8; // tighter to the top edge than the shared strip
+    spec.slideToggleRise = 3; // a touch out of the strip - 5 px lower than it used to sit
 
     // The shared row gap: a small centre cap needs no more room between the rows
     // than Peak Reverb's RESO does, which leaves the height for the caps.
     spec.knobRowGap = 12;
 
-    // Just under the shared cap size. The switch strip costs this face 40 px
-    // that Peak Reverb's two rows do not pay, and the block has to fit in what
-    // is left - 278 px, against 2 x (cap + 32 px of labels) plus the gap.
-    spec.knobDiameter = 100;
-
     spec.knobsPerRow = 2;
 
-    // 6 % wider than the shared two-column width. The columns take the extra,
-    // so the four knobs move out from the middle and Tone gets clear air around
-    // it - the only reason this face departs from knobRowWidth().
-    spec.width = (ee::ui::knobRowWidth (spec.knobsPerRow) * 106) / 100;
+    // Same width and (default) cap size as Peak Reverb, so the two faces line up
+    // on a rack.
+    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
 
     // Sit the block higher than centring would, so the top row comes up under
     // the switch and the bottom one lifts off the pedal name.
     spec.knobBlockRise = 12;
 
-    // The columns are a good deal wider than the caps, so the four knobs sit out
-    // near the edges rather than floating in the middle of their cells.
-    spec.knobColumnSpread = 10;
+    // Brand mark bottom-left with the pedal name beside it, and the tape reel
+    // centred just above that pair - rather than the name on a row of its own.
+    spec.titleBesideLogo = true;
 
-    // A small reel above the name, centred in the gap the knobs leave.
+    // The tape reel, centred in the gap the knobs leave above the name row.
     spec.titleImage = juce::ImageCache::getFromMemory (TapeAssets::tape_png, TapeAssets::tape_pngSize);
     spec.titleImageHeight = 60;
     spec.titleImageTint = juce::Colours::white;
 
-    // A full-bleed photographic face: the artwork fills the whole pedal and
-    // supplies its own edge, so the shared frame and border are switched off.
-    auto theme = ee::ui::PedalTheme::green();
-    theme.backgroundImage = juce::ImageCache::getFromMemory (TapeAssets::tapebg_png, TapeAssets::tapebg_pngSize);
-    theme.backgroundImageBleed = true;
-
     // The analog cap's black outer collar has almost no contrast against this
     // dark panel, so the knob loses its edge - swap it for the brushed-silver
     // bezel ring, the same fix Peak Reverb uses on its own dark-ish face.
+    auto theme = ee::ui::PedalTheme::green();
     theme.controlStyle = ee::ui::ControlStyle::analogSilver;
+    theme.bezel = juce::Colour (0xff5c8b24); // the outer frame
+
+    // green()'s near-black `knobTrack` draws a hard dark outline hugging the
+    // silver bezel, which is why these caps read differently from Peak Reverb's.
+    // Lift it to a soft sage - a pale resting ring, the way Reverb's is - and
+    // leave the lime `accent` for the value arc.
+    theme.knobTrack = juce::Colour (0xff8fae6f);
 
     return new ee::ui::PedalEditor (*this, apvts, spec, theme);
 }

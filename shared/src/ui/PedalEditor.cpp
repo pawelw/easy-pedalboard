@@ -231,6 +231,11 @@ private:
 
     void paintFaderGraph (juce::Graphics&) const;
     void paintCutMasks (juce::Graphics&, juce::Rectangle<float> grid) const;
+
+    /** The rounded outline with a caption let into its top edge, shared by the
+        sub-knob group and the named knob groups. */
+    void paintGroupBox (juce::Graphics&, juce::Rectangle<int> box, const juce::String& caption) const;
+
     void resetFaders();
 
     PedalTheme theme;
@@ -275,6 +280,10 @@ private:
 
     /** Outline around the sub-knob cluster, when the spec names the group. */
     juce::Rectangle<int> subKnobGroup;
+
+    /** Outline around each named knob group, index-aligned with
+        `spec.knobGroups`. Empty unless the spec names groups. */
+    std::vector<juce::Rectangle<int>> knobGroupBoxes;
 
     std::unique_ptr<juce::Component> sidePanel;
     int sidePanelWidth = 0;
@@ -1021,28 +1030,39 @@ juce::Font PedalEditor::Face::fittedNameFont (juce::Rectangle<int> area) const
     return font.withHeight (font.getHeight() * available / needed);
 }
 
+void PedalEditor::Face::paintGroupBox (juce::Graphics& g, juce::Rectangle<int> boxInt, const juce::String& captionText) const
+{
+    if (boxInt.isEmpty())
+        return;
+
+    // Stroked as a plain rounded rectangle and then broken open where the
+    // lettering goes, which is a good deal harder to get wrong than stitching
+    // the outline together out of arcs and three sides.
+    const auto box = boxInt.toFloat();
+    const auto font = theme.bodyFont (10.0f);
+    const juce::String caption = captionText.toUpperCase();
+    const float textWidth = juce::GlyphArrangement::getStringWidth (font, caption);
+
+    g.setColour (theme.outline.withAlpha (0.75f));
+    g.drawRoundedRectangle (box, 10.0f, 1.0f);
+
+    // Erase the run of the top edge the caption sits on. The face is a flat
+    // colour here, so painting over it is indistinguishable from a gap.
+    const juce::Rectangle<float> gap (box.getX() + kSubGroupPad, box.getY() - 1.0f, textWidth + 8.0f, 3.0f);
+    g.setColour (theme.panel);
+    g.fillRect (gap);
+
+    g.setColour (theme.textSecondary);
+    g.setFont (font);
+    g.drawText (caption, gap.withSizeKeepingCentre (textWidth + 2.0f, static_cast<float> (kSubGroupCaptionHeight)),
+                juce::Justification::centred, false);
+}
+
 void PedalEditor::Face::paint (juce::Graphics& g)
 {
     auto bounds = faceBounds().toFloat();
 
-    if (theme.backgroundImage.isValid() && theme.backgroundImageBleed)
-    {
-        // Art that already carries the pedal's outline: stretch it over the whole
-        // face, with no frame, border or recess of our own on top. Zoom and pan
-        // to frame the artwork; all ones / zeros fills the face exactly.
-        const float bgZoom = 1.0f;  // both axes: > 1 zooms in (crops); < 1 pulls the art in
-        const float bgZoomX = 1.0f; // width only, multiplied on top of bgZoom
-        const float bgZoomY = 1.0f; // height only, multiplied on top of bgZoom
-        const float bgPanX = 2.0f;  // pixels; + moves the art right
-        const float bgPanY = 1.0f;  // pixels; + moves the art down
-
-        auto dest =
-            bounds.withSizeKeepingCentre (bounds.getWidth() * bgZoom * bgZoomX, bounds.getHeight() * bgZoom * bgZoomY)
-                .translated (bgPanX, bgPanY);
-
-        g.drawImage (theme.backgroundImage, dest, juce::RectanglePlacement::stretchToFit);
-    }
-    else if (theme.backgroundImage.isValid() && theme.controlStyle != ControlStyle::digital)
+    if (theme.backgroundImage.isValid() && theme.controlStyle != ControlStyle::digital)
     {
         const float bgPanY = 128.2f; // pixels; + moves the art down
         const float bgZoom = 1.55f;  // > 1 zooms in (crops)
@@ -1161,31 +1181,13 @@ void PedalEditor::Face::paint (juce::Graphics& g)
         g.fillRect (knobDivider);
     }
 
-    // Box around a named sub-knob group, with its caption let into the top
-    // edge. Stroked as a plain rounded rectangle and then broken open where
-    // the lettering goes, which is a good deal harder to get wrong than
-    // stitching the outline together out of arcs and three sides.
+    // Box around a named sub-knob group, and around each named main-knob group,
+    // with the caption let into the top edge.
     if (! subKnobGroup.isEmpty())
-    {
-        const auto box = subKnobGroup.toFloat();
-        const auto font = theme.bodyFont (10.0f);
-        const juce::String caption = spec.subKnobGroupCaption.toUpperCase();
-        const float textWidth = juce::GlyphArrangement::getStringWidth (font, caption);
+        paintGroupBox (g, subKnobGroup, spec.subKnobGroupCaption);
 
-        g.setColour (theme.outline.withAlpha (0.75f));
-        g.drawRoundedRectangle (box, 10.0f, 1.0f);
-
-        // Erase the run of the top edge the caption sits on. The face is a flat
-        // colour here, so painting over it is indistinguishable from a gap.
-        const juce::Rectangle<float> gap (box.getX() + kSubGroupPad, box.getY() - 1.0f, textWidth + 8.0f, 3.0f);
-        g.setColour (theme.panel);
-        g.fillRect (gap);
-
-        g.setColour (theme.textSecondary);
-        g.setFont (font);
-        g.drawText (caption, gap.withSizeKeepingCentre (textWidth + 2.0f, static_cast<float> (kSubGroupCaptionHeight)),
-                    juce::Justification::centred, false);
-    }
+    for (size_t i = 0; i < knobGroupBoxes.size() && i < spec.knobGroups.size(); ++i)
+        paintGroupBox (g, knobGroupBoxes[i], spec.knobGroups[i].caption);
 
     // A small emblem for the effect, centred in the gap the knobs leave above
     // the name. Drawn before the name so it can never sit over the lettering.
@@ -1268,7 +1270,34 @@ void PedalEditor::Face::resized()
     auto area = knobArea();
 
     const int count = static_cast<int> (knobs.size());
-    const int perRow = juce::jlimit (1, juce::jmax (1, count), spec.knobsPerRow);
+
+    // How many knobs on each row. One row per named group (plus a trailing row
+    // for anything past the last group); otherwise the plain knobsPerRow grid.
+    std::vector<int> rowCounts;
+    if (! spec.knobGroups.empty())
+    {
+        int consumed = 0;
+        for (const auto& group : spec.knobGroups)
+        {
+            const int n = juce::jlimit (0, juce::jmax (0, count - consumed), group.count);
+            if (n > 0)
+                rowCounts.push_back (n);
+            consumed += n;
+        }
+        if (consumed < count)
+            rowCounts.push_back (count - consumed);
+    }
+    else
+    {
+        const int per = juce::jlimit (1, juce::jmax (1, count), spec.knobsPerRow);
+        for (int f = 0; f < count; f += per)
+            rowCounts.push_back (juce::jmin (per, count - f));
+    }
+
+    // The widest row sets the column grid; narrower rows centre within it.
+    int perRow = 1;
+    for (const int n : rowCounts)
+        perRow = juce::jmax (perRow, n);
 
     // Columns span the full content width; the rotary sits centred in its
     // column at a fixed size.
@@ -1287,7 +1316,7 @@ void PedalEditor::Face::resized()
     // done on the new layout, so the other pedals are untouched.
     if (count > 0 && (hasBottomBand() || slideToggle != nullptr))
     {
-        const int rows = (count + perRow - 1) / perRow;
+        const int rows = static_cast<int> (rowCounts.size());
         const int blockHeight = rows * rowHeight + (rows - 1) * rowGap;
         const int slack = area.getHeight() - blockHeight;
         if (slack > 0)
@@ -1305,15 +1334,14 @@ void PedalEditor::Face::resized()
 
     knobCells.assign (static_cast<size_t> (count), {});
 
-    for (int first = 0; first < count; first += perRow)
+    int first = 0;
+    for (const int inRow : rowCounts)
     {
         auto knobRow = area.removeFromTop (rowHeight);
         area.removeFromTop (rowGap);
 
-        const int inRow = juce::jmin (perRow, count - first);
-
-        // A trailing row that does not fill its columns is centred, so a lone
-        // last knob sits under the gap between the pair above it rather than
+        // A row that does not fill the column grid is centred, so a short group
+        // (or a lone last knob) sits under the gaps of the row above rather than
         // hanging off the left. Full rows keep their exact column maths.
         if (inRow < perRow)
         {
@@ -1353,6 +1381,32 @@ void PedalEditor::Face::resized()
 
             if (i < inRow - 1)
                 knobRow.removeFromLeft (kKnobGap);
+        }
+
+        first += inRow;
+    }
+
+    // Captioned box around each named knob group, taken from the cells the
+    // group's knobs ended up in.
+    knobGroupBoxes.clear();
+    {
+        int groupFirst = 0;
+        for (const auto& group : spec.knobGroups)
+        {
+            const int n = juce::jlimit (0, juce::jmax (0, count - groupFirst), group.count);
+            if (n <= 0)
+                continue;
+
+            juce::Rectangle<int> block;
+            for (int i = 0; i < n; ++i)
+            {
+                const auto& cell = knobCells[static_cast<size_t> (groupFirst + i)];
+                block = block.isEmpty() ? cell : block.getUnion (cell);
+            }
+
+            knobGroupBoxes.push_back (
+                block.expanded (kSubGroupPad, kSubGroupPad / 2).withTrimmedTop (-kSubGroupCaptionHeight / 2));
+            groupFirst += n;
         }
     }
 

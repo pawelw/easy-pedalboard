@@ -428,74 +428,98 @@ size, per-type make-up, grit, output filtering, knob defaults - lives in
 
 ### Peak Grain
 
-A granular scatterer into a plain plate. Mono or stereo in, stereo out. Eight
-knobs plus a boxed Pitch section of three:
+A granular delay into a plain plate. Mono or stereo in, stereo out. Fifteen
+knobs in four captioned sections, a **Live / Freeze** switch across the top, and
+Reverb and Mix bare underneath.
+
+**Delay** - the echo, and what you do to a frozen buffer:
+
+| Knob         | Range           | What it does                                                              |
+| ------------ | --------------- | ------------------------------------------------------------------------ |
+| **Time**     | 20 ms - 2 s     | How far behind the write head grains are tapped from - the delay. Skewed so the short, rhythmic end gets most of the travel. Scatter sprays grains around this point, so it is the centre of a window rather than one hard offset |
+| **Feedback** | 0 - 92 %        | Share of the granulated output written back into the buffer, so each repeat is granulated again on the way round. Capped below unity - the path is no longer feed-forward, and a gain of 1 would let a stuck level build without bound |
+| **Stretch**  | -100 - +100 %   | **Frozen only.** The rate the read head scans the captured buffer, in multiples of realtime: `+100 %` forward (the delay time holds steady), `0` held on one moment, `-100 %` backwards. Pitch is untouched - only where the next grain is taken from moves. Reads as a dash while playing live |
+
+**Grain** - what one grain is:
 
 | Knob        | Range          | What it does                                                              |
 | ----------- | -------------- | ------------------------------------------------------------------------ |
 | **Size**    | 20 - 500 ms    | Grain length. Under ~40 ms the fragments stop being recognisable and turn into a metallic buzz at the spawn rate; over ~300 ms you hear whole notes come back |
 | **Density** | 1 - 40 /s      | Grains spawned per second. Sparse and countable at the bottom, a continuous cloud at the top. It is not a volume knob - the engine divides out the overlap |
-| **Decay**   | 50 ms - 8 s    | How long the cloud lasts. It sets how far back into the recording a grain may be drawn from, and fades a grain by how far across that window its source sits - so the fade runs over the whole setting. At 8 s the cloud is still going seven seconds after the input stopped |
-| **Reverse** | 0 - 100 %      | Share of grains that play backwards. Forward-only is much more legible; past halfway the phrase stops being followable at all |
-| **Stereo**  | 0 - 100 %      | How far apart the grains are placed. They alternate - left, right, left, right - rather than landing at random, which clusters and reads as the image wandering instead of as a stereo effect. 0 puts them all in the centre |
-| **Detune**  | 0 - 100 ct     | Random detune on every grain, either way. **Off by default**: at anything above zero every grain plays at a slightly different pitch, which reads as an unstable cloud rather than as the note that was played. A few cents thickens it; wound up it is a chorus of slightly wrong copies |
-| **Reverb**  | 0 - 100 %      | One knob for the plate behind the cloud: it opens the mix and lengthens the decay together, which is the only way the two are ever actually used. The decay comes in over the top half of the travel, so the bottom half is a short room getting louder |
-| **Mix**     | 0 - 100 %      | Blend of dry signal and the whole wet path, tail included                |
+| **Shape**   | 0 - 100 %      | Grain envelope lean: `0` soft, a long fade-in with the energy spread the whole grain; `100` plucky, a click of an attack with the energy up front. The engine divides the envelope's own energy back out, so this does not double as a volume knob |
 
-**Pitch** is three knobs in a box rather than one control, because they are
-weights against each other rather than positions on a scale:
+**Pitch** - weights against each other, not positions on a scale:
 
 | Knob         | What it does                                                          |
 | ------------ | --------------------------------------------------------------------- |
-| **Low**      | How often a grain lands an octave down                                |
+| **Low**      | How often a grain lands an octave down (a fourth down in one slot)    |
 | **Unison**   | How often it plays at pitch                                           |
-| **High**     | How often it lands an octave up                                       |
+| **High**     | How often it lands an octave up (a fifth up in one slot)             |
+| **Detune**   | Random detune on every grain, 0 - 100 ct either way. **Off by default**: above zero every grain plays slightly differently, which reads as an unstable cloud rather than as the note that was played |
 
-Any two at once is a chord rather than a transposition, which is the whole
-reason they are three knobs. All three at zero is treated as unison, so a face
-with no pitch dialled in still makes a sound. Octaves only, by default - the
-interval tables in `GrainerTuning.h` will take fifths or two octaves if you want
-them, but anything other than an octave stops the cloud sounding like the note
-that was played.
+Any two of Low/Unison/High at once is a chord rather than a transposition, which
+is the whole reason they are separate knobs. All three at zero is treated as
+unison, so a face with no pitch dialled in still makes a sound. Mostly octaves,
+with a fifth up and a fourth down baked into one table slot each; the tables in
+`GrainerTuning.h` will take anything you want, but stray far from those and the
+cloud stops sounding like the note that was played.
 
-With Detune off and Low and High at zero, every grain plays at exactly the
-pitch it was recorded at. Pitch movement in this pedal is always something you
-asked for.
+**Random**:
 
-The input is summed to mono and recorded continuously into a four-and-a-half
-second circular buffer. On a jittered timer the engine spawns a **grain**: a
-Hann-windowed voice that reads that buffer from a random point in the past, at a
-random rate (which is its pitch), in a random direction, placed at a random pan
-position, at a level set by how far across the Decay window its source sits. Up
-to 32 of them overlap, and the sum is a cloud of fragments of what was just
-played.
+| Knob         | Range          | What it does                                                             |
+| ------------ | -------------- | ---------------------------------------------------------------------- |
+| **Reverse**  | 0 - 100 %      | Share of grains that play backwards. Forward-only is much more legible; past halfway the phrase stops being followable at all |
+| **Scatter**  | 0 - 100 %      | One knob over all the timing randomness: how much the gap between grains wanders, and how much each grain's length strays from Size. `0` is a metronome spraying identical grains; wound up the cloud stops repeating |
+| **Stereo**   | 0 - 100 %      | Width of the random pan placement. `0` centres every grain, `100` throws them hard left and right. Equal-power, so the middle does not dip |
 
-Most of those fragments are the **attack**. A plucked string is mostly its first
-fifty milliseconds, and a cloud built from the sustain alone loses whatever made
-the note identifiable - it fades away with the string. An onset detector
-(`ee::dsp::OnsetGate`, the same one Peak Wah retriggers from) marks where each
-attack landed in the recording, and 70 % of grains are drawn from there rather
-than from a random point in the window. Those grains are exempt from the age
-fade, so the cloud stays present for as long as the note is ringing instead of
-dying with it. The share is `attackShare` in the tuning header. Reads are
-cubic-Hermite, the same interpolator the delay lines use - linear would take the
-top octave off every backwards grain.
+| Knob        | Range          | What it does                                                              |
+| ----------- | -------------- | ------------------------------------------------------------------------ |
+| **Reverb**  | 0 - 100 %      | One knob for the plate behind the cloud: it opens the mix and lengthens the decay together. The decay comes in over the top half of the travel, so the bottom half is a short room getting louder |
+| **Mix**     | 0 - 100 %      | Blend of dry signal and the whole wet path, tail included                |
 
-The Hann window is what makes a grain unable to click: it is exactly zero at
-both ends whatever the grain's length or content. The age fade is measured in
-real seconds rather than as a fraction of the Decay window, which is what makes
-Decay a level as well as a length - a short window holds only recent, loud
-fragments, while a long one reaches back to material it has already faded most
-of the way out. A grain is anchored at unity against the newest source the
-current settings can reach, so it can never be louder than the dry signal
-however the knobs are set.
+**Live** is a granular delay: the input is recorded into a ten-and-a-half second
+circular buffer, and on a jittered timer the engine spawns a **grain** - a
+windowed voice that reads that buffer from a point `Time` behind the write head
+(scattered either side), at a random rate which is its pitch, in a random
+direction, at a random pan position. Feedback writes the cloud back in, so the
+repeats thicken as they granulate again. Up to 32 grains overlap.
 
-Everything about the character that is not on a knob - the interval tables the
-Low and High groups draw from, how ragged the spawn timing is, the output trim -
-lives in `shared/include/ee/dsp/GrainerTuning.h`. Build with
-`-DEE_GRAIN_TUNER=ON` to get a side panel that drives all of it live and prints
-the header lines for whatever you land on. `GrainerConfig.h` keeps the
-structural side: the knob ranges, the recording buffer and the voice count.
+**Freeze** stops the recording and holds the buffer. The read head then scans
+the frozen capture at the **Stretch** rate - forwards at realtime holds the
+delay steady, `0` stutters on one moment, backwards scrubs it - all without
+shifting pitch, because each grain still plays at rate 1. A loud enough input
+retriggers: the engine grabs a fresh `Time` window and re-freezes, so the loop
+starts again on the new sound.
+
+Live, most grains are the **attack**. A plucked string is mostly its first fifty
+milliseconds, and a cloud built from the sustain alone loses whatever made the
+note identifiable. An onset detector (`ee::dsp::OnsetGate`, the same one Peak Wah
+retriggers from) marks where each attack landed, and 70 % of grains are drawn
+from there rather than from the Time window - until `kAttackReachSeconds` after
+the note, when it has rung out and the cloud moves on. Reads are cubic-Hermite,
+the same interpolator the delay lines use - linear would take the top octave off
+every backwards grain.
+
+Each grain has a **percussive envelope**, not a symmetric window: a short
+fade-in and then an exponential decay to zero. That asymmetry is the difference
+between the effect sounding like a guitar and sounding like a tape running
+backwards - a Hann window fades a grain in over its entire first half, which
+throws away the transient and leaves a swell the ear reads as reverse playback.
+Both ends still reach exactly zero, which is what stops a grain clicking whatever
+its content. **Shape** morphs between the two ends the tuning header names.
+
+The feedback path means the engine can, in principle, latch a non-finite value
+or build without bound. Four things stop it: Feedback is capped below unity, the
+fed-back sample is run through `tanh` so it is always under 1, a non-finite
+buffer write is zeroed, and the processor guards its own output on top.
+`ee_grain_stress` sweeps the feedback range against DC and NaN input to keep this
+honest.
+
+Everything about the character that is not on a knob - how Scatter and Shape map
+onto the engine, the interval tables, the output trim - lives in
+`shared/include/ee/dsp/GrainerTuning.h`. Build with `-DEE_GRAIN_TUNER=ON` to get
+a side panel that drives all of it live. `GrainerConfig.h` keeps the structural
+side: the knob ranges, the recording buffer and the voice count.
 
 Behind the cloud is `ee::dsp::FdnReverb`, the same sixteen-line network as Peak
 Reverb, run plain: no shimmer, and its resonance and low cut pinned in the
@@ -745,6 +769,13 @@ o'clock either way with a tick on the detent, `centreDetent` makes the knob snap
 onto the middle while dragging (mouse only — automation and typed values pass
 through), and `diameter` gives that one knob a smaller cap without moving it off
 the grid or dropping its caption the way `compact` would.
+
+`spec.knobGroups` sorts the main knobs into captioned boxes — one centred row
+per group, each wrapped in the rounded outline with its name let into the top
+edge. List `{ caption, count }` entries; they consume `spec.knobs` in order and
+any left over form a trailing bare row. `plugins/peak-grain` uses four (Delay,
+Grain, Pitch, Random) with Reverb and Mix bare underneath. Leave it empty for
+the plain `knobsPerRow` grid.
 
 Then give it a `plugins/peak-drive/CMakeLists.txt`:
 
