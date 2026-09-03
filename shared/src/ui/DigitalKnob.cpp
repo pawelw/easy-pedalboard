@@ -24,6 +24,27 @@ namespace
     constexpr Metrics kLarge { 0.800f, 0.040f, 0.905f, 1.000f, 0.012f, 37, 0.775f, 0.190f, 0.175f };
     constexpr Metrics kSmall { 0.775f, 0.055f, 0.890f, 1.000f, 0.015f, 25, 0.755f, 0.220f, 0.205f };
 
+    //== Digital cap style =====================================================
+    // Every digital knob's cap is built the same way whatever the theme's
+    // colours: a top-to-bottom fill with only a whisper of gradient, a faint
+    // machined groove set just inside the rim, and a rim light that fades a
+    // short way down from the top edge. The theme supplies the hue (`knobFill`,
+    // `softHighlight`, `knobPointer`, ...); the shape is all here, so a tweak
+    // in this block updates every digital knob on every pedal at once.
+    struct CapStyle
+    {
+        float fillHighlightBlend; // knobFill -> softHighlight at the top of the face
+        float fillShade;          // how much darker knobFill goes at the bottom
+        float grooveRadiusFrac;   // the groove circle, as a fraction of capR
+        float grooveHairFrac;     // its stroke, as a fraction of R
+        float grooveContrast;     // how far the groove sits off the cap fill
+        float grooveAlpha;
+        float rimLightFrac; // sheen fades over this fraction of the cap height
+        float rimLightAlpha;
+    };
+
+    constexpr CapStyle kCapStyle { 0.35f, 0.03f, 0.90f, 0.012f, 0.20f, 0.55f, 0.12f, 0.60f };
+
     const Metrics& metricsFor (DigitalKnob::Size size)
     {
         return size == DigitalKnob::Size::large ? kLarge : kSmall;
@@ -33,6 +54,11 @@ namespace
     {
         return { centre.x + radius * std::sin (angle), centre.y - radius * std::cos (angle) };
     }
+
+    /** Pull the pointer this many pixels in off the radius `pointerReach` would
+        put it at - it read too close to the rim. Fixed pixels, not a fraction,
+        so every digital cap moves in by the same visible amount. */
+    constexpr float kPointerInset = 4.0f;
 } // namespace
 
 juce::Rectangle<float> DigitalKnob::faceArea (juce::Rectangle<float> bounds, Size size)
@@ -162,23 +188,21 @@ void DigitalKnob::draw (juce::Graphics& g,
         // Flat enough to read as one plastic surface, not a dome shading all
         // the way down - the rim light below is what says which way is up. Only
         // a whisper of gradient, top to bottom.
-        juce::ColourGradient fill (theme.knobFill.interpolatedWith (theme.softHighlight, 0.35f), face.getCentreX(),
-                                   face.getY(), theme.knobFill.darker (0.03f), face.getCentreX(), face.getBottom(),
-                                   false);
+        juce::ColourGradient fill (theme.knobFill.interpolatedWith (theme.softHighlight, kCapStyle.fillHighlightBlend),
+                                   face.getCentreX(), face.getY(), theme.knobFill.darker (kCapStyle.fillShade),
+                                   face.getCentreX(), face.getBottom(), false);
         g.setGradientFill (fill);
         g.fillEllipse (face);
 
-        if (theme.knobCapBorder)
+        // A faint machined groove set just inside the rim - not an edge ring.
+        // Taken off the cap fill with `contrasting`, so it reads the same
+        // whether the cap is white, green or near-black; the rim itself is held
+        // by the shadow and the rim light, not by this line.
         {
-            // Not an edge ring: two fine concentric hairlines set well inside
-            // the rim, in a mid grey rather than the charcoal of the body. The
-            // cap reads as one white disc with a machined groove near its edge,
-            // and the rim itself is held only by the shadow.
-            const auto ringColour = theme.knobBody.interpolatedWith (theme.knobFill, 0.46f).withMultipliedAlpha (dim);
-            const float hair = juce::jmax (1.0f, R * 0.011f);
-
-            g.setColour (ringColour);
-            g.drawEllipse (disc (capR * 0.90f), hair);
+            const auto grooveColour =
+                theme.knobFill.contrasting (kCapStyle.grooveContrast).withMultipliedAlpha (kCapStyle.grooveAlpha * dim);
+            g.setColour (grooveColour);
+            g.drawEllipse (disc (capR * kCapStyle.grooveRadiusFrac), juce::jmax (1.0f, R * kCapStyle.grooveHairFrac));
         }
 
         // The rim light: a thin highlight right at the top edge of the cap,
@@ -196,15 +220,14 @@ void DigitalKnob::draw (juce::Graphics& g,
 
             const auto litColour = theme.softHighlight.interpolatedWith (juce::Colours::white, 0.35f);
 
-            // A theme may pin the fade to a fixed number of pixels instead of a
-            // fraction of the cap. A dark cap wants the light gone within a few
-            // pixels of the top edge; a pale one carries a longer fade.
-            const float sheenHeight =
-                theme.capRimLightHeight > 0.0f ? theme.capRimLightHeight : face.getHeight() * 0.12f;
+            // One rule for every cap: the sheen fades over a fixed fraction of
+            // the cap height (see `kCapStyle`), so a white cap and a near-black
+            // one catch the light the same way.
+            const float sheenHeight = face.getHeight() * kCapStyle.rimLightFrac;
 
-            juce::ColourGradient sheen (litColour.withAlpha (0.6f * dim), face.getCentreX(), face.getY(),
-                                        litColour.withAlpha (0.0f), face.getCentreX(), face.getY() + sheenHeight,
-                                        false);
+            juce::ColourGradient sheen (litColour.withAlpha (kCapStyle.rimLightAlpha * dim), face.getCentreX(),
+                                        face.getY(), litColour.withAlpha (0.0f), face.getCentreX(),
+                                        face.getY() + sheenHeight, false);
             g.setGradientFill (sheen);
             g.fillEllipse (face);
         }
@@ -220,7 +243,7 @@ void DigitalKnob::draw (juce::Graphics& g,
         juce::Path pointer;
         pointer.addRoundedRectangle (-width * 0.5f, -length * 0.5f, width, length, width * 0.5f);
 
-        const auto at = polar (centre, capR * m.pointerReach, angle);
+        const auto at = polar (centre, juce::jmax (0.0f, capR * m.pointerReach - kPointerInset), angle);
         const auto place = juce::AffineTransform::rotation (angle).translated (at);
 
         g.setColour (theme.knobPointer.withMultipliedAlpha (dim));

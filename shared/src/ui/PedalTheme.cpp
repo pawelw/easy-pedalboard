@@ -613,11 +613,6 @@ PedalTheme PedalTheme::moss()
     t.knobThickness = 3.0f;
     t.grain = 0.0f;
 
-    // The cap is dark enough against the face to read without a ring around
-    // it - unlike Peak Wah's near-white one, which needs the outline for
-    // contrast. Its edge comes from the shadow and the rim light instead.
-    t.knobCapBorder = false;
-
     t.logoTint = t.title;
     t.titleTypefacePtr = birthstone();
 
@@ -643,11 +638,11 @@ PedalTheme PedalTheme::onyx()
     t.textSecondary   = juce::Colour (0xff8ba3a9);
     t.title           = juce::Colour (0xffb9d3d9);
 
-    // A black cap on a black face. The cap is a gradient from `softHighlight`
-    // at its top to `knobFill` at its bottom, so the highlight has to stay a
-    // dark grey - a bright one would make the top half glow and the cap would
-    // stop reading as black. What separates it from the card is the drop
-    // shadow below it and that thin rim light above, not its own lightness.
+    // A black cap on a black face. The cap fill is lifted toward `softHighlight`
+    // at its top (see `kCapStyle`), so the highlight has to stay a dark grey -
+    // a bright one would make the top half glow and the cap would stop reading
+    // as black. What separates it from the card is the drop shadow below it and
+    // the rim light above, not its own lightness.
     t.knobBody        = juce::Colour (0xff0b0e10);   // the ring
     t.knobFill        = juce::Colour (0xff191f22);   // the cap face, at its darkest
     t.knobOutline     = juce::Colour (0xff2f3a3e);
@@ -667,17 +662,6 @@ PedalTheme PedalTheme::onyx()
     t.softHighlight   = juce::Colour (0xff364347);
     t.recess          = juce::Colour (0xff101416);
     t.recessInk       = juce::Colour (0xff6c8288);
-
-    // The cap is nowhere near white, so it can carry its own edge - see
-    // `knobCapBorder`. The hard ring the pale caps need would only draw a
-    // black outline on a black cap.
-    t.knobCapBorder = false;
-
-    // One pixel of rim light, not the proportional eighth of the cap the pale
-    // faces use. On black, any real fade reads as a grey dome rather than as a
-    // lit edge, and the cap stops looking like one piece - so this is a hairline
-    // catching the light at the top and nothing more.
-    t.capRimLightHeight = 1.0f;
 
     t.ledOn           = juce::Colour (0xffb9d3d9);
     t.ledOff          = juce::Colour (0xff222b2e);

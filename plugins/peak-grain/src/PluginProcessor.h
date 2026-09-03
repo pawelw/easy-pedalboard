@@ -10,6 +10,8 @@
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/TapeDelay.h"
 
+#include "GrainPresets.h"
+
 #if EE_GRAIN_TRACE
 #include "GrainTrace.h"
 #endif
@@ -75,6 +77,9 @@ private:
     ee::dsp::TapeDelay delay;
     ee::dsp::FdnReverb reverb;
 
+    // File-backed preset store, driven by the face's preset bar.
+    ee::grain::PresetStore presets { apvts };
+
     // 0..1 knobs whose Sync switch reinterprets them; built from GrainerConfig.
     ee::dsp::GrainSyncMap sizeMap;
     ee::dsp::GrainSyncMap densityMap;
@@ -104,6 +109,14 @@ private:
     std::atomic<float>* reverbMixParam = nullptr;
     std::atomic<float>* mixParam = nullptr;
     std::atomic<float>* onParam = nullptr;
+
+    // One enable switch per face module: off forces that section's controls to
+    // their no-op values in processBlock, leaving the knobs where they are.
+    std::atomic<float>* grainOnParam = nullptr;
+    std::atomic<float>* pitchOnParam = nullptr;
+    std::atomic<float>* randomOnParam = nullptr;
+    std::atomic<float>* delayOnParam = nullptr;
+    std::atomic<float>* reverbOnParam = nullptr;
 
     // Remembered knob positions for the mode each Sync switch is not currently
     // in, so a round trip through the switch lands back where it started.

@@ -6,9 +6,14 @@ namespace ee::ui
 {
 namespace
 {
+    // The value rides on top in the shorter row; the caption takes the taller
+    // row below it and the larger font.
     constexpr float kValueRowHeight = static_cast<float> (Knob::valueRowHeight);
-    constexpr float kCaptionRowHeight = 14.0f;
+    constexpr float kCaptionRowHeight = static_cast<float> (Knob::labelHeight) - kValueRowHeight;
     static_assert (Knob::labelHeight == static_cast<int> (kValueRowHeight + kCaptionRowHeight));
+
+    constexpr float kValueFontHeight = 12.0f;
+    constexpr float kCaptionFontHeight = 16.0f;
 }
 
 Knob::Knob (juce::AudioProcessorValueTreeState& state,
@@ -172,7 +177,7 @@ void Knob::paint (juce::Graphics& g)
         else
         {
             g.setColour (pedalTheme.textPrimary);
-            g.setFont (pedalTheme.bodyFont (16.0f));
+            g.setFont (pedalTheme.bodyFont (kValueFontHeight));
             g.drawText (valueText, valueArea, juce::Justification::centredTop, false);
         }
 
@@ -180,9 +185,18 @@ void Knob::paint (juce::Graphics& g)
             return;
     }
 
+    // The caption now carries the larger font, so a long one ("FEEDBACK") can
+    // outrun a narrow knob column - shrink it to fit rather than clip it.
+    const juce::String caption = captionText.toUpperCase();
+    auto captionFont = pedalTheme.bodyFont (kCaptionFontHeight).boldened().withExtraKerningFactor (0.09f);
+    const float captionWidth = juce::GlyphArrangement::getStringWidth (captionFont, caption);
+    const float captionRoom = static_cast<float> (textArea.getWidth());
+    if (captionWidth > captionRoom && captionWidth > 0.0f)
+        captionFont = captionFont.withHeight (juce::jmax (11.0f, captionFont.getHeight() * captionRoom / captionWidth));
+
     g.setColour (pedalTheme.textSecondary);
-    g.setFont (pedalTheme.bodyFont (12.0f).boldened().withExtraKerningFactor (0.09f));
-    g.drawText (captionText.toUpperCase(), textArea, juce::Justification::centredTop, false);
+    g.setFont (captionFont);
+    g.drawText (caption, textArea, juce::Justification::centredTop, false);
 }
 
 } // namespace ee::ui

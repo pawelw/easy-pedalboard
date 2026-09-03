@@ -80,19 +80,10 @@ struct PedalTheme
     /** Ink on that recess - the display's grid and axis captions. */
     juce::Colour recessInk       { 0xff8b8f98 };
 
-    /** How far down the cap the rim light fades, in pixels. 0 uses the shared
-        proportional default (an eighth of the cap), which suits a large pale
-        cap; a fixed few pixels reads as a lit edge rather than as a lit dome,
-        which is what a dark cap wants. Only read when `controlStyle` is
-        `digital`. */
-    float capRimLightHeight = 0.0f;
-
-    /** Whether a digital knob's cap is ringed in `knobBody`. True keeps the
-        hard outline (Peak Wah's white cap, which needs it for contrast against
-        a near-white face); false drops the ring and lets the cap's own shadow
-        and rim light carry the edge instead - for a cap that is not near-white
-        and can afford to. */
-    bool knobCapBorder = true;
+    // A digital knob's cap is built one way for every theme - the machined
+    // groove, the rim light, the fill gradient all live in `kCapStyle` in
+    // DigitalKnob.cpp. A theme only supplies the cap's colours (`knobFill`,
+    // `softHighlight`, `knobPointer`, `knobTrack`).
 
     juce::Colour ledOn           { 0xffc8e06a };
     juce::Colour ledOff          { 0xff35352f };

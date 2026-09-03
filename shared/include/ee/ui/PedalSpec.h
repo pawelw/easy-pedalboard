@@ -289,6 +289,11 @@ struct ToggleSpec
         knob. */
     bool centeredBelow = false;
 
+    /** Pin the button to the top-right corner of a filled knob-group panel
+        (index into `PedalSpec::knobGroups`), inset a few pixels. Overrides the
+        knob-anchored placement above. -1 = not pinned to a panel. */
+    int groupPanelIndex = -1;
+
     /** Pixels between the anchor's printed text and the top of the button, for
         `centeredBelow`. The default tucks it right up under the label, which is
         what a switch hanging off a knob in a crowded row wants; a face with a
@@ -361,6 +366,50 @@ struct KnobGroupSpec
 {
     juce::String caption;
     int count = 0;
+
+    /** Knob columns inside this group's block when the face lays its groups out
+        side by side (`PedalSpec::knobGroupsHorizontal`). An odd knob left over
+        leads on a short row of its own at the top. 0 follows the shared default
+        of two per row. Ignored by the plain one-row-per-group layout. */
+    int columns = 0;
+
+    /** Fill colour for this group's panel, when `PedalSpec::filledKnobGroups`
+        is set. Unset falls back to a shade lifted off `PedalTheme::panel`. The
+        caption and edge are taken from this colour so they stay legible on any
+        hue. */
+    std::optional<juce::Colour> fill;
+};
+
+/** The preset strip drawn centred in the switch strip across the top of the
+    face: a list button, a save button, the current name, and prev / next
+    arrows. Every hook is optional - leave one unset and its control is drawn
+    disabled. The processor owns the preset store; this only draws and calls
+    back. */
+struct PresetBarSpec
+{
+    /** The names shown in the list-button menu, in order. */
+    std::function<juce::StringArray()> names;
+
+    /** Index into `names()` of the preset currently showing, or -1 when the
+        state no longer matches any stored preset. Drives the tick in the menu
+        and the name in the middle of the bar. */
+    std::function<int()> currentIndex;
+
+    /** A menu pick: the index into `names()` the user chose. */
+    std::function<void (int)> onSelect;
+
+    /** "Save" - overwrite the current preset in place. */
+    std::function<void()> onSave;
+
+    /** "Save as New" - store the current state as a new preset. */
+    std::function<void()> onSaveAsNew;
+
+    /** The prev / next arrows: step one preset earlier / later and load it. */
+    std::function<void()> onPrev;
+    std::function<void()> onNext;
+
+    /** Bar width. The height is the switch strip's. */
+    int width = 340;
 };
 
 /** Declarative description of a pedal face. Add an effect by writing one of these. */
@@ -377,6 +426,18 @@ struct PedalSpec
         knobs past the last group form a trailing ungrouped row. Leave empty for
         the plain `knobsPerRow` grid every other pedal uses. */
     std::vector<KnobGroupSpec> knobGroups;
+
+    /** Lay the named groups out side by side across the knob area - each group
+        its own block of stacked rows (`KnobGroupSpec::columns` wide) - instead
+        of one full-width row per group. Turns a many-group face wide rather than
+        tall. Only meaningful with `knobGroups` set. */
+    bool knobGroupsHorizontal = false;
+
+    /** Draw each named group as a filled panel a shade lighter than the face,
+        with rounded corners and a soft drop shadow, rather than the hairline
+        outline. The caption sits inside the panel's top edge, larger than the
+        outline style's. For a face whose sections should read as raised cards. */
+    bool filledKnobGroups = false;
 
     /** Small knobs pinned to the top-right, above the main control area. Not
         part of the knob-row layout. */
@@ -416,6 +477,10 @@ struct PedalSpec
         with `slideToggleBottom` - left-aligned in a strip below everything else. */
     std::optional<SlideToggleSpec> slideToggle;
     bool slideToggleBottom = false;
+
+    /** Preset strip centred in the top switch strip. When set, the top strip is
+        carved off even if there is no `slideToggle`. */
+    std::optional<PresetBarSpec> presetBar;
 
     /** Centre the sliding switch in its strip rather than pinning it left - for
         a face where it is the only thing in that strip. */

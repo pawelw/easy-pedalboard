@@ -3,6 +3,7 @@
 #include "ee/ui/DigitalSwitch.h"
 #include "ee/ui/DigitalToggle.h"
 #include "ee/ui/FilterScope.h"
+#include "ee/ui/PresetBar.h"
 #include "ee/ui/SlideToggle.h"
 #include "ee/ui/WaveDisplay.h"
 
@@ -69,6 +70,13 @@ namespace
     constexpr int kSubButtonGap = 3; // between a sub knob's label and its button
     constexpr int kSubGroupPad = 12; // how far the group box stands off its knobs
     constexpr int kSubGroupCaptionHeight = 13;
+
+    // Named knob groups laid out side by side (`knobGroupsHorizontal`).
+    constexpr int kKnobGroupColsDefault = 2;    // knobs per row inside a group block
+    constexpr int kKnobGroupGap = 40;           // between blocks: 8 px clear of the panels' 16 px pad each side
+    constexpr int kKnobGroupPad = 16;           // how far a filled group panel stands off its knobs
+    constexpr int kKnobGroupCaptionHeight = 20; // the panel caption strip - taller than the outline style's
+    constexpr int kKnobGroupToggleReserve = 34; // bottom slack for a Sync toggle hung under a bottom-row knob
 
     // Fixed rather than a fraction of the column, so a knob is the same size on
     // every pedal however many of them a row carries.
@@ -205,6 +213,11 @@ private:
     juce::Rectangle<int> contentArea() const;
     bool topSwitch() const;
     bool bottomSwitch() const;
+
+    /** Whether a strip is carved off the top of the content area - for the slide
+        toggle, the preset bar, or both. */
+    bool hasTopStrip() const;
+
     bool hasBottomBand() const;
     int bottomBandHeight() const;
     juce::Rectangle<int> switchStripArea() const;
@@ -218,6 +231,12 @@ private:
 
     void layOutFaders (juce::Rectangle<int> area);
     juce::Rectangle<int> faderArea() const;
+
+    /** Lay the named knob groups out as side-by-side blocks (each `columns` wide,
+        an odd knob leading on its own short row), vertically centred against the
+        tallest block. Fills `knobCells`; `knobGroupBoxes` is taken from it
+        afterwards, the same as the plain layout. */
+    void layOutKnobGroupsRow (juce::Rectangle<int> area);
 
     /** The face the pedal name is set in. The analog faces use a big script at
         58 px; the digital one has no script - it sets the name in the same
@@ -233,8 +252,10 @@ private:
     void paintCutMasks (juce::Graphics&, juce::Rectangle<float> grid) const;
 
     /** The rounded outline with a caption let into its top edge, shared by the
-        sub-knob group and the named knob groups. */
-    void paintGroupBox (juce::Graphics&, juce::Rectangle<int> box, const juce::String& caption) const;
+        sub-knob group and the named knob groups. With `filled`, a panel a shade
+        lighter than the face with the caption inside its top edge instead. */
+    void paintGroupBox (juce::Graphics&, juce::Rectangle<int> box, const juce::String& caption, bool filled = false,
+                        juce::Colour fill = {}) const;
 
     void resetFaders();
 
@@ -266,6 +287,7 @@ private:
     /** The big two-way switch, in whichever style the theme asks for. */
     std::unique_ptr<juce::Button> slideToggle;
     SwitchControl* slideToggleMetrics = nullptr;
+    std::unique_ptr<PresetBar> presetBar;
     std::unique_ptr<WaveDisplay> waveDisplay;
     std::unique_ptr<FilterScope> filterScope;
     std::unique_ptr<juce::TextButton> faderResetButton;
@@ -481,6 +503,12 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
         addAndMakeVisible (*slideToggle);
     }
 
+    if (spec.presetBar.has_value())
+    {
+        presetBar = std::make_unique<PresetBar> (*spec.presetBar, theme);
+        addAndMakeVisible (*presetBar);
+    }
+
     if (spec.waveDisplay.has_value())
     {
         waveDisplay = std::make_unique<WaveDisplay> (state, *spec.waveDisplay, theme);
@@ -577,6 +605,11 @@ bool PedalEditor::Face::bottomSwitch() const
     return slideToggle != nullptr && spec.slideToggleBottom;
 }
 
+bool PedalEditor::Face::hasTopStrip() const
+{
+    return topSwitch() || presetBar != nullptr;
+}
+
 bool PedalEditor::Face::hasBottomBand() const
 {
     return waveDisplay != nullptr || filterScope != nullptr;
@@ -593,7 +626,7 @@ int PedalEditor::Face::bottomBandHeight() const
 
 juce::Rectangle<int> PedalEditor::Face::switchStripArea() const
 {
-    if (topSwitch())
+    if (hasTopStrip())
         return contentArea().removeFromTop (kSwitchStripHeight);
 
     return {};
@@ -647,7 +680,7 @@ juce::Rectangle<int> PedalEditor::Face::subKnobArea() const
         return {};
 
     auto area = contentArea();
-    if (topSwitch())
+    if (hasTopStrip())
         area.removeFromTop (kSwitchStripHeight + kSwitchStripGap);
     if (hasBottomBand())
         area.removeFromBottom (bottomBandHeight() + spec.displayBandRise + kSubRowGap);
@@ -659,7 +692,7 @@ juce::Rectangle<int> PedalEditor::Face::knobArea() const
 {
     auto area = contentArea();
 
-    if (topSwitch())
+    if (hasTopStrip())
         area.removeFromTop (kSwitchStripHeight + kSwitchStripGap);
 
     if (hasBottomBand())
@@ -1010,6 +1043,127 @@ void PedalEditor::Face::layOutFaders (juce::Rectangle<int> area)
     }
 }
 
+void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
+{
+    const int count = static_cast<int> (knobs.size());
+    knobCells.assign (static_cast<size_t> (count), {});
+    if (count == 0 || area.isEmpty())
+        return;
+
+    // A filled panel stands `kKnobGroupPad` off its knobs on the sides, more
+    // above (the caption strip) and below (room for a Sync toggle). Keep that
+    // whole envelope inside the content area rather than letting it run onto the
+    // frame, and centre the envelope - not just the knob band - in what is left.
+    const bool filled = spec.filledKnobGroups;
+    const int overhangSide = filled ? kKnobGroupPad : 0;
+    const int overhangTop = filled ? (kKnobGroupPad + kKnobGroupCaptionHeight + kKnobGroupPad / 2) : 0;
+    bool anyHangingToggle = false;
+    for (const auto& tg : spec.toggles)
+        if (tg.centeredBelow || tg.centeredAbove)
+            anyHangingToggle = true;
+    const int overhangBottom = filled ? (kKnobGroupPad + (anyHangingToggle ? kKnobGroupToggleReserve : 0)) : 0;
+
+    area = area.reduced (overhangSide, 0);
+
+    // One block per group that actually takes knobs: `columns` wide, with an odd
+    // knob left over leading on a short row of its own at the top.
+    struct Block
+    {
+        int first, n, cols, rows, firstRow;
+    };
+    std::vector<Block> blocks;
+    int consumed = 0;
+    for (const auto& group : spec.knobGroups)
+    {
+        const int n = juce::jlimit (0, juce::jmax (0, count - consumed), group.count);
+        if (n <= 0)
+            continue;
+
+        const int cols = juce::jmax (1, juce::jmin (n, group.columns > 0 ? group.columns : kKnobGroupColsDefault));
+        const int firstRow = (n % cols == 0) ? cols : (n % cols);
+        const int rows = 1 + (n - firstRow) / cols;
+        blocks.push_back ({ consumed, n, cols, rows, firstRow });
+        consumed += n;
+    }
+    if (blocks.empty())
+        return;
+
+    // One cell width serves every block, so a knob is the same size in all of
+    // them. Gaps: `kKnobGap` between columns within a block, `kKnobGroupGap`
+    // between blocks.
+    int totalCols = 0;
+    for (const auto& b : blocks)
+        totalCols += b.cols;
+
+    const int nBlocks = static_cast<int> (blocks.size());
+    const int betweenBlocks = kKnobGroupGap * (nBlocks - 1);
+    const int betweenCols = kKnobGap * (totalCols - nBlocks);
+    const int cellW = juce::jmax (1, (area.getWidth() - betweenBlocks - betweenCols) / juce::jmax (1, totalCols));
+    const int maxKnob = spec.knobDiameter > 0 ? spec.knobDiameter : kKnobDiameter;
+    const int knobW = juce::jmin (maxKnob, cellW);
+    const int rowH = knobW + Knob::labelHeight;
+    const int rowGap = spec.knobRowGap > 0 ? spec.knobRowGap : kKnobGap;
+
+    // Vertically centre every block against the tallest, and centre that band in
+    // the area when it does not fill it.
+    int maxRows = 1;
+    for (const auto& b : blocks)
+        maxRows = juce::jmax (maxRows, b.rows);
+    const int bandH = maxRows * rowH + (maxRows - 1) * rowGap;
+
+    const int envH = overhangTop + bandH + overhangBottom;
+    int bandTop = area.getY() + overhangTop;
+    if (const int slack = area.getHeight() - envH; slack > 0)
+        bandTop += slack / 2;
+    if (spec.knobBlockRise > 0)
+        bandTop = juce::jmax (contentArea().getY() + overhangTop, bandTop - spec.knobBlockRise);
+
+    // Centre the row of blocks in the area horizontally too.
+    int usedW = betweenBlocks;
+    for (const auto& b : blocks)
+        usedW += b.cols * cellW + (b.cols - 1) * kKnobGap;
+    int x = area.getX() + juce::jmax (0, (area.getWidth() - usedW) / 2);
+
+    for (const auto& b : blocks)
+    {
+        const int blockW = b.cols * cellW + (b.cols - 1) * kKnobGap;
+        const int blockH = b.rows * rowH + (b.rows - 1) * rowGap;
+        int y = bandTop + (bandH - blockH) / 2;
+
+        int k = b.first;
+        for (int r = 0; r < b.rows; ++r)
+        {
+            const int inRow = (r == 0) ? b.firstRow : b.cols;
+            const int rowW = inRow * cellW + (inRow - 1) * kKnobGap;
+            int rx = x + (blockW - rowW) / 2; // a short lead row sits centred over the block
+
+            for (int i = 0; i < inRow; ++i, ++k)
+            {
+                const juce::Rectangle<int> cell (rx, y, cellW, rowH);
+                knobCells[static_cast<size_t> (k)] = cell;
+
+                if (auto& knob = knobs[static_cast<size_t> (k)]; knob != nullptr)
+                {
+                    // A knob may ask for its own cap size. Bigger than the row's
+                    // grows downward from the same cap top - into the row gap -
+                    // so its label still gets a full line and its cap top still
+                    // lines up with its neighbours'.
+                    const int own = spec.knobs[static_cast<size_t> (k)].diameter;
+                    const int w = own > 0 ? juce::jmin (own, cellW) : knobW;
+                    const int h = juce::jmax (rowH, w + Knob::labelHeight);
+                    knob->setBounds (cell.getCentreX() - w / 2, cell.getY(), w, h);
+                }
+
+                rx += cellW + kKnobGap;
+            }
+
+            y += rowH + rowGap;
+        }
+
+        x += blockW + kKnobGroupGap;
+    }
+}
+
 juce::Font PedalEditor::Face::nameFont() const
 {
     return theme.titleFont (58.0f);
@@ -1030,10 +1184,42 @@ juce::Font PedalEditor::Face::fittedNameFont (juce::Rectangle<int> area) const
     return font.withHeight (font.getHeight() * available / needed);
 }
 
-void PedalEditor::Face::paintGroupBox (juce::Graphics& g, juce::Rectangle<int> boxInt, const juce::String& captionText) const
+void PedalEditor::Face::paintGroupBox (juce::Graphics& g, juce::Rectangle<int> boxInt, const juce::String& captionText,
+                                      bool filled, juce::Colour fill) const
 {
     if (boxInt.isEmpty())
         return;
+
+    if (filled)
+    {
+        // A raised card one level in from the face, lifted by the same soft
+        // shadow the whole face casts, with the caption inside its top edge. The
+        // fill is the spec's own colour when it set one, otherwise a shade off
+        // `panel`; the edge and caption are taken from the fill so they stay
+        // legible whatever hue it is.
+        const auto box = boxInt.toFloat();
+        constexpr float kCorner = 14.0f;
+
+        const bool custom = ! fill.isTransparent();
+        const auto panelFill =
+            custom ? fill : theme.panel.brighter (theme.controlStyle == ControlStyle::digital ? 0.13f : 0.06f);
+
+        juce::Path card;
+        card.addRoundedRectangle (box, kCorner);
+        juce::DropShadow (theme.softShadow, 10, { 0, 3 }).drawForPath (g, card);
+
+        g.setColour (panelFill);
+        g.fillRoundedRectangle (box, kCorner);
+        g.setColour (custom ? panelFill.contrasting (0.25f).withAlpha (0.35f) : theme.outline.withAlpha (0.55f));
+        g.drawRoundedRectangle (box, kCorner, 1.0f);
+
+        g.setColour (custom ? panelFill.contrasting (0.85f) : theme.textSecondary);
+        g.setFont (theme.bodyFont (13.0f).boldened());
+        g.drawText (captionText.toUpperCase(),
+                    box.withTrimmedLeft (14.0f).withHeight (static_cast<float> (kKnobGroupCaptionHeight)).translated (0.0f, 7.0f),
+                    juce::Justification::centredLeft, false);
+        return;
+    }
 
     // Stroked as a plain rounded rectangle and then broken open where the
     // lettering goes, which is a good deal harder to get wrong than stitching
@@ -1187,7 +1373,8 @@ void PedalEditor::Face::paint (juce::Graphics& g)
         paintGroupBox (g, subKnobGroup, spec.subKnobGroupCaption);
 
     for (size_t i = 0; i < knobGroupBoxes.size() && i < spec.knobGroups.size(); ++i)
-        paintGroupBox (g, knobGroupBoxes[i], spec.knobGroups[i].caption);
+        paintGroupBox (g, knobGroupBoxes[i], spec.knobGroups[i].caption, spec.filledKnobGroups,
+                       spec.knobGroups[i].fill.value_or (juce::Colour {}));
 
     // A small emblem for the effect, centred in the gap the knobs leave above
     // the name. Drawn before the name so it can never sit over the lettering.
@@ -1271,125 +1458,165 @@ void PedalEditor::Face::resized()
 
     const int count = static_cast<int> (knobs.size());
 
-    // How many knobs on each row. One row per named group (plus a trailing row
-    // for anything past the last group); otherwise the plain knobsPerRow grid.
-    std::vector<int> rowCounts;
-    if (! spec.knobGroups.empty())
+    // Named groups laid out side by side get their own path; everything else is
+    // the plain grid (one row per group, or the flat knobsPerRow block).
+    const bool horizontalGroups = spec.knobGroupsHorizontal && ! spec.knobGroups.empty() && count > 0;
+    int perRow = 1;
+
+    if (horizontalGroups)
     {
-        int consumed = 0;
-        for (const auto& group : spec.knobGroups)
-        {
-            const int n = juce::jlimit (0, juce::jmax (0, count - consumed), group.count);
-            if (n > 0)
-                rowCounts.push_back (n);
-            consumed += n;
-        }
-        if (consumed < count)
-            rowCounts.push_back (count - consumed);
+        layOutKnobGroupsRow (area);
     }
     else
     {
-        const int per = juce::jlimit (1, juce::jmax (1, count), spec.knobsPerRow);
-        for (int f = 0; f < count; f += per)
-            rowCounts.push_back (juce::jmin (per, count - f));
-    }
-
-    // The widest row sets the column grid; narrower rows centre within it.
-    int perRow = 1;
-    for (const int n : rowCounts)
-        perRow = juce::jmax (perRow, n);
-
-    // Columns span the full content width; the rotary sits centred in its
-    // column at a fixed size.
-    const int cellWidth = (area.getWidth() - kKnobGap * (perRow - 1)) / perRow;
-    const int maxKnob = spec.knobDiameter > 0 ? spec.knobDiameter : kKnobDiameter;
-    const int knobWidth = juce::jmin (maxKnob, cellWidth);
-    const int rowHeight = knobWidth + Knob::labelHeight;
-
-    // A face with something between its rows can ask for them to be spread; the
-    // block stays centred in its area, so the extra lifts the top row and drops
-    // the bottom one by half each.
-    const int rowGap = spec.knobRowGap > 0 ? spec.knobRowGap : kKnobGap;
-
-    // Centre the knob block when it does not fill the area - a single row with a
-    // switch strip above and a preview band below would otherwise sit high. Only
-    // done on the new layout, so the other pedals are untouched.
-    if (count > 0 && (hasBottomBand() || slideToggle != nullptr))
-    {
-        const int rows = static_cast<int> (rowCounts.size());
-        const int blockHeight = rows * rowHeight + (rows - 1) * rowGap;
-        const int slack = area.getHeight() - blockHeight;
-        if (slack > 0)
-            area.removeFromTop (slack / 2);
-    }
-
-    // Lift the block clear of where the area starts. Applied after the centring
-    // so it still bites once the rows already fill their area - which is when a
-    // face that wants them higher has nothing left to take.
-    if (spec.knobBlockRise > 0)
-    {
-        const int headroom = juce::jmax (0, area.getY() - contentArea().getY());
-        area.translate (0, -juce::jmin (spec.knobBlockRise, headroom));
-    }
-
-    knobCells.assign (static_cast<size_t> (count), {});
-
-    int first = 0;
-    for (const int inRow : rowCounts)
-    {
-        auto knobRow = area.removeFromTop (rowHeight);
-        area.removeFromTop (rowGap);
-
-        // A row that does not fill the column grid is centred, so a short group
-        // (or a lone last knob) sits under the gaps of the row above rather than
-        // hanging off the left. Full rows keep their exact column maths.
-        if (inRow < perRow)
+        // How many knobs on each row. One row per named group (plus a trailing
+        // row for anything past the last group); otherwise the knobsPerRow grid.
+        std::vector<int> rowCounts;
+        if (! spec.knobGroups.empty())
         {
-            const int usedWidth = inRow * cellWidth + (inRow - 1) * kKnobGap;
-            knobRow.removeFromLeft ((knobRow.getWidth() - usedWidth) / 2);
+            int consumed = 0;
+            for (const auto& group : spec.knobGroups)
+            {
+                const int n = juce::jlimit (0, juce::jmax (0, count - consumed), group.count);
+                if (n > 0)
+                    rowCounts.push_back (n);
+                consumed += n;
+            }
+            if (consumed < count)
+                rowCounts.push_back (count - consumed);
+        }
+        else
+        {
+            const int per = juce::jlimit (1, juce::jmax (1, count), spec.knobsPerRow);
+            for (int f = 0; f < count; f += per)
+                rowCounts.push_back (juce::jmin (per, count - f));
         }
 
-        for (int i = 0; i < inRow; ++i)
+        // The widest row sets the column grid; narrower rows centre within it.
+        for (const int n : rowCounts)
+            perRow = juce::jmax (perRow, n);
+
+        // Columns span the full content width; the rotary sits centred in its
+        // column at a fixed size.
+        const int cellWidth = (area.getWidth() - kKnobGap * (perRow - 1)) / perRow;
+        const int maxKnob = spec.knobDiameter > 0 ? spec.knobDiameter : kKnobDiameter;
+        const int knobWidth = juce::jmin (maxKnob, cellWidth);
+        const int rowHeight = knobWidth + Knob::labelHeight;
+
+        // A face with something between its rows can ask for them to be spread;
+        // the block stays centred in its area, so the extra lifts the top row
+        // and drops the bottom one by half each.
+        const int rowGap = spec.knobRowGap > 0 ? spec.knobRowGap : kKnobGap;
+
+        // Centre the knob block when it does not fill the area - a single row
+        // with a switch strip above and a preview band below would otherwise sit
+        // high. Only done on the new layout, so the other pedals are untouched.
+        if (count > 0 && (hasBottomBand() || slideToggle != nullptr))
         {
-            auto cell = knobRow.removeFromLeft (cellWidth);
+            const int rows = static_cast<int> (rowCounts.size());
+            const int blockHeight = rows * rowHeight + (rows - 1) * rowGap;
+            const int slack = area.getHeight() - blockHeight;
+            if (slack > 0)
+                area.removeFromTop (slack / 2);
+        }
 
-            // Kept for every slot, spacers included, so a toggle can be anchored
-            // to an empty cell.
-            knobCells[static_cast<size_t> (first + i)] = cell;
+        // Lift the block clear of where the area starts. Applied after the
+        // centring so it still bites once the rows already fill their area -
+        // which is when a face that wants them higher has nothing left to take.
+        if (spec.knobBlockRise > 0)
+        {
+            const int headroom = juce::jmax (0, area.getY() - contentArea().getY());
+            area.translate (0, -juce::jmin (spec.knobBlockRise, headroom));
+        }
 
-            if (auto& knob = knobs[static_cast<size_t> (first + i)]; knob != nullptr)
+        knobCells.assign (static_cast<size_t> (count), {});
+
+        int first = 0;
+        for (const int inRow : rowCounts)
+        {
+            auto knobRow = area.removeFromTop (rowHeight);
+            area.removeFromTop (rowGap);
+
+            // A row that does not fill the column grid is centred, so a short
+            // group (or a lone last knob) sits under the gaps of the row above
+            // rather than hanging off the left. Full rows keep their maths.
+            if (inRow < perRow)
             {
-                // A knob may ask for a smaller cap than the row's. Its bounds
-                // keep the row height, so its cap centre and its label rows
-                // still line up with its neighbours' - it is just a smaller
-                // cap in the same cell.
-                const int own = spec.knobs[static_cast<size_t> (first + i)].diameter;
-                const int width = own > 0 ? juce::jmin (own, knobWidth) : knobWidth;
-
-                auto bounds = cell.withSizeKeepingCentre (width, rowHeight);
-
-                // Out towards the edges: left of the row's middle goes left,
-                // right goes right, and a middle column stays where it is.
-                if (spec.knobColumnSpread != 0 && inRow > 1)
-                {
-                    const int side = i * 2 < inRow - 1 ? -1 : (i * 2 > inRow - 1 ? 1 : 0);
-                    bounds.translate (side * spec.knobColumnSpread, 0);
-                }
-
-                knob->setBounds (bounds);
+                const int usedWidth = inRow * cellWidth + (inRow - 1) * kKnobGap;
+                knobRow.removeFromLeft ((knobRow.getWidth() - usedWidth) / 2);
             }
 
-            if (i < inRow - 1)
-                knobRow.removeFromLeft (kKnobGap);
-        }
+            for (int i = 0; i < inRow; ++i)
+            {
+                auto cell = knobRow.removeFromLeft (cellWidth);
 
-        first += inRow;
+                // Kept for every slot, spacers included, so a toggle can be
+                // anchored to an empty cell.
+                knobCells[static_cast<size_t> (first + i)] = cell;
+
+                if (auto& knob = knobs[static_cast<size_t> (first + i)]; knob != nullptr)
+                {
+                    // A knob may ask for a smaller cap than the row's. Its bounds
+                    // keep the row height, so its cap centre and its label rows
+                    // still line up with its neighbours' - it is just a smaller
+                    // cap in the same cell.
+                    const int own = spec.knobs[static_cast<size_t> (first + i)].diameter;
+                    const int width = own > 0 ? juce::jmin (own, knobWidth) : knobWidth;
+
+                    auto bounds = cell.withSizeKeepingCentre (width, rowHeight);
+
+                    // Out towards the edges: left of the row's middle goes left,
+                    // right goes right, and a middle column stays where it is.
+                    if (spec.knobColumnSpread != 0 && inRow > 1)
+                    {
+                        const int side = i * 2 < inRow - 1 ? -1 : (i * 2 > inRow - 1 ? 1 : 0);
+                        bounds.translate (side * spec.knobColumnSpread, 0);
+                    }
+
+                    knob->setBounds (bounds);
+                }
+
+                if (i < inRow - 1)
+                    knobRow.removeFromLeft (kKnobGap);
+            }
+
+            first += inRow;
+        }
     }
 
-    // Captioned box around each named knob group, taken from the cells the
-    // group's knobs ended up in.
+    // Box around each named knob group, taken from the cells the group's knobs
+    // ended up in. A filled panel stands further off its knobs, carries a taller
+    // caption strip, and - if any group hangs a Sync toggle under a knob in its
+    // last row - every panel reserves the same slack below, so they all read as
+    // one height however the toggles fall.
     knobGroupBoxes.clear();
     {
+        // Knobs on a group's last row: the short lead row is at the top, so the
+        // last row is always `cols` wide unless the whole group is one row.
+        const auto lastRowCols = [] (int n, int columns)
+        {
+            const int cols = juce::jmax (1, columns > 0 ? columns : kKnobGroupColsDefault);
+            return juce::jmin (n, cols);
+        };
+
+        int bottomReserve = 0;
+        if (spec.filledKnobGroups)
+        {
+            int groupFirst = 0;
+            for (const auto& group : spec.knobGroups)
+            {
+                const int n = juce::jlimit (0, juce::jmax (0, count - groupFirst), group.count);
+                if (n <= 0)
+                    continue;
+                const int cols = lastRowCols (n, group.columns);
+                for (const auto& tg : spec.toggles)
+                    if (tg.centeredBelow && tg.afterKnobIndex >= groupFirst + n - cols
+                        && tg.afterKnobIndex < groupFirst + n)
+                        bottomReserve = kKnobGroupToggleReserve;
+                groupFirst += n;
+            }
+        }
+
         int groupFirst = 0;
         for (const auto& group : spec.knobGroups)
         {
@@ -1404,8 +1631,14 @@ void PedalEditor::Face::resized()
                 block = block.isEmpty() ? cell : block.getUnion (cell);
             }
 
-            knobGroupBoxes.push_back (
-                block.expanded (kSubGroupPad, kSubGroupPad / 2).withTrimmedTop (-kSubGroupCaptionHeight / 2));
+            if (spec.filledKnobGroups)
+                knobGroupBoxes.push_back (block.expanded (kKnobGroupPad)
+                                              .withTrimmedTop (-(kKnobGroupCaptionHeight + kKnobGroupPad / 2))
+                                              .withTrimmedBottom (-bottomReserve));
+            else
+                knobGroupBoxes.push_back (
+                    block.expanded (kSubGroupPad, kSubGroupPad / 2).withTrimmedTop (-kSubGroupCaptionHeight / 2));
+
             groupFirst += n;
         }
     }
@@ -1578,6 +1811,26 @@ void PedalEditor::Face::resized()
         const int toggleW = toggles[t].metrics->switchWidth();
         const int toggleH = toggles[t].metrics->switchHeight();
 
+        // Pinned to the top-right corner of a knob-group panel, clear of the
+        // caption let into its top-left.
+        if (const int gp = tSpec.groupPanelIndex; gp >= 0)
+        {
+            if (gp >= static_cast<int> (knobGroupBoxes.size()))
+            {
+                button.setVisible (false);
+                continue;
+            }
+
+            const auto box = knobGroupBoxes[static_cast<size_t> (gp)];
+            constexpr int inset = 12;
+            juce::Point<int> tr { box.getRight() - inset - toggleW / 2, box.getY() + inset + toggleH / 2 };
+            tr.x -= toggles[t].metrics->switchTrackOffset();
+
+            button.setVisible (true);
+            button.setBounds (juce::Rectangle<int> (toggleW, toggleH).withCentre (tr));
+            continue;
+        }
+
         const bool spacerAnchor = index >= 0 && index < count && knobs[static_cast<size_t> (index)] == nullptr;
 
         const bool haveAnchor =
@@ -1653,6 +1906,16 @@ void PedalEditor::Face::resized()
 
         slideToggle->setBounds (juce::Rectangle<int> (switchW, switchH)
                                     .withPosition (x, strip.getCentreY() - switchH / 2 - spec.slideToggleRise));
+    }
+
+    // Preset bar: centred in the top strip. The slide switch, if any, keeps its
+    // top-left corner of the same strip - the bar is narrow enough to clear it.
+    if (presetBar != nullptr)
+    {
+        const auto strip = switchStripArea();
+        const int w = juce::jmin (spec.presetBar->width, strip.getWidth());
+        presetBar->setBounds (
+            juce::Rectangle<int> (w, strip.getHeight()).withCentre ({ strip.getCentreX(), strip.getCentreY() }));
     }
 
     if (waveDisplay != nullptr)

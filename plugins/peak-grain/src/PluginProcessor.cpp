@@ -5,6 +5,8 @@
 #include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
+#include <cmath>
+
 #if EE_GRAIN_TUNER
 #include "GrainTunerPanel.h"
 #endif
@@ -37,6 +39,13 @@ constexpr const char* kDecayID = "decay";
 constexpr const char* kReverbMixID = "rmix";
 constexpr const char* kMixID = "mix";
 constexpr const char* kOnID = "on";
+
+// Per-module enable switches, one per face panel.
+constexpr const char* kGrainOnID = "grainon";
+constexpr const char* kPitchOnID = "pitchon";
+constexpr const char* kRandomOnID = "randon";
+constexpr const char* kDelayOnID = "delon";
+constexpr const char* kReverbOnID = "revon";
 
 // State-tree properties: the knob position each Sync switch is not currently
 // showing, so flipping the switch and flipping it back lands where it started.
@@ -122,6 +131,52 @@ void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour co
     g.setFont (juce::Font (juce::FontOptions (area.getHeight() * 0.95f)).boldened());
     g.drawText ("ms", box, juce::Justification::centred, false);
 }
+
+/** One grain envelope, for the Shape knob's cap - the same idea as Peak Wah's
+    morphing LFO glyph, but the curve that morphs here is the grain window:
+    `shape` leans it from soft (a slow rise into a gentle tail) at 0 to plucky
+    (an instant attack into a sharp decay) at 1, matching `Grainer::setShape`. */
+void drawGrainShapeIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour, float shape01)
+{
+    const auto r = area.reduced (area.getWidth() * 0.12f, area.getHeight() * 0.26f);
+    const float s = juce::jlimit (0.0f, 1.0f, shape01);
+    const float attack = 0.42f - 0.36f * s; // fraction of the width spent rising
+    const float decayK = 2.0f + 4.5f * s;   // steepness of the exponential tail
+
+    juce::Path p;
+    constexpr int steps = 48;
+    for (int i = 0; i <= steps; ++i)
+    {
+        const float t = static_cast<float> (i) / static_cast<float> (steps);
+        const float e = t < attack ? (attack > 1.0e-4f ? t / attack : 1.0f)
+                                   : std::exp (-decayK * (t - attack) / juce::jmax (1.0e-4f, 1.0f - attack));
+        const float x = r.getX() + t * r.getWidth();
+        const float y = r.getBottom() - e * r.getHeight();
+        i == 0 ? p.startNewSubPath (x, y) : p.lineTo (x, y);
+    }
+
+    g.setColour (colour);
+    g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+}
+
+/** The IEC power glyph - a ring broken at the top with a stem through the gap -
+    for each module's enable button. Lit when the section is on, the pale grey
+    of an unreached tick when off, the same as the Sync buttons. */
+void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const auto r = area.reduced (area.getWidth() * 0.10f, area.getHeight() * 0.10f);
+    const auto c = r.getCentre();
+    const float radius = r.getWidth() * 0.45f;
+    const float stroke = juce::jmax (1.3f, r.getHeight() * 0.12f);
+
+    juce::Path ring;
+    ring.addCentredArc (c.x, c.y, radius, radius, 0.0f, juce::degreesToRadians (38.0f), juce::degreesToRadians (322.0f),
+                        true);
+
+    g.setColour (colour);
+    g.strokePath (ring, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.drawLine (c.x, r.getY(), c.x, c.y + radius * 0.10f, stroke);
+}
 } // namespace
 
 PeakGrainProcessor::PeakGrainProcessor()
@@ -158,6 +213,11 @@ PeakGrainProcessor::PeakGrainProcessor()
     reverbMixParam = apvts.getRawParameterValue (kReverbMixID);
     mixParam = apvts.getRawParameterValue (kMixID);
     onParam = apvts.getRawParameterValue (kOnID);
+    grainOnParam = apvts.getRawParameterValue (kGrainOnID);
+    pitchOnParam = apvts.getRawParameterValue (kPitchOnID);
+    randomOnParam = apvts.getRawParameterValue (kRandomOnID);
+    delayOnParam = apvts.getRawParameterValue (kDelayOnID);
+    reverbOnParam = apvts.getRawParameterValue (kReverbOnID);
 
     // Seed both mode slots from the parameters' defaults, so the first flip of a
     // Sync switch has somewhere sensible to land before the user has set it.
@@ -282,6 +342,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
 
+    // Per-module enables. Default on, so a fresh instance behaves as before.
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kGrainOnID, 1 }, "Grain On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kPitchOnID, 1 }, "Pitch On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kRandomOnID, 1 }, "Random On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDelayOnID, 1 }, "Delay On", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kReverbOnID, 1 }, "Reverb On", true));
+
     return layout;
 }
 
@@ -393,9 +460,9 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
         g->reset (sampleRate, kGainRampSeconds);
 
     const float hp = juce::MathConstants<float>::halfPi;
-    const float gMix = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
-    const float dMix = juce::jlimit (0.0f, 1.0f, delayMixParam->load() * 0.01f);
-    const float rMix = juce::jlimit (0.0f, 1.0f, reverbMixParam->load() * 0.01f);
+    const float gMix = grainOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f) : 0.0f;
+    const float dMix = delayOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, delayMixParam->load() * 0.01f) : 0.0f;
+    const float rMix = reverbOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, reverbMixParam->load() * 0.01f) : 0.0f;
     const bool engaged = onParam->load() > 0.5f;
 
     grainDry.setCurrentAndTargetValue (engaged ? std::cos (gMix * hp) : 1.0f);
@@ -463,6 +530,12 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const bool densitySynced = densitySyncParam->load() > 0.5f;
     const bool delaySynced = delaySyncParam->load() > 0.5f;
 
+    // Each face module has an enable switch. Off leaves the knobs alone but
+    // feeds the engine that section's no-op values: Random flat, Pitch pure
+    // unison, and (below) the grain / delay / reverb blends fully dry.
+    const bool randomOn = randomOnParam->load() > 0.5f;
+    const bool pitchOn = pitchOnParam->load() > 0.5f;
+
     grainer.setSizeMs (sizeMap.value (sizeParam->load(), sizeSynced, bpm));
     grainer.setDensityHz (densityMap.value (densityParam->load(), densitySynced, bpm));
     grainer.setTimeMs (timeParam->load());
@@ -470,11 +543,14 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     grainer.setStretch (stretchParam->load() * 0.01f);
     grainer.setFreeze (freezeParam->load() > 0.5f);
     grainer.setShape (shapeParam->load() * 0.01f);
-    grainer.setScatter (scatterParam->load() * 0.01f);
-    grainer.setReverse (reverseParam->load() * 0.01f);
-    grainer.setStereo (stereoParam->load() * 0.01f);
-    grainer.setDetuneCents (detuneParam->load());
-    grainer.setPitchMix (pitchLowParam->load(), pitchUnisonParam->load(), pitchHighParam->load());
+    grainer.setScatter ((randomOn ? scatterParam->load() : 0.0f) * 0.01f);
+    grainer.setReverse ((randomOn ? reverseParam->load() : 0.0f) * 0.01f);
+    grainer.setStereo ((randomOn ? stereoParam->load() : 0.0f) * 0.01f);
+    grainer.setDetuneCents (pitchOn ? detuneParam->load() : 0.0f);
+    if (pitchOn)
+        grainer.setPitchMix (pitchLowParam->load(), pitchUnisonParam->load(), pitchHighParam->load());
+    else
+        grainer.setPitchMix (0.0f, 1.0f, 0.0f);
 
     const float delaySecs = delayMap.value (delayTimeParam->load(), delaySynced, bpm) * 0.001f;
     delay.setDelaySeconds (delaySecs, delaySecs);
@@ -490,9 +566,12 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     reverb.setDecayTime (decayParam->load());
 
     const float hp = juce::MathConstants<float>::halfPi;
-    const float gMix = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
-    const float dMix = juce::jlimit (0.0f, 1.0f, delayMixParam->load() * 0.01f);
-    const float rMix = juce::jlimit (0.0f, 1.0f, reverbMixParam->load() * 0.01f);
+    const bool grainOn = grainOnParam->load() > 0.5f;
+    const bool delayOn = delayOnParam->load() > 0.5f;
+    const bool reverbOn = reverbOnParam->load() > 0.5f;
+    const float gMix = grainOn ? juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f) : 0.0f;
+    const float dMix = delayOn ? juce::jlimit (0.0f, 1.0f, delayMixParam->load() * 0.01f) : 0.0f;
+    const float rMix = reverbOn ? juce::jlimit (0.0f, 1.0f, reverbMixParam->load() * 0.01f) : 0.0f;
     const bool engaged = onParam->load() > 0.5f;
 
     // Trails: bypassing opens every stage's dry leg to unity and closes its send
@@ -655,34 +734,50 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
     spec.tagline = "Granular delay into delay into plate";
     spec.version = "v" JucePlugin_VersionString;
 
-    // Five captioned boxes, one row each. The knobs are consumed in order by
-    // `knobGroups`.
+    // Five modules laid out side by side, each its own raised panel. The knobs
+    // are consumed in order by `knobGroups`; within a module they fill two per
+    // row (an odd one leading on a row of its own), except Reverb which stacks
+    // one per row so its panel stays narrow.
+    constexpr int kLeadKnob = 107; // ~30% up on the 82 px face default
+
     spec.knobs = {
+        // Grain
+        { kMixID, "Mix" },
         { .parameterID = kSizeID, .caption = "Size", .liveValueText = [this] { return sizeReadout(); } },
         { .parameterID = kDensityID, .caption = "Destiny", .liveValueText = [this] { return densityReadout(); } },
-        { kShapeID, "Shape" },
-        { kMixID, "Mix" },
+        { .parameterID = kShapeID,
+          .caption = "Shape",
+          .capIcon = [this] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
+          { drawGrainShapeIcon (g, r, c, shapeParam->load() * 0.01f); } },
 
+        // Pitch
         { .parameterID = kPitchLowID, .caption = "Low" },
         { .parameterID = kPitchUnisonID, .caption = "Unison" },
         { .parameterID = kPitchHighID, .caption = "High" },
         { kDetuneID, "Detune" },
 
+        // Random - Stereo leads (larger), Reverse and Scatter share the row below
+        { .parameterID = kStereoID, .caption = "Stereo", .diameter = kLeadKnob },
         { kReverseID, "Reverse" },
         { kScatterID, "Scatter" },
-        { kStereoID, "Stereo" },
 
+        // Delay - Mix leads (larger), Time and Feedback share the row below
+        { .parameterID = kDelayMixID, .caption = "Mix", .diameter = kLeadKnob },
         { .parameterID = kDelayTimeID, .caption = "Time", .liveValueText = [this] { return delayTimeReadout(); } },
         { kDelayFeedbackID, "Feedback" },
-        { kDelayMixID, "Mix" },
 
+        // Reverb
         { kDecayID, "Decay" },
         { kReverbMixID, "Mix" },
     };
 
     spec.knobGroups = {
-        { "Grain", 4 }, { "Pitch", 4 }, { "Random", 3 }, { "Delay", 3 }, { "Reverb", 2 },
+        { .caption = "Grain", .count = 4, .columns = 2 },  { .caption = "Pitch", .count = 4, .columns = 2 },
+        { .caption = "Random", .count = 3, .columns = 2 }, { .caption = "Delay", .count = 3, .columns = 2 },
+        { .caption = "Reverb", .count = 2, .columns = 1 },
     };
+    spec.knobGroupsHorizontal = true;
+    spec.filledKnobGroups = true;
 
     // A Sync / ms button under Size, under Destiny, and under the delay Time
     // knob: pressed, the knob picks a note division and the reading is the
@@ -692,7 +787,7 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
     spec.toggles = {
         { .parameterID = kSizeSyncID,
           .caption = "Sync",
-          .afterKnobIndex = 0,
+          .afterKnobIndex = 1,
           .centeredBelow = true,
           .belowGap = 10,
           .onClick = [this] { onSizeSyncToggled(); },
@@ -700,7 +795,7 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
           .controlStyle = ee::ui::ControlStyle::digital },
         { .parameterID = kDensitySyncID,
           .caption = "Sync",
-          .afterKnobIndex = 1,
+          .afterKnobIndex = 2,
           .centeredBelow = true,
           .belowGap = 10,
           .onClick = [this] { onDensitySyncToggled(); },
@@ -708,33 +803,70 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
           .controlStyle = ee::ui::ControlStyle::digital },
         { .parameterID = kDelaySyncID,
           .caption = "Sync",
-          .afterKnobIndex = 11,
+          .afterKnobIndex = 12,
           .centeredBelow = true,
           .belowGap = 10,
           .onClick = [this] { onDelaySyncToggled(); },
           .icon = drawMsIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+
+        // A power button in the top-right of each module panel: off feeds that
+        // section its no-op values (see processBlock) without moving its knobs.
+        { .parameterID = kGrainOnID,
+          .caption = "On",
+          .groupPanelIndex = 0,
+          .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = kPitchOnID,
+          .caption = "On",
+          .groupPanelIndex = 1,
+          .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = kRandomOnID,
+          .caption = "On",
+          .groupPanelIndex = 2,
+          .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = kDelayOnID,
+          .caption = "On",
+          .groupPanelIndex = 3,
+          .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = kReverbOnID,
+          .caption = "On",
+          .groupPanelIndex = 4,
+          .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
     };
 
     // Live / Freeze rides in the strip across the top.
     spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = kFreezeID, .labelOff = "Live", .labelOn = "Freeze" };
 
-    // Logo and name share the bottom row, which buys back the title row for the
-    // fifth rank of knobs.
+    // Preset bar, centred in the same strip: list / save on the left, name in
+    // the middle, prev / next on the right. Backed by the file store.
+    spec.presetBar = ee::ui::PresetBarSpec {
+        .names = [this] { return presets.names(); },
+        .currentIndex = [this] { return presets.currentIndex(); },
+        .onSelect = [this] (int i) { presets.select (i); },
+        .onSave = [this] { presets.save(); },
+        .onSaveAsNew = [this] { presets.saveAsNew(); },
+        .onPrev = [this] { presets.step (-1); },
+        .onNext = [this] { presets.step (1); },
+        .width = 300,
+    };
+
+    // Logo and name share the bottom row.
     spec.titleBesideLogo = true;
 
-    spec.knobsPerRow = 4; // width only; `knobGroups` drives the row layout
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
-
-    // Five ranks of knobs plus the switch strip, and now a Sync button hanging
-    // under three of them: smaller caps, a wide row gap so those buttons clear
-    // the captioned box below them (the same reason Peak Spring widens its gap),
-    // and a tall face.
+    // Five modules side by side make the face wide rather than tall. Small caps,
+    // and a row gap inside each module wide enough for the Sync buttons that
+    // hang under Size, Destiny and Time to clear the knobs below them.
     spec.knobDiameter = 82;
-    spec.knobRowGap = 64;
-    spec.height = 1060;
+    spec.knobRowGap = 54;
+    spec.width = 1264;
+    spec.height = 540;
 
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::onyx());
+    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::white());
 
 #if EE_GRAIN_TUNER
     // The panel owns the voicing while it is open: the grain half goes to the

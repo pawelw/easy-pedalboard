@@ -188,6 +188,24 @@ void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour co
     g.drawText ("ms", box, juce::Justification::centred, false);
 }
 
+/** Mirrors drawPowerIcon in plugins/peak-grain - the IEC power glyph on each
+    module's enable button. */
+void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const auto r = area.reduced (area.getWidth() * 0.10f, area.getHeight() * 0.10f);
+    const auto c = r.getCentre();
+    const float radius = r.getWidth() * 0.45f;
+    const float stroke = juce::jmax (1.3f, r.getHeight() * 0.12f);
+
+    juce::Path ring;
+    ring.addCentredArc (c.x, c.y, radius, radius, 0.0f, juce::degreesToRadians (38.0f),
+                        juce::degreesToRadians (322.0f), true);
+
+    g.setColour (colour);
+    g.strokePath (ring, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    g.drawLine (c.x, r.getY(), c.x, c.y + radius * 0.10f, stroke);
+}
+
 ee::ui::PedalSpec makeDelaySpec()
 {
     ee::ui::PedalSpec spec;
@@ -529,6 +547,9 @@ public:
 
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
+        for (const auto* id : { "grainon", "pitchon", "randon", "delon", "revon" })
+            layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, 1 }, id, true));
+
         return layout;
     }
 };
@@ -539,43 +560,103 @@ ee::ui::PedalSpec makeGrainSpec()
     spec.name = "Peak Grain";
     spec.tagline = "Granular delay into delay into plate";
     spec.version = "v0.11.0";
+
+    constexpr int kLeadKnob = 107; // ~30% up on the 82 px face default
+
+    // The grain envelope on the Shape cap - see drawGrainShapeIcon in
+    // plugins/peak-grain. Static here at the default 55 % lean.
+    auto shapeIcon = [] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
+    {
+        r = r.reduced (r.getWidth() * 0.12f, r.getHeight() * 0.26f);
+        constexpr float s = 0.55f;
+        const float attack = 0.42f - 0.36f * s;
+        const float decayK = 2.0f + 4.5f * s;
+        juce::Path p;
+        for (int i = 0; i <= 48; ++i)
+        {
+            const float t = (float) i / 48.0f;
+            const float e = t < attack ? t / attack
+                                       : std::exp (-decayK * (t - attack) / juce::jmax (1.0e-4f, 1.0f - attack));
+            const float x = r.getX() + t * r.getWidth();
+            i == 0 ? p.startNewSubPath (x, r.getBottom() - e * r.getHeight())
+                   : p.lineTo (x, r.getBottom() - e * r.getHeight());
+        }
+        g.setColour (c);
+        g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+    };
+
     spec.knobs = {
-        { "size", "Size" }, { "density", "Destiny" }, { "shape", "Shape" }, { "mix", "Mix" },
+        { "mix", "Mix" },
+        { "size", "Size" },
+        { "density", "Destiny" },
+        { .parameterID = "shape", .caption = "Shape", .capIcon = shapeIcon },
 
-        { "plow", "Low" }, { "puni", "Unison" }, { "phigh", "High" }, { "detune", "Detune" },
+        { "plow", "Low" },
+        { "puni", "Unison" },
+        { "phigh", "High" },
+        { "detune", "Detune" },
 
-        { "reverse", "Reverse" }, { "scatter", "Scatter" }, { "stereo", "Stereo" },
+        { .parameterID = "stereo", .caption = "Stereo", .diameter = kLeadKnob },
+        { "reverse", "Reverse" },
+        { "scatter", "Scatter" },
 
-        { "dtime", "Time" }, { "dfb", "Feedback" }, { "dmix", "Mix" },
+        { .parameterID = "dmix", .caption = "Mix", .diameter = kLeadKnob },
+        { "dtime", "Time" },
+        { "dfb", "Feedback" },
 
-        { "decay", "Decay" }, { "rmix", "Mix" },
+        { "decay", "Decay" },
+        { "rmix", "Mix" },
     };
     spec.knobGroups = {
-        { "Grain", 4 },
-        { "Pitch", 4 },
-        { "Random", 3 },
-        { "Delay", 3 },
-        { "Reverb", 2 },
+        { .caption = "Grain", .count = 4, .columns = 2 },
+        { .caption = "Pitch", .count = 4, .columns = 2 },
+        { .caption = "Random", .count = 3, .columns = 2 },
+        { .caption = "Delay", .count = 3, .columns = 2 },
+        { .caption = "Reverb", .count = 2, .columns = 1 },
     };
+    spec.knobGroupsHorizontal = true;
+    spec.filledKnobGroups = true;
     spec.toggles = {
-        { .parameterID = "ssync", .caption = "Sync", .afterKnobIndex = 0, .centeredBelow = true, .belowGap = 10,
+        { .parameterID = "ssync", .caption = "Sync", .afterKnobIndex = 1, .centeredBelow = true, .belowGap = 10,
           .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "dsync", .caption = "Sync", .afterKnobIndex = 1, .centeredBelow = true, .belowGap = 10,
+        { .parameterID = "dsync", .caption = "Sync", .afterKnobIndex = 2, .centeredBelow = true, .belowGap = 10,
           .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "dtsync", .caption = "Sync", .afterKnobIndex = 11, .centeredBelow = true, .belowGap = 10,
+        { .parameterID = "dtsync", .caption = "Sync", .afterKnobIndex = 12, .centeredBelow = true, .belowGap = 10,
           .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
+
+        { .parameterID = "grainon", .caption = "On", .groupPanelIndex = 0, .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = "pitchon", .caption = "On", .groupPanelIndex = 1, .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = "randon", .caption = "On", .groupPanelIndex = 2, .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = "delon", .caption = "On", .groupPanelIndex = 3, .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = "revon", .caption = "On", .groupPanelIndex = 4, .icon = drawPowerIcon,
+          .controlStyle = ee::ui::ControlStyle::digital },
     };
     spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "freeze", .labelOff = "Live", .labelOn = "Freeze" };
-    spec.titleBesideLogo = true;
-    spec.knobsPerRow = 4;
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
 
-    // Five ranks of knobs plus the switch strip, and a Sync button hanging under
-    // three of them: smaller caps, a wide row gap so those buttons clear the
-    // captioned box below them, and a tall face.
+    // A demo preset bar so the strip renders; the real store lives in the
+    // processor.
+    spec.presetBar = ee::ui::PresetBarSpec {
+        .names = [] { return juce::StringArray { "Init", "Frozen Choir", "Micro Stutter", "Cathedral Dust" }; },
+        .currentIndex = [] { return 1; },
+        .onSelect = [] (int) {},
+        .onSave = [] {},
+        .onSaveAsNew = [] {},
+        .onPrev = [] {},
+        .onNext = [] {},
+        .width = 300,
+    };
+    spec.titleBesideLogo = true;
+
+    // Five modules side by side: a wide face rather than a tall one, small caps,
+    // and a row gap inside each module wide enough for the Sync buttons.
     spec.knobDiameter = 82;
-    spec.knobRowGap = 64;
-    spec.height = 1060;
+    spec.knobRowGap = 54;
+    spec.width = 1264;
+    spec.height = 540;
     return spec;
 }
 
@@ -1010,7 +1091,7 @@ void renderWah (const juce::File& outputFile)
 void renderGrain (const juce::File& outputFile)
 {
     GrainSnapshotProcessor processor;
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeGrainSpec(), ee::ui::PedalTheme::onyx());
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeGrainSpec(), ee::ui::PedalTheme::white());
     writePng (editor, outputFile);
 }
 

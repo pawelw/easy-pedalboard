@@ -25,9 +25,10 @@ public:
     /** Same, compact: value readout only, no caption. */
     static constexpr int compactLabelHeight = 16;
 
-    /** The top row of the label block - the value readout, and the only row a
-        caption-until-touched knob prints in. */
-    static constexpr int valueRowHeight = 18;
+    /** The top row of the label block - the value readout (the shorter of the
+        two rows now, set in a smaller font than the caption below it), and the
+        only row a caption-until-touched knob prints in. */
+    static constexpr int valueRowHeight = 14;
 
     void resized() override;
     void paint (juce::Graphics&) override;
