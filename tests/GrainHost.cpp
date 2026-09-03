@@ -6,10 +6,15 @@
 //
 //   ee_grain_host [--sr 44100] [--block 128] [--in noise|dc|burst|silence]
 //                 [--level -20] [--seconds 30] [--ragged] [--mono]
-//                 [--size 321] [--density 6.2] [--time 300] [--feedback 30]
-//                 [--stretch 0] [--freeze 0] [--shape 55] [--scatter 25]
-//                 [--reverse 25] [--stereo 85] [--detune 6]
-//                 [--low 0] [--unison 100] [--high 0] [--reverb 35] [--mix 50]
+//                 [--size 0.5] [--density 0.5] [--ssync 0] [--dsync 0]
+//                 [--time 300] [--feedback 30] [--stretch 0] [--freeze 0]
+//                 [--shape 55] [--scatter 25] [--reverse 25] [--stereo 85]
+//                 [--detune 6] [--low 0] [--unison 100] [--high 0]
+//                 [--dtime 0.36] [--dtsync 1] [--dfb 30] [--dmix 30]
+//                 [--decay 2.5] [--rmix 30] [--mix 50]
+//
+// Size, Density and the delay Time (--size/--density/--dtime) are normalised
+// 0..1 knobs now - their Sync switch decides what that maps to.
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -81,6 +86,8 @@ int main (int argc, char* argv[])
         else if (arg == "--sweep")    sweep = true;
         else if (arg == "--size")     knobs.emplace_back ("size", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--density")  knobs.emplace_back ("density", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--ssync")    knobs.emplace_back ("ssync", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dsync")    knobs.emplace_back ("dsync", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--time")     knobs.emplace_back ("time", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--feedback") knobs.emplace_back ("feedback", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--stretch")  knobs.emplace_back ("stretch", static_cast<float> (next().getDoubleValue()));
@@ -93,7 +100,12 @@ int main (int argc, char* argv[])
         else if (arg == "--low")      knobs.emplace_back ("plow", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--unison")   knobs.emplace_back ("puni", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--high")     knobs.emplace_back ("phigh", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--reverb")   knobs.emplace_back ("reverb", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dtime")    knobs.emplace_back ("dtime", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dtsync")   knobs.emplace_back ("dtsync", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dfb")      knobs.emplace_back ("dfb", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dmix")     knobs.emplace_back ("dmix", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--decay")    knobs.emplace_back ("decay", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--rmix")     knobs.emplace_back ("rmix", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--mix")      knobs.emplace_back ("mix", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--snapshot")
         {
@@ -226,7 +238,8 @@ int main (int argc, char* argv[])
                 { "shape", 3.7 },    { "scatter", 4.3 },
                 { "reverse", 2.3 },  { "stereo", 3.7 },   { "detune", 4.1 },
                 { "plow", 2.9 },     { "puni", 6.1 },     { "phigh", 3.3 },
-                { "reverb", 7.1 },   { "mix", 8.3 },
+                { "dtime", 5.9 },    { "dfb", 8.7 },      { "dmix", 6.7 },
+                { "decay", 7.1 },    { "rmix", 4.9 },     { "mix", 8.3 },
                 { "on", 11.3 }   // the host's device on/off, which leaves the tail ringing
             };
 

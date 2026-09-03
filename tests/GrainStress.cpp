@@ -1,13 +1,13 @@
-// Drives the whole Peak Grain chain - the grain cloud into the reverb it feeds
-// - over its knob range against adverse input, hunting for a non-finite or a
-// runaway output.
+// Drives the whole Peak Grain chain - the grain cloud into the post delay into
+// the reverb - over its knob range against adverse input, hunting for a
+// non-finite or a runaway output.
 //
 // The grainer used to be feed-forward and unable to latch a NaN; the Feedback
 // knob changed that, so the range is swept here against DC and NaN input with
-// the loop wound to its ceiling. The reverb behind it can latch one too, which
-// is why they are tested joined up: whatever the cloud does at the extremes -
-// feedback wound up, or a frozen buffer scanned by Stretch - has to stay
-// something the network can survive being fed.
+// the loop wound to its ceiling. The delay and the reverb behind it can latch
+// one too, which is why they are tested joined up: whatever the cloud does at
+// the extremes - feedback wound up, or a frozen buffer scanned by Stretch - has
+// to stay something the two feedback effects downstream can survive being fed.
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
@@ -21,6 +21,7 @@
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/GrainerTuning.h"
+#include "ee/dsp/TapeDelay.h"
 
 namespace
 {
@@ -78,6 +79,16 @@ Result run (float sizeMs, float densityHz, float timeMs, float pitch, float feed
     grainer.setStretch (stretch);
     grainer.setPitchMix (juce::jmax (0.0f, -pitch), 1.0f - std::abs (pitch), juce::jmax (0.0f, pitch));
 
+    // The post delay, driven at the same feedback the grain loop is - both
+    // "feedback wound up" cases at once. Modulation off, as the pedal runs it.
+    ee::dsp::TapeDelay delay;
+    delay.prepare (kSampleRate);
+    delay.reset();
+    delay.setModulation (0.0f);
+    delay.setDelaySeconds (0.25f, 0.25f);
+    delay.setFeedback (feedback);
+    delay.snapDelays();
+
     ee::dsp::FdnReverb reverb;
     reverb.prepare (kSampleRate);
     reverb.reset();
@@ -86,13 +97,18 @@ Result run (float sizeMs, float densityHz, float timeMs, float pitch, float feed
     reverb.setShimmer (ee::dsp::config::kVerbShimmer);
     reverb.setLowCut (ee::dsp::GrainerTuning{}.verbLowCutHz);
 
+    // Equal-power delay blend (fixed at half) and reverb blend (the `verb` knob),
+    // matching the pedal's per-stage crossfades.
+    const float delayDry = std::cos (0.5f * juce::MathConstants<float>::halfPi);
+    const float delayWet = std::sin (0.5f * juce::MathConstants<float>::halfPi);
     const float grainGain = std::cos (verb * juce::MathConstants<float>::halfPi);
     const float verbGain = std::sin (verb * juce::MathConstants<float>::halfPi) * 1.1f;
 
     std::mt19937 rng (4242);
     std::uniform_real_distribution<float> noise (-1.0f, 1.0f);
 
-    std::vector<float> inL (kBlock), inR (kBlock), mono (kBlock), wetL (kBlock), wetR (kBlock);
+    std::vector<float> inL (kBlock), inR (kBlock), dryL (kBlock), dryR (kBlock), delL (kBlock), delR (kBlock),
+        mono (kBlock), wetL (kBlock), wetR (kBlock);
 
     Result result;
     int n = 0;
@@ -135,15 +151,24 @@ Result run (float sizeMs, float densityHz, float timeMs, float pitch, float feed
 
         grainer.process (inL.data(), inR.data(), inL.data(), inR.data(), kBlock);
 
+        // Grain stage -> post delay -> mono sum -> reverb, the pedal's order.
+        delay.process (inL.data(), inR.data(), delL.data(), delR.data(), kBlock);
+
         for (int i = 0; i < kBlock; ++i)
-            mono[static_cast<size_t> (i)] = 0.5f * (inL[static_cast<size_t> (i)] + inR[static_cast<size_t> (i)]);
+        {
+            dryL[static_cast<size_t> (i)] =
+                inL[static_cast<size_t> (i)] * delayDry + delL[static_cast<size_t> (i)] * delayWet;
+            dryR[static_cast<size_t> (i)] =
+                inR[static_cast<size_t> (i)] * delayDry + delR[static_cast<size_t> (i)] * delayWet;
+            mono[static_cast<size_t> (i)] = 0.5f * (dryL[static_cast<size_t> (i)] + dryR[static_cast<size_t> (i)]);
+        }
 
         reverb.process (mono.data(), wetL.data(), wetR.data(), kBlock);
 
         for (int i = 0; i < kBlock; ++i)
         {
-            const float l = inL[static_cast<size_t> (i)] * grainGain + wetL[static_cast<size_t> (i)] * verbGain;
-            const float r = inR[static_cast<size_t> (i)] * grainGain + wetR[static_cast<size_t> (i)] * verbGain;
+            const float l = dryL[static_cast<size_t> (i)] * grainGain + wetL[static_cast<size_t> (i)] * verbGain;
+            const float r = dryR[static_cast<size_t> (i)] * grainGain + wetR[static_cast<size_t> (i)] * verbGain;
 
             if (! std::isfinite (l) || ! std::isfinite (r))
                 result.finite = false;
@@ -165,7 +190,7 @@ int main()
     // and the middle of each is left to ee_dsp_tests - which sweeps the engine
     // far more finely and does it without a reverb attached, so it costs a
     // fraction of the time. A stress app nobody waits for gets run by nobody.
-    std::printf ("Peak Grain stress: grain cloud into the reverb it feeds\n\n");
+    std::printf ("Peak Grain stress: grain cloud into the post delay into the reverb\n\n");
 
     const float sizes[] = { cfg::kMinGrainMs, 120.0f, cfg::kMaxGrainMs };
     const float densities[] = { cfg::kMinDensityHz, cfg::kMaxDensityHz };

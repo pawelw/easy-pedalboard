@@ -3,6 +3,8 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
+#include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/Lfo.h"
 #include "ee/dsp/TempoDivision.h"
@@ -424,53 +426,56 @@ public:
 
         juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-        const auto ms = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-            [] (float v, int) { return juce::String (juce::roundToInt (v)) + " ms"; });
-
         const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
         const auto percentAttributes =
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+        const auto unit = juce::NormalisableRange<float> (0.0f, 1.0f);
 
+        // Size and Density mirror PeakGrainProcessor: one normalised knob each,
+        // reinterpreted by a Sync switch. The snapshot renders the free reading.
+        const auto durationMap = [] (float lo, float hi, float centre)
+        {
+            juce::NormalisableRange<float> r (lo, hi);
+            r.setSkewForCentre (centre);
+            return ee::dsp::GrainSyncMap { r, true };
+        };
+        const auto rateMap = [] (float lo, float hi, float centre)
+        {
+            juce::NormalisableRange<float> r (lo, hi);
+            r.setSkewForCentre (centre);
+            return ee::dsp::GrainSyncMap { r, false };
+        };
+
+        const auto sizeText = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+            [durationMap] (float v, int)
+            { return durationMap (cfg::kMinGrainMs, cfg::kMaxGrainMs, cfg::kGrainSkewMs).toText (v, false, 120.0); });
+        const auto densityText = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+            [rateMap] (float v, int)
+            { return rateMap (cfg::kMinDensityHz, cfg::kMaxDensityHz, cfg::kDensitySkewHz).toText (v, false, 120.0); });
+        const auto delayTimeText = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+            [durationMap] (float v, int)
+            { return durationMap (cfg::kMinTimeMs, cfg::kMaxTimeMs, cfg::kTimeSkewMs).toText (v, false, 120.0); });
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "size", 1 }, "Size", unit,
+                                                                 cfg::kDefaultSize01, sizeText));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "density", 1 }, "Density", unit,
+                                                                 cfg::kDefaultDensity01, densityText));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "ssync", 1 }, "Size Sync",
+                                                                cfg::kDefaultSizeSync));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "dsync", 1 }, "Density Sync",
+                                                                cfg::kDefaultDensitySync));
+
+        // The granular delay half is off the face but the parameters remain.
         auto timeRange = juce::NormalisableRange<float> (cfg::kMinTimeMs, cfg::kMaxTimeMs);
         timeRange.setSkewForCentre (cfg::kTimeSkewMs);
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "time", 1 }, "Time", timeRange, cfg::kDefaultTimeMs,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float v, int)
-                {
-                    if (v >= 1000.0f)
-                        return juce::String (v * 0.001f, 2) + " s";
-                    return juce::String (juce::roundToInt (v)) + " ms";
-                })));
-
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "time", 1 }, "Time", timeRange,
+                                                                 cfg::kDefaultTimeMs));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "feedback", 1 }, "Feedback",
                                                                  percent, cfg::kDefaultFeedbackPct, percentAttributes));
-
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "stretch", 1 }, "Stretch", juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
-            cfg::kDefaultStretchPct,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float v, int)
-                {
-                    const int pct = juce::roundToInt (v);
-                    if (pct == 0)
-                        return juce::String ("hold");
-                    return (pct > 0 ? "+" : "") + juce::String (pct) + " %";
-                })));
-
+            cfg::kDefaultStretchPct));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "freeze", 1 }, "Freeze", false));
-
-        auto sizeRange = juce::NormalisableRange<float> (cfg::kMinGrainMs, cfg::kMaxGrainMs);
-        sizeRange.setSkewForCentre (cfg::kGrainSkewMs);
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "size", 1 }, "Size", sizeRange,
-                                                                 cfg::kDefaultGrainMs, ms));
-
-        auto densityRange = juce::NormalisableRange<float> (cfg::kMinDensityHz, cfg::kMaxDensityHz);
-        densityRange.setSkewForCentre (cfg::kDensitySkewHz);
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "density", 1 }, "Density", densityRange, cfg::kDefaultDensityHz,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float v, int) { return juce::String (v, v < 10.0f ? 1 : 0) + " /s"; })));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "shape", 1 }, "Shape", percent,
                                                                  cfg::kDefaultShapePct, percentAttributes));
@@ -499,8 +504,26 @@ public:
                                                                  percent, cfg::kDefaultPitchHighPct,
                                                                  percentAttributes));
 
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "reverb", 1 }, "Reverb", percent,
-                                                                 cfg::kDefaultReverbPct, percentAttributes));
+        // Post delay.
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dtime", 1 }, "Delay Time", unit,
+                                                                 cfg::kDefaultDelayTime01, delayTimeText));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "dtsync", 1 }, "Delay Sync",
+                                                                cfg::kDefaultDelaySync));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dfb", 1 }, "Delay Feedback",
+                                                                 percent, cfg::kDefaultDelayFeedbackPct,
+                                                                 percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dmix", 1 }, "Delay Mix", percent,
+                                                                 cfg::kDefaultDelayMixPct, percentAttributes));
+
+        // Reverb: decay in seconds, its own mix.
+        auto decayRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "decay", 1 }, "Decay", decayRange, cfg::kDefaultReverbDecaySeconds,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (v, 2) + " s"; })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rmix", 1 }, "Reverb Mix", percent,
+                                                                 cfg::kDefaultReverbMixPct, percentAttributes));
+
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mix", 1 }, "Mix", percent,
                                                                  cfg::kDefaultGrainMixPct, percentAttributes));
 
@@ -514,36 +537,45 @@ ee::ui::PedalSpec makeGrainSpec()
 {
     ee::ui::PedalSpec spec;
     spec.name = "Peak Grain";
-    spec.tagline = "Granular delay into a plate";
+    spec.tagline = "Granular delay into delay into plate";
     spec.version = "v0.11.0";
     spec.knobs = {
-        { "time", "Time" }, { "feedback", "Feedback" },
-        { .parameterID = "stretch", .caption = "Stretch", .bipolarArc = true, .centreDetent = true },
-
-        { "size", "Size" }, { "density", "Density" }, { "shape", "Shape" },
+        { "size", "Size" }, { "density", "Destiny" }, { "shape", "Shape" }, { "mix", "Mix" },
 
         { "plow", "Low" }, { "puni", "Unison" }, { "phigh", "High" }, { "detune", "Detune" },
 
         { "reverse", "Reverse" }, { "scatter", "Scatter" }, { "stereo", "Stereo" },
 
-        { "reverb", "Reverb" }, { "mix", "Mix" },
+        { "dtime", "Time" }, { "dfb", "Feedback" }, { "dmix", "Mix" },
+
+        { "decay", "Decay" }, { "rmix", "Mix" },
     };
     spec.knobGroups = {
-        { "Delay", 3 },
-        { "Grain", 3 },
+        { "Grain", 4 },
         { "Pitch", 4 },
         { "Random", 3 },
+        { "Delay", 3 },
+        { "Reverb", 2 },
+    };
+    spec.toggles = {
+        { .parameterID = "ssync", .caption = "Sync", .afterKnobIndex = 0, .centeredBelow = true, .belowGap = 10,
+          .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = "dsync", .caption = "Sync", .afterKnobIndex = 1, .centeredBelow = true, .belowGap = 10,
+          .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
+        { .parameterID = "dtsync", .caption = "Sync", .afterKnobIndex = 11, .centeredBelow = true, .belowGap = 10,
+          .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
     };
     spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "freeze", .labelOff = "Live", .labelOn = "Freeze" };
     spec.titleBesideLogo = true;
     spec.knobsPerRow = 4;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
 
-    // Five ranks of knobs plus the switch strip: smaller caps, a wide row gap so
-    // the captioned boxes clear each other, and a much taller face.
+    // Five ranks of knobs plus the switch strip, and a Sync button hanging under
+    // three of them: smaller caps, a wide row gap so those buttons clear the
+    // captioned box below them, and a tall face.
     spec.knobDiameter = 82;
-    spec.knobRowGap = 38;
-    spec.height = 960;
+    spec.knobRowGap = 64;
+    spec.height = 1060;
     return spec;
 }
 

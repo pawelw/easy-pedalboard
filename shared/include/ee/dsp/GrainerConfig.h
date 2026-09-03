@@ -195,16 +195,43 @@ constexpr float kDefaultPitchHighPct   = 0.0f;
 constexpr int kWindowPoints = 2048;
 
 // ============================================================================
+// POST DELAY
+// ============================================================================
+// A plain digital delay (ee::dsp::TapeDelay with modulation pinned at 0) sitting
+// after the grain stage and before the reverb, so the pedal sounds like the
+// grains fed an outboard delay into an outboard reverb. Its Time knob is one
+// normalised control whose Sync switch flips it between free milliseconds - over
+// the same span the granular Time uses - and a note division. Feedback is capped
+// well below unity for the usual runaway reasons.
+constexpr float kDefaultDelayTime01     = 0.357f; // ~1/8 when synced, ~150 ms free
+constexpr float kDefaultDelayFeedbackPct = 30.0f;
+constexpr float kDefaultDelayMixPct      = 30.0f;
+constexpr bool  kDefaultDelaySync        = true;
+
+// ============================================================================
 // REVERB
 // ============================================================================
-// Peak Grain runs ee::dsp::FdnReverb plain: the two knobs are its mix and its
-// decay, and everything else is pinned here. No shimmer - the header states 0
-// means the pitch shifters never run, so it costs nothing.
+// Peak Grain runs ee::dsp::FdnReverb plain: the two knobs are its decay (in
+// seconds, straight onto the network) and its mix, and everything else is pinned
+// here. No shimmer - the header states 0 means the pitch shifters never run, so
+// it costs nothing. The reverb now hears the whole post-delay blend rather than
+// a grain-only send.
 constexpr float kVerbShimmer   = 0.0f;
 
-// One knob, not two: it opens the reverb mix and lengthens its decay together,
-// which is the only way the two are ever actually used. 0 is bone dry.
-constexpr float kDefaultReverbPct = 35.0f;
+constexpr float kDefaultReverbDecaySeconds = 2.5f;
+constexpr float kDefaultReverbMixPct       = 30.0f;
+
+// ============================================================================
+// GRAIN SIZE / DENSITY SYNC
+// ============================================================================
+// Size and Density are normalised 0..1 knobs (see GrainSyncMap): the Sync switch
+// on each flips it between its free unit - milliseconds for Size, grains per
+// second for Density - and a note division. 0.5 is the middle of each skewed
+// free range, i.e. the old kDefaultGrainMs / kDefaultDensityHz landing spots.
+constexpr float kDefaultSize01    = 0.5f;
+constexpr float kDefaultDensity01 = 0.5f;
+constexpr bool  kDefaultSizeSync    = false;
+constexpr bool  kDefaultDensitySync = false;
 
 // ============================================================================
 // MIX

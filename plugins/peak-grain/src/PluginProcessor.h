@@ -1,9 +1,14 @@
 #pragma once
 
+#include <atomic>
+
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/GrainerConfig.h"
+#include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/Grainer.h"
+#include "ee/dsp/TapeDelay.h"
 
 #if EE_GRAIN_TRACE
 #include "GrainTrace.h"
@@ -45,22 +50,40 @@ private:
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    /** Host tempo, clamped to something usable, for the three tempo-synced knobs
+        (grain Size, grain Density, delay Time). 120 when the host reports none. */
+    double currentBpm() const;
+
+    juce::String sizeReadout() const;
     juce::String densityReadout() const;
+    juce::String delayTimeReadout() const;
 
-    /** Stretch reads as a dash while playing live - it only bites once the
-        buffer is frozen - and as a signed percent, or "hold" at the detent,
-        when it does. */
-    juce::String stretchReadout() const;
+    /** A Sync button was clicked on the face: stash the knob's current position
+        into the mode it is leaving and push the mode it is entering back onto
+        the parameter, so each mode remembers where it was left. Mirrors
+        PeakTremPanProcessor::onSyncToggled. UI thread only - no listener. */
+    void onSizeSyncToggled();
+    void onDensitySyncToggled();
+    void onDelaySyncToggled();
 
-    /** The single Reverb knob drives the network's decay as well as its mix -
-        one control, because the two are never usefully set apart. */
-    static float reverbDecaySeconds (float percent) noexcept;
+    void syncToggled (const char* paramID,
+                      std::atomic<float>& freeSlot,
+                      std::atomic<float>& syncSlot,
+                      const std::atomic<float>* syncFlag);
 
     ee::dsp::Grainer grainer;
+    ee::dsp::TapeDelay delay;
     ee::dsp::FdnReverb reverb;
+
+    // 0..1 knobs whose Sync switch reinterprets them; built from GrainerConfig.
+    ee::dsp::GrainSyncMap sizeMap;
+    ee::dsp::GrainSyncMap densityMap;
+    ee::dsp::GrainSyncMap delayMap;
 
     std::atomic<float>* sizeParam = nullptr;
     std::atomic<float>* densityParam = nullptr;
+    std::atomic<float>* sizeSyncParam = nullptr;
+    std::atomic<float>* densitySyncParam = nullptr;
     std::atomic<float>* timeParam = nullptr;
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* stretchParam = nullptr;
@@ -73,22 +96,54 @@ private:
     std::atomic<float>* pitchLowParam = nullptr;
     std::atomic<float>* pitchUnisonParam = nullptr;
     std::atomic<float>* pitchHighParam = nullptr;
-    std::atomic<float>* reverbParam = nullptr;
+    std::atomic<float>* delayTimeParam = nullptr;
+    std::atomic<float>* delaySyncParam = nullptr;
+    std::atomic<float>* delayFeedbackParam = nullptr;
+    std::atomic<float>* delayMixParam = nullptr;
+    std::atomic<float>* decayParam = nullptr;
+    std::atomic<float>* reverbMixParam = nullptr;
     std::atomic<float>* mixParam = nullptr;
     std::atomic<float>* onParam = nullptr;
 
-    juce::SmoothedValue<float> dryGain;
-    juce::SmoothedValue<float> wetGain;
-    juce::SmoothedValue<float> inputGain;
-    juce::SmoothedValue<float> grainGain;
-    juce::SmoothedValue<float> verbGain;
+    // Remembered knob positions for the mode each Sync switch is not currently
+    // in, so a round trip through the switch lands back where it started.
+    // Persisted as state-tree properties (see get/setStateInformation).
+    std::atomic<float> sizeFree01 { ee::dsp::config::kDefaultSize01 };
+    std::atomic<float> sizeSync01 { ee::dsp::config::kDefaultSize01 };
+    std::atomic<float> densityFree01 { ee::dsp::config::kDefaultDensity01 };
+    std::atomic<float> densitySync01 { ee::dsp::config::kDefaultDensity01 };
+    std::atomic<float> delayFree01 { ee::dsp::config::kDefaultDelayTime01 };
+    std::atomic<float> delaySync01 { ee::dsp::config::kDefaultDelayTime01 };
 
-    // The grain cloud, its mono sum for the reverb send, and the reverb's own
-    // stereo return. Sized once in prepareToPlay.
+    // Each series stage is an equal-power dry/wet blend; the dry leg opens to
+    // unity when the pedal is bypassed so all three tails ring out over the
+    // untouched input. `engageGain` gates the three sends (grain record, delay
+    // send, reverb send) to zero on bypass.
+    juce::SmoothedValue<float> grainDry;
+    juce::SmoothedValue<float> grainWet;
+    juce::SmoothedValue<float> delayDry;
+    juce::SmoothedValue<float> delayWet;
+    juce::SmoothedValue<float> reverbDry;
+    juce::SmoothedValue<float> reverbWet;
+    juce::SmoothedValue<float> engageGain;
+
+    // Scratch, sized once in prepareToPlay: the grain cloud, the grain-stage
+    // blend fed on to the delay, a gated copy of it for the delay's input (the
+    // delay line reads before it writes, so it cannot run in place), the delay's
+    // own return, the mono sum sent to the reverb, and the reverb's stereo
+    // return.
     juce::AudioBuffer<float> grainBuffer;
+    juce::AudioBuffer<float> stageBuffer;
+    juce::AudioBuffer<float> delayInBuffer;
+    juce::AudioBuffer<float> delayWetBuffer;
     juce::AudioBuffer<float> monoBuffer;
     juce::AudioBuffer<float> verbBuffer;
+
+    // One engage-ramp value per sample, filled once at the top of each chunk so
+    // the three send gates below all read the same figure for a given sample.
+    juce::AudioBuffer<float> engageBuffer;
     int maxBlock = 512;
+    bool snapDelayNextBlock = true;
 
 #if EE_GRAIN_TRACE
     std::unique_ptr<GrainTrace> trace;
