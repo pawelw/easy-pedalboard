@@ -483,10 +483,14 @@ void PedalLookAndFeel::drawRotarySlider (juce::Graphics& g,
             marker.label = slider.getProperties().getWithDefault ("endMarkerLabel", juce::String()).toString();
         }
 
+        const auto capOverride = slider.isColourSpecified (juce::Slider::rotarySliderFillColourId)
+                                     ? slider.findColour (juce::Slider::rotarySliderFillColourId)
+                                     : juce::Colour();
+
         DigitalKnob::draw (g, bounds, sliderPos, rotaryStartAngle, rotaryEndAngle,
                            compactKnob ? DigitalKnob::Size::small
                                        : DigitalKnob::sizeForDiameter (juce::roundToInt (diameter)),
-                           theme, slider.isEnabled(), marker);
+                           theme, slider.isEnabled(), marker, capOverride);
         return;
     }
 

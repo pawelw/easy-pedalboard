@@ -114,6 +114,7 @@ target_include_directories(chowdsp_wdf INTERFACE ${chowdsp_wdf_SOURCE_DIR}/inclu
 # machine that has never seen them.
 juce_add_binary_data(ee_assets SOURCES
     assets/fonts/Birthstone-Regular.ttf
+    assets/fonts/Lato-Light.ttf
     assets/images/peak-logo.png
     assets/images/knob.png
     assets/images/plate.png

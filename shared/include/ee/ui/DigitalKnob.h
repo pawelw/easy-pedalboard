@@ -53,7 +53,8 @@ public:
                       Size size,
                       const PedalTheme& theme,
                       bool enabled,
-                      const EndMarker& endMarker);
+                      const EndMarker& endMarker,
+                      juce::Colour capFillOverride = {});
 
     /** The clear circle on the cap face, inside the pointer's orbit - where a
         glyph standing for the setting can be drawn without the pointer running
@@ -69,7 +70,7 @@ public:
     }
 
     /** Caps at or above this diameter are drawn `large`. */
-    static constexpr int kSmallSizeLimit = 70;
+    static constexpr int kSmallSizeLimit = 60;
 
     DigitalKnob() = delete;
 };

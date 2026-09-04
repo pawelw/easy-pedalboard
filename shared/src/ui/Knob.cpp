@@ -13,7 +13,7 @@ namespace
     static_assert (Knob::labelHeight == static_cast<int> (kValueRowHeight + kCaptionRowHeight));
 
     constexpr float kValueFontHeight = 12.0f;
-    constexpr float kCaptionFontHeight = 16.0f;
+    constexpr float kCaptionFontHeight = 14.0f;
 }
 
 Knob::Knob (juce::AudioProcessorValueTreeState& state,

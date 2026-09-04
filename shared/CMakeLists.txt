@@ -42,6 +42,7 @@ add_library(ee_ui STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/DigitalScreen.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/WaveDisplay.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/FilterScope.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/GrainScope.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/PresetBar.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/PedalEditor.cpp)
 target_include_directories(ee_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

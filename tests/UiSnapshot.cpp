@@ -206,6 +206,18 @@ void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour
     g.drawLine (c.x, r.getY(), c.x, c.y + radius * 0.10f, stroke);
 }
 
+/** Mirrors drawGroupMarkPlaceholder in plugins/peak-grain. */
+void drawGroupMarkPlaceholder (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    static const float pts[][2] = { { 0.30f, 0.28f }, { 0.66f, 0.22f }, { 0.50f, 0.50f },
+                                    { 0.24f, 0.66f }, { 0.72f, 0.62f }, { 0.46f, 0.82f } };
+    const float d = area.getWidth() * 0.17f;
+    g.setColour (colour.withAlpha (0.6f));
+    for (const auto& p : pts)
+        g.fillEllipse (area.getX() + p[0] * area.getWidth() - d * 0.5f,
+                       area.getY() + p[1] * area.getHeight() - d * 0.5f, d, d);
+}
+
 ee::ui::PedalSpec makeDelaySpec()
 {
     ee::ui::PedalSpec spec;
@@ -550,6 +562,11 @@ public:
         for (const auto* id : { "grainon", "pitchon", "randon", "delon", "revon" })
             layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, 1 }, id, true));
 
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "volume", 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) { return juce::String (v, 1) + " dB"; })));
+
         return layout;
     }
 };
@@ -561,7 +578,13 @@ ee::ui::PedalSpec makeGrainSpec()
     spec.tagline = "Granular delay into delay into plate";
     spec.version = "v0.11.0";
 
-    constexpr int kLeadKnob = 107; // ~30% up on the 82 px face default
+    constexpr int kLeadKnob = 86; // the two lead knobs
+
+    const juce::Colour kGrainCol { 0xff805d93 };
+    const juce::Colour kPitchCol { 0xfff49fbc };
+    const juce::Colour kRandomCol { 0xffffd3ba };
+    const juce::Colour kDelayCol { 0xff9ebd6e };
+    const juce::Colour kReverbCol { 0xff169873 };
 
     // The grain envelope on the Shape cap - see drawGrainShapeIcon in
     // plugins/peak-grain. Static here at the default 55 % lean.
@@ -586,33 +609,34 @@ ee::ui::PedalSpec makeGrainSpec()
     };
 
     spec.knobs = {
-        { "mix", "Mix" },
-        { "size", "Size" },
-        { "density", "Destiny" },
-        { .parameterID = "shape", .caption = "Shape", .capIcon = shapeIcon },
+        { .parameterID = "mix", .caption = "Mix", .capFill = kGrainCol },
+        { .parameterID = "size", .caption = "Size", .capFill = kGrainCol },
+        { .parameterID = "density", .caption = "Destiny", .capFill = kGrainCol },
+        { .parameterID = "shape", .caption = "Shape", .capFill = kGrainCol, .capIcon = shapeIcon },
 
-        { "plow", "Low" },
-        { "puni", "Unison" },
-        { "phigh", "High" },
-        { "detune", "Detune" },
+        { .parameterID = "plow", .caption = "Low", .capFill = kPitchCol },
+        { .parameterID = "puni", .caption = "Unison", .capFill = kPitchCol },
+        { .parameterID = "phigh", .caption = "High", .capFill = kPitchCol },
+        { .parameterID = "detune", .caption = "Detune", .capFill = kPitchCol },
 
-        { .parameterID = "stereo", .caption = "Stereo", .diameter = kLeadKnob },
-        { "reverse", "Reverse" },
-        { "scatter", "Scatter" },
+        { .parameterID = "stereo", .caption = "Stereo", .capFill = kRandomCol, .diameter = kLeadKnob },
+        { .parameterID = "reverse", .caption = "Reverse", .capFill = kRandomCol },
+        { .parameterID = "scatter", .caption = "Scatter", .capFill = kRandomCol },
 
-        { .parameterID = "dmix", .caption = "Mix", .diameter = kLeadKnob },
-        { "dtime", "Time" },
-        { "dfb", "Feedback" },
+        { .parameterID = "dmix", .caption = "Mix", .capFill = kDelayCol, .diameter = kLeadKnob },
+        { .parameterID = "dtime", .caption = "Time", .capFill = kDelayCol },
+        { .parameterID = "dfb", .caption = "Feedback", .capFill = kDelayCol },
 
-        { "decay", "Decay" },
-        { "rmix", "Mix" },
+        { .parameterID = "decay", .caption = "Decay", .capFill = kReverbCol },
+        { .parameterID = "rmix", .caption = "Mix", .capFill = kReverbCol },
     };
+    const juce::Colour kCardFill { 0xffe9e8f0 };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 4, .columns = 2 },
-        { .caption = "Pitch", .count = 4, .columns = 2 },
-        { .caption = "Random", .count = 3, .columns = 2 },
-        { .caption = "Delay", .count = 3, .columns = 2 },
-        { .caption = "Reverb", .count = 2, .columns = 1 },
+        { .caption = "Grain", .count = 4, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Pitch", .count = 4, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Random", .count = 3, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Delay", .count = 3, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
     };
     spec.knobGroupsHorizontal = true;
     spec.filledKnobGroups = true;
@@ -649,14 +673,36 @@ ee::ui::PedalSpec makeGrainSpec()
         .onNext = [] {},
         .width = 300,
     };
+    // The grain-plus-delay scope in the strip above the logo.
+    spec.grainScope = ee::ui::GrainScopeSpec {
+        .sizeID = "size",
+        .densityID = "density",
+        .scatterID = "scatter",
+        .stereoID = "stereo",
+        .pitchLowID = "plow",
+        .pitchHighID = "phigh",
+        .delayTimeID = "dtime",
+        .delayFeedbackID = "dfb",
+        .delayMixID = "dmix",
+        .reverbDecayID = "decay",
+        .reverbMixID = "rmix",
+        .height = 66,
+    };
+
     spec.titleBesideLogo = true;
+    spec.titleRowCentred = true;
+    spec.titleRowDrop = 4;
+
+    spec.topRightKnob =
+        ee::ui::KnobSpec { .parameterID = "volume", .caption = "Level", .captionUntilTouched = true };
+    spec.topRightKnobDiameter = 40;
 
     // Five modules side by side: a wide face rather than a tall one, small caps,
     // and a row gap inside each module wide enough for the Sync buttons.
-    spec.knobDiameter = 82;
+    spec.knobDiameter = 66;
     spec.knobRowGap = 54;
     spec.width = 1264;
-    spec.height = 540;
+    spec.height = 620;
     return spec;
 }
 
@@ -1091,7 +1137,10 @@ void renderWah (const juce::File& outputFile)
 void renderGrain (const juce::File& outputFile)
 {
     GrainSnapshotProcessor processor;
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeGrainSpec(), ee::ui::PedalTheme::white());
+    auto theme = ee::ui::PedalTheme::white();
+    theme.panel = juce::Colour (0xffd5d5df);
+    theme.background = juce::Colour (0xffcfcfda);
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeGrainSpec(), theme);
     writePng (editor, outputFile);
 }
 

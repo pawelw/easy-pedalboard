@@ -3,6 +3,7 @@
 #include "ee/ui/DigitalSwitch.h"
 #include "ee/ui/DigitalToggle.h"
 #include "ee/ui/FilterScope.h"
+#include "ee/ui/GrainScope.h"
 #include "ee/ui/PresetBar.h"
 #include "ee/ui/SlideToggle.h"
 #include "ee/ui/WaveDisplay.h"
@@ -254,7 +255,10 @@ private:
     /** The rounded outline with a caption let into its top edge, shared by the
         sub-knob group and the named knob groups. With `filled`, a panel a shade
         lighter than the face with the caption inside its top edge instead. */
-    void paintGroupBox (juce::Graphics&, juce::Rectangle<int> box, const juce::String& caption, bool filled = false,
+    void paintGroupBox (juce::Graphics&,
+                        juce::Rectangle<int> box,
+                        const juce::String& caption,
+                        bool filled = false,
                         juce::Colour fill = {}) const;
 
     void resetFaders();
@@ -267,6 +271,7 @@ private:
     /** Bounds of every knob-grid slot, spacers included. */
     std::vector<juce::Rectangle<int>> knobCells;
     std::unique_ptr<Knob> centreKnob;
+    std::unique_ptr<Knob> topRightKnob;
     std::vector<std::unique_ptr<Knob>> cornerKnobs;
     std::vector<std::unique_ptr<Knob>> subKnobs;
     std::vector<std::unique_ptr<MiniToggle>> subButtons; // index-aligned with subKnobs; null where none
@@ -290,6 +295,7 @@ private:
     std::unique_ptr<PresetBar> presetBar;
     std::unique_ptr<WaveDisplay> waveDisplay;
     std::unique_ptr<FilterScope> filterScope;
+    std::unique_ptr<GrainScope> grainScope;
     std::unique_ptr<juce::TextButton> faderResetButton;
 
     /** Vertical rule between the group-trim cluster and the corner cut knobs.
@@ -339,6 +345,12 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
     {
         centreKnob = std::make_unique<Knob> (state, *spec.centreKnob, theme);
         addAndMakeVisible (*centreKnob);
+    }
+
+    if (spec.topRightKnob.has_value())
+    {
+        topRightKnob = std::make_unique<Knob> (state, *spec.topRightKnob, theme);
+        addAndMakeVisible (*topRightKnob);
     }
 
     for (const auto& sliderSpec : spec.sliders)
@@ -521,6 +533,12 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
         addAndMakeVisible (*filterScope);
     }
 
+    if (spec.grainScope.has_value())
+    {
+        grainScope = std::make_unique<GrainScope> (state, *spec.grainScope, theme);
+        addAndMakeVisible (*grainScope);
+    }
+
     logoImage = brandLogo();
 
     if (theme.logoTint.has_value() && logoImage.isValid())
@@ -612,7 +630,7 @@ bool PedalEditor::Face::hasTopStrip() const
 
 bool PedalEditor::Face::hasBottomBand() const
 {
-    return waveDisplay != nullptr || filterScope != nullptr;
+    return waveDisplay != nullptr || filterScope != nullptr || grainScope != nullptr;
 }
 
 int PedalEditor::Face::bottomBandHeight() const
@@ -621,6 +639,8 @@ int PedalEditor::Face::bottomBandHeight() const
         return spec.waveDisplay->height + kWaveDisplayGap;
     if (filterScope != nullptr)
         return spec.filterScope->height + kWaveDisplayGap;
+    if (grainScope != nullptr)
+        return spec.grainScope->height + kWaveDisplayGap;
     return 0;
 }
 
@@ -1184,8 +1204,11 @@ juce::Font PedalEditor::Face::fittedNameFont (juce::Rectangle<int> area) const
     return font.withHeight (font.getHeight() * available / needed);
 }
 
-void PedalEditor::Face::paintGroupBox (juce::Graphics& g, juce::Rectangle<int> boxInt, const juce::String& captionText,
-                                      bool filled, juce::Colour fill) const
+void PedalEditor::Face::paintGroupBox (juce::Graphics& g,
+                                       juce::Rectangle<int> boxInt,
+                                       const juce::String& captionText,
+                                       bool filled,
+                                       juce::Colour fill) const
 {
     if (boxInt.isEmpty())
         return;
@@ -1198,7 +1221,7 @@ void PedalEditor::Face::paintGroupBox (juce::Graphics& g, juce::Rectangle<int> b
         // `panel`; the edge and caption are taken from the fill so they stay
         // legible whatever hue it is.
         const auto box = boxInt.toFloat();
-        constexpr float kCorner = 14.0f;
+        constexpr float kCorner = 16.0f;
 
         const bool custom = ! fill.isTransparent();
         const auto panelFill =
@@ -1206,17 +1229,27 @@ void PedalEditor::Face::paintGroupBox (juce::Graphics& g, juce::Rectangle<int> b
 
         juce::Path card;
         card.addRoundedRectangle (box, kCorner);
-        juce::DropShadow (theme.softShadow, 10, { 0, 3 }).drawForPath (g, card);
+
+        // A wide, soft elevation shadow plus a tighter contact one - the card
+        // floats well off the face.
+        juce::DropShadow (juce::Colour (0x1e2a3242), 5, { 0, 12 }).drawForPath (g, card);
+        juce::DropShadow (juce::Colour (0x22222b3a), 3, { 0, 5 }).drawForPath (g, card);
 
         g.setColour (panelFill);
         g.fillRoundedRectangle (box, kCorner);
-        g.setColour (custom ? panelFill.contrasting (0.25f).withAlpha (0.35f) : theme.outline.withAlpha (0.55f));
-        g.drawRoundedRectangle (box, kCorner, 1.0f);
+
+        // A hairline of light along the top edge, then the faint rim.
+        g.setColour (juce::Colours::white.withAlpha (0.6f));
+        g.drawRoundedRectangle (box.reduced (0.5f).translated (0.0f, 0.5f), kCorner, 1.0f);
+        g.setColour (custom ? panelFill.darker (0.10f).withAlpha (0.5f) : theme.outline.withAlpha (0.55f));
+        g.drawRoundedRectangle (box.reduced (0.5f), kCorner, 1.0f);
 
         g.setColour (custom ? panelFill.contrasting (0.85f) : theme.textSecondary);
         g.setFont (theme.bodyFont (13.0f).boldened());
         g.drawText (captionText.toUpperCase(),
-                    box.withTrimmedLeft (14.0f).withHeight (static_cast<float> (kKnobGroupCaptionHeight)).translated (0.0f, 7.0f),
+                    box.withTrimmedLeft (14.0f)
+                        .withHeight (static_cast<float> (kKnobGroupCaptionHeight))
+                        .translated (0.0f, 7.0f),
                     juce::Justification::centredLeft, false);
         return;
     }
@@ -1373,8 +1406,24 @@ void PedalEditor::Face::paint (juce::Graphics& g)
         paintGroupBox (g, subKnobGroup, spec.subKnobGroupCaption);
 
     for (size_t i = 0; i < knobGroupBoxes.size() && i < spec.knobGroups.size(); ++i)
-        paintGroupBox (g, knobGroupBoxes[i], spec.knobGroups[i].caption, spec.filledKnobGroups,
-                       spec.knobGroups[i].fill.value_or (juce::Colour {}));
+    {
+        const auto& group = spec.knobGroups[i];
+        const auto fill = group.fill.value_or (juce::Colour {});
+        paintGroupBox (g, knobGroupBoxes[i], group.caption, spec.filledKnobGroups, fill);
+
+        // The group mark: centred at the top of the panel, in the gap between
+        // the caption line and the first knob.
+        if (group.icon && spec.filledKnobGroups)
+        {
+            const auto box = knobGroupBoxes[i].toFloat();
+            constexpr float kIconSize = 14.0f;
+            const juce::Rectangle<float> iconArea (box.getCentreX() - kIconSize * 0.5f,
+                                                   box.getY() + static_cast<float> (kKnobGroupCaptionHeight) + 8.0f,
+                                                   kIconSize, kIconSize);
+            const auto ink = fill.isTransparent() ? theme.textSecondary : fill.contrasting (0.8f);
+            group.icon (g, iconArea, ink);
+        }
+    }
 
     // A small emblem for the effect, centred in the gap the knobs leave above
     // the name. Drawn before the name so it can never sit over the lettering.
@@ -1416,11 +1465,16 @@ void PedalEditor::Face::paint (juce::Graphics& g)
 
         // A face that wants the pair off the right margin pulls it back in
         // before the cluster is cut, so both emblem and name move together.
-        if (spec.titleRowAlignRight)
+        if (spec.titleRowAlignRight && ! spec.titleRowCentred)
             row.removeFromRight (spec.titleRowRightInset);
 
-        auto cluster = spec.titleRowAlignRight ? row.removeFromRight (logoW + kLogoNameGap + nameW)
-                                               : row.removeFromLeft (logoW + kLogoNameGap + nameW);
+        const int clusterW = logoW + kLogoNameGap + nameW;
+        auto cluster = spec.titleRowCentred
+                           ? row.withSizeKeepingCentre (clusterW, row.getHeight())
+                           : (spec.titleRowAlignRight ? row.removeFromRight (clusterW) : row.removeFromLeft (clusterW));
+
+        if (spec.titleRowDrop != 0)
+            cluster.translate (0, spec.titleRowDrop);
 
         logoSlot = cluster.removeFromLeft (logoW);
         cluster.removeFromLeft (kLogoNameGap);
@@ -1610,8 +1664,8 @@ void PedalEditor::Face::resized()
                     continue;
                 const int cols = lastRowCols (n, group.columns);
                 for (const auto& tg : spec.toggles)
-                    if (tg.centeredBelow && tg.afterKnobIndex >= groupFirst + n - cols
-                        && tg.afterKnobIndex < groupFirst + n)
+                    if (tg.centeredBelow && tg.afterKnobIndex >= groupFirst + n - cols &&
+                        tg.afterKnobIndex < groupFirst + n)
                         bottomReserve = kKnobGroupToggleReserve;
                 groupFirst += n;
             }
@@ -1918,11 +1972,24 @@ void PedalEditor::Face::resized()
             juce::Rectangle<int> (w, strip.getHeight()).withCentre ({ strip.getCentreX(), strip.getCentreY() }));
     }
 
+    // A small knob hard against the top-right, cap centred on the switch strip;
+    // its one text line hangs into the gap below the strip.
+    if (topRightKnob != nullptr)
+    {
+        const int d = juce::jmax (20, spec.topRightKnobDiameter);
+        const int x = contentArea().getRight() - d;
+        const int y = switchStripArea().getCentreY() - d / 2;
+        topRightKnob->setBounds (x, y, d, d + Knob::labelHeight);
+    }
+
     if (waveDisplay != nullptr)
         waveDisplay->setBounds (waveDisplayArea());
 
     if (filterScope != nullptr)
         filterScope->setBounds (waveDisplayArea());
+
+    if (grainScope != nullptr)
+        grainScope->setBounds (waveDisplayArea());
 }
 
 //==============================================================================

@@ -117,6 +117,9 @@ private:
     std::atomic<float>* randomOnParam = nullptr;
     std::atomic<float>* delayOnParam = nullptr;
     std::atomic<float>* reverbOnParam = nullptr;
+    std::atomic<float>* volumeParam = nullptr;
+
+    juce::SmoothedValue<float> outputGain;
 
     // Remembered knob positions for the mode each Sync switch is not currently
     // in, so a round trip through the switch lands back where it started.

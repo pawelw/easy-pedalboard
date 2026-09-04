@@ -4,6 +4,7 @@
 
 #include "ee/ui/PedalTheme.h"
 
+#include <array>
 #include <functional>
 #include <optional>
 #include <vector>
@@ -256,6 +257,39 @@ struct FilterScopeSpec
     int height = 64;
 };
 
+/** A granular-plus-delay scope, drawn in the band between the knob rows and the
+    pedal name. The left of the strip is the grain cloud - a scatter of blobs
+    whose count follows Density, whose spread follows Size and Scatter, whose
+    vertical place follows Stereo and the Pitch balance; the right of the strip
+    is the delay, the cloud's silhouette repeated at a spacing set by Delay Time
+    and fading by Delay Feedback, over a faint reverb wash set by Decay and
+    Reverb Mix.
+
+    Every field is a parameter ID read normalised (0..1). With no live hook it
+    is a still, knob-tracking picture that also works offline in the snapshot;
+    set `liveGrains` to animate it from the real engine. */
+struct GrainScopeSpec
+{
+    juce::String sizeID;
+    juce::String densityID;
+    juce::String scatterID;
+    juce::String stereoID;
+    juce::String pitchLowID;  // weight of the octave-down voice
+    juce::String pitchHighID; // ... and the octave-up voice
+    juce::String delayTimeID;
+    juce::String delayFeedbackID;
+    juce::String delayMixID;
+    juce::String reverbDecayID;
+    juce::String reverbMixID;
+
+    int height = 66;
+
+    /** Optional: return the grains currently in flight (age 0..1, pan -1..1,
+        size 0..1, pitch -1..1) for a live, animated scope. Unset keeps the
+        still preview. */
+    std::function<std::vector<std::array<float, 4>>()> liveGrains;
+};
+
 /** A small latching button tucked into the gap between two knobs of a row. */
 struct ToggleSpec
 {
@@ -378,6 +412,11 @@ struct KnobGroupSpec
         caption and edge are taken from this colour so they stay legible on any
         hue. */
     std::optional<juce::Colour> fill;
+
+    /** A small mark drawn centred at the top of this group's filled panel, just
+        below the caption line. Given the icon's square area and an ink colour
+        derived from the fill. */
+    std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> icon;
 };
 
 /** The preset strip drawn centred in the switch strip across the top of the
@@ -531,6 +570,9 @@ struct PedalSpec
     /** Live filter-response scope band, in the same slot as `waveDisplay`. */
     std::optional<FilterScopeSpec> filterScope;
 
+    /** Granular-plus-delay scope band, in the same slot as `waveDisplay`. */
+    std::optional<GrainScopeSpec> grainScope;
+
     /** Main-knob cap diameter override. 0 keeps the shared `kKnobDiameter`; a
         face that has to fit more rows can ask for smaller caps. */
     int knobDiameter = 0;
@@ -556,6 +598,21 @@ struct PedalSpec
         margin. For a face whose name would otherwise sit hard against the edge
         the controls above it keep clear of. */
     int titleRowRightInset = 0;
+
+    /** Centre the emblem-and-name pair in its row rather than pinning it to an
+        end. Wins over `titleRowAlignRight`. Only meaningful with
+        `titleBesideLogo`. */
+    bool titleRowCentred = false;
+
+    /** Nudge the emblem-and-name pair this many pixels down within its row. */
+    int titleRowDrop = 0;
+
+    /** A small knob pinned to the top-right of the content area, in the switch
+        strip band - a master output level, say. Drawn at
+        `topRightKnobDiameter`; give it `captionUntilTouched` to keep it to one
+        text line. */
+    std::optional<KnobSpec> topRightKnob;
+    int topRightKnobDiameter = 40;
 
     /** Height is shared across pedals so they line up side by side on a rack;
         only the width follows the number of knobs in a row - use

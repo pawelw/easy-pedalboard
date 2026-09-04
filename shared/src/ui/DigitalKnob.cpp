@@ -82,8 +82,12 @@ void DigitalKnob::draw (juce::Graphics& g,
                         Size size,
                         const PedalTheme& theme,
                         bool enabled,
-                        const EndMarker& endMarker)
+                        const EndMarker& endMarker,
+                        juce::Colour capFillOverride)
 {
+    // The cap colour: the theme's, unless the caller tinted this one knob.
+    const juce::Colour capFill = capFillOverride.isTransparent() ? theme.knobFill : capFillOverride;
+
     const float R = juce::jmin (bounds.getWidth(), bounds.getHeight()) * 0.5f;
     if (R <= 2.0f)
         return;
@@ -188,8 +192,8 @@ void DigitalKnob::draw (juce::Graphics& g,
         // Flat enough to read as one plastic surface, not a dome shading all
         // the way down - the rim light below is what says which way is up. Only
         // a whisper of gradient, top to bottom.
-        juce::ColourGradient fill (theme.knobFill.interpolatedWith (theme.softHighlight, kCapStyle.fillHighlightBlend),
-                                   face.getCentreX(), face.getY(), theme.knobFill.darker (kCapStyle.fillShade),
+        juce::ColourGradient fill (capFill.interpolatedWith (theme.softHighlight, kCapStyle.fillHighlightBlend),
+                                   face.getCentreX(), face.getY(), capFill.darker (kCapStyle.fillShade),
                                    face.getCentreX(), face.getBottom(), false);
         g.setGradientFill (fill);
         g.fillEllipse (face);
@@ -200,7 +204,7 @@ void DigitalKnob::draw (juce::Graphics& g,
         // by the shadow and the rim light, not by this line.
         {
             const auto grooveColour =
-                theme.knobFill.contrasting (kCapStyle.grooveContrast).withMultipliedAlpha (kCapStyle.grooveAlpha * dim);
+                capFill.contrasting (kCapStyle.grooveContrast).withMultipliedAlpha (kCapStyle.grooveAlpha * dim);
             g.setColour (grooveColour);
             g.drawEllipse (disc (capR * kCapStyle.grooveRadiusFrac), juce::jmax (1.0f, R * kCapStyle.grooveHairFrac));
         }

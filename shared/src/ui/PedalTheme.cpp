@@ -12,10 +12,22 @@ namespace
             BinaryData::BirthstoneRegular_ttf, BinaryData::BirthstoneRegular_ttfSize);
         return face;
     }
+
+    /** Lato Light, compiled in. Every face sets all of its lettering in this
+        now - captions, readouts and the pedal name alike - so the per-theme
+        `titleTypeface*` / `bodyTypeface` fields are no longer read. */
+    juce::Typeface::Ptr lato()
+    {
+        static juce::Typeface::Ptr face =
+            juce::Typeface::createSystemTypefaceFor (BinaryData::LatoLight_ttf, BinaryData::LatoLight_ttfSize);
+        return face;
+    }
 }
 
 juce::Font PedalTheme::titleFont (float height) const
 {
+    // The pedal name keeps its own face (the Birthstone script for most themes,
+    // a marker face for one); only the body text moved to Lato Light.
     if (titleTypefacePtr != nullptr)
         return juce::Font (juce::FontOptions (titleTypefacePtr).withHeight (height));
 
@@ -28,11 +40,7 @@ juce::Font PedalTheme::titleFont (float height) const
 
 juce::Font PedalTheme::bodyFont (float height) const
 {
-    auto options = juce::FontOptions().withHeight (height);
-    if (bodyTypeface.isNotEmpty())
-        options = options.withName (bodyTypeface);
-
-    return juce::Font (options);
+    return juce::Font (juce::FontOptions (lato()).withHeight (height));
 }
 
 juce::String PedalTheme::pickTypeface (const juce::StringArray& preferred)

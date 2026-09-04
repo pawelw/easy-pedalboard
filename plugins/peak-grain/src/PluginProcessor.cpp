@@ -39,6 +39,7 @@ constexpr const char* kDecayID = "decay";
 constexpr const char* kReverbMixID = "rmix";
 constexpr const char* kMixID = "mix";
 constexpr const char* kOnID = "on";
+constexpr const char* kVolumeID = "volume";
 
 // Per-module enable switches, one per face panel.
 constexpr const char* kGrainOnID = "grainon";
@@ -177,6 +178,19 @@ void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour
     g.strokePath (ring, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
     g.drawLine (c.x, r.getY(), c.x, c.y + radius * 0.10f, stroke);
 }
+
+/** Placeholder module mark - a little grain spray - pending the real per-module
+    icons from the design (grain dots, notes, gears, tape reel, reflection). */
+void drawGroupMarkPlaceholder (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    static const float pts[][2] = { { 0.30f, 0.28f }, { 0.66f, 0.22f }, { 0.50f, 0.50f },
+                                    { 0.24f, 0.66f }, { 0.72f, 0.62f }, { 0.46f, 0.82f } };
+    const float d = area.getWidth() * 0.17f;
+    g.setColour (colour.withAlpha (0.6f));
+    for (const auto& p : pts)
+        g.fillEllipse (area.getX() + p[0] * area.getWidth() - d * 0.5f,
+                       area.getY() + p[1] * area.getHeight() - d * 0.5f, d, d);
+}
 } // namespace
 
 PeakGrainProcessor::PeakGrainProcessor()
@@ -218,6 +232,7 @@ PeakGrainProcessor::PeakGrainProcessor()
     randomOnParam = apvts.getRawParameterValue (kRandomOnID);
     delayOnParam = apvts.getRawParameterValue (kDelayOnID);
     reverbOnParam = apvts.getRawParameterValue (kReverbOnID);
+    volumeParam = apvts.getRawParameterValue (kVolumeID);
 
     // Seed both mode slots from the parameters' defaults, so the first flip of a
     // Sync switch has somewhere sensible to land before the user has set it.
@@ -349,6 +364,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDelayOnID, 1 }, "Delay On", true));
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kReverbOnID, 1 }, "Reverb On", true));
 
+    // Master output level, in dB, applied to the whole wet+dry mix last.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kVolumeID, 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                                                                           { return juce::String (v, 1) + " dB"; })));
+
     return layout;
 }
 
@@ -458,6 +479,9 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
 
     for (auto* g : { &grainDry, &grainWet, &delayDry, &delayWet, &reverbDry, &reverbWet, &engageGain })
         g->reset (sampleRate, kGainRampSeconds);
+
+    outputGain.reset (sampleRate, kGainRampSeconds);
+    outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (volumeParam->load()));
 
     const float hp = juce::MathConstants<float>::halfPi;
     const float gMix = grainOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f) : 0.0f;
@@ -718,6 +742,15 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         }
     }
 
+    // Master output level, applied last over the finished mix.
+    outputGain.setTargetValue (juce::Decibels::decibelsToGain (volumeParam->load()));
+    for (int i = 0; i < numSamples; ++i)
+    {
+        const float mg = outputGain.getNextValue();
+        for (int ch = 0; ch < numOut; ++ch)
+            buffer.getWritePointer (ch)[i] *= mg;
+    }
+
 #if EE_GRAIN_TRACE
     float outputPeak = 0.0f;
     for (int ch = 0; ch < numOut; ++ch)
@@ -737,44 +770,66 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
     // Five modules laid out side by side, each its own raised panel. The knobs
     // are consumed in order by `knobGroups`; within a module they fill two per
     // row (an odd one leading on a row of its own), except Reverb which stacks
-    // one per row so its panel stays narrow.
-    constexpr int kLeadKnob = 107; // ~30% up on the 82 px face default
+    // one per row so its panel stays narrow. Each module's knob caps carry that
+    // module's own colour.
+    constexpr int kLeadKnob = 86; // the two lead knobs, ~30% up on the face default
+
+    const juce::Colour kGrainCol { 0xff805d93 };  // purple
+    const juce::Colour kPitchCol { 0xfff49fbc };  // pink
+    const juce::Colour kRandomCol { 0xffffd3ba }; // peach
+    const juce::Colour kDelayCol { 0xff9ebd6e };  // green
+    const juce::Colour kReverbCol { 0xff169873 }; // teal
 
     spec.knobs = {
         // Grain
-        { kMixID, "Mix" },
-        { .parameterID = kSizeID, .caption = "Size", .liveValueText = [this] { return sizeReadout(); } },
-        { .parameterID = kDensityID, .caption = "Destiny", .liveValueText = [this] { return densityReadout(); } },
+        { .parameterID = kMixID, .caption = "Mix", .capFill = kGrainCol },
+        { .parameterID = kSizeID,
+          .caption = "Size",
+          .capFill = kGrainCol,
+          .liveValueText = [this] { return sizeReadout(); } },
+        { .parameterID = kDensityID,
+          .caption = "Destiny",
+          .capFill = kGrainCol,
+          .liveValueText = [this] { return densityReadout(); } },
         { .parameterID = kShapeID,
           .caption = "Shape",
+          .capFill = kGrainCol,
           .capIcon = [this] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
           { drawGrainShapeIcon (g, r, c, shapeParam->load() * 0.01f); } },
 
         // Pitch
-        { .parameterID = kPitchLowID, .caption = "Low" },
-        { .parameterID = kPitchUnisonID, .caption = "Unison" },
-        { .parameterID = kPitchHighID, .caption = "High" },
-        { kDetuneID, "Detune" },
+        { .parameterID = kPitchLowID, .caption = "Low", .capFill = kPitchCol },
+        { .parameterID = kPitchUnisonID, .caption = "Unison", .capFill = kPitchCol },
+        { .parameterID = kPitchHighID, .caption = "High", .capFill = kPitchCol },
+        { .parameterID = kDetuneID, .caption = "Detune", .capFill = kPitchCol },
 
         // Random - Stereo leads (larger), Reverse and Scatter share the row below
-        { .parameterID = kStereoID, .caption = "Stereo", .diameter = kLeadKnob },
-        { kReverseID, "Reverse" },
-        { kScatterID, "Scatter" },
+        { .parameterID = kStereoID, .caption = "Stereo", .capFill = kRandomCol, .diameter = kLeadKnob },
+        { .parameterID = kReverseID, .caption = "Reverse", .capFill = kRandomCol },
+        { .parameterID = kScatterID, .caption = "Scatter", .capFill = kRandomCol },
 
         // Delay - Mix leads (larger), Time and Feedback share the row below
-        { .parameterID = kDelayMixID, .caption = "Mix", .diameter = kLeadKnob },
-        { .parameterID = kDelayTimeID, .caption = "Time", .liveValueText = [this] { return delayTimeReadout(); } },
-        { kDelayFeedbackID, "Feedback" },
+        { .parameterID = kDelayMixID, .caption = "Mix", .capFill = kDelayCol, .diameter = kLeadKnob },
+        { .parameterID = kDelayTimeID,
+          .caption = "Time",
+          .capFill = kDelayCol,
+          .liveValueText = [this] { return delayTimeReadout(); } },
+        { .parameterID = kDelayFeedbackID, .caption = "Feedback", .capFill = kDelayCol },
 
         // Reverb
-        { kDecayID, "Decay" },
-        { kReverbMixID, "Mix" },
+        { .parameterID = kDecayID, .caption = "Decay", .capFill = kReverbCol },
+        { .parameterID = kReverbMixID, .caption = "Mix", .capFill = kReverbCol },
     };
 
+    // Lavender-white panels standing off the cool grey face, each with its own
+    // mark centred at the top (placeholder art for now).
+    const juce::Colour kCardFill { 0xffe9e8f0 };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 4, .columns = 2 },  { .caption = "Pitch", .count = 4, .columns = 2 },
-        { .caption = "Random", .count = 3, .columns = 2 }, { .caption = "Delay", .count = 3, .columns = 2 },
-        { .caption = "Reverb", .count = 2, .columns = 1 },
+        { .caption = "Grain", .count = 4, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Pitch", .count = 4, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Random", .count = 3, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Delay", .count = 3, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
     };
     spec.knobGroupsHorizontal = true;
     spec.filledKnobGroups = true;
@@ -855,18 +910,49 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
         .width = 300,
     };
 
-    // Logo and name share the bottom row.
+    // The empty line above the logo: a scope showing the grain cloud on the
+    // left and its delay repeats fading right, over a faint reverb wash. Still
+    // and knob-tracking for now - the parameter IDs are all read normalised.
+    spec.grainScope = ee::ui::GrainScopeSpec {
+        .sizeID = kSizeID,
+        .densityID = kDensityID,
+        .scatterID = kScatterID,
+        .stereoID = kStereoID,
+        .pitchLowID = kPitchLowID,
+        .pitchHighID = kPitchHighID,
+        .delayTimeID = kDelayTimeID,
+        .delayFeedbackID = kDelayFeedbackID,
+        .delayMixID = kDelayMixID,
+        .reverbDecayID = kDecayID,
+        .reverbMixID = kReverbMixID,
+        .height = 66,
+    };
+
+    // Logo and name share the bottom row, centred and nudged down a touch.
     spec.titleBesideLogo = true;
+    spec.titleRowCentred = true;
+    spec.titleRowDrop = 4;
+
+    // Master level, hard against the top-right of the switch strip. One text
+    // line - the caption at rest, the reading while it is turned.
+    spec.topRightKnob = ee::ui::KnobSpec { .parameterID = kVolumeID, .caption = "Level", .captionUntilTouched = true };
+    spec.topRightKnobDiameter = 40;
 
     // Five modules side by side make the face wide rather than tall. Small caps,
     // and a row gap inside each module wide enough for the Sync buttons that
     // hang under Size, Destiny and Time to clear the knobs below them.
-    spec.knobDiameter = 82;
+    spec.knobDiameter = 66;
     spec.knobRowGap = 54;
     spec.width = 1264;
-    spec.height = 540;
+    spec.height = 620;
 
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::white());
+    // Peak Wah's white theme, but the face is a cool light-grey box (matching
+    // the design) so the lavender-white panels read as raised cards on it.
+    auto theme = ee::ui::PedalTheme::white();
+    theme.panel = juce::Colour (0xffd5d5df);
+    theme.background = juce::Colour (0xffcfcfda);
+
+    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, theme);
 
 #if EE_GRAIN_TUNER
     // The panel owns the voicing while it is open: the grain half goes to the
