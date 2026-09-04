@@ -1,0 +1,43 @@
+body {
+  margin: 0;
+  background: #dcdad2;
+}
+
+.page {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+}
+
+.pw-toprow {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.pw-clusters {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.pw-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  flex: 1;
+}
+
+.pw-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px 26px;
+  justify-items: center;
+}
+
+.pw-divider {
+  align-self: stretch;
+  width: 1px;
+  background: var(--pui-panel-edge);
+}

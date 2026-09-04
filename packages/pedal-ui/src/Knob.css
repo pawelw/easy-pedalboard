@@ -1,0 +1,109 @@
+.pui-knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.pui-knob__dial {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pui-knob__ticks {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.pui-knob__value-arc {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.5));
+}
+
+.pui-knob__corner {
+  position: absolute;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--pui-ink);
+  pointer-events: none;
+}
+.pui-knob__corner--tl {
+  top: -20px;
+  left: -16px;
+}
+.pui-knob__corner--tr {
+  top: -20px;
+  right: -16px;
+}
+.pui-knob__corner--bl {
+  bottom: -20px;
+  left: -16px;
+}
+.pui-knob__corner--br {
+  bottom: -20px;
+  right: -16px;
+}
+
+.pui-knob__body {
+  position: relative;
+  border-radius: 50%;
+  cursor: ns-resize;
+  touch-action: none;
+  outline-offset: 3px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.pui-knob__knurl {
+  position: absolute;
+  inset: 0;
+}
+
+.pui-knob__body--dragging {
+  outline: 3px solid rgba(63, 182, 98, 0.35);
+}
+
+.pui-knob__cap {
+  position: absolute;
+  inset: 13.5%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 32%, #ffffff, var(--pui-knob-cap) 60%, var(--pui-knob-cap-shadow) 100%);
+  box-shadow:
+    inset 0 -1px 2px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.pui-knob__dot {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+.pui-knob__dot::after {
+  content: "";
+  position: absolute;
+  top: 16%;
+  left: 50%;
+  width: 6%;
+  height: 6%;
+  margin-left: -3%;
+  border-radius: 50%;
+  background: var(--pui-knob-dot);
+}
+
+.pui-knob__caption {
+  margin-top: 2px;
+}
+
+.pui-knob__readout {
+  font-size: 10px;
+  color: var(--pui-ink-soft);
+  min-height: 12px;
+}

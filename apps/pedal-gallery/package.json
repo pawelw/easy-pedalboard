@@ -1,0 +1,21 @@
+{
+  "name": "pedal-gallery",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Dev-only: browse every pedal's WebView face in one tab. Renders each pedal's real App.jsx - not a separate mock UI to keep in sync. See README.md.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@synthpeak/pedal-ui": "*",
+    "peak-wah-jsui": "*",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}

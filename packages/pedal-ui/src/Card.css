@@ -1,0 +1,57 @@
+.pui-card {
+  position: relative;
+  background: var(--pui-panel);
+  border: 2px solid var(--pui-line);
+  border-radius: var(--pui-radius-panel);
+  padding: 18px 22px 22px;
+  box-shadow: 0 1px 0 var(--pui-panel-edge) inset;
+}
+
+.pui-screw {
+  position: absolute;
+}
+.pui-screw--tl {
+  top: 10px;
+  left: 10px;
+}
+.pui-screw--tr {
+  top: 10px;
+  right: 10px;
+}
+.pui-screw--bl {
+  bottom: 10px;
+  left: 10px;
+}
+.pui-screw--br {
+  bottom: 10px;
+  right: 10px;
+}
+
+.pui-card__header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 0 10px 16px;
+}
+
+.pui-card__title {
+  font-family: var(--pui-font-display);
+  font-weight: 700;
+  font-size: 22px;
+  letter-spacing: 0.01em;
+  color: var(--pui-ink);
+  margin: 0;
+}
+
+.pui-card__subtitle {
+  font-family: var(--pui-font-label);
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+}
+
+.pui-card__body {
+  padding: 0 10px;
+}

@@ -1,0 +1,51 @@
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/700.css";
+
+/* The rack-module look shared by every component: cream panels, black ink,
+   knurled-pot knobs, pill switches. One palette so a pedal reads as one
+   family of modules rather than several pedals styled separately. */
+:root {
+  --pui-panel: #f3f2ed;
+  --pui-panel-edge: #e8e6de;
+  --pui-ink: #1c1c1a;
+  --pui-ink-soft: #6b6a63;
+  --pui-line: #1c1c1a;
+  --pui-screw: #cfcdc3;
+  --pui-screw-shadow: #9c9a90;
+
+  --pui-knob-body: #232320;
+  --pui-knob-body-hi: #3a3a35;
+  --pui-knob-cap: #f6f5f0;
+  --pui-knob-cap-shadow: #c9c7bd;
+  --pui-knob-dot: #1c1c1a;
+  --pui-knob-tick: #b8b6ac;
+  --pui-knob-value-arc: #f0eee6;
+
+  --pui-track: #1c1c1a;
+  --pui-thumb: #f6f5f0;
+
+  --pui-led-off: #c9c7bd;
+  --pui-led-on: #3fb662;
+  --pui-led-on-glow: rgba(63, 182, 98, 0.45);
+
+  --pui-radius-panel: 14px;
+  --pui-radius-pill: 999px;
+
+  --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
+  --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
+}
+
+.pui-reset,
+.pui-reset * {
+  box-sizing: border-box;
+}
+
+.pui-caption {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pui-ink);
+  text-align: center;
+}

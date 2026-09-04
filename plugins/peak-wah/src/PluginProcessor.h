@@ -7,11 +7,12 @@
 
 #include "ee/dsp/AutoWah.h"
 
-class PeakWahProcessor : public juce::AudioProcessor
+class PeakWahProcessor : public juce::AudioProcessor,
+                         private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     PeakWahProcessor();
-    ~PeakWahProcessor() override = default;
+    ~PeakWahProcessor() override;
 
     void prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock) override;
     void releaseResources() override;
@@ -58,6 +59,11 @@ public:
     void onSyncToggled();
 
 private:
+    // Runs onSyncToggled() whenever "sync" changes, from any UI or automation -
+    // moved here from the editor's switch onClick when the WebView editor spike
+    // gave up having one.
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
+
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     static constexpr int kMaxChannels = 2;
