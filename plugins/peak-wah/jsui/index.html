@@ -6,6 +6,35 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Must be a classic script, ahead of the module script below: a real
+      // host injects window.__JUCE__ before any page script runs, so this
+      // never fires there. Outside one (a plain browser tab, the pedal
+      // gallery) juce-framework-frontend's own fallback backend never echoes
+      // an emitted change back to anything, so two components reading the
+      // same parameter - a knob and the filter scope, say - go out of sync
+      // the moment one of them changes it locally. This loops emitted
+      // messages straight back into the frontend's own event bus, so it
+      // behaves the same with or without a real backend.
+      if (typeof window.__JUCE__ === "undefined") {
+        window.__JUCE__ = {
+          initialisationData: {
+            __juce__platform: [],
+            __juce__functions: [],
+            __juce__registeredGlobalEventIds: [],
+            __juce__sliders: [],
+            __juce__toggles: [],
+            __juce__comboBoxes: [],
+          },
+          postMessage: function (messageJson) {
+            var msg = JSON.parse(messageJson);
+            Promise.resolve().then(function () {
+              window.__JUCE__.backend.emitByBackend(msg.eventId, JSON.stringify(msg.payload));
+            });
+          },
+        };
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

@@ -111,6 +111,7 @@ export default function Knob({
   valueLabel,
   size = 72,
   cornerLabels,
+  icon,
   step = 0.01,
 }) {
   const [dragging, setDragging] = useState(false);
@@ -187,6 +188,7 @@ export default function Knob({
           <Collar radius={radius} />
           <div className="pui-knob__cap">
             <div className="pui-knob__dot" style={{ transform: `rotate(${angle}deg)` }} />
+            {icon && <div className="pui-knob__icon">{icon(value)}</div>}
           </div>
         </div>
       </div>

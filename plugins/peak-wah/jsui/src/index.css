@@ -9,35 +9,50 @@ body {
   padding: 24px;
 }
 
-.pw-toprow {
-  display: flex;
-  justify-content: flex-end;
-  margin-bottom: 6px;
+.pw-board {
+  position: relative;
 }
 
-.pw-clusters {
-  display: flex;
-  align-items: flex-start;
-  gap: 24px;
-}
-
-.pw-cluster {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  flex: 1;
-}
-
-.pw-grid {
+/* One grid for all eight knobs, not two 2x2 grids side by side - that was
+   the actual bug behind "row 2 isn't aligned": two independent grids can't
+   share row-track sizing, so Mix's taller cap only ever inflated its own
+   grid's row 1, leaving row 2 a few pixels off between the two halves no
+   matter how the halves themselves were centred against each other. One
+   grid means every column takes its row heights from the same tracks. */
+.pw-grid8 {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 20px 26px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: center;
   justify-items: center;
+  row-gap: 6px;
+  column-gap: 24px;
+}
+
+.pw-toggles {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: 24px;
+  margin-top: 16px;
+}
+.pw-toggles > :first-child {
+  grid-column: 1 / 3;
+  justify-self: center;
+}
+.pw-toggles > :last-child {
+  grid-column: 3 / 5;
+  justify-self: center;
 }
 
 .pw-divider {
-  align-self: stretch;
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
   width: 1px;
-  background: var(--pui-panel-edge);
+  background: var(--pui-screw);
+  transform: translateX(-50%);
+}
+
+.pw-scope-gap {
+  margin-top: 20px;
 }

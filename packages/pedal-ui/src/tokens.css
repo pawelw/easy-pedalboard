@@ -28,6 +28,11 @@
   --pui-led-on: #3fb662;
   --pui-led-on-glow: rgba(63, 182, 98, 0.45);
 
+  --pui-scope-bg: #e9e7e0;
+  --pui-scope-grid: #d9d7cd;
+  --pui-scope-base: #c2562f;
+  --pui-scope-sweep: #9aa0aa;
+
   --pui-radius-panel: 14px;
   --pui-radius-pill: 999px;
 

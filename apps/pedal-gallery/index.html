@@ -6,6 +6,30 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // Same dev-loopback shim as plugins/peak-wah/jsui/index.html - see the
+      // comment there. Needed here too because the gallery imports each
+      // pedal's real App.jsx, which pulls in juce-framework-frontend the
+      // same way the pedal's own dev server does.
+      if (typeof window.__JUCE__ === "undefined") {
+        window.__JUCE__ = {
+          initialisationData: {
+            __juce__platform: [],
+            __juce__functions: [],
+            __juce__registeredGlobalEventIds: [],
+            __juce__sliders: [],
+            __juce__toggles: [],
+            __juce__comboBoxes: [],
+          },
+          postMessage: function (messageJson) {
+            var msg = JSON.parse(messageJson);
+            Promise.resolve().then(function () {
+              window.__JUCE__.backend.emitByBackend(msg.eventId, JSON.stringify(msg.payload));
+            });
+          },
+        };
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

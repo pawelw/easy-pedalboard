@@ -1,37 +1,39 @@
-import { Card } from "@synthpeak/pedal-ui";
-import { JuceKnob, JuceToggle, JuceLedButton } from "./juceBindings.jsx";
+import { Card, WaveIcon } from "@synthpeak/pedal-ui";
+import { JuceKnob, JuceToggle, JuceFilterScope } from "./juceBindings.jsx";
 import "./index.css";
 
 export default function App() {
   return (
     <div className="page">
       <Card title="Peak Wah" subtitle="Envelope Filter" width={566}>
-        <div className="pw-toprow">
-          <JuceLedButton parameterId="on">Bypass</JuceLedButton>
-        </div>
+        <div className="pw-board">
+          <div className="pw-grid8">
+            <JuceKnob parameterId="mix" caption="Mix" size={92} />
+            <JuceKnob parameterId="freq" caption="Freq" size={72} />
+            <JuceKnob
+              parameterId="shape"
+              caption="Shape"
+              size={72}
+              icon={(v) => <WaveIcon shape01={v} size={22} />}
+            />
+            <JuceKnob parameterId="decay" caption="Decay" size={72} />
 
-        <div className="pw-clusters">
-          <section className="pw-cluster">
-            <div className="pw-grid">
-              <JuceKnob parameterId="mix" caption="Mix" size={84} />
-              <JuceKnob parameterId="freq" caption="Freq" size={72} />
-              <JuceKnob parameterId="q" caption="Q" size={72} />
-              <JuceKnob parameterId="range" caption="Range" size={72} />
-            </div>
+            <JuceKnob parameterId="q" caption="Q" size={72} />
+            <JuceKnob parameterId="range" caption="Range" size={72} />
+            <JuceKnob parameterId="time" caption="Time" size={72} />
+            <JuceKnob parameterId="ftype" caption="Filter Type" size={72} />
+          </div>
+
+          <div className="pw-toggles">
             <JuceToggle parameterId="stereo" caption="Stereo" />
-          </section>
+            <JuceToggle parameterId="sync" caption="Sync" />
+          </div>
 
           <div className="pw-divider" />
+        </div>
 
-          <section className="pw-cluster">
-            <div className="pw-grid">
-              <JuceKnob parameterId="decay" caption="Decay" size={72} />
-              <JuceKnob parameterId="shape" caption="Shape" size={84} />
-              <JuceKnob parameterId="time" caption="Time" size={72} />
-              <JuceKnob parameterId="ftype" caption="Filter Type" size={84} />
-            </div>
-            <JuceToggle parameterId="sync" caption="Sync" />
-          </section>
+        <div className="pw-scope-gap">
+          <JuceFilterScope height={72} />
         </div>
       </Card>
     </div>
