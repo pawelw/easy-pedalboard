@@ -133,6 +133,11 @@ juce_add_binary_data(ee_assets SOURCES
     assets/images/silver-knob.png
     assets/images/silver-knob-base-v1.png
     assets/images/reverb-bg.jpeg
+    assets/images/random.png
+    assets/images/grain-icon.png
+    assets/images/tape-icon.png
+    assets/images/reverb-icon.png
+    assets/images/pitch-icon.png
     assets/images/spoon.png)
 set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 

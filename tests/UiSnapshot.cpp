@@ -206,16 +206,59 @@ void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour
     g.drawLine (c.x, r.getY(), c.x, c.y + radius * 0.10f, stroke);
 }
 
-/** Mirrors drawGroupMarkPlaceholder in plugins/peak-grain. */
-void drawGroupMarkPlaceholder (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+/** Mirrors kIconInk / drawImageIcon / drawRandomIcon / drawGrainIcon /
+    drawTapeIcon / drawReverbIcon / drawPitchIcon in plugins/peak-grain.
+
+    The icon set's own ink colour - sampled from the fully-opaque pixels of
+    all five files, which agree to within a couple of RGB steps (~68,68,70).
+    Used below as a fill, not a tint: `Graphics::drawImage` compositing these
+    PNGs' own RGB+alpha measurably washes the linework out at this draw size
+    on this build (confirmed by sampling pixels going in versus what actually
+    lands on screen); reading the image as an alpha stencil and flooding it
+    with this colour - matching the source almost exactly - does not, and
+    reads sharper regardless of scale. */
+constexpr juce::uint32 kIconInk = 0xff444446;
+
+void drawImageIcon (juce::Graphics& g, juce::Rectangle<float> area, const juce::Image& img)
 {
-    static const float pts[][2] = { { 0.30f, 0.28f }, { 0.66f, 0.22f }, { 0.50f, 0.50f },
-                                    { 0.24f, 0.66f }, { 0.72f, 0.62f }, { 0.46f, 0.82f } };
-    const float d = area.getWidth() * 0.17f;
-    g.setColour (colour.withAlpha (0.6f));
-    for (const auto& p : pts)
-        g.fillEllipse (area.getX() + p[0] * area.getWidth() - d * 0.5f,
-                       area.getY() + p[1] * area.getHeight() - d * 0.5f, d, d);
+    if (! img.isValid())
+        return;
+
+    g.setColour (juce::Colour (kIconInk));
+    g.drawImage (img, area, juce::RectanglePlacement::centred, true);
+}
+
+void drawRandomIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img = juce::ImageCache::getFromMemory (BinaryData::random_png, BinaryData::random_pngSize);
+    drawImageIcon (g, area, img);
+}
+
+void drawGrainIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img =
+        juce::ImageCache::getFromMemory (BinaryData::grainicon_png, BinaryData::grainicon_pngSize);
+    drawImageIcon (g, area, img);
+}
+
+void drawTapeIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img = juce::ImageCache::getFromMemory (BinaryData::tapeicon_png, BinaryData::tapeicon_pngSize);
+    drawImageIcon (g, area, img);
+}
+
+void drawReverbIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img =
+        juce::ImageCache::getFromMemory (BinaryData::reverbicon_png, BinaryData::reverbicon_pngSize);
+    drawImageIcon (g, area, img);
+}
+
+void drawPitchIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img =
+        juce::ImageCache::getFromMemory (BinaryData::pitchicon_png, BinaryData::pitchicon_pngSize);
+    drawImageIcon (g, area, img);
 }
 
 ee::ui::PedalSpec makeDelaySpec()
@@ -631,33 +674,32 @@ ee::ui::PedalSpec makeGrainSpec()
         { .parameterID = "rmix", .caption = "Mix", .capFill = kReverbCol },
     };
     const juce::Colour kCardFill { 0xffe9e8f0 };
+    const auto kSyncFooter = [] (const juce::String& id) {
+        return ee::ui::SlideToggleSpec { .parameterID = id, .labelOff = "ms", .labelOn = "Sync", .invertPosition = true };
+    };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Random", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Delay", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Grain", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGrainIcon,
+          .footer = kSyncFooter ("ssync"), .footerOnClick = [] {} },
+        { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawPitchIcon },
+        { .caption = "Random", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawRandomIcon },
+        { .caption = "Delay", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawTapeIcon,
+          .footer = kSyncFooter ("dtsync") },
+        { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawReverbIcon },
     };
     spec.knobGroupsHorizontal = true;
     spec.filledKnobGroups = true;
     spec.captionUntilTouchedKnobs = true;
+    spec.knobGroupFooters = true;
     spec.toggles = {
-        { .parameterID = "ssync", .caption = "Sync", .afterKnobIndex = 1, .centeredRight = true, .iconSize = 16,
-          .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "dsync", .caption = "Sync", .afterKnobIndex = 2, .centeredRight = true, .iconSize = 16,
-          .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "dtsync", .caption = "Sync", .afterKnobIndex = 12, .centeredRight = true, .iconSize = 16,
-          .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
-
-        { .parameterID = "grainon", .caption = "On", .groupPanelIndex = 0, .icon = drawPowerIcon,
+        { .parameterID = "grainon", .caption = "On", .iconSize = 18, .groupPanelIndex = 0, .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "pitchon", .caption = "On", .groupPanelIndex = 1, .icon = drawPowerIcon,
+        { .parameterID = "pitchon", .caption = "On", .iconSize = 18, .groupPanelIndex = 1, .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "randon", .caption = "On", .groupPanelIndex = 2, .icon = drawPowerIcon,
+        { .parameterID = "randon", .caption = "On", .iconSize = 18, .groupPanelIndex = 2, .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "delon", .caption = "On", .groupPanelIndex = 3, .icon = drawPowerIcon,
+        { .parameterID = "delon", .caption = "On", .iconSize = 18, .groupPanelIndex = 3, .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "revon", .caption = "On", .groupPanelIndex = 4, .icon = drawPowerIcon,
+        { .parameterID = "revon", .caption = "On", .iconSize = 18, .groupPanelIndex = 4, .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
     };
     spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "freeze", .labelOff = "Live", .labelOn = "Freeze" };
@@ -701,9 +743,10 @@ ee::ui::PedalSpec makeGrainSpec()
     // Five modules side by side: a wide face rather than a tall one, small caps,
     // and a row gap inside each module wide enough for the Sync buttons.
     spec.knobDiameter = 64;
-    spec.knobRowGap = 4;
+    spec.displayBandRise = -24; // push the scope band down too
+    spec.knobRowGap = -4;
     spec.width = 700;
-    spec.height = 745;
+    spec.height = 700;
     return spec;
 }
 

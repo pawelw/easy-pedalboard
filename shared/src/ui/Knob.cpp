@@ -22,7 +22,7 @@ Knob::Knob (juce::AudioProcessorValueTreeState& state,
     : apvts (state), paramID (spec.parameterID), captionText (spec.caption),
       pedalTheme (theme), capStyle (spec.capStyle.value_or (theme.controlStyle)),
       compact (spec.compact), compactCaption (spec.compactCaption),
-      captionUntilTouched (spec.captionUntilTouched),
+      captionUntilTouched (spec.captionUntilTouched), tightLabel (spec.tightCaptionLabel),
       liveValueText (spec.liveValueText), valueIcon (spec.valueIcon), capIcon (spec.capIcon)
 {
     slider.setSliderStyle (juce::Slider::RotaryVerticalDrag);
@@ -156,6 +156,30 @@ void Knob::paint (juce::Graphics& g)
         g.setFont (pedalTheme.bodyFont (12.0f));
         g.drawText (compactCaption ? captionText.toUpperCase() : valueText,
                     textArea, juce::Justification::centred, false);
+        return;
+    }
+
+    // One short row only: caption at rest, reading (or its glyph) while dragged.
+    if (tightLabel)
+    {
+        const auto row = area.removeFromBottom (static_cast<float> (valueRowHeight));
+
+        if (touched && valueIcon)
+        {
+            valueIcon (g, row, pedalTheme.textPrimary);
+        }
+        else if (touched)
+        {
+            g.setColour (pedalTheme.textPrimary);
+            g.setFont (pedalTheme.bodyFont (kValueFontHeight));
+            g.drawText (valueText, row, juce::Justification::centredTop, false);
+        }
+        else
+        {
+            g.setColour (pedalTheme.textSecondary);
+            g.setFont (pedalTheme.bodyFont (kCaptionFontHeight).boldened().withExtraKerningFactor (0.09f));
+            g.drawFittedText (captionText.toUpperCase(), row.toNearestInt(), juce::Justification::centredTop, 1, 0.82f);
+        }
         return;
     }
 

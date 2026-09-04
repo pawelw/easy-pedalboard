@@ -119,6 +119,12 @@ struct KnobSpec
         it is being set. */
     bool captionUntilTouched = false;
 
+    /** With `captionUntilTouched`, shrink the label block to a single short row
+        rather than keeping the full two-row height, so a face of these knobs
+        can pack its rows closer. Only sensible when every knob on the face has
+        it, or the caps stop lining up. */
+    bool tightCaptionLabel = false;
+
     /** Marks the top of the travel: the last tick on the scale is drawn fat and
         in this colour, with `endMarkerLabel` printed just outside it. For a
         control whose maximum is a different thing rather than more of the same
@@ -426,6 +432,16 @@ struct KnobGroupSpec
         below the caption line. Given the icon's square area and an ink colour
         derived from the fill. */
     std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> icon;
+
+    /** A two-way switch sitting in this card's footer strip (needs
+        `PedalSpec::knobGroupFooters`). Leave `parameterID` empty for a card
+        whose footer stays blank. */
+    SlideToggleSpec footer;
+
+    /** Fired after a user click of the footer switch, once its parameter has
+        flipped - for a switch that has to mirror its state onto sibling
+        parameters (one switch driving two knobs). */
+    std::function<void()> footerOnClick;
 };
 
 /** The preset strip drawn centred in the switch strip across the top of the
@@ -486,6 +502,11 @@ struct PedalSpec
         outline. The caption sits inside the panel's top edge, larger than the
         outline style's. For a face whose sections should read as raised cards. */
     bool filledKnobGroups = false;
+
+    /** Give every filled knob-group card a footer strip along its bottom - a
+        divider and a reserved band. The band is blank unless the group's
+        `KnobGroupSpec::footer` puts a switch in it. */
+    bool knobGroupFooters = false;
 
     /** Force every main knob to `KnobSpec::captionUntilTouched` - the caption
         shows at rest, the value only while the knob is being turned. Saves the
