@@ -1,7 +1,6 @@
 .pui-card {
   position: relative;
   background: var(--pui-panel);
-  border: 2px solid var(--pui-line);
   border-radius: var(--pui-radius-panel);
   padding: 18px 22px 22px;
   box-shadow: 0 1px 0 var(--pui-panel-edge) inset;
@@ -31,7 +30,7 @@
   display: flex;
   align-items: baseline;
   gap: 10px;
-  padding: 0 10px 16px;
+  padding: 0 10px 24px;
 }
 
 .pui-card__title {

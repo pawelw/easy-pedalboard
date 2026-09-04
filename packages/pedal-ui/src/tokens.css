@@ -32,6 +32,7 @@
   --pui-scope-grid: #d9d7cd;
   --pui-scope-base: #c2562f;
   --pui-scope-sweep: #9aa0aa;
+  --pui-scope-fill: rgba(154, 160, 170, 0.22);
 
   --pui-radius-panel: 14px;
   --pui-radius-pill: 999px;

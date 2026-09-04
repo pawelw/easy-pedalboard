@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./Knob.css";
 
 const MIN_ANGLE = -135;
@@ -117,33 +117,47 @@ export default function Knob({
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
 
-  const handlePointerMove = useCallback(
-    (event) => {
+  // onChange/onDragEnd are fresh closures every render (each carries the
+  // caller's own current `value`), so the drag-tracking effect below reads
+  // them through a ref instead of depending on them directly. It used to
+  // depend on them: every onChange call re-rendered the parent with a new
+  // onChange identity, which re-ran this effect's cleanup mid-drag - nulling
+  // dragStartRef and tearing down the window listeners after the first
+  // pixel of movement. A single big jump (as in a synthetic test) never
+  // triggers a second pointermove and so never exposed it; an actual mouse
+  // drag, which fires many, stopped dead after the first one.
+  const latest = useRef({ onChange, onDragEnd, value });
+  latest.current = { onChange, onDragEnd, value };
+
+  useEffect(() => {
+    if (!dragging) return undefined;
+
+    const handlePointerMove = (event) => {
       const start = dragStartRef.current;
       if (!start) return;
       const delta = (start.y - event.clientY) / PIXELS_PER_FULL_SWEEP;
-      onChange(Math.min(1, Math.max(0, start.value + delta)));
-    },
-    [onChange],
-  );
+      latest.current.onChange(Math.min(1, Math.max(0, start.value + delta)));
+    };
 
-  const handlePointerUp = useCallback(() => {
-    dragStartRef.current = null;
-    setDragging(false);
-    onDragEnd?.();
-    window.removeEventListener("pointermove", handlePointerMove);
-    window.removeEventListener("pointerup", handlePointerUp);
-  }, [handlePointerMove, onDragEnd]);
+    const handlePointerUp = () => {
+      dragStartRef.current = null;
+      setDragging(false);
+      latest.current.onDragEnd?.();
+    };
 
-  useEffect(() => () => handlePointerUp(), [handlePointerUp]);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [dragging]);
 
   const onPointerDown = (event) => {
     event.preventDefault();
     onDragStart?.();
     dragStartRef.current = { y: event.clientY, value };
     setDragging(true);
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
   };
 
   const onKeyDown = (event) => {

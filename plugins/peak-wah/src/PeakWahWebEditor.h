@@ -8,10 +8,12 @@ class PeakWahProcessor;
 /** Spike: Peak Wah's face built as a React app hosted in a
     juce::WebBrowserComponent, instead of ee::ui::PedalEditor. See
     jsui/README.md for the dev loop and what this does and doesn't prove. */
-class PeakWahWebEditor : public juce::AudioProcessorEditor
+class PeakWahWebEditor : public juce::AudioProcessorEditor,
+                         private juce::Timer
 {
 public:
     explicit PeakWahWebEditor (PeakWahProcessor&);
+    ~PeakWahWebEditor() override;
 
     void resized() override;
 
@@ -22,6 +24,12 @@ public:
 
 private:
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
+
+    // Pushes the live cutoff-sweep modL/modR (see PeakWahProcessor::lfoModLUi)
+    // to the "filterMod" event at a UI frame rate - there is no way for the
+    // scope to have this otherwise, since it isn't a parameter and never
+    // touches the relay/attachment machinery above.
+    void timerCallback() override;
 
     PeakWahProcessor& processorRef;
 

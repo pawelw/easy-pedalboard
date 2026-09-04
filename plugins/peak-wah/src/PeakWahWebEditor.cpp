@@ -85,11 +85,26 @@ PeakWahWebEditor::PeakWahWebEditor (PeakWahProcessor& p)
     webView.goToURL (kUseDevServer ? devServerAddress : juce::WebBrowserComponent::getResourceProviderRoot());
     setSize (566, 360);
     setResizable (false, false);
+
+    startTimerHz (45); // matches the old ee::ui::FilterScope's own repaint rate
+}
+
+PeakWahWebEditor::~PeakWahWebEditor()
+{
+    stopTimer();
 }
 
 void PeakWahWebEditor::resized()
 {
     webView.setBounds (getLocalBounds());
+}
+
+void PeakWahWebEditor::timerCallback()
+{
+    auto* payload = new juce::DynamicObject();
+    payload->setProperty ("modL", processorRef.lfoModLUi.load (std::memory_order_relaxed));
+    payload->setProperty ("modR", processorRef.lfoModRUi.load (std::memory_order_relaxed));
+    webView.emitEventIfBrowserIsVisible ("filterMod", juce::var (payload));
 }
 
 std::optional<juce::WebBrowserComponent::Resource> PeakWahWebEditor::getResource (const juce::String& url)

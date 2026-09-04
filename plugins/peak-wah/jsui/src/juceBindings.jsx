@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
-import { Knob, Toggle, FilterScope } from "@synthpeak/pedal-ui";
+import { Knob, Toggle, FilterScope, freqHzFor01 } from "@synthpeak/pedal-ui";
 
 // A native function, not the parameter's own C++ stringFromValue - JUCE's
 // web-view relays only carry start/end/skew/interval, not the format string.
@@ -87,13 +87,41 @@ export function JuceToggle({ parameterId, caption }) {
   );
 }
 
-/** The response scope, reading freq/resonance/type/range live so it tracks
-    whichever of those knobs is being turned. */
+/** The live cutoff-sweep exponent for both channels (PeakWahProcessor's
+    lfoModLUi/lfoModRUi), pushed from PeakWahWebEditor's Timer as the
+    "filterMod" event - there's no relay for this, it isn't a parameter.
+    Stays {0, 0} until a real host starts sending it (a plain browser tab
+    never will), which just means the scope's live wash sits still at the
+    centre of the sweep band instead of riding around inside it. */
+function useFilterMod() {
+  const [mod, setMod] = useState({ modL: 0, modR: 0 });
+
+  useEffect(() => {
+    if (typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;
+    const id = window.__JUCE__.backend.addEventListener("filterMod", (event) => setMod(event));
+    return () => window.__JUCE__.backend.removeEventListener(id);
+  }, []);
+
+  return mod;
+}
+
+/** The response scope, reading freq/resonance/range live so it tracks
+    whichever of those knobs is being turned, plus the live modL/modR feed
+    for the two channels' actual position within the sweep. */
 export function JuceFilterScope({ height }) {
   const [freq01] = useJuceSliderValue("freq");
   const [q01] = useJuceSliderValue("q");
-  const [type01] = useJuceSliderValue("ftype");
   const [range01] = useJuceSliderValue("range");
+  const { modL, modR } = useFilterMod();
 
-  return <FilterScope freq01={freq01} resonance01={q01} type01={type01} sweepDepth01={range01} height={height} />;
+  return (
+    <FilterScope
+      baseFreqHz={freqHzFor01(freq01)}
+      resonance01={q01}
+      sweepDepth01={range01}
+      modL={modL}
+      modR={modR}
+      height={height}
+    />
+  );
 }

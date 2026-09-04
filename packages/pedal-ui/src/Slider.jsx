@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import "./Slider.css";
 
 const TICK_COUNT = 9;
@@ -14,36 +14,42 @@ export default function Slider({ value, onChange, onDragStart, onDragEnd, captio
 
   const travel = height - THUMB_HEIGHT;
 
-  const valueFromClientY = useCallback(
-    (clientY) => {
-      const rect = trackRef.current.getBoundingClientRect();
-      const y = clientY - rect.top - THUMB_HEIGHT / 2;
-      return Math.min(1, Math.max(0, 1 - y / travel));
-    },
-    [travel],
-  );
+  // onChange/onDragEnd are fresh closures every render, so the drag-tracking
+  // effect below reads them through a ref rather than depending on them
+  // directly - see the matching comment in Knob.jsx for why depending on
+  // them there tore the drag down after the first pixel of real mouse
+  // movement (a bug a synthetic single-jump test never exposed).
+  const latest = useRef({ onChange, onDragEnd, travel });
+  latest.current = { onChange, onDragEnd, travel };
 
-  const handlePointerMove = useCallback(
-    (event) => onChange(valueFromClientY(event.clientY)),
-    [onChange, valueFromClientY],
-  );
+  const valueFromClientY = (clientY) => {
+    const rect = trackRef.current.getBoundingClientRect();
+    const y = clientY - rect.top - THUMB_HEIGHT / 2;
+    return Math.min(1, Math.max(0, 1 - y / latest.current.travel));
+  };
 
-  const handlePointerUp = useCallback(() => {
-    setDragging(false);
-    onDragEnd?.();
-    window.removeEventListener("pointermove", handlePointerMove);
-    window.removeEventListener("pointerup", handlePointerUp);
-  }, [handlePointerMove, onDragEnd]);
+  useEffect(() => {
+    if (!dragging) return undefined;
 
-  useEffect(() => () => handlePointerUp(), [handlePointerUp]);
+    const handlePointerMove = (event) => latest.current.onChange(valueFromClientY(event.clientY));
+    const handlePointerUp = () => {
+      setDragging(false);
+      latest.current.onDragEnd?.();
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    return () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+    };
+  }, [dragging]);
 
   const onPointerDown = (event) => {
     event.preventDefault();
     onDragStart?.();
     setDragging(true);
     onChange(valueFromClientY(event.clientY));
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
   };
 
   const onKeyDown = (event) => {
