@@ -1232,8 +1232,8 @@ void PedalEditor::Face::paintGroupBox (juce::Graphics& g,
 
         // A wide, soft elevation shadow plus a tighter contact one - the card
         // floats well off the face.
-        juce::DropShadow (juce::Colour (0x1e2a3242), 5, { 0, 12 }).drawForPath (g, card);
-        juce::DropShadow (juce::Colour (0x22222b3a), 3, { 0, 5 }).drawForPath (g, card);
+        juce::DropShadow (juce::Colour (0x1e2a3242), 5, { 0, 2 }).drawForPath (g, card);
+        juce::DropShadow (juce::Colour (0x22222b3a), 3, { 0, 2 }).drawForPath (g, card);
 
         g.setColour (panelFill);
         g.fillRoundedRectangle (box, kCorner);
