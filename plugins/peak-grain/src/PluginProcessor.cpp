@@ -774,11 +774,11 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
     // module's own colour.
     constexpr int kLeadKnob = 86; // the two lead knobs, ~30% up on the face default
 
-    const juce::Colour kGrainCol { 0xff805d93 };  // purple
-    const juce::Colour kPitchCol { 0xfff49fbc };  // pink
-    const juce::Colour kRandomCol { 0xffffd3ba }; // peach
-    const juce::Colour kDelayCol { 0xff9ebd6e };  // green
-    const juce::Colour kReverbCol { 0xff169873 }; // teal
+    const juce::Colour kGrainCol { 0xff80658e };  // purple
+    const juce::Colour kPitchCol { 0xffe79bbf };  // pink
+    const juce::Colour kRandomCol { 0xffe6bfa9 }; // peach
+    const juce::Colour kDelayCol { 0xff9ebb87 };  // green
+    const juce::Colour kReverbCol { 0xff50938a }; // teal
 
     spec.knobs = {
         // Grain
@@ -803,13 +803,13 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
         { .parameterID = kPitchHighID, .caption = "High", .capFill = kPitchCol },
         { .parameterID = kDetuneID, .caption = "Detune", .capFill = kPitchCol },
 
-        // Random - Stereo leads (larger), Reverse and Scatter share the row below
-        { .parameterID = kStereoID, .caption = "Stereo", .capFill = kRandomCol, .diameter = kLeadKnob },
+        // Random
+        { .parameterID = kStereoID, .caption = "Stereo", .capFill = kRandomCol },
         { .parameterID = kReverseID, .caption = "Reverse", .capFill = kRandomCol },
         { .parameterID = kScatterID, .caption = "Scatter", .capFill = kRandomCol },
 
-        // Delay - Mix leads (larger), Time and Feedback share the row below
-        { .parameterID = kDelayMixID, .caption = "Mix", .capFill = kDelayCol, .diameter = kLeadKnob },
+        // Delay
+        { .parameterID = kDelayMixID, .caption = "Mix", .capFill = kDelayCol },
         { .parameterID = kDelayTimeID,
           .caption = "Time",
           .capFill = kDelayCol,
@@ -825,42 +825,43 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
     // mark centred at the top (placeholder art for now).
     const juce::Colour kCardFill { 0xffe9e8f0 };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 4, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Pitch", .count = 4, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Random", .count = 3, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Delay", .count = 3, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Grain", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Random", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Delay", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
         { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
     };
     spec.knobGroupsHorizontal = true;
     spec.filledKnobGroups = true;
+    spec.captionUntilTouchedKnobs = true; // caption at rest, value only while turning
 
-    // A Sync / ms button under Size, under Destiny, and under the delay Time
-    // knob: pressed, the knob picks a note division and the reading is the
-    // division label; released, it is the free unit at the host tempo. The
-    // toggle is silent - `onClick` only nudges the knob to its remembered
-    // position for the mode being entered.
+    // A small Sync / ms button beside Size, Destiny and the delay Time knob:
+    // pressed, the knob picks a note division and the reading is the division
+    // label; released, it is the free unit at the host tempo. The toggle is
+    // silent - `onClick` only nudges the knob to its remembered position for
+    // the mode being entered.
     spec.toggles = {
         { .parameterID = kSizeSyncID,
           .caption = "Sync",
           .afterKnobIndex = 1,
-          .centeredBelow = true,
-          .belowGap = 10,
+          .centeredRight = true,
+          .iconSize = 16,
           .onClick = [this] { onSizeSyncToggled(); },
           .icon = drawMsIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
         { .parameterID = kDensitySyncID,
           .caption = "Sync",
           .afterKnobIndex = 2,
-          .centeredBelow = true,
-          .belowGap = 10,
+          .centeredRight = true,
+          .iconSize = 16,
           .onClick = [this] { onDensitySyncToggled(); },
           .icon = drawMsIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
         { .parameterID = kDelaySyncID,
           .caption = "Sync",
           .afterKnobIndex = 12,
-          .centeredBelow = true,
-          .belowGap = 10,
+          .centeredRight = true,
+          .iconSize = 16,
           .onClick = [this] { onDelaySyncToggled(); },
           .icon = drawMsIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
@@ -938,13 +939,12 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
     spec.topRightKnob = ee::ui::KnobSpec { .parameterID = kVolumeID, .caption = "Level", .captionUntilTouched = true };
     spec.topRightKnobDiameter = 40;
 
-    // Five modules side by side make the face wide rather than tall. Small caps,
-    // and a row gap inside each module wide enough for the Sync buttons that
-    // hang under Size, Destiny and Time to clear the knobs below them.
-    spec.knobDiameter = 66;
-    spec.knobRowGap = 54;
-    spec.width = 1264;
-    spec.height = 620;
+    // Five narrow modules side by side, one knob per row. The row gap still has
+    // to clear the Sync buttons that hang under Size, Destiny and Time.
+    spec.knobDiameter = 64;
+    spec.knobRowGap = 4;
+    spec.width = 700;
+    spec.height = 745;
 
     // Peak Wah's white theme, but the face is a cool light-grey box (matching
     // the design) so the lavender-white panels read as raised cards on it.

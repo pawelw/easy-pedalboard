@@ -31,10 +31,9 @@ public:
 
     ~DigitalToggle() override;
 
-    /** A glyph gets a square; a caption gets a wider box to print in. Sized down
-        from the original 36 by 30% - a glyph reads fine small, and it leaves
-        room for a second button in the same gap. */
-    static constexpr int iconSize = 25;
+    /** A glyph gets a square; a caption gets a wider box to print in. The glyph
+        square defaults to 25 but a spec can override it (`ToggleSpec::iconSize`). */
+    static constexpr int defaultIconSize = 25;
     static constexpr int captionWidth = 52;
     static constexpr int captionHeight = 28;
 
@@ -49,6 +48,7 @@ private:
     juce::String captionText;
     juce::Colour onColour;
     std::function<void (juce::Graphics&, juce::Rectangle<float>, juce::Colour)> icon;
+    int iconSize = defaultIconSize;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> attachment;
 

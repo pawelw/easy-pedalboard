@@ -13,7 +13,7 @@ namespace
     static_assert (Knob::labelHeight == static_cast<int> (kValueRowHeight + kCaptionRowHeight));
 
     constexpr float kValueFontHeight = 12.0f;
-    constexpr float kCaptionFontHeight = 14.0f;
+    constexpr float kCaptionFontHeight = 7.0f;
 }
 
 Knob::Knob (juce::AudioProcessorValueTreeState& state,
@@ -185,18 +185,12 @@ void Knob::paint (juce::Graphics& g)
             return;
     }
 
-    // The caption now carries the larger font, so a long one ("FEEDBACK") can
-    // outrun a narrow knob column - shrink it to fit rather than clip it.
-    const juce::String caption = captionText.toUpperCase();
-    auto captionFont = pedalTheme.bodyFont (kCaptionFontHeight).boldened().withExtraKerningFactor (0.09f);
-    const float captionWidth = juce::GlyphArrangement::getStringWidth (captionFont, caption);
-    const float captionRoom = static_cast<float> (textArea.getWidth());
-    if (captionWidth > captionRoom && captionWidth > 0.0f)
-        captionFont = captionFont.withHeight (juce::jmax (11.0f, captionFont.getHeight() * captionRoom / captionWidth));
-
+    // The caption carries the larger font, so a long one ("FEEDBACK") can
+    // outrun a narrow knob column - let drawFittedText drop the size and, as a
+    // last resort, squeeze it horizontally rather than clip.
     g.setColour (pedalTheme.textSecondary);
-    g.setFont (captionFont);
-    g.drawText (caption, textArea, juce::Justification::centredTop, false);
+    g.setFont (pedalTheme.bodyFont (kCaptionFontHeight).boldened().withExtraKerningFactor (0.09f));
+    g.drawFittedText (captionText.toUpperCase(), textArea.toNearestInt(), juce::Justification::centredTop, 1, 0.82f);
 }
 
 } // namespace ee::ui

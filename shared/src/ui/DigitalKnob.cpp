@@ -109,10 +109,10 @@ void DigitalKnob::draw (juce::Graphics& g,
     {
         const float lit = juce::jlimit (0.0f, 1.0f, sliderPos);
 
-        // The reached ticks take the face's one accent - the same colour the
-        // display's trace is drawn in - so the two things that say what the
-        // pedal is doing say it in the same voice.
-        const auto litColour = theme.glow.withMultipliedAlpha (dim);
+        // The reached ticks take this knob's own cap colour when it was tinted
+        // (so the value ring matches the cap), otherwise the face's one accent.
+        const auto litColour =
+            (capFillOverride.isTransparent() ? theme.glow : capFillOverride).withMultipliedAlpha (dim);
         const auto dullColour = theme.knobTrack.withMultipliedAlpha (dim);
         const float tickW = juce::jmax (1.0f, R * m.tickWidth);
 
@@ -209,32 +209,8 @@ void DigitalKnob::draw (juce::Graphics& g,
             g.drawEllipse (disc (capR * kCapStyle.grooveRadiusFrac), juce::jmax (1.0f, R * kCapStyle.grooveHairFrac));
         }
 
-        // The rim light: a thin highlight right at the top edge of the cap,
-        // screen-space - not tied to `angle`, so it stays fixed at 12 o'clock
-        // exactly however far the knob is turned, the way the pointer does not.
-        // The same top-down-light technique the photographic cap uses
-        // (drawImageKnob's "whisper of light"), pulled in tight: it fades out
-        // within a sliver of the cap rather than a third of it, so it reads as
-        // a bright edge - closer to a border than a lit dome.
-        {
-            juce::Graphics::ScopedSaveState clip (g);
-            juce::Path clipPath;
-            clipPath.addEllipse (face);
-            g.reduceClipRegion (clipPath);
-
-            const auto litColour = theme.softHighlight.interpolatedWith (juce::Colours::white, 0.35f);
-
-            // One rule for every cap: the sheen fades over a fixed fraction of
-            // the cap height (see `kCapStyle`), so a white cap and a near-black
-            // one catch the light the same way.
-            const float sheenHeight = face.getHeight() * kCapStyle.rimLightFrac;
-
-            juce::ColourGradient sheen (litColour.withAlpha (kCapStyle.rimLightAlpha * dim), face.getCentreX(),
-                                        face.getY(), litColour.withAlpha (0.0f), face.getCentreX(),
-                                        face.getY() + sheenHeight, false);
-            g.setGradientFill (sheen);
-            g.fillEllipse (face);
-        }
+        // (The top-edge rim light was removed - the cap now leans on its fill
+        // gradient and drop shadow alone.)
     }
 
     //== the pointer ========================================================

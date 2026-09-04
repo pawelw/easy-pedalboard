@@ -47,7 +47,7 @@ add_library(ee_ui STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/ui/PedalEditor.cpp)
 target_include_directories(ee_ui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(ee_ui
-    PUBLIC juce::juce_audio_utils juce::juce_gui_basics ee_assets
+    PUBLIC juce::juce_audio_utils juce::juce_gui_basics ee_assets melatonin_blur
     PRIVATE juce::juce_recommended_config_flags)
 set_target_properties(ee_ui PROPERTIES POSITION_INDEPENDENT_CODE ON)
 

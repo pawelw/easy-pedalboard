@@ -10,8 +10,11 @@
 
 #include "BinaryData.h"
 
+#include <melatonin_blur/melatonin_blur.h>
+
 #include <algorithm>
 #include <cmath>
+#include <vector>
 
 namespace ee::ui
 {
@@ -78,6 +81,21 @@ namespace
     constexpr int kKnobGroupPad = 16;           // how far a filled group panel stands off its knobs
     constexpr int kKnobGroupCaptionHeight = 20; // the panel caption strip - taller than the outline style's
     constexpr int kKnobGroupToggleReserve = 34; // bottom slack for a Sync toggle hung under a bottom-row knob
+    constexpr int kKnobCellSidePad = 14;        // slack each side of a cap in its column (label room, horizontal groups)
+    constexpr int kKnobGroupExtraTop = 32;      // extra air between the caption and the first knob
+    constexpr int kKnobGroupExtraBottom = 32;   // extra air below the last knob's label
+
+    // Every filled card's shadow, CSS `box-shadow` style: a stack of real
+    // gaussian layers { colour, radius, { dx, dy }, spread }. Shared by every
+    // card so they read the same; tune the whole look here.
+    // The top-edge highlight is a clipped 1 px stroke, not a shadow (see
+    // paintGroupBox); these layers are the dark drop shadow only. Empty = none.
+    //
+    // CSS: box-shadow: -2px 7px 6px -5px #00000094
+    //      (offset-x offset-y blur spread colour) -> { colour, radius, {dx,dy}, spread }
+    const std::vector<melatonin::ShadowParametersInt> kCardShadows {
+        { juce::Colour::fromRGBA (0, 0, 0, 0x94), 5, { -2, 4 }, -3 },
+    };
 
     // Fixed rather than a fraction of the column, so a knob is the same size on
     // every pedal however many of them a row carries.
@@ -332,8 +350,22 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
     setLookAndFeel (&lnf);
 
     for (const auto& knobSpec : spec.knobs)
-        knobs.push_back (knobSpec.parameterID.isEmpty() ? nullptr // a spacer: holds its column, draws nothing
-                                                        : std::make_unique<Knob> (state, knobSpec, theme));
+    {
+        if (knobSpec.parameterID.isEmpty())
+        {
+            knobs.push_back (nullptr); // a spacer: holds its column, draws nothing
+            continue;
+        }
+
+        // `captionUntilTouchedKnobs` flips every knob on the face to the
+        // caption-at-rest / value-while-turning behaviour without touching each
+        // KnobSpec.
+        auto ks = knobSpec;
+        if (spec.captionUntilTouchedKnobs)
+            ks.captionUntilTouched = true;
+
+        knobs.push_back (std::make_unique<Knob> (state, ks, theme));
+    }
 
     for (auto& knob : knobs)
         if (knob != nullptr)
@@ -1076,12 +1108,13 @@ void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
     // frame, and centre the envelope - not just the knob band - in what is left.
     const bool filled = spec.filledKnobGroups;
     const int overhangSide = filled ? kKnobGroupPad : 0;
-    const int overhangTop = filled ? (kKnobGroupPad + kKnobGroupCaptionHeight + kKnobGroupPad / 2) : 0;
+    const int overhangTop = filled ? (kKnobGroupPad + kKnobGroupCaptionHeight + kKnobGroupPad / 2 + kKnobGroupExtraTop) : 0;
     bool anyHangingToggle = false;
     for (const auto& tg : spec.toggles)
         if (tg.centeredBelow || tg.centeredAbove)
             anyHangingToggle = true;
-    const int overhangBottom = filled ? (kKnobGroupPad + (anyHangingToggle ? kKnobGroupToggleReserve : 0)) : 0;
+    const int overhangBottom =
+        filled ? (kKnobGroupPad + kKnobGroupExtraBottom + (anyHangingToggle ? kKnobGroupToggleReserve : 0)) : 0;
 
     area = area.reduced (overhangSide, 0);
 
@@ -1118,8 +1151,17 @@ void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
     const int nBlocks = static_cast<int> (blocks.size());
     const int betweenBlocks = kKnobGroupGap * (nBlocks - 1);
     const int betweenCols = kKnobGap * (totalCols - nBlocks);
-    const int cellW = juce::jmax (1, (area.getWidth() - betweenBlocks - betweenCols) / juce::jmax (1, totalCols));
     const int maxKnob = spec.knobDiameter > 0 ? spec.knobDiameter : kKnobDiameter;
+
+    // The column is normally the full share of the width, but a card looks far
+    // tighter with the columns pulled in to just clear the widest cap (main size
+    // or a per-knob override) - no big side gutters.
+    int biggestKnob = maxKnob;
+    for (const auto& k : spec.knobs)
+        biggestKnob = juce::jmax (biggestKnob, k.diameter);
+
+    const int fullCell = juce::jmax (1, (area.getWidth() - betweenBlocks - betweenCols) / juce::jmax (1, totalCols));
+    const int cellW = juce::jmin (fullCell, biggestKnob + kKnobCellSidePad * 2);
     const int knobW = juce::jmin (maxKnob, cellW);
     const int rowH = knobW + Knob::labelHeight;
     const int rowGap = spec.knobRowGap > 0 ? spec.knobRowGap : kKnobGap;
@@ -1147,8 +1189,10 @@ void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
     for (const auto& b : blocks)
     {
         const int blockW = b.cols * cellW + (b.cols - 1) * kKnobGap;
-        const int blockH = b.rows * rowH + (b.rows - 1) * rowGap;
-        int y = bandTop + (bandH - blockH) / 2;
+
+        // Every block starts at the same top, so cards of different knob counts
+        // line up along their top edge rather than staircasing.
+        int y = bandTop;
 
         int k = b.first;
         for (int r = 0; r < b.rows; ++r)
@@ -1164,14 +1208,15 @@ void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
 
                 if (auto& knob = knobs[static_cast<size_t> (k)]; knob != nullptr)
                 {
-                    // A knob may ask for its own cap size. Bigger than the row's
-                    // grows downward from the same cap top - into the row gap -
-                    // so its label still gets a full line and its cap top still
-                    // lines up with its neighbours'.
+                    // The component spans the whole cell so a long caption has
+                    // the full column width to sit in; the cap is driven by the
+                    // row height, so it stays `knobW` however wide the cell is.
+                    // A per-knob diameter override still grows the cap (and the
+                    // component down into the row gap).
                     const int own = spec.knobs[static_cast<size_t> (k)].diameter;
-                    const int w = own > 0 ? juce::jmin (own, cellW) : knobW;
-                    const int h = juce::jmax (rowH, w + Knob::labelHeight);
-                    knob->setBounds (cell.getCentreX() - w / 2, cell.getY(), w, h);
+                    const int capH = own > 0 ? juce::jmin (own, cellW) : knobW;
+                    const int h = juce::jmax (rowH, capH + Knob::labelHeight);
+                    knob->setBounds (cell.getX(), cell.getY(), cell.getWidth(), h);
                 }
 
                 rx += cellW + kKnobGap;
@@ -1221,7 +1266,7 @@ void PedalEditor::Face::paintGroupBox (juce::Graphics& g,
         // `panel`; the edge and caption are taken from the fill so they stay
         // legible whatever hue it is.
         const auto box = boxInt.toFloat();
-        constexpr float kCorner = 16.0f;
+        constexpr float kCorner = 14.0f;
 
         const bool custom = ! fill.isTransparent();
         const auto panelFill =
@@ -1230,19 +1275,29 @@ void PedalEditor::Face::paintGroupBox (juce::Graphics& g,
         juce::Path card;
         card.addRoundedRectangle (box, kCorner);
 
-        // A wide, soft elevation shadow plus a tighter contact one - the card
-        // floats well off the face.
-        juce::DropShadow (juce::Colour (0x1e2a3242), 5, { 0, 2 }).drawForPath (g, card);
-        juce::DropShadow (juce::Colour (0x22222b3a), 3, { 0, 2 }).drawForPath (g, card);
+        // Soft-UI lift, CSS-`box-shadow` style: a layered set of real gaussian
+        // shadows. All the tuning is `kCardShadows` at the top of this file;
+        // every card shares it, so they read the same. Empty list -> no shadow.
+        if (! kCardShadows.empty())
+            melatonin::DropShadow (kCardShadows).render (g, card);
 
         g.setColour (panelFill);
         g.fillRoundedRectangle (box, kCorner);
 
-        // A hairline of light along the top edge, then the faint rim.
-        g.setColour (juce::Colours::white.withAlpha (0.6f));
-        g.drawRoundedRectangle (box.reduced (0.5f).translated (0.0f, 0.5f), kCorner, 1.0f);
-        g.setColour (custom ? panelFill.darker (0.10f).withAlpha (0.5f) : theme.outline.withAlpha (0.55f));
-        g.drawRoundedRectangle (box.reduced (0.5f), kCorner, 1.0f);
+        // A crisp 1 px highlight on the top edge only. The clip band is just
+        // tall enough to reach the 45 degree point of each top corner arc - half
+        // way round the curve - so the highlight fades out mid-corner and never
+        // runs down the sides or along the bottom.
+        {
+            constexpr float kLipWidth = 1.0f;
+            const float halfCorner = kCorner * (1.0f - juce::MathConstants<float>::sqrt2 / 2.0f); // r(1 - cos45)
+            const int band = juce::jmax (2, juce::roundToInt (halfCorner + kLipWidth));
+
+            juce::Graphics::ScopedSaveState s (g);
+            g.reduceClipRegion (box.withHeight (static_cast<float> (band)).getSmallestIntegerContainer());
+            g.setColour (juce::Colours::white.withAlpha (0.9f));
+            g.drawRoundedRectangle (box.reduced (kLipWidth * 0.5f), kCorner, kLipWidth);
+        }
 
         g.setColour (custom ? panelFill.contrasting (0.85f) : theme.textSecondary);
         g.setFont (theme.bodyFont (13.0f).boldened());
@@ -1687,8 +1742,8 @@ void PedalEditor::Face::resized()
 
             if (spec.filledKnobGroups)
                 knobGroupBoxes.push_back (block.expanded (kKnobGroupPad)
-                                              .withTrimmedTop (-(kKnobGroupCaptionHeight + kKnobGroupPad / 2))
-                                              .withTrimmedBottom (-bottomReserve));
+                                              .withTrimmedTop (-(kKnobGroupCaptionHeight + kKnobGroupPad / 2 + kKnobGroupExtraTop))
+                                              .withTrimmedBottom (-(bottomReserve + kKnobGroupExtraBottom)));
             else
                 knobGroupBoxes.push_back (
                     block.expanded (kSubGroupPad, kSubGroupPad / 2).withTrimmedTop (-kSubGroupCaptionHeight / 2));
@@ -1888,7 +1943,7 @@ void PedalEditor::Face::resized()
         const bool spacerAnchor = index >= 0 && index < count && knobs[static_cast<size_t> (index)] == nullptr;
 
         const bool haveAnchor =
-            (tSpec.centeredAbove || tSpec.centeredBelow || spacerAnchor)
+            (tSpec.centeredAbove || tSpec.centeredBelow || tSpec.centeredRight || spacerAnchor)
                 ? (index >= 0 && index < count)
                 : (index >= 0 && index + 1 < count && knobs[static_cast<size_t> (index)] != nullptr &&
                    knobs[static_cast<size_t> (index + 1)] != nullptr);
@@ -1921,6 +1976,15 @@ void PedalEditor::Face::resized()
             // block at the bottom.
             const auto anchor = knobs[static_cast<size_t> (index)]->getBounds();
             centre = { anchor.getCentreX(), anchor.getY() - toggleH / 2 - 5 };
+        }
+        else if (tSpec.centeredRight)
+        {
+            // Beside the cap, vertically centred on it - the cap is the square
+            // at the top of the knob bounds, `Knob::labelHeight` shy of the
+            // bottom.
+            const auto anchor = knobs[static_cast<size_t> (index)]->getBounds();
+            const int capSize = anchor.getHeight() - Knob::labelHeight;
+            centre = { anchor.getCentreX() + capSize / 2 + toggleW / 2 + 3, anchor.getY() + capSize / 2 };
         }
         else
         {

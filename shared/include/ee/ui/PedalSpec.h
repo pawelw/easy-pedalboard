@@ -323,6 +323,15 @@ struct ToggleSpec
         knob. */
     bool centeredBelow = false;
 
+    /** Place the button just to the right of `afterKnobIndex`'s cap, vertically
+        centred on it. For a small glyph button sitting beside a knob in a
+        single-column card. */
+    bool centeredRight = false;
+
+    /** Icon-button glyph size override, in pixels. 0 keeps `DigitalToggle`'s
+        default (25). Only affects a glyph button, not a caption one. */
+    int iconSize = 0;
+
     /** Pin the button to the top-right corner of a filled knob-group panel
         (index into `PedalSpec::knobGroups`), inset a few pixels. Overrides the
         knob-anchored placement above. -1 = not pinned to a panel. */
@@ -477,6 +486,11 @@ struct PedalSpec
         outline. The caption sits inside the panel's top edge, larger than the
         outline style's. For a face whose sections should read as raised cards. */
     bool filledKnobGroups = false;
+
+    /** Force every main knob to `KnobSpec::captionUntilTouched` - the caption
+        shows at rest, the value only while the knob is being turned. Saves the
+        second text line on a face that wants a clean grid. */
+    bool captionUntilTouchedKnobs = false;
 
     /** Small knobs pinned to the top-right, above the main control area. Not
         part of the knob-row layout. */

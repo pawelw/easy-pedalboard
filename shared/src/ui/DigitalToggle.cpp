@@ -19,7 +19,8 @@ DigitalToggle::DigitalToggle (juce::AudioProcessorValueTreeState& state,
       pedalTheme (theme),
       captionText (spec.caption),
       onColour (spec.litColour.value_or (theme.textPrimary)),
-      icon (spec.icon)
+      icon (spec.icon),
+      iconSize (spec.iconSize > 0 ? spec.iconSize : defaultIconSize)
 {
     setClickingTogglesState (true);
     attachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment> (

@@ -110,6 +110,18 @@ FetchContent_MakeAvailable(chowdsp_wdf)
 add_library(chowdsp_wdf INTERFACE)
 target_include_directories(chowdsp_wdf INTERFACE ${chowdsp_wdf_SOURCE_DIR}/include)
 
+# melatonin_blur: real gaussian drop / inner shadows for the UI (proper
+# box-shadow model - radius, spread, layered, cached). Linked into ee_ui.
+# The checkout dir must be named `melatonin_blur` (not the default `-src`
+# suffix), or its `juce_add_module` cannot find the module header.
+FetchContent_Declare(melatonin_blur
+    GIT_REPOSITORY https://github.com/sudara/melatonin_blur.git
+    GIT_TAG main
+    GIT_SHALLOW TRUE
+    GIT_PROGRESS TRUE
+    SOURCE_DIR ${CMAKE_BINARY_DIR}/_deps/melatonin_blur)
+FetchContent_MakeAvailable(melatonin_blur)
+
 # Fonts are compiled in rather than installed, so the pedal looks the same on a
 # machine that has never seen them.
 juce_add_binary_data(ee_assets SOURCES

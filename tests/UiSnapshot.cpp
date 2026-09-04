@@ -580,11 +580,11 @@ ee::ui::PedalSpec makeGrainSpec()
 
     constexpr int kLeadKnob = 86; // the two lead knobs
 
-    const juce::Colour kGrainCol { 0xff805d93 };
-    const juce::Colour kPitchCol { 0xfff49fbc };
-    const juce::Colour kRandomCol { 0xffffd3ba };
-    const juce::Colour kDelayCol { 0xff9ebd6e };
-    const juce::Colour kReverbCol { 0xff169873 };
+    const juce::Colour kGrainCol { 0xff80658e };
+    const juce::Colour kPitchCol { 0xffe79bbf };
+    const juce::Colour kRandomCol { 0xffe6bfa9 };
+    const juce::Colour kDelayCol { 0xff9ebb87 };
+    const juce::Colour kReverbCol { 0xff50938a };
 
     // The grain envelope on the Shape cap - see drawGrainShapeIcon in
     // plugins/peak-grain. Static here at the default 55 % lean.
@@ -619,11 +619,11 @@ ee::ui::PedalSpec makeGrainSpec()
         { .parameterID = "phigh", .caption = "High", .capFill = kPitchCol },
         { .parameterID = "detune", .caption = "Detune", .capFill = kPitchCol },
 
-        { .parameterID = "stereo", .caption = "Stereo", .capFill = kRandomCol, .diameter = kLeadKnob },
+        { .parameterID = "stereo", .caption = "Stereo", .capFill = kRandomCol },
         { .parameterID = "reverse", .caption = "Reverse", .capFill = kRandomCol },
         { .parameterID = "scatter", .caption = "Scatter", .capFill = kRandomCol },
 
-        { .parameterID = "dmix", .caption = "Mix", .capFill = kDelayCol, .diameter = kLeadKnob },
+        { .parameterID = "dmix", .caption = "Mix", .capFill = kDelayCol },
         { .parameterID = "dtime", .caption = "Time", .capFill = kDelayCol },
         { .parameterID = "dfb", .caption = "Feedback", .capFill = kDelayCol },
 
@@ -632,20 +632,21 @@ ee::ui::PedalSpec makeGrainSpec()
     };
     const juce::Colour kCardFill { 0xffe9e8f0 };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 4, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Pitch", .count = 4, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Random", .count = 3, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Delay", .count = 3, .columns = 2, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Grain", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Random", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Delay", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
         { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
     };
     spec.knobGroupsHorizontal = true;
     spec.filledKnobGroups = true;
+    spec.captionUntilTouchedKnobs = true;
     spec.toggles = {
-        { .parameterID = "ssync", .caption = "Sync", .afterKnobIndex = 1, .centeredBelow = true, .belowGap = 10,
+        { .parameterID = "ssync", .caption = "Sync", .afterKnobIndex = 1, .centeredRight = true, .iconSize = 16,
           .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "dsync", .caption = "Sync", .afterKnobIndex = 2, .centeredBelow = true, .belowGap = 10,
+        { .parameterID = "dsync", .caption = "Sync", .afterKnobIndex = 2, .centeredRight = true, .iconSize = 16,
           .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "dtsync", .caption = "Sync", .afterKnobIndex = 12, .centeredBelow = true, .belowGap = 10,
+        { .parameterID = "dtsync", .caption = "Sync", .afterKnobIndex = 12, .centeredRight = true, .iconSize = 16,
           .icon = drawMsIcon, .controlStyle = ee::ui::ControlStyle::digital },
 
         { .parameterID = "grainon", .caption = "On", .groupPanelIndex = 0, .icon = drawPowerIcon,
@@ -699,10 +700,10 @@ ee::ui::PedalSpec makeGrainSpec()
 
     // Five modules side by side: a wide face rather than a tall one, small caps,
     // and a row gap inside each module wide enough for the Sync buttons.
-    spec.knobDiameter = 66;
-    spec.knobRowGap = 54;
-    spec.width = 1264;
-    spec.height = 620;
+    spec.knobDiameter = 64;
+    spec.knobRowGap = 4;
+    spec.width = 700;
+    spec.height = 745;
     return spec;
 }
 
@@ -1010,7 +1011,7 @@ ee::ui::PedalSpec makeTapeSpec()
     spec.slideToggleCentred = true;
     spec.slideToggleRise = 3;
 
-    spec.knobRowGap = 12;
+    spec.knobRowGap = 4;
     spec.knobBlockRise = 12;
 
     spec.knobsPerRow = 2;
@@ -1163,6 +1164,7 @@ int main (int argc, char* argv[])
     juce::ScopedJuceInitialiser_GUI juceInit;
 
     const juce::File dir = argc > 1 ? juce::File (juce::String (argv[1])) : juce::File::getCurrentWorkingDirectory();
+    dir.createDirectory(); // so `ee_ui_snapshot /tmp/whatever` just works
 
     // Optional second arg: render just one face (substring match on the name
     // below), so an iteration loop does not redraw all eleven.
