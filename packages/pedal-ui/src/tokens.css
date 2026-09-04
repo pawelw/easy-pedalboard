@@ -2,7 +2,7 @@
 @import "@fontsource/space-grotesk/700.css";
 
 /* The rack-module look shared by every component: cream panels, black ink,
-   knurled-pot knobs, pill switches. One palette so a pedal reads as one
+   scalloped-collar knobs, pill switches. One palette so a pedal reads as one
    family of modules rather than several pedals styled separately. */
 :root {
   --pui-panel: #f3f2ed;
@@ -15,11 +15,11 @@
 
   --pui-knob-body: #232320;
   --pui-knob-body-hi: #3a3a35;
-  --pui-knob-cap: #f6f5f0;
-  --pui-knob-cap-shadow: #c9c7bd;
+  --pui-knob-cap: #f0efec;
+  --pui-knob-cap-shadow: #dcdad3;
   --pui-knob-dot: #1c1c1a;
-  --pui-knob-tick: #b8b6ac;
-  --pui-knob-value-arc: #f0eee6;
+  --pui-knob-sweep: #dedcd4;
+  --pui-knob-sweep-lit: #7c7b74;
 
   --pui-track: #1c1c1a;
   --pui-thumb: #f6f5f0;

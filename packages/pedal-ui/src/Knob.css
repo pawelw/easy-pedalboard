@@ -12,20 +12,12 @@
   justify-content: center;
 }
 
-.pui-knob__ticks {
+.pui-knob__sweep {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
   pointer-events: none;
-}
-
-.pui-knob__value-arc {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  z-index: 2;
-  filter: drop-shadow(0 0 1.5px rgba(0, 0, 0, 0.5));
 }
 
 .pui-knob__corner {
@@ -58,27 +50,37 @@
   border-radius: 50%;
   cursor: ns-resize;
   touch-action: none;
-  outline-offset: 3px;
+  outline: none;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
 }
 
-.pui-knob__knurl {
+.pui-knob__body:focus-visible {
+  outline: 2px solid var(--pui-knob-sweep-lit);
+  outline-offset: 4px;
+}
+
+.pui-knob__collar {
   position: absolute;
   inset: 0;
 }
 
-.pui-knob__body--dragging {
-  outline: 3px solid rgba(63, 182, 98, 0.35);
-}
-
 .pui-knob__cap {
   position: absolute;
-  inset: 13.5%;
+  inset: 10.5%; /* matches COLLAR_INNER in Knob.jsx */
   border-radius: 50%;
-  background: radial-gradient(circle at 38% 32%, #ffffff, var(--pui-knob-cap) 60%, var(--pui-knob-cap-shadow) 100%);
+  background: linear-gradient(
+    135deg,
+    #cbc9c2 0%,
+    var(--pui-knob-cap-shadow) 14%,
+    var(--pui-knob-cap) 40%,
+    #fbfbfa 70%,
+    #ffffff 100%
+  );
+  /* Dished, not domed: with the light still coming from the top left it lands
+     on the far wall, so the shade sits under the near rim and the sheen pools
+     on the bottom right - the inverse of a raised cap. */
   box-shadow:
-    inset 0 -1px 2px rgba(0, 0, 0, 0.2),
-    0 1px 2px rgba(0, 0, 0, 0.3);
+inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inset 0 -1px 0 rgba(255, 255, 255, 0.9), inset -5px -6px 11px -8px rgba(255, 255, 255, 1)
 }
 
 .pui-knob__dot {
@@ -89,11 +91,11 @@
 .pui-knob__dot::after {
   content: "";
   position: absolute;
-  top: 16%;
+  top: 11%;
   left: 50%;
-  width: 6%;
-  height: 6%;
-  margin-left: -3%;
+  width: 9%;
+  height: 9%;
+  margin-left: -4.5%;
   border-radius: 50%;
   background: var(--pui-knob-dot);
 }
