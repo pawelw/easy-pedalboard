@@ -41,7 +41,7 @@ scoped override block for **onyx**.
   --pui-recess:          #101416;
   --pui-recess-ink:      #4d5f65;
   --pui-tick:            #39474b;
-  --pui-tick-lit:        #b9d3d9;
+  --pui-tick-lit:        #b4b4b4;
 
   --pui-knob-body:       #0b0e10;   /* the ring */
   --pui-cap-grad-top:    #364347;
