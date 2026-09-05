@@ -1,12 +1,5 @@
-html,
-body {
-  margin: 0;
-  /* The editor window is sized to fit exactly (see PeakDelayWebEditor.cpp) -
-     this is a guard against ever showing a scrollbar inside the plugin, not
-     the thing that's supposed to prevent it. */
-  overflow: hidden;
-  background: #dcdad2;
-}
+/* html/body's own margin/overflow/background live in index.html now, not
+   here - see plugins/peak-wah/jsui/src/index.css for why. */
 
 .page {
   display: flex;
@@ -57,7 +50,8 @@ body {
   justify-self: center;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
+  margin-top: -20px;
 }
 
 /* Same technique Peak Wah's preset bar uses for its own icon-only buttons
@@ -77,15 +71,16 @@ body {
    of the face. Its own 2-column grid inside, same gap as the outer one, so
    Mod/Tape land under Left/Right Time above them. */
 .pd-group {
-  grid-row: 2;
-  grid-column: 2 / span 2;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  column-gap: 16px;
-  align-items: center;
-  justify-items: center;
-  width: 100%;
-  padding: 10px 6px;
-  border: 1.5px solid var(--pui-screw-shadow);
-  border-radius: 12px;
+    grid-row: 2;
+    grid-column: 2 / span 2;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: 16px;
+    align-items: center;
+    justify-items: center;
+    width: 100%;
+    padding: 10px 6px;
+    border: 1.5px solid #d8d8d8;
+    border-radius: 12px;
+    padding-top: 21px;
 }

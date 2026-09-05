@@ -1,12 +1,8 @@
-html,
-body {
-  margin: 0;
-  /* The editor window is sized to fit exactly (see PeakWahWebEditor.cpp) -
-     this is a guard against ever showing a scrollbar inside the plugin, not
-     the thing that's supposed to prevent it. */
-  overflow: hidden;
-  background: #dcdad2;
-}
+/* html/body's own margin/overflow/background live in index.html now, not
+   here - this file is imported by App.jsx, which the pedal gallery also
+   imports directly into its own page, and a global `overflow: hidden` here
+   used to come along for the ride and break the gallery's scrolling. See
+   index.html for why and the guard this was for. */
 
 .page {
   display: flex;

@@ -3,6 +3,22 @@
   <head>
     <meta charset="UTF-8" />
     <title>Peak Wah</title>
+    <style>
+      /* Lives here rather than src/index.css on purpose: this HTML shell is
+         only ever loaded standalone (the real plugin's WebView, or `npm run
+         dev`) - the pedal gallery imports App.jsx directly into its own
+         page and never loads this file, so html/body there keep the
+         gallery's own normal scrolling. Putting `overflow: hidden` in
+         index.css instead used to leak into the gallery's bundle and make
+         its Components page (and anything else taller than one screen)
+         unscrollable. */
+      html,
+      body {
+        margin: 0;
+        overflow: hidden;
+        background: #dcdad2;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

@@ -10,6 +10,17 @@ function useHashSlug() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  // Every route used to be shorter than one screen (html/body were
+  // `overflow: hidden` - see plugins/*/jsui/src/index.css), so a leftover
+  // scroll position from the previous route was never visible. Now that a
+  // route (Components) can be taller than the viewport, switching away from
+  // a scrolled-down one needs an explicit reset - the browser doesn't do
+  // this on its own for a hash-only navigation within one page.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slug]);
+
   return slug;
 }
 
