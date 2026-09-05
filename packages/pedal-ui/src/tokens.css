@@ -19,7 +19,7 @@
   --pui-knob-cap-shadow: #dcdad3;
   --pui-knob-dot: #1c1c1a;
   --pui-knob-sweep: #dedcd4;
-  --pui-knob-sweep-lit: #7c7b74;
+  --pui-knob-sweep-lit: #c60000;
 
   --pui-track: #1c1c1a;
   --pui-thumb: #f6f5f0;
@@ -30,7 +30,7 @@
 
   --pui-scope-bg: #e9e7e0;
   --pui-scope-grid: #d9d7cd;
-  --pui-scope-base: #c2562f;
+  --pui-scope-base: #6c0000;
   --pui-scope-sweep: #9aa0aa;
   --pui-scope-fill: rgba(154, 160, 170, 0.22);
 
@@ -44,6 +44,12 @@
 .pui-reset,
 .pui-reset * {
   box-sizing: border-box;
+  /* This is a hardware panel, not a document - nothing on it is meant to be
+     selected as text. Without this, dragging across a label (a knob caption,
+     a toggle's, a button's) leaves it highlighted and swaps the cursor to an
+     I-beam, both of which read as broken on a control that isn't text. */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .pui-caption {
@@ -54,4 +60,5 @@
   text-transform: uppercase;
   color: var(--pui-ink);
   text-align: center;
+  cursor: default;
 }

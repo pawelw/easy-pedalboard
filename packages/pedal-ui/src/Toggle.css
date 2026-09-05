@@ -42,3 +42,11 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   transition: transform 120ms ease;
 }
+
+/* Mantine's `unstyled` Switch puts data-checked on the root/input, not the
+   track or thumb, so nothing moves the thumb without this - the click still
+   reaches the parameter fine, the switch just never shows it. Track is 40px
+   with 3px padding each side, thumb is 16px: 40 - 3 - 3 - 16 = 18px to slide. */
+.pui-toggle__root[data-checked="true"] .pui-toggle__thumb {
+  transform: translateX(18px);
+}

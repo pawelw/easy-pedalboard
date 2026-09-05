@@ -13,15 +13,29 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 120ms ease, border-color 120ms ease;
+  /* A native <button> keeps its platform chrome unless told otherwise - on
+     WebKit that includes a bevel/shadow of its own, on top of anything we
+     draw, which is what read as "too much shadow" on hover/press. */
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .pui-button:hover {
   background: var(--pui-panel-edge);
 }
 
+.pui-button:active {
+  background: var(--pui-screw);
+}
+
 .pui-button[data-pressed] {
   background: var(--pui-ink);
   color: var(--pui-panel);
+}
+
+.pui-button[data-pressed]:active {
+  background: var(--pui-ink-soft);
 }
 
 .pui-button__inner {

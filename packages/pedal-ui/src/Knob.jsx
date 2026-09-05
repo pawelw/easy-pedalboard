@@ -99,14 +99,17 @@ function Sweep({ diameter, value }) {
 /** A fixed label printed just outside the arc's top end, the way hardware
     prints a mark ("MAX", an infinity sign) next to a knob's end of travel -
     always there, not tied to the current value the way the lit sweep is. */
-function EndMarker({ label, radius }) {
+function EndMarker({ label, radius, lit }) {
   if (!label) return null;
   const r = radius + SWEEP_GAP + SWEEP_WIDTH + 7;
   const toRad = (d) => ((d - 90) * Math.PI) / 180;
   const x = Math.cos(toRad(MAX_ANGLE)) * r;
   const y = Math.sin(toRad(MAX_ANGLE)) * r;
   return (
-    <span className="pui-knob__end-marker" style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}>
+    <span
+      className={`pui-knob__end-marker${lit ? " pui-knob__end-marker--lit" : ""}`}
+      style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}
+    >
       {label}
     </span>
   );
@@ -132,6 +135,7 @@ export default function Knob({
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
+  const bodyRef = useRef(null);
 
   // onChange/onDragEnd are fresh closures every render (each carries the
   // caller's own current `value`), so the drag-tracking effect below reads
@@ -151,14 +155,23 @@ export default function Knob({
     const handlePointerMove = (event) => {
       const start = dragStartRef.current;
       if (!start) return;
-      const delta = (start.y - event.clientY) / PIXELS_PER_FULL_SWEEP;
-      latest.current.onChange(Math.min(1, Math.max(0, start.value + delta)));
+      // Once the OS cursor is locked to the knob (see onPointerDown), it no
+      // longer moves at all - clientY stays frozen at wherever it was on
+      // pointer-down, so the delta has to come from movementY (the raw
+      // relative motion the OS still reports) instead, folded onto the last
+      // committed value rather than measured against a fixed start point.
+      const locked = document.pointerLockElement === bodyRef.current;
+      const raw = locked ? -event.movementY : start.y - event.clientY;
+      const base = locked ? latest.current.value : start.value;
+      latest.current.onChange(Math.min(1, Math.max(0, base + raw / PIXELS_PER_FULL_SWEEP)));
     };
 
     const handlePointerUp = () => {
       dragStartRef.current = null;
       setDragging(false);
       latest.current.onDragEnd?.();
+      if (document.pointerLockElement === bodyRef.current)
+        document.exitPointerLock?.();
     };
 
     window.addEventListener("pointermove", handlePointerMove);
@@ -174,6 +187,12 @@ export default function Knob({
     onDragStart?.();
     dragStartRef.current = { y: event.clientY, value };
     setDragging(true);
+    // Locks the OS cursor in place for the rest of the drag, the way a
+    // hardware knob's own travel isn't tied to how far your hand moves -
+    // falls back to plain (cursor-visible, unfrozen) dragging above wherever
+    // the browser refuses the lock, so this is never required for dragging
+    // to work.
+    bodyRef.current?.requestPointerLock?.()?.catch(() => {});
   };
 
   const onKeyDown = (event) => {
@@ -193,7 +212,7 @@ export default function Knob({
     <div className="pui-reset pui-knob" style={{ width: size + 28 }}>
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
         <Sweep diameter={size} value={value} />
-        <EndMarker label={endMarkerLabel} radius={radius} />
+        <EndMarker label={endMarkerLabel} radius={radius} lit={value >= 0.999} />
 
         {cornerLabels?.topLeft && <span className="pui-knob__corner pui-knob__corner--tl">{cornerLabels.topLeft}</span>}
         {cornerLabels?.topRight && <span className="pui-knob__corner pui-knob__corner--tr">{cornerLabels.topRight}</span>}
@@ -205,7 +224,8 @@ export default function Knob({
         )}
 
         <div
-          className="pui-knob__body"
+          ref={bodyRef}
+          className={`pui-knob__body${dragging ? " pui-knob__body--dragging" : ""}`}
           style={{ width: size, height: size }}
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
@@ -224,8 +244,11 @@ export default function Knob({
         </div>
       </div>
 
-      {caption && <div className="pui-caption pui-knob__caption">{caption}</div>}
-      <div className="pui-knob__readout">{dragging ? valueLabel : " "}</div>
+      {/* The value replaces the caption in place while dragging, rather than
+          appearing as a second line below it - a second line meant the row's
+          height (and everything below it in the grid) changed the instant
+          you touched a knob. */}
+      <div className="pui-caption pui-knob__caption">{dragging && valueLabel ? valueLabel : caption}</div>
     </div>
   );
 }

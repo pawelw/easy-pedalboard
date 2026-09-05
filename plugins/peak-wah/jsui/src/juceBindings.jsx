@@ -66,8 +66,11 @@ export function JuceKnob({ parameterId, caption, size, cornerLabels, icon, endMa
   );
 }
 
-/** Toggle bound to a WebToggleButtonRelay by parameter id. */
-export function JuceToggle({ parameterId, caption }) {
+/** Toggle bound to a WebToggleButtonRelay by parameter id. `caption` is used
+    as-is when `offCaption` isn't given; when it is, the caption itself swaps
+    with the state (Stereo/Mono, Sync/ms) rather than staying fixed while
+    only the switch moves. */
+export function JuceToggle({ parameterId, caption, offCaption }) {
   const toggleState = useRef(Juce.getToggleState(parameterId)).current;
   const [checked, setChecked] = useState(toggleState.getValue());
 
@@ -78,7 +81,7 @@ export function JuceToggle({ parameterId, caption }) {
 
   return (
     <Toggle
-      caption={caption}
+      caption={offCaption !== undefined && !checked ? offCaption : caption}
       checked={checked}
       onChange={(next) => {
         setChecked(next);
@@ -89,13 +92,14 @@ export function JuceToggle({ parameterId, caption }) {
 }
 
 /** The live cutoff-sweep exponent for both channels (PeakWahProcessor's
-    lfoModLUi/lfoModRUi), pushed from PeakWahWebEditor's Timer as the
-    "filterMod" event - there's no relay for this, it isn't a parameter.
-    Stays {0, 0} until a real host starts sending it (a plain browser tab
-    never will), which just means the scope's live wash sits still at the
-    centre of the sweep band instead of riding around inside it. */
-function useFilterMod() {
-  const [mod, setMod] = useState({ modL: 0, modR: 0 });
+    lfoModLUi/lfoModRUi) plus the live input level (peakLevelUi), all pushed
+    from PeakWahWebEditor's Timer as the one "filterMod" event - none of
+    these are parameters, so there's no relay for them. Stays at the zeroed
+    default until a real host starts sending it (a plain browser tab never
+    will), which just means the scope's live wash sits still at the centre
+    of the sweep band and the logo's signal glow stays dark. */
+export function useFilterMod() {
+  const [mod, setMod] = useState({ modL: 0, modR: 0, level: 0 });
 
   useEffect(() => {
     if (typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;

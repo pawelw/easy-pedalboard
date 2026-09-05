@@ -50,6 +50,19 @@ PeakWahWebEditor::PeakWahWebEditor (PeakWahProcessor& p)
                    .withOptionsFrom (syncRelay)
                    .withOptionsFrom (onRelay)
                    .withOptionsFrom (controlParameterIndexReceiver)
+                   // See jsui/src/autoSize.js: the page measures its own
+                   // real rendered size (ResizeObserver on .pui-card) and
+                   // reports it here, rather than this editor opening at a
+                   // size guessed from a browser that isn't the WebView
+                   // engine actually rendering it.
+                   .withNativeFunction ("reportContentSize",
+                                        [this] (const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                        {
+                                            const int width = juce::jmax (100, static_cast<int> (args[0]));
+                                            const int height = juce::jmax (100, static_cast<int> (args[1]));
+                                            setSize (width, height);
+                                            complete (true);
+                                        })
                    .withNativeFunction ("formatKnobValue",
                                         [this] (const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion complete)
                                         {
@@ -83,7 +96,14 @@ PeakWahWebEditor::PeakWahWebEditor (PeakWahProcessor& p)
 {
     addAndMakeVisible (webView);
     webView.goToURL (kUseDevServer ? devServerAddress : juce::WebBrowserComponent::getResourceProviderRoot());
-    setSize (566, 360);
+    // Just a starting size for the brief moment before the page's own
+    // ResizeObserver reports its real rendered size and the "reportContentSize"
+    // native function above corrects it - see jsui/src/autoSize.js. A
+    // browser-measured guess used to be the real size and was wrong twice:
+    // WebKit (the real engine here) renders this page's fonts/line-heights
+    // taller than Chromium does for the same CSS, by an amount that isn't
+    // measurable from outside a real host.
+    setSize (574, 500);
     setResizable (false, false);
 
     startTimerHz (45); // matches the old ee::ui::FilterScope's own repaint rate
@@ -104,6 +124,7 @@ void PeakWahWebEditor::timerCallback()
     auto* payload = new juce::DynamicObject();
     payload->setProperty ("modL", processorRef.lfoModLUi.load (std::memory_order_relaxed));
     payload->setProperty ("modR", processorRef.lfoModRUi.load (std::memory_order_relaxed));
+    payload->setProperty ("level", processorRef.peakLevelUi.load (std::memory_order_relaxed));
     webView.emitEventIfBrowserIsVisible ("filterMod", juce::var (payload));
 }
 

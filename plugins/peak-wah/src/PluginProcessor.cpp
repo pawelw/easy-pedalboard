@@ -34,22 +34,19 @@ juce::String hzToText (float value, int)
     return juce::String (juce::roundToInt (value)) + " Hz";
 }
 
-/** The Type knob's reading: the named taps at the three anchors, and how far
-    between two of them everywhere else. */
+/** The Type knob's reading: whichever of the three named anchors (Low, Band,
+    High) the knob is currently closest to - a compound "Low-Band 42 %"
+    reading between them named the blend exactly but ran too long for the
+    knob's own display. */
 juce::String filterTypeToText (float pct, int)
 {
     const float p = juce::jlimit (0.0f, 100.0f, pct);
 
-    if (p <= 2.0f)
+    if (p < 33.0f)
         return "Low";
-    if (p >= 98.0f)
+    if (p > 67.0f)
         return "High";
-    if (std::abs (p - 50.0f) <= 2.0f)
-        return "Band";
-
-    const bool lower = p < 50.0f;
-    const int mix = juce::roundToInt (lower ? p * 2.0f : (p - 50.0f) * 2.0f);
-    return juce::String (lower ? "Low-Band " : "Band-High ") + juce::String (mix) + " %";
+    return "Band";
 }
 
 float freqHzFor (float pct)
@@ -314,6 +311,28 @@ void PeakWahProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mid
         dryBuffer.setSize (kMaxChannels, numSamples, false, false, true);
     for (int ch = 0; ch < numCh; ++ch)
         dryBuffer.copyFrom (ch, 0, buffer, ch, 0, numSamples);
+
+    // Signal glow: a fast-attack/slow-release peak follower on the dry input,
+    // in seconds rather than a fixed per-block factor so it doesn't chase
+    // faster or slower depending on the host's block size.
+    {
+        float blockPeak = 0.0f;
+        for (int ch = 0; ch < numCh; ++ch)
+        {
+            auto* data = dryBuffer.getReadPointer (ch);
+            for (int i = 0; i < numSamples; ++i)
+                blockPeak = juce::jmax (blockPeak, std::abs (data[i]));
+        }
+
+        const double blockSeconds = numSamples / sampleRate;
+        const float attackCoeff = static_cast<float> (std::exp (-blockSeconds / 0.005));
+        const float releaseCoeff = static_cast<float> (std::exp (-blockSeconds / 0.4));
+        const float coeff = blockPeak > peakLevelSmoothed ? attackCoeff : releaseCoeff;
+        peakLevelSmoothed = coeff * peakLevelSmoothed + (1.0f - coeff) * blockPeak;
+
+        const float db = juce::Decibels::gainToDecibels (peakLevelSmoothed, -60.0f);
+        peakLevelUi.store (juce::jlimit (0.0f, 1.0f, (db + 40.0f) / 40.0f), std::memory_order_relaxed);
+    }
 
     float* left = buffer.getWritePointer (0);
     float* right = numCh >= 2 ? buffer.getWritePointer (1) : nullptr;

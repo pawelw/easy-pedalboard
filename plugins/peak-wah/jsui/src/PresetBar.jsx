@@ -49,7 +49,7 @@ export default function PresetBar() {
         <Button onClick={() => step(1)} aria-label="Next preset">
           <ChevronRightIcon />
         </Button>
-        <Dropdown options={PRESET_NAMES} value={preset} onChange={selectByName} />
+        <Dropdown options={PRESET_NAMES} value={preset} onChange={selectByName} menuAlign="end" />
       </div>
       <Button onClick={() => {}} aria-label="Save preset">
         <SaveIcon />

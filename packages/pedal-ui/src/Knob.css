@@ -48,10 +48,14 @@
 .pui-knob__body {
   position: relative;
   border-radius: 50%;
-  cursor: ns-resize;
+  cursor: grab;
   touch-action: none;
   outline: none;
   filter: drop-shadow(6px 8px 7px rgba(0, 0, 0, 0.1));
+}
+
+.pui-knob__body--dragging {
+  cursor: grabbing;
 }
 
 .pui-knob__end-marker {
@@ -62,6 +66,11 @@
   font-size: 18px;
   color: var(--pui-ink-soft);
   pointer-events: none;
+  transition: color 120ms ease;
+}
+
+.pui-knob__end-marker--lit {
+  color: var(--pui-knob-sweep-lit);
 }
 
 .pui-knob__body:focus-visible {
@@ -114,18 +123,12 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
   position: absolute;
   left: 50%;
   top: 50%;
-  transform: translate(-50%, -50%);
-  color: var(--pui-ink-soft);
+  transform: translate(-46%, -56%) rotate(180deg) scale(0.8);
+  color: #424242;
   pointer-events: none;
   display: flex;
 }
 
 .pui-knob__caption {
   margin-top: 2px;
-}
-
-.pui-knob__readout {
-  font-size: 10px;
-  color: var(--pui-ink-soft);
-  min-height: 12px;
 }
