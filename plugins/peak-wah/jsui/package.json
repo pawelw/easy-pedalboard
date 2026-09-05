@@ -11,7 +11,7 @@
     "@mantine/core": "^9.6.0",
     "@mantine/hooks": "^9.6.0",
     "@synthpeak/pedal-ui": "*",
-    "juce-framework-frontend": "file:vendor/juce-framework-frontend",
+    "juce-framework-frontend": "file:../../../vendor/juce-framework-frontend",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

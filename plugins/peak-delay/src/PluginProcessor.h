@@ -42,6 +42,18 @@ public:
         parameter, so it is correct however this is called. */
     juce::String timeReadout (const std::atomic<float>* timeParam) const;
 
+    /** Thin wrappers over timeReadout() for the web editor, which - unlike the
+        old ee::ui editor - isn't a member of this class and so can't reach
+        leftTimeParam/rightTimeParam directly. */
+    juce::String leftTimeReadout() const { return timeReadout (leftTimeParam); }
+    juce::String rightTimeReadout() const { return timeReadout (rightTimeParam); }
+
+    /** The tape machine's current/default voicing, for the EE_TAPE_TUNER dev
+        panel - same reason as above, the web editor needs a way to reach
+        `tape` without being a member of this class. */
+    const ee::dsp::TapeTuning& tapeTuning() const noexcept { return tape.getTuning(); }
+    void setTapeTuning (const ee::dsp::TapeTuning& t) noexcept { tape.setTuning (t); }
+
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

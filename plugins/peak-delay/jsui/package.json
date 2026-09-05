@@ -1,17 +1,17 @@
 {
-  "name": "pedal-gallery",
+  "name": "peak-delay-jsui",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Dev-only: browse every pedal's WebView face in one tab. Renders each pedal's real App.jsx - not a separate mock UI to keep in sync. See README.md.",
   "scripts": {
     "dev": "vite",
     "build": "vite build"
   },
   "dependencies": {
+    "@mantine/core": "^9.6.0",
+    "@mantine/hooks": "^9.6.0",
     "@synthpeak/pedal-ui": "*",
-    "peak-delay-jsui": "*",
-    "peak-wah-jsui": "*",
+    "juce-framework-frontend": "file:../../../vendor/juce-framework-frontend",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },

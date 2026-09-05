@@ -8,10 +8,21 @@ import "./Card.css";
  * pedal wants opposite the title (a preset bar, say) - Card itself stays
  * generic and doesn't know what presets are. `showLogo` defaults on; turn it
  * off for a pedal that places the brand mark somewhere else on its own face.
+ * `theme` picks the pedal's own colour (see tokens.css) - omit it for the
+ * default rack look every pedal had before per-pedal colour existed.
  */
-export default function Card({ title, subtitle, width, headerRight, showLogo = true, children, className = "" }) {
+export default function Card({
+  title,
+  subtitle,
+  width,
+  headerRight,
+  showLogo = true,
+  theme,
+  children,
+  className = "",
+}) {
   return (
-    <div className={`pui-reset pui-card ${className}`} style={width ? { width } : undefined}>
+    <div className={`pui-reset pui-card ${className}`} data-pui-theme={theme} style={width ? { width } : undefined}>
       {(title || subtitle || headerRight) && (
         <header className="pui-card__header">
           <div className="pui-card__header-left">

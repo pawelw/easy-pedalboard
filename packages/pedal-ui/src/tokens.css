@@ -41,6 +41,20 @@
   --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
 }
 
+/* Per-pedal colour, layered on top of the shared look above rather than a
+   fork of it: a pedal opts in with <Card theme="green">, which stamps
+   data-pui-theme on the card so every descendant - knobs included - inherits
+   these custom properties instead of the :root defaults. No theme prop means
+   no attribute means the :root values apply, so an unthemed pedal (Wah today)
+   renders identically to before this existed. Knob/toggle/etc. markup and
+   CSS never fork per theme - only the variable values do, which is what
+   keeps "one change to the knob changes every pedal" true. Add a pedal's
+   colour here; do not add a per-theme knob stylesheet. */
+[data-pui-theme="green"] {
+  --pui-knob-sweep: #9bb88f;
+  --pui-knob-sweep-lit: #2f6e3a;
+}
+
 .pui-reset,
 .pui-reset * {
   box-sizing: border-box;
