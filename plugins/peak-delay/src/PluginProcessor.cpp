@@ -20,6 +20,11 @@ constexpr const char* kOnID = "on";
 
 constexpr int kDefaultDivision = 5; // 1/8
 
+// Free-running time's fixed reference tempo - matches currentBpm()'s own
+// no-host-tempo fallback and prepareToPlay()'s pre-existing hardcoded value,
+// so the very first block sounds the same as every one after it.
+constexpr double kFreeRunningBpm = 120.0;
+
 constexpr float kGainRampSeconds = 0.02f;
 
 float divisionSeconds (int index, double bpm) noexcept
@@ -106,6 +111,14 @@ double PeakDelayProcessor::currentBpm() const
     return juce::jlimit (20.0, 300.0, bpm);
 }
 
+double PeakDelayProcessor::effectiveBpm() const
+{
+    if (timeUnitParam != nullptr && timeUnitParam->load() > 0.5f)
+        return kFreeRunningBpm;
+
+    return currentBpm();
+}
+
 juce::String PeakDelayProcessor::timeReadout (const std::atomic<float>* timeParam) const
 {
     const int index = timeParam != nullptr ? static_cast<int> (timeParam->load()) : kDefaultDivision;
@@ -115,7 +128,7 @@ juce::String PeakDelayProcessor::timeReadout (const std::atomic<float>* timePara
     if (timeUnitParam == nullptr || timeUnitParam->load() < 0.5f)
         return divisions[clamped];
 
-    const float ms = divisionSeconds (clamped, currentBpm()) * 1000.0f;
+    const float ms = divisionSeconds (clamped, effectiveBpm()) * 1000.0f;
     return juce::String (juce::roundToInt (ms)) + " ms";
 }
 
@@ -125,7 +138,7 @@ juce::String PeakDelayProcessor::timeMsReadout (const std::atomic<float>* timePa
     const auto divisions = ee::dsp::tempoDivisionLabels();
     const int clamped = juce::jlimit (0, divisions.size() - 1, index);
 
-    const float ms = divisionSeconds (clamped, currentBpm()) * 1000.0f;
+    const float ms = divisionSeconds (clamped, effectiveBpm()) * 1000.0f;
     return juce::String (juce::roundToInt (ms)) + " ms";
 }
 
@@ -188,8 +201,9 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     tape.setAmount (tapeParam->load() * 0.01f);
     delay.setFeedback (feedbackParam->load() * 0.01f);
     delay.setModulation (modParam->load() * 0.01f);
-    delay.setDelaySeconds (divisionSeconds (static_cast<int> (leftTimeParam->load()), 120.0),
-                           divisionSeconds (static_cast<int> (rightTimeParam->load()), 120.0));
+    const double startupBpm = effectiveBpm();
+    delay.setDelaySeconds (divisionSeconds (static_cast<int> (leftTimeParam->load()), startupBpm),
+                           divisionSeconds (static_cast<int> (rightTimeParam->load()), startupBpm));
     delay.snapDelays();
 
     dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
@@ -239,9 +253,11 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     for (int ch = numIn; ch < numOut; ++ch)
         buffer.clear (ch, 0, numSamples);
 
-    // The time knobs are note values, so a host that reports no tempo still has
-    // to land somewhere musical.
-    const double bpm = currentBpm();
+    // The time knobs are note values when synced, so a host that reports no
+    // tempo still has to land somewhere musical; when not synced, effectiveBpm()
+    // is a fixed reference instead, so free-running time doesn't retune itself
+    // as the host's tempo changes.
+    const double bpm = effectiveBpm();
 
     delay.setDelaySeconds (divisionSeconds (static_cast<int> (leftTimeParam->load()), bpm),
                            divisionSeconds (static_cast<int> (rightTimeParam->load()), bpm));

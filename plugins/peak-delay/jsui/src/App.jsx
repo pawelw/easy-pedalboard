@@ -39,8 +39,28 @@ export default function App() {
               independent of the knob's own diameter, so this keeps that
               distance identical while leaving the size free to be whatever
               reads best here. */}
-          <JuceKnob parameterId="mix" caption="Mix" variant="scale" size={76} sweepGap={6} showValueBelow />
-          <JuceKnob parameterId="fb" caption="Feedback" variant="scale" size={76} sweepGap={6} showValueBelow />
+          {/* showValueLabel={false}: the value already has a permanent home
+              below the caption (showValueBelow) now, so caption swapping to
+              a second copy of the same text mid-drag is redundant - Mix
+              should keep reading "Mix" the whole time. */}
+          <JuceKnob
+            parameterId="mix"
+            caption="Mix"
+            variant="scale"
+            size={76}
+            sweepGap={6}
+            showValueBelow
+            showValueLabel={false}
+          />
+          <JuceKnob
+            parameterId="fb"
+            caption="Feedback"
+            variant="scale"
+            size={76}
+            sweepGap={6}
+            showValueBelow
+            showValueLabel={false}
+          />
 
           <div className="pd-time-col">
             <TimeControl side="Left" parameterId="ltime" />

@@ -69,9 +69,19 @@ private:
     void parameterChanged (const juce::String& parameterID, float newValue) override;
     void mirrorDivision (const juce::String& from, const juce::String& to);
 
-    /** Host tempo, clamped the same way processBlock's own lookup is. Safe off
-        the audio thread - this is only ever called from the editor. */
+    /** Host tempo, clamped the same way processBlock's own lookup is. */
     double currentBpm() const;
+
+    /** currentBpm() when synced, or a fixed reference tempo when the ms
+        toggle is on. Free-running time is supposed to mean the delay stops
+        tracking the host's tempo, not just that its *reading* switches from
+        a division name to a millisecond one - using currentBpm() here
+        regardless of the toggle left the sound re-tuning itself on every
+        host tempo change even with "Sync" off, and made the knob's smooth
+        drag motion misleading (the readout it drove was still quantised to
+        whatever the current tempo happened to make each of the ~20 division
+        stops resolve to in ms, not to ~20 fixed millisecond values). */
+    double effectiveBpm() const;
 
     ee::dsp::TapeCharacter tape;
     ee::dsp::TapeDelay delay;
