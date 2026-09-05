@@ -42,11 +42,20 @@ public:
         parameter, so it is correct however this is called. */
     juce::String timeReadout (const std::atomic<float>* timeParam) const;
 
-    /** Thin wrappers over timeReadout() for the web editor, which - unlike the
-        old ee::ui editor - isn't a member of this class and so can't reach
-        leftTimeParam/rightTimeParam directly. */
+    /** The millisecond reading regardless of the ms toggle - the onyx face's
+        Readout shows this as a small, constant figure alongside timeReadout's
+        toggle-aware one (which swaps to the very same text when ms is on),
+        rather than only being able to see the ms conversion by turning ms on
+        and losing the division label. */
+    juce::String timeMsReadout (const std::atomic<float>* timeParam) const;
+
+    /** Thin wrappers over timeReadout()/timeMsReadout() for the web editor,
+        which - unlike the old ee::ui editor - isn't a member of this class
+        and so can't reach leftTimeParam/rightTimeParam directly. */
     juce::String leftTimeReadout() const { return timeReadout (leftTimeParam); }
     juce::String rightTimeReadout() const { return timeReadout (rightTimeParam); }
+    juce::String leftTimeMsReadout() const { return timeMsReadout (leftTimeParam); }
+    juce::String rightTimeMsReadout() const { return timeMsReadout (rightTimeParam); }
 
     /** The tape machine's current/default voicing, for the EE_TAPE_TUNER dev
         panel - same reason as above, the web editor needs a way to reach

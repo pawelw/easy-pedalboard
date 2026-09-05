@@ -10,77 +10,62 @@
   padding: 4px;
 }
 
-/* One grid for both rows (not two independent ones - see the comment in
-   App.jsx) so Feedback/the Mod+Tape group line up under Mix/the Time knobs
-   even though Mix's bigger footprint is what sets the column width. */
-.pd-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  align-items: center;
-  justify-items: center;
-  row-gap: 20px;
-  column-gap: 16px;
+/* Card's own padding/title size are shared with Wah (18/22/22 and 22px) -
+   this face's spec calls for slightly different numbers (COMPONENTS.md's
+   face layout), scoped here the same way Wah's preset bar scopes its own
+   Button overrides (see peak-wah/jsui/src/index.css's .pw-presets rule)
+   rather than changing Card.css itself. */
+.pd-card.pui-card {
+  padding: 22px 26px 24px;
+}
+.pd-card .pui-card__header {
+  padding-bottom: 20px;
+}
+.pd-card .pui-card__title {
+  font-size: 19px;
 }
 
-.pd-grid > :nth-child(1) {
-  grid-area: 1 / 1;
-}
-.pd-grid > :nth-child(2) {
-  grid-area: 1 / 2;
-}
-.pd-grid > :nth-child(3) {
-  grid-area: 1 / 3;
-}
-.pd-grid > :nth-child(5) {
-  grid-area: 2 / 1;
+.pd-meta {
+  font-family: var(--pui-font-label);
+  font-weight: 500;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+  white-space: nowrap;
 }
 
-/* Sync above Ms, on the seam between Left and Right Time. CSS grid allows
-   items to share cells - this one is placed over the same row/columns as
-   the two Time knobs (rather than getting its own column) and centred with
-   plain align-self/justify-self: centring within a 2-column span lands
-   exactly on the seam between the two equal columns it spans, no
-   gap-dependent percentage math needed. It's small enough next to a knob
-   that it never grows past the row height/column width those already set,
-   so the Time knobs stay exactly as far apart as a plain 3-up row. */
-.pd-mini-toggles {
-  grid-row: 1;
-  grid-column: 2 / span 2;
-  align-self: center;
-  justify-self: center;
+.pd-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 22px;
+}
+
+.pd-time-col {
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  margin-top: -20px;
+  width: 236px;
+  gap: 22px;
 }
 
-/* Same technique Peak Wah's preset bar uses for its own icon-only buttons
-   (see peak-wah/jsui/src/index.css's .pw-presets .pui-button): the shared
-   Button unstyled down to a plain rounded-square bezel, scoped to this one
-   spot rather than a new component. Small enough to sit in the gap between
-   two knobs without widening it. */
-.pd-mini-toggles .pui-button {
-  width: 20px;
-  height: 20px;
-  padding: 0;
-  border-radius: 7px;
+.pd-time-control {
+  display: flex;
+  align-items: center;
+  gap: 11px;
 }
 
-/* Mod and Tape share a job - colouring the repeats - that Feedback doesn't,
-   so they get their own rounded box rather than sitting bare like the rest
-   of the face. Its own 2-column grid inside, same gap as the outer one, so
-   Mod/Tape land under Left/Right Time above them. */
-.pd-group {
-    grid-row: 2;
-    grid-column: 2 / span 2;
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: 16px;
-    align-items: center;
-    justify-items: center;
-    width: 100%;
-    padding: 10px 6px;
-    border: 1.5px solid #d8d8d8;
-    border-radius: 12px;
-    padding-top: 21px;
+.pd-pills {
+  display: flex;
+  gap: 7px;
+}
+
+.pd-stage {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--pui-divider);
 }

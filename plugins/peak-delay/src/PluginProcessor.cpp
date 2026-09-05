@@ -119,6 +119,16 @@ juce::String PeakDelayProcessor::timeReadout (const std::atomic<float>* timePara
     return juce::String (juce::roundToInt (ms)) + " ms";
 }
 
+juce::String PeakDelayProcessor::timeMsReadout (const std::atomic<float>* timeParam) const
+{
+    const int index = timeParam != nullptr ? static_cast<int> (timeParam->load()) : kDefaultDivision;
+    const auto divisions = ee::dsp::tempoDivisionLabels();
+    const int clamped = juce::jlimit (0, divisions.size() - 1, index);
+
+    const float ms = divisionSeconds (clamped, currentBpm()) * 1000.0f;
+    return juce::String (juce::roundToInt (ms)) + " ms";
+}
+
 void PeakDelayProcessor::mirrorDivision (const juce::String& from, const juce::String& to)
 {
     auto* source = apvts.getParameter (from);

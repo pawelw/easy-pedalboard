@@ -7,6 +7,13 @@ namespace
 constexpr const char* kParamLeftTime = "ltime";
 constexpr const char* kParamRightTime = "rtime";
 
+// Not real APVTS parameter ids - synthetic ones formatKnobValue recognises,
+// for the onyx Readout's small "always ms" figure (see
+// PluginProcessor.h's timeMsReadout()) alongside the toggle-aware main
+// value at kParamLeftTime/kParamRightTime.
+constexpr const char* kParamLeftTimeMs = "ltimeMs";
+constexpr const char* kParamRightTimeMs = "rtimeMs";
+
 const char* mimeForExtension (const juce::String& extension)
 {
     if (extension == "html")
@@ -80,6 +87,10 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
                                                 text = processorRef.leftTimeReadout();
                                             else if (id == kParamRightTime)
                                                 text = processorRef.rightTimeReadout();
+                                            else if (id == kParamLeftTimeMs)
+                                                text = processorRef.leftTimeMsReadout();
+                                            else if (id == kParamRightTimeMs)
+                                                text = processorRef.rightTimeMsReadout();
                                             else if (auto* param = processorRef.apvts.getParameter (id))
                                                 text = param->getCurrentValueAsText();
 

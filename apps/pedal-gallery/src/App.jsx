@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { PedalUIProvider } from "@synthpeak/pedal-ui";
 import { pedals } from "./pedals.js";
 import Components from "./Components.jsx";
 import "./index.css";
@@ -61,7 +62,13 @@ function PedalView({ pedal }) {
       <a href="#" className="gallery__back">
         ← All pedals
       </a>
-      <Face />
+      {/* App.jsx is imported directly (see pedals.js), bypassing the pedal's
+          own main.jsx - which is the only place that would otherwise wrap
+          it in PedalUIProvider. Without this, every pedal would render off
+          bare :root regardless of its own theme choice. */}
+      <PedalUIProvider theme={pedal.theme}>
+        <Face />
+      </PedalUIProvider>
     </div>
   );
 }

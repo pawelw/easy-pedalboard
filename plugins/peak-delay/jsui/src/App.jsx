@@ -1,43 +1,54 @@
 import { useEffect } from "react";
-import { Card } from "@synthpeak/pedal-ui";
-import { JuceKnob, JuceIconToggle } from "./juceBindings.jsx";
-import { LinkIcon, MsIcon } from "./icons.jsx";
+import { Card, TapScope, SectionLabel, LinkIcon } from "@synthpeak/pedal-ui";
+import { JuceKnob, JucePill, JuceSliderRow, useJuceSliderValue, useTimeReadoutText } from "./juceBindings.jsx";
+import TimeControl from "./TimeControl.jsx";
 import { installAutoResize } from "./autoSize.js";
 import "./index.css";
+
+/** "STEREO · 1/8 · 1/8T" - the same toggle-aware text each Time row's own
+    Readout shows for its value, just concatenated into the header's meta
+    line rather than fetched a third time some other way. */
+function HeaderMeta() {
+  const [leftText] = useTimeReadoutText("ltime");
+  const [rightText] = useTimeReadoutText("rtime");
+  return <span className="pd-meta">Stereo · {leftText} · {rightText}</span>;
+}
 
 export default function App() {
   useEffect(() => installAutoResize(), []);
 
+  const [leftTime01] = useJuceSliderValue("ltime");
+  const [rightTime01] = useJuceSliderValue("rtime");
+  const [feedback01] = useJuceSliderValue("fb");
+
   return (
     <div className="page">
-      {/* theme="green" is the only thing that makes this face read as Peak
-          Delay rather than Peak Wah - see packages/pedal-ui/src/tokens.css. */}
-      <Card title="Peak Delay" subtitle="Tempo-synced stereo delay" theme="green">
-        {/* Mix (bigger - it's the one you reach for most) leads the top row
-            with the two Time knobs; Feedback leads the bottom row with Mod
-            and Tape grouped in their own bordered box (.pd-group) - they
-            share one job (colouring the repeats) the way Feedback doesn't.
-            One grid for both rows, not two independent ones, so column
-            widths - set by Mix's bigger footprint - line up between rows
-            (see Peak Wah's .pw-grid8 comment for why that matters). Sync/Ms
-            overlay the seam between the two Time knobs without taking a
-            grid column of their own, so they don't widen it. */}
-        <div className="pd-grid">
-          <JuceKnob parameterId="mix" caption="Mix" size={92} />
-          <JuceKnob parameterId="ltime" caption="Left Time" size={62} />
-          <JuceKnob parameterId="rtime" caption="Right Time" size={62} />
+      {/* theme="onyx" on the Delay face only - see main.jsx. Wah never
+          passes a theme, so none of this reaches it (packages/pedal-ui/src/
+          tokens.css's [data-pui-theme="onyx"] block). */}
+      <Card title="Peak Delay" headerRight={<HeaderMeta />} className="pd-card" width={568}>
+        <TapScope height={78} leftTime01={leftTime01} rightTime01={rightTime01} feedback01={feedback01} />
 
-          <div className="pd-mini-toggles">
-            <JuceIconToggle parameterId="sync" ariaLabel="Sync" icon={<LinkIcon size={12} />} />
-            <JuceIconToggle parameterId="timeunit" ariaLabel="Ms" icon={<MsIcon size={12} />} />
+        <div className="pd-row">
+          <JuceKnob parameterId="mix" caption="Mix" variant="scale" size={84} />
+          <JuceKnob parameterId="fb" caption="Feedback" variant="scale" size={84} />
+
+          <div className="pd-time-col">
+            <TimeControl side="Left" parameterId="ltime" />
+            <TimeControl side="Right" parameterId="rtime" />
+
+            <div className="pd-pills">
+              <JucePill parameterId="sync" icon={<LinkIcon size={13} />} label="Linked" />
+              <JucePill parameterId="timeunit" label="ms" />
+            </div>
           </div>
+        </div>
 
-          <JuceKnob parameterId="fb" caption="Feedback" size={62} />
-
-          <div className="pd-group">
-            <JuceKnob parameterId="mod" caption="Mod" size={62} />
-            <JuceKnob parameterId="tape" caption="Tape" size={62} />
-          </div>
+        <div className="pd-stage">
+          <SectionLabel>Pre-stage</SectionLabel>
+          <JuceSliderRow parameterId="tape" name="Tape" />
+          <SectionLabel>Post-stage</SectionLabel>
+          <JuceSliderRow parameterId="mod" name="Mod" />
         </div>
       </Card>
     </div>
