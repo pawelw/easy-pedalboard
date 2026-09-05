@@ -103,10 +103,16 @@ export function useTimeReadoutText(parameterId) {
 }
 
 /** Toggle bound to a WebToggleButtonRelay by parameter id, rendered as the
-    shared Pill (Sync/Ms's round-cornered chip) rather than a full-width
+    shared Pill (Linked/Sync's round-cornered chip) rather than a full-width
     switch - the compact control the onyx layout uses everywhere a Toggle
-    would otherwise go. */
-export function JucePill({ parameterId, icon, label }) {
+    would otherwise go.
+
+    `invert`: shows the pill lit when the parameter is *false* rather than
+    true - for a parameter whose own sense reads backwards against its
+    label ("timeunit" is "is this in ms mode", but the pill reads "Sync",
+    lit for the opposite: synced to tempo). Only the display flips; a click
+    still just flips the real boolean either way. */
+export function JucePill({ parameterId, icon, label, invert = false }) {
   const toggleState = useRef(Juce.getToggleState(parameterId)).current;
   const [checked, setChecked] = useState(toggleState.getValue());
 
@@ -119,7 +125,7 @@ export function JucePill({ parameterId, icon, label }) {
     <Pill
       icon={icon}
       label={label}
-      pressed={checked}
+      pressed={invert ? !checked : checked}
       onClick={() => {
         const next = !checked;
         setChecked(next);

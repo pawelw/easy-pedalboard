@@ -30,8 +30,14 @@ export default function App() {
         <TapScope height={78} leftTime01={leftTime01} rightTime01={rightTime01} feedback01={feedback01} />
 
         <div className="pd-row">
-          <JuceKnob parameterId="mix" caption="Mix" variant="scale" size={84} />
-          <JuceKnob parameterId="fb" caption="Feedback" variant="scale" size={84} />
+          {/* Sized under the same 60px threshold Knob.jsx uses to pick the
+              value arc's gap/width (see Knob.css's variant="scale" comment)
+              as the 42px Time knobs, so all three sit exactly as far below
+              the scope - a bigger Mix/Feedback lands in the other bucket and
+              its arc (wider gap) visibly starts closer to the scope than
+              Left/Right Time's despite an identical row layout. */}
+          <JuceKnob parameterId="mix" caption="Mix" variant="scale" size={58} />
+          <JuceKnob parameterId="fb" caption="Feedback" variant="scale" size={58} />
 
           <div className="pd-time-col">
             <TimeControl side="Left" parameterId="ltime" />
@@ -39,7 +45,11 @@ export default function App() {
 
             <div className="pd-pills">
               <JucePill parameterId="sync" icon={<LinkIcon size={13} />} label="Linked" />
-              <JucePill parameterId="timeunit" label="ms" />
+              {/* "timeunit": false = note division, true = ms (unchanged -
+                  see PluginProcessor.h). Lit means "synced to tempo", i.e.
+                  timeunit is *false*, hence invert - the parameter's own
+                  sense is "is this in ms mode", not "is this synced". */}
+              <JucePill parameterId="timeunit" label="Sync" invert />
             </div>
           </div>
         </div>
