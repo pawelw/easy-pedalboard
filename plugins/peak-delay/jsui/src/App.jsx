@@ -30,14 +30,17 @@ export default function App() {
         <TapScope height={78} leftTime01={leftTime01} rightTime01={rightTime01} feedback01={feedback01} />
 
         <div className="pd-row">
-          {/* Sized under the same 60px threshold Knob.jsx uses to pick the
-              value arc's gap/width (see Knob.css's variant="scale" comment)
-              as the 42px Time knobs, so all three sit exactly as far below
-              the scope - a bigger Mix/Feedback lands in the other bucket and
-              its arc (wider gap) visibly starts closer to the scope than
-              Left/Right Time's despite an identical row layout. */}
-          <JuceKnob parameterId="mix" caption="Mix" variant="scale" size={58} />
-          <JuceKnob parameterId="fb" caption="Feedback" variant="scale" size={58} />
+          {/* sweepGap/sweepWidth pinned to the 42px Time knobs' own values
+              explicitly, rather than relying on Knob.jsx's size-based
+              default (which would put an 84px+ knob in the "big" bucket and
+              its arc - a wider gap there - would then start visibly closer
+              to the scope above than Left/Right Time's despite an
+              identical row layout). The arc's distance from a neighbour is
+              gap+width, independent of the knob's own diameter, so this
+              keeps that distance identical while leaving the size free to
+              be whatever reads best here. */}
+          <JuceKnob parameterId="mix" caption="Mix" variant="scale" size={76} sweepGap={6} sweepWidth={2.4} />
+          <JuceKnob parameterId="fb" caption="Feedback" variant="scale" size={76} sweepGap={6} sweepWidth={2.4} />
 
           <div className="pd-time-col">
             <TimeControl side="Left" parameterId="ltime" />

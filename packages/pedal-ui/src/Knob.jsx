@@ -162,6 +162,8 @@ export default function Knob({
   endMarkerLabel,
   step = 0.01,
   variant = "collar",
+  sweepGap,
+  sweepWidth,
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
@@ -247,8 +249,17 @@ export default function Knob({
           <Sweep
             diameter={size}
             value={value}
-            gap={size >= 60 ? 9 : 6}
-            width={size >= 60 ? 3 : 2.4}
+            // The arc's own overshoot past the dial's box (what actually
+            // sets its visual distance from whatever sits above the knob,
+            // like Delay's TapScope) is gap+width, independent of `size` -
+            // so two differently-sized scale knobs read the same distance
+            // from that neighbour as long as these two numbers match,
+            // regardless of how big either knob itself is. Callers that
+            // need to line up with another scale knob of a different size
+            // (Delay's Mix/Feedback with its Time knobs) pass sweepGap/
+            // sweepWidth explicitly instead of relying on the size default.
+            gap={sweepGap ?? (size >= 60 ? 9 : 6)}
+            width={sweepWidth ?? (size >= 60 ? 3 : 2.4)}
             trackColor="var(--pui-tick)"
             litColor="var(--pui-tick-lit)"
           />

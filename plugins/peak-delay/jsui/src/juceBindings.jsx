@@ -55,7 +55,7 @@ function useFormattedText(parameterId, value) {
 /** Knob bound to a WebSliderRelay by parameter id. State is optimistic (set
     locally on drag, not only from the relay's echo) so it still works
     stand-alone in a plain browser, where there is no backend to echo it. */
-export function JuceKnob({ parameterId, caption, size, variant, endMarkerLabel }) {
+export function JuceKnob({ parameterId, caption, size, variant, endMarkerLabel, sweepGap, sweepWidth }) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const readout = useFormattedText(parameterId, value);
 
@@ -63,6 +63,8 @@ export function JuceKnob({ parameterId, caption, size, variant, endMarkerLabel }
     <Knob
       variant={variant}
       size={size}
+      sweepGap={sweepGap}
+      sweepWidth={sweepWidth}
       caption={caption}
       endMarkerLabel={endMarkerLabel}
       value={value}

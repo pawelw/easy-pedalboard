@@ -39,9 +39,9 @@
 .pui-slider-row__thumb {
   position: absolute;
   top: 50%;
-  width: 28px;
-  height: 28px;
-  margin-left: -14px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
   border-radius: 50%;
   background: var(--pui-ink);
   transform: translateY(-50%);
