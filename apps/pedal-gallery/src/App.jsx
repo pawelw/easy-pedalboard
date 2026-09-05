@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { pedals } from "./pedals.js";
+import Components from "./Components.jsx";
 import "./index.css";
 
 function useHashSlug() {
@@ -21,6 +22,11 @@ function Home() {
       </header>
 
       <div className="gallery__grid">
+        <a key="components" href="#components" className="gallery__tile">
+          <span className="gallery__tile-name">pedal-ui components</span>
+          <span className="gallery__tile-status">Light / onyx showcase</span>
+        </a>
+
         {pedals.map((pedal) => (
           <a
             key={pedal.slug}
@@ -51,7 +57,8 @@ function PedalView({ pedal }) {
 
 export default function App() {
   const slug = useHashSlug();
-  const pedal = pedals.find((p) => p.slug === slug && p.face);
+  if (slug === "components") return <Components />;
 
+  const pedal = pedals.find((p) => p.slug === slug && p.face);
   return pedal ? <PedalView pedal={pedal} /> : <Home />;
 }

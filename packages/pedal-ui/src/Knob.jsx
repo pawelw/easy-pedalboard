@@ -96,6 +96,37 @@ function Sweep({ diameter, value }) {
   );
 }
 
+/** `variant="scale"`'s tick ring: two stacked copies of the same 20-tick
+    pattern (one dim, one lit), the lit one angularly masked to the swept
+    portion so it reads as "the ticks already passed" rather than a second
+    ring drawn on top. Both copies share one geometry (`repeating-conic-
+    gradient`, 13.5deg period = 270deg/20 ticks, each 1.8deg wide) so they
+    can never drift apart pixel-for-pixel the way two hand-drawn rings might.
+    `-webkit-mask` alongside `mask` throughout - this runs in WKWebView. */
+function TickScale({ diameter, value }) {
+  const sweep = `${value * 270}deg`;
+  return (
+    <div className="pui-knob__ticks-wrap" style={{ inset: diameter >= 60 ? -9 : -6 }}>
+      <div className="pui-knob__ticks" />
+      <div className="pui-knob__ticks-lit" style={{ "--pui-knob-tick-sweep": sweep }}>
+        <i />
+      </div>
+    </div>
+  );
+}
+
+/** `variant="scale"`'s needle: a rounded bar pinned at the knob's centre and
+    rotated to the value angle, the way `.pui-knob__dot` pins a dot in the
+    collar variant - same wrapper-rotates-not-the-bar trick, so the bar's own
+    box can be positioned in plain top/left percentages instead of trig. */
+function Pointer({ angle, diameter }) {
+  return (
+    <div className="pui-knob__pointer-wrap" style={{ transform: `rotate(${angle}deg)` }}>
+      <div className={`pui-knob__pointer${diameter < 60 ? " pui-knob__pointer--thin" : ""}`} />
+    </div>
+  );
+}
+
 /** A fixed label printed just outside the arc's top end, the way hardware
     prints a mark ("MAX", an infinity sign) next to a knob's end of travel -
     always there, not tied to the current value the way the lit sweep is. */
@@ -119,6 +150,11 @@ function EndMarker({ label, radius, lit }) {
  * A rotary knob: controlled (0..1), drag-vertically to turn, arrow keys to
  * nudge. JUCE-agnostic - a plugin's jsui wires this to a WebSliderRelay by
  * passing value/onChange/onDragStart/onDragEnd itself.
+ *
+ * `variant`: "collar" (default, unchanged) is the scalloped dark collar and
+ * outer value arc every pedal has used so far. "scale" is the tick-ring +
+ * needle face the onyx Delay layout uses - same controlled API, same drag/
+ * keyboard handling below, only the dial's own markup and CSS differ.
  */
 export default function Knob({
   value,
@@ -132,6 +168,7 @@ export default function Knob({
   icon,
   endMarkerLabel,
   step = 0.01,
+  variant = "collar",
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
@@ -208,10 +245,12 @@ export default function Knob({
   const angle = angleFor(value);
   const radius = size / 2;
 
+  const isScale = variant === "scale";
+
   return (
     <div className="pui-reset pui-knob" style={{ width: size + 28 }}>
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
-        <Sweep diameter={size} value={value} />
+        {isScale ? <TickScale diameter={size} value={value} /> : <Sweep diameter={size} value={value} />}
         <EndMarker label={endMarkerLabel} radius={radius} lit={value >= 0.999} />
 
         {cornerLabels?.topLeft && <span className="pui-knob__corner pui-knob__corner--tl">{cornerLabels.topLeft}</span>}
@@ -225,7 +264,7 @@ export default function Knob({
 
         <div
           ref={bodyRef}
-          className={`pui-knob__body${dragging ? " pui-knob__body--dragging" : ""}`}
+          className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
           style={{ width: size, height: size }}
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
@@ -236,11 +275,23 @@ export default function Knob({
           aria-valuemax={1}
           aria-valuenow={value}
         >
-          <Collar radius={radius} angle={angle} />
-          <div className="pui-knob__cap">
-            <div className="pui-knob__dot" style={{ transform: `rotate(${angle}deg)` }} />
-            {icon && <div className="pui-knob__icon">{icon(value)}</div>}
-          </div>
+          {isScale ? (
+            <>
+              <div className="pui-knob__scale-ring" />
+              <div className="pui-knob__scale-cap">
+                <Pointer angle={angle} diameter={size} />
+                {icon && <div className="pui-knob__icon">{icon(value)}</div>}
+              </div>
+            </>
+          ) : (
+            <>
+              <Collar radius={radius} angle={angle} />
+              <div className="pui-knob__cap">
+                <div className="pui-knob__dot" style={{ transform: `rotate(${angle}deg)` }} />
+                {icon && <div className="pui-knob__icon">{icon(value)}</div>}
+              </div>
+            </>
+          )}
         </div>
       </div>
 

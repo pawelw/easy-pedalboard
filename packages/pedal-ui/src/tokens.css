@@ -39,20 +39,46 @@
 
   --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
   --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
-}
 
-/* Per-pedal colour, layered on top of the shared look above rather than a
-   fork of it: a pedal opts in with <Card theme="green">, which stamps
-   data-pui-theme on the card so every descendant - knobs included - inherits
-   these custom properties instead of the :root defaults. No theme prop means
-   no attribute means the :root values apply, so an unthemed pedal (Wah today)
-   renders identically to before this existed. Knob/toggle/etc. markup and
-   CSS never fork per theme - only the variable values do, which is what
-   keeps "one change to the knob changes every pedal" true. Add a pedal's
-   colour here; do not add a per-theme knob stylesheet. */
-[data-pui-theme="green"] {
-  --pui-knob-sweep: #9bb88f;
-  --pui-knob-sweep-lit: #2f6e3a;
+  /* Below: the light half of the two-theme token set (see PedalUIProvider's
+     `theme` prop and the `[data-pui-theme="onyx"]` block that overrides
+     these). Values here are either brand new (the `variant="scale"` Knob,
+     Readout, TapScope, Pill...) or a token wrapping something Card already
+     hardcoded - in both cases the number is identical to what was already
+     on screen, so nothing about today's rendering moves. */
+  --pui-page: #dcdad2;
+  --pui-recess: #e9e7e0; /* same value as --pui-scope-bg - a second name for the
+                             same "recessed display" colour, used by the new
+                             components rather than repointing FilterScope */
+  --pui-recess-ink: #8a8880;
+  /* Not in the handoff's light-theme list (onyx has --pui-ink-soft AND this
+     as two distinct dim shades; the light table only gave one). Picked to
+     sit between --pui-ink-soft and --pui-panel-edge, the same relationship
+     onyx's pair has - used by Readout's unit text and SliderRow's value
+     label, neither of which Wah uses, so this is free to adjust by eye. */
+  --pui-ink-dim: #8f8d84;
+  --pui-tick: #cfcdc3;
+  --pui-tick-lit: #c60000; /* = --pui-knob-sweep-lit, keeps Wah's red family */
+  --pui-divider: #cfcdc3;
+  --pui-cap-grad-top: #fdfdfc;
+  --pui-cap-grad-bottom: #e6e4dd;
+  --pui-cap-ring: #d5d3ca;
+  --pui-pointer: #1c1c1a;
+  --pui-pill-on-bg: #1c1c1a;
+  --pui-pill-on-ink: #f3f2ed;
+  --pui-pill-off-border: #1c1c1a;
+  --pui-pill-off-ink: #6b6a63;
+  --pui-knob-shadow: 0 2px 5px rgba(0, 0, 0, 0.16);
+  --pui-well-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.12);
+  --pui-logo-filter: brightness(0);
+
+  /* What Card's background/shadow already were, just named - the SVG grain
+     is the same data URI it always painted under `var(--pui-panel)`. */
+  --pui-panel-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --pui-panel-shadow:
+    0 1px 0 var(--pui-panel-edge) inset,
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 14px 28px rgba(0, 0, 0, 0.14);
 }
 
 .pui-reset,

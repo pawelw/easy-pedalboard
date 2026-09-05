@@ -1,6 +1,6 @@
 .pui-logo {
   width: auto;
   display: block;
-  filter: brightness(0);
+  filter: var(--pui-logo-filter);
   transition: filter 60ms linear;
 }

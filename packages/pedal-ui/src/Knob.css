@@ -132,3 +132,92 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
 .pui-knob__caption {
   margin-top: 2px;
 }
+
+/* ==========================================================================
+   variant="scale" - tick ring + needle, used by the onyx Delay layout.
+   The collar variant above is untouched; everything below is additive.
+   ========================================================================== */
+
+/* Collar's own shadow is a filter on .pui-knob__body; the scale ring below
+   draws its own shadow instead (--pui-knob-shadow), so this cancels the
+   collar one rather than stacking both. Same specificity as .pui-knob__body,
+   so source order (this rule comes after) is what makes it win - the
+   collar rule itself is never edited. */
+.pui-knob__body--scale {
+  filter: none;
+}
+
+.pui-knob__scale-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--pui-knob-body);
+  box-shadow: var(--pui-knob-shadow);
+}
+
+.pui-knob__scale-cap {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--pui-cap-grad-top), var(--pui-cap-grad-bottom));
+  box-shadow: inset 0 1px 0 var(--pui-cap-ring);
+}
+
+.pui-knob__pointer-wrap {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+
+.pui-knob__pointer {
+  position: absolute;
+  top: 10%;
+  left: 50%;
+  height: 26%;
+  width: 3px;
+  margin-left: -1.5px;
+  border-radius: 999px;
+  background: var(--pui-pointer);
+}
+
+.pui-knob__pointer--thin {
+  width: 2.4px;
+  margin-left: -1.2px;
+}
+
+/* Two stacked full-ring copies of the same 20-tick pattern (13.5deg period =
+   270deg travel / 20 ticks, each tick 1.8deg wide) rather than one ring
+   whose colour changes partway round - a single ring can't have two
+   independently-controlled colours split at an arbitrary angle without this
+   same masking trick, so there is no simpler version of this. */
+.pui-knob__ticks-wrap {
+  position: absolute;
+  border-radius: 50%;
+}
+
+.pui-knob__ticks,
+.pui-knob__ticks-lit {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.pui-knob__ticks {
+  background: repeating-conic-gradient(from 225deg, var(--pui-tick) 0 1.8deg, transparent 1.8deg 13.5deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 85%, #000 85%);
+  mask: radial-gradient(closest-side, transparent 85%, #000 85%);
+}
+
+.pui-knob__ticks-lit {
+  -webkit-mask: conic-gradient(from 225deg, #000 0 var(--pui-knob-tick-sweep), transparent var(--pui-knob-tick-sweep));
+  mask: conic-gradient(from 225deg, #000 0 var(--pui-knob-tick-sweep), transparent var(--pui-knob-tick-sweep));
+}
+
+.pui-knob__ticks-lit > i {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-conic-gradient(from 225deg, var(--pui-tick-lit) 0 1.8deg, transparent 1.8deg 13.5deg);
+  -webkit-mask: radial-gradient(closest-side, transparent 85%, #000 85%);
+  mask: radial-gradient(closest-side, transparent 85%, #000 85%);
+}

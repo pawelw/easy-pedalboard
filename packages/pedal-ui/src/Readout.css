@@ -1,0 +1,39 @@
+.pui-readout {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 6px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+}
+
+.pui-readout__label {
+  flex: 0 0 34px;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+}
+
+.pui-readout__value {
+  flex: 1;
+  font-family: var(--pui-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--pui-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pui-readout__unit {
+  font-family: var(--pui-font-label);
+  font-weight: 500;
+  font-size: 9.5px;
+  color: var(--pui-ink-dim);
+  white-space: nowrap;
+}

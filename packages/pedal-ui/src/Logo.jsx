@@ -14,14 +14,18 @@ function glowRgb(level) {
 }
 
 /**
- * The Peak brand mark - one asset, recoloured to pure black via a CSS
- * filter (the source art isn't pure black itself) rather than shipping a
- * second tinted copy. Used by Card's header by default, and directly by any
- * pedal that wants the mark placed somewhere Card doesn't offer a slot for.
+ * The Peak brand mark - one asset, recoloured via a CSS filter (the source
+ * art isn't pure black itself) rather than shipping a tinted copy per theme.
+ * `--pui-logo-filter` is what does the recolouring (`brightness(0)` for a
+ * dark mark on a light panel, a hue-rotated `invert()` for a light mark on
+ * onyx) - both are just the filter value, so this component never needs to
+ * know which theme is active. Used by Card's header by default, and
+ * directly by any pedal that wants the mark placed somewhere Card doesn't
+ * offer a slot for.
  *
  * `level` (0..1, optional): live input level, for a pedal that wants the
  * mark to double as a signal-activity light. A `drop-shadow` follows the
- * logo's own silhouette (its alpha survives `brightness(0)`) rather than
+ * logo's own silhouette (its alpha survives the tint filter) rather than
  * glowing a box around it. Omit it for a plain, static mark.
  */
 export default function Logo({ size = 26, className = "", level }) {
@@ -29,6 +33,11 @@ export default function Logo({ size = 26, className = "", level }) {
     ? ` drop-shadow(0 0 ${(4 + level * 10).toFixed(1)}px rgba(${glowRgb(level)}, ${(level * 0.9).toFixed(2)}))`
     : "";
   return (
-    <img className={`pui-logo ${className}`} src={peakLogo} alt="" style={{ height: size, filter: `brightness(0)${glow}` }} />
+    <img
+      className={`pui-logo ${className}`}
+      src={peakLogo}
+      alt=""
+      style={{ height: size, filter: `var(--pui-logo-filter)${glow}` }}
+    />
   );
 }
