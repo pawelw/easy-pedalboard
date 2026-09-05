@@ -34,19 +34,17 @@ function arcPath(r, fromDeg, toDeg) {
 
 /** The collar: one flat dark scalloped ring. No facet shading - it reads as a
     moulded plastic collar, one colour, and the light comes from the cap
-    sitting proud of it. */
-function Collar({ radius }) {
+    sitting proud of it. It's a physical part of the knob, not a fixed bezel
+    around it, so it turns with `angle` - the cap's own gradient stays put,
+    since that's a fixed light source's reflection, not something that
+    should spin with the plastic underneath it. */
+function Collar({ radius, angle }) {
   const teeth = useMemo(() => {
     const marks = [];
     for (let i = 0; i < TOOTH_COUNT; i++) {
-      const angle = (i / TOOTH_COUNT) * Math.PI * 2;
+      const a = (i / TOOTH_COUNT) * Math.PI * 2;
       marks.push(
-        <circle
-          key={i}
-          cx={Math.cos(angle) * radius * TOOTH_CENTRE}
-          cy={Math.sin(angle) * radius * TOOTH_CENTRE}
-          r={radius * TOOTH_RADIUS}
-        />,
+        <circle key={i} cx={Math.cos(a) * radius * TOOTH_CENTRE} cy={Math.sin(a) * radius * TOOTH_CENTRE} r={radius * TOOTH_RADIUS} />,
       );
     }
     return marks;
@@ -58,6 +56,7 @@ function Collar({ radius }) {
       viewBox={`${-radius} ${-radius} ${radius * 2} ${radius * 2}`}
       width={radius * 2}
       height={radius * 2}
+      style={{ transform: `rotate(${angle}deg)` }}
     >
       <g fill="var(--pui-knob-body)">
         <circle cx="0" cy="0" r={radius * RING_OUTER} />
@@ -97,6 +96,22 @@ function Sweep({ diameter, value }) {
   );
 }
 
+/** A fixed label printed just outside the arc's top end, the way hardware
+    prints a mark ("MAX", an infinity sign) next to a knob's end of travel -
+    always there, not tied to the current value the way the lit sweep is. */
+function EndMarker({ label, radius }) {
+  if (!label) return null;
+  const r = radius + SWEEP_GAP + SWEEP_WIDTH + 7;
+  const toRad = (d) => ((d - 90) * Math.PI) / 180;
+  const x = Math.cos(toRad(MAX_ANGLE)) * r;
+  const y = Math.sin(toRad(MAX_ANGLE)) * r;
+  return (
+    <span className="pui-knob__end-marker" style={{ left: `calc(50% + ${x}px)`, top: `calc(50% + ${y}px)` }}>
+      {label}
+    </span>
+  );
+}
+
 /**
  * A rotary knob: controlled (0..1), drag-vertically to turn, arrow keys to
  * nudge. JUCE-agnostic - a plugin's jsui wires this to a WebSliderRelay by
@@ -112,6 +127,7 @@ export default function Knob({
   size = 72,
   cornerLabels,
   icon,
+  endMarkerLabel,
   step = 0.01,
 }) {
   const [dragging, setDragging] = useState(false);
@@ -177,6 +193,7 @@ export default function Knob({
     <div className="pui-reset pui-knob" style={{ width: size + 28 }}>
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
         <Sweep diameter={size} value={value} />
+        <EndMarker label={endMarkerLabel} radius={radius} />
 
         {cornerLabels?.topLeft && <span className="pui-knob__corner pui-knob__corner--tl">{cornerLabels.topLeft}</span>}
         {cornerLabels?.topRight && <span className="pui-knob__corner pui-knob__corner--tr">{cornerLabels.topRight}</span>}
@@ -199,7 +216,7 @@ export default function Knob({
           aria-valuemax={1}
           aria-valuenow={value}
         >
-          <Collar radius={radius} />
+          <Collar radius={radius} angle={angle} />
           <div className="pui-knob__cap">
             <div className="pui-knob__dot" style={{ transform: `rotate(${angle}deg)` }} />
             {icon && <div className="pui-knob__icon">{icon(value)}</div>}

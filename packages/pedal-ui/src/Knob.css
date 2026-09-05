@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 0px;
 }
 
 .pui-knob__dial {
@@ -51,7 +51,17 @@
   cursor: ns-resize;
   touch-action: none;
   outline: none;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  filter: drop-shadow(6px 8px 7px rgba(0, 0, 0, 0.1));
+}
+
+.pui-knob__end-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--pui-ink-soft);
+  pointer-events: none;
 }
 
 .pui-knob__body:focus-visible {
@@ -91,7 +101,7 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
 .pui-knob__dot::after {
   content: "";
   position: absolute;
-  top: 11%;
+  top: 7%;
   left: 50%;
   width: 9%;
   height: 9%;

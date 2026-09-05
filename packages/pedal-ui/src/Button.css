@@ -30,6 +30,14 @@
   gap: 7px;
 }
 
+.pui-button__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0; /* an inline span's text-baseline layout was nudging an
+                     icon-only label a couple of px above true centre */
+}
+
 .pui-button__led {
   width: 8px;
   height: 8px;

@@ -1,9 +1,22 @@
 .pui-card {
   position: relative;
-  background: var(--pui-panel);
+  /* Experimental: brushed-metal grain (an inline SVG filter, no image asset)
+     layered under the flat panel colour. feTurbulence's baseFrequency takes
+     an "x y" pair - stretching the x value way down while keeping y high is
+     what turns isotropic noise into horizontal streaks. Tune by eye: the
+     "0.05" alpha scale in the feColorMatrix is the strength; the "0.006 0.9"
+     pair is the streak direction/fineness. background-clip naturally
+     respects the border radius, no overflow:hidden needed. */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"),
+    var(--pui-panel);
   border-radius: var(--pui-radius-panel);
   padding: 18px 22px 22px;
-  box-shadow: 0 1px 0 var(--pui-panel-edge) inset;
+  border: 1px solid rgba(0, 0, 0, 0.14);
+  box-shadow:
+    0 1px 0 var(--pui-panel-edge) inset,
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 14px 28px rgba(0, 0, 0, 0.14);
 }
 
 .pui-screw {
@@ -28,9 +41,26 @@
 
 .pui-card__header {
   display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 10px 24px;
+}
+
+.pui-card__header-left {
+  display: flex;
   align-items: baseline;
   gap: 10px;
-  padding: 0 10px 24px;
+}
+
+.pui-card__header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pui-card__logo {
+  align-self: center;
 }
 
 .pui-card__title {

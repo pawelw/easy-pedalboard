@@ -20,7 +20,7 @@ export default function Dropdown({ options, value, onChange, caption, placeholde
         placeholder={placeholder}
         allowDeselect={false}
         comboboxProps={{ classNames: { dropdown: "pui-dropdown__panel", option: "pui-dropdown__option" } }}
-        classNames={{ input: "pui-dropdown__input" }}
+        classNames={{ wrapper: "pui-dropdown__wrapper", input: "pui-dropdown__input", section: "pui-dropdown__section" }}
       />
       {caption && <div className="pui-caption pui-dropdown__caption">{caption}</div>}
     </div>

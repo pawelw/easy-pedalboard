@@ -36,7 +36,7 @@ function useJuceSliderValue(parameterId) {
 /** Knob bound to a WebSliderRelay by parameter id. State is optimistic (set
     locally on drag, not only from the relay's echo) so it still works
     stand-alone in a plain browser, where there is no backend to echo it. */
-export function JuceKnob({ parameterId, caption, size, cornerLabels, icon }) {
+export function JuceKnob({ parameterId, caption, size, cornerLabels, icon, endMarkerLabel }) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const [readout, setReadout] = useState("");
 
@@ -56,6 +56,7 @@ export function JuceKnob({ parameterId, caption, size, cornerLabels, icon }) {
       caption={caption}
       cornerLabels={cornerLabels}
       icon={icon}
+      endMarkerLabel={endMarkerLabel}
       value={value}
       valueLabel={readout}
       onChange={setValue}

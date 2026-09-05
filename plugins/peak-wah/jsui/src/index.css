@@ -25,7 +25,7 @@ body {
   align-items: center;
   justify-items: center;
   row-gap: 6px;
-  column-gap: 24px;
+  column-gap: 0px;
 }
 
 .pw-toggles {
@@ -43,16 +43,91 @@ body {
   justify-self: center;
 }
 
+/* Stops short of the toggle row (measured ~45px tall) rather than running the
+   full board height, so the peak mark below has an actual gap to sit in
+   instead of overlapping the line. */
 .pw-divider {
   position: absolute;
   left: 50%;
   top: 0;
-  bottom: 0;
+  bottom: 46px;
   width: 1px;
   background: var(--pui-screw);
   transform: translateX(-50%);
 }
 
+.pw-center-logo {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
 .pw-scope-gap {
   margin-top: 20px;
+}
+
+.pw-presets {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: -8px;
+}
+
+.pw-presets .pui-dropdown {
+  gap: 0;
+}
+
+.pw-presets .pui-dropdown__input {
+  /* a plain <input> defaults to an intrinsic ~20-character width when
+     nothing sets an explicit width - min-width alone never overrode it */
+  width: 96px;
+  height: 30px;
+  line-height: 30px;
+  padding: 0 28px 0 12px; /* right side clears the overlaid chevron */
+  font-size: 10px;
+  border-color: #55534c;
+}
+
+.pw-presets .pui-button {
+  height: 30px;
+  width: 30px;
+  padding: 0;
+  border-radius: 8px; /* matches .pui-dropdown__input's corners, not the pill default */
+  border-color: #55534c;
+}
+
+/* The prev/next/dropdown trio reads as one joined control, not three
+   separate ones: every internal edge is square, adjacent borders overlap by
+   their own width so the shared line doesn't come out double-thick, and
+   only the group's own outer corners - the left of "prev", the right of the
+   dropdown - keep the panel's usual rounding. Comes after .pw-presets
+   .pui-button above on purpose: same specificity, and this has to win. */
+.pw-nav-group {
+  display: flex;
+  align-items: center;
+}
+
+.pw-nav-group > :not(:first-child) {
+  margin-left: -1.5px;
+}
+
+.pw-nav-group .pui-button,
+.pw-nav-group .pui-dropdown__input {
+  border-radius: 0;
+}
+
+.pw-nav-group > :first-child {
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.pw-nav-group > :last-child .pui-dropdown__input {
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
 }
