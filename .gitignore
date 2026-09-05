@@ -1,6 +1,7 @@
 # build/, build-fast/, build-debug/, build-universal/
 build*/
 cmake-build-*/
+node_modules/
 dist/
 .cache/
 .DS_Store
