@@ -109,6 +109,8 @@ function Sweep({
 const TICK_COUNT = 20;
 const TICK_LENGTH = 6;
 const TICK_THICKNESS = 2;
+const TICK_LENGTH_SMALL = 4;
+const TICK_THICKNESS_SMALL = 1.4;
 
 /** `variant="scale"`'s tick ring: 20 individual radial dashes, evenly spaced
     from -135deg to +135deg *inclusive of both endpoints* - so the first and
@@ -126,14 +128,26 @@ const TICK_THICKNESS = 2;
     sliver of "still transparent" mask left them reading dim instead of lit.
     Per-tick integer comparison can't have a boundary that lands wrong.
 
+    Colour is set via `style`, not the `stroke` attribute directly - WebKit
+    (the real plugin's WKWebView; this ran fine in Chromium-based preview
+    tools) doesn't reliably resolve `var(...)` custom properties written
+    into an SVG presentation attribute, only ones reached through the
+    ordinary CSS/style pipeline, so `stroke="var(--x)"` could render every
+    tick some default colour regardless of index.
+
     `gap`: distance from the dial's own edge to the ticks' inner radius -
     like Sweep's own `gap`, independent of `diameter`, so two differently-
     sized scale knobs can be told to sit the same distance from a neighbour
-    above them (see Knob's own comment on this below). */
+    above them (see Knob's own comment on this below). Below `diameter` 60,
+    the dashes themselves also shrink - full-size ones looked oversized next
+    to a 42px knob. */
 function TickScale({ diameter, value, gap = SWEEP_GAP }) {
+  const small = diameter < 60;
+  const tickLength = small ? TICK_LENGTH_SMALL : TICK_LENGTH;
+  const tickThickness = small ? TICK_THICKNESS_SMALL : TICK_THICKNESS;
   const rInner = diameter / 2 + gap;
-  const rOuter = rInner + TICK_LENGTH;
-  const box = rOuter + TICK_THICKNESS;
+  const rOuter = rInner + tickLength;
+  const box = rOuter + tickThickness;
   // -1 (nothing lit) below the same threshold Sweep uses for its own arc,
   // so a knob at rest shows no lit tick at all rather than always lighting
   // index 0 (Math.round(0 * anything) is still 0, which would otherwise
@@ -158,9 +172,16 @@ function TickScale({ diameter, value, gap = SWEEP_GAP }) {
 
   return (
     <svg className="pui-knob__ticks" viewBox={`${-box} ${-box} ${box * 2} ${box * 2}`} width={box * 2} height={box * 2}>
-      <g strokeWidth={TICK_THICKNESS} strokeLinecap="round">
+      <g strokeWidth={tickThickness} strokeLinecap="round">
         {ticks.map((t, i) => (
-          <line key={i} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} stroke={i <= litCount ? "var(--pui-tick-lit)" : "var(--pui-tick)"} />
+          <line
+            key={i}
+            x1={t.x1}
+            y1={t.y1}
+            x2={t.x2}
+            y2={t.y2}
+            style={{ stroke: i <= litCount ? "var(--pui-tick-lit)" : "var(--pui-tick)" }}
+          />
         ))}
       </g>
     </svg>
@@ -216,6 +237,7 @@ export default function Knob({
   onDragEnd,
   caption,
   valueLabel,
+  subLabel,
   size = 72,
   cornerLabels,
   icon,
@@ -302,7 +324,7 @@ export default function Knob({
   const isScale = variant === "scale";
 
   return (
-    <div className="pui-reset pui-knob" style={{ width: size + 28 }}>
+    <div className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}`} style={{ width: size + 28 }}>
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
         {isScale ? (
           <TickScale
@@ -372,6 +394,13 @@ export default function Knob({
           height (and everything below it in the grid) changed the instant
           you touched a knob. */}
       <div className="pui-caption pui-knob__caption">{dragging && valueLabel ? valueLabel : caption}</div>
+
+      {/* Unlike valueLabel above, this is a second, permanent line - Mix/
+          Feedback show their value here at all times, not only mid-drag
+          (COMPONENTS.md: "value line 4px under the caption"). Only rendered
+          when a caller actually passes one, so every other knob's layout is
+          untouched. */}
+      {subLabel && <div className="pui-knob__sublabel">{subLabel}</div>}
     </div>
   );
 }

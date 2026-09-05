@@ -139,6 +139,22 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
    is additive.
    ========================================================================== */
 
+/* 4px further from the dial than the collar variant's caption - scoped to
+   .pui-knob--scale rather than changing .pui-knob__caption itself, which
+   Wah's own (collar) knobs also use. */
+.pui-knob--scale .pui-knob__caption {
+  margin-top: 6px;
+}
+
+.pui-knob__sublabel {
+  margin-top: 4px;
+  font-family: var(--pui-font-label);
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--pui-ink-soft);
+  text-align: center;
+}
+
 /* Collar's own shadow is a filter on .pui-knob__body; the scale ring below
    draws its own shadow instead (--pui-knob-shadow), so this cancels the
    collar one rather than stacking both. Same specificity as .pui-knob__body,

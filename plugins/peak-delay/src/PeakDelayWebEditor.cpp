@@ -47,6 +47,14 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
     : juce::AudioProcessorEditor (&p), processorRef (p),
       webView (juce::WebBrowserComponent::Options {}
                    .withNativeIntegrationEnabled()
+                   // WKWebView's own right-click context menu ("Reload" is
+                   // its only useful item here - there's no navigation
+                   // history for Back/Forward) has no dedicated JUCE option
+                   // to turn off, so this suppresses it the ordinary web way
+                   // instead: a knob click-drag that starts with a right
+                   // button, or a trackpad two-finger tap mid-drag, was
+                   // popping it up over the control being turned.
+                   .withUserScript ("document.addEventListener('contextmenu', function (e) { e.preventDefault(); });")
                    .withOptionsFrom (leftTimeRelay)
                    .withOptionsFrom (rightTimeRelay)
                    .withOptionsFrom (feedbackRelay)

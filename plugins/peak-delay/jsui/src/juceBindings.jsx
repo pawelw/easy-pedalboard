@@ -59,8 +59,22 @@ function useFormattedText(parameterId, value) {
     `showValueLabel` (default true): Knob swaps its caption for the live
     value while dragging - suppress that for a knob whose value already has
     a full-size readout right next to it (the Time knobs' Readout), where a
-    second copy popping up under the knob itself is redundant. */
-export function JuceKnob({ parameterId, caption, size, variant, endMarkerLabel, sweepGap, showValueLabel = true }) {
+    second copy popping up under the knob itself is redundant.
+
+    `showValueBelow` (default false): the opposite kind of duplication -
+    Mix/Feedback have no readout anywhere else, so they print their value
+    as a permanent second line under the caption instead (Knob's own
+    `subLabel`), always visible rather than only appearing mid-drag. */
+export function JuceKnob({
+  parameterId,
+  caption,
+  size,
+  variant,
+  endMarkerLabel,
+  sweepGap,
+  showValueLabel = true,
+  showValueBelow = false,
+}) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const readout = useFormattedText(parameterId, value);
 
@@ -73,6 +87,7 @@ export function JuceKnob({ parameterId, caption, size, variant, endMarkerLabel, 
       endMarkerLabel={endMarkerLabel}
       value={value}
       valueLabel={showValueLabel ? readout : undefined}
+      subLabel={showValueBelow ? readout : undefined}
       onChange={setValue}
       onDragStart={() => sliderState.sliderDragStarted()}
       onDragEnd={() => sliderState.sliderDragEnded()}

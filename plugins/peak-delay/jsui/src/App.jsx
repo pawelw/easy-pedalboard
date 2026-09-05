@@ -39,8 +39,8 @@ export default function App() {
               independent of the knob's own diameter, so this keeps that
               distance identical while leaving the size free to be whatever
               reads best here. */}
-          <JuceKnob parameterId="mix" caption="Mix" variant="scale" size={76} sweepGap={6} />
-          <JuceKnob parameterId="fb" caption="Feedback" variant="scale" size={76} sweepGap={6} />
+          <JuceKnob parameterId="mix" caption="Mix" variant="scale" size={76} sweepGap={6} showValueBelow />
+          <JuceKnob parameterId="fb" caption="Feedback" variant="scale" size={76} sweepGap={6} showValueBelow />
 
           <div className="pd-time-col">
             <TimeControl side="Left" parameterId="ltime" />
