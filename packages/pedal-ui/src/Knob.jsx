@@ -106,31 +106,64 @@ function Sweep({
   );
 }
 
-/** `variant="scale"`'s tick ring: two stacked copies of the same 20-tick
-    pattern (one dim, one lit), the lit one angularly masked to the swept
-    portion so it reads as "the ticks already passed" rather than a second
-    ring drawn on top. Both copies share one geometry (`repeating-conic-
-    gradient`, 13.5deg period = 270deg/20 ticks, each 1.8deg wide) so they
-    can never drift apart pixel-for-pixel the way two hand-drawn rings might.
-    Ticks stop cleanly at the same +-135deg travel limit as every other
-    control here (225deg start + 270deg sweep = wraps back to 225deg) - the
-    270/20=13.5deg period already lands exactly on that boundary, so there's
-    no partial tick clipped at the gap.
+const TICK_COUNT = 20;
+const TICK_LENGTH = 6;
+const TICK_THICKNESS = 2;
 
-    `gap`: the ring's distance outside the dial's own box, in pixels - like
-    Sweep's own `gap`, independent of `diameter`, so two differently-sized
-    scale knobs can be told to sit the same distance from a neighbour above
-    them (see Knob's own comment on this below). `-webkit-mask` alongside
-    `mask` throughout - this runs in WKWebView. */
+/** `variant="scale"`'s tick ring: 20 individual radial dashes, evenly spaced
+    from -135deg to +135deg *inclusive of both endpoints* - so the first and
+    last ticks sit exactly on the travel limits and are mirror images of
+    each other around the top (0deg), by construction rather than by hoping
+    a periodic pattern happens to land there.
+
+    Each tick's lit/unlit colour is a plain `index <= litCount` comparison,
+    not a continuous angular mask over a repeating pattern (the previous
+    approach) - that mask's own sweep angle and the ticks' 13.5deg period
+    were two independently-computed numbers that only lined up at exact
+    multiples of a tick's width, so at most values the sweep boundary fell
+    *inside* a tick rather than between two of them, leaving that tick part-
+    covered - including, at the very top of travel, one or two ticks whose
+    sliver of "still transparent" mask left them reading dim instead of lit.
+    Per-tick integer comparison can't have a boundary that lands wrong.
+
+    `gap`: distance from the dial's own edge to the ticks' inner radius -
+    like Sweep's own `gap`, independent of `diameter`, so two differently-
+    sized scale knobs can be told to sit the same distance from a neighbour
+    above them (see Knob's own comment on this below). */
 function TickScale({ diameter, value, gap = SWEEP_GAP }) {
-  const sweep = `${value * 270}deg`;
+  const rInner = diameter / 2 + gap;
+  const rOuter = rInner + TICK_LENGTH;
+  const box = rOuter + TICK_THICKNESS;
+  // -1 (nothing lit) below the same threshold Sweep uses for its own arc,
+  // so a knob at rest shows no lit tick at all rather than always lighting
+  // index 0 (Math.round(0 * anything) is still 0, which would otherwise
+  // read as "the first tick has been passed" even at the very bottom).
+  const litCount = value > 0.004 ? Math.round(value * (TICK_COUNT - 1)) : -1;
+
+  const ticks = useMemo(() => {
+    const toRad = (d) => ((d - 90) * Math.PI) / 180;
+    const marks = [];
+    for (let i = 0; i < TICK_COUNT; i++) {
+      const angle = MIN_ANGLE + (i * (MAX_ANGLE - MIN_ANGLE)) / (TICK_COUNT - 1);
+      const rad = toRad(angle);
+      marks.push({
+        x1: Math.cos(rad) * rInner,
+        y1: Math.sin(rad) * rInner,
+        x2: Math.cos(rad) * rOuter,
+        y2: Math.sin(rad) * rOuter,
+      });
+    }
+    return marks;
+  }, [rInner, rOuter]);
+
   return (
-    <div className="pui-knob__ticks-wrap" style={{ inset: -gap }}>
-      <div className="pui-knob__ticks" />
-      <div className="pui-knob__ticks-lit" style={{ "--pui-knob-tick-sweep": sweep }}>
-        <i />
-      </div>
-    </div>
+    <svg className="pui-knob__ticks" viewBox={`${-box} ${-box} ${box * 2} ${box * 2}`} width={box * 2} height={box * 2}>
+      <g strokeWidth={TICK_THICKNESS} strokeLinecap="round">
+        {ticks.map((t, i) => (
+          <line key={i} x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2} stroke={i <= litCount ? "var(--pui-tick-lit)" : "var(--pui-tick)"} />
+        ))}
+      </g>
+    </svg>
   );
 }
 

@@ -186,39 +186,13 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
   margin-left: -1.2px;
 }
 
-/* Two stacked full-ring copies of the same 20-tick pattern (13.5deg period =
-   270deg travel / 20 ticks, each tick 1.8deg wide) rather than one ring
-   whose colour changes partway round - a single ring can't have two
-   independently-controlled colours split at an arbitrary angle without this
-   same masking trick, so there is no simpler version of this. */
-.pui-knob__ticks-wrap {
-  position: absolute;
-  border-radius: 50%;
-}
-
-.pui-knob__ticks,
-.pui-knob__ticks-lit {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-}
-
+/* 20 individual radial dashes (see TickScale in Knob.jsx) - positioned the
+   same way .pui-knob__sweep is, since it's the same kind of "centred SVG
+   overlay outside the dial" element. */
 .pui-knob__ticks {
-  background: repeating-conic-gradient(from 225deg, var(--pui-tick) 0 1.8deg, transparent 1.8deg 13.5deg);
-  -webkit-mask: radial-gradient(closest-side, transparent 85%, #000 85%);
-  mask: radial-gradient(closest-side, transparent 85%, #000 85%);
-}
-
-.pui-knob__ticks-lit {
-  -webkit-mask: conic-gradient(from 225deg, #000 0 var(--pui-knob-tick-sweep), transparent var(--pui-knob-tick-sweep));
-  mask: conic-gradient(from 225deg, #000 0 var(--pui-knob-tick-sweep), transparent var(--pui-knob-tick-sweep));
-}
-
-.pui-knob__ticks-lit > i {
   position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: repeating-conic-gradient(from 225deg, var(--pui-tick-lit) 0 1.8deg, transparent 1.8deg 13.5deg);
-  -webkit-mask: radial-gradient(closest-side, transparent 85%, #000 85%);
-  mask: radial-gradient(closest-side, transparent 85%, #000 85%);
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 }
