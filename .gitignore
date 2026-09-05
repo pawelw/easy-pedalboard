@@ -3,6 +3,7 @@ build*/
 cmake-build-*/
 node_modules/
 dist/
+node_modules/
 .cache/
 .DS_Store
 compile_commands.json
