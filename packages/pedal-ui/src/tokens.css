@@ -68,7 +68,9 @@
      label, neither of which Wah uses, so this is free to adjust by eye. */
   --pui-ink-dim: #8f8d84;
   --pui-tick: #cfcdc3;
-  --pui-tick-lit: #c60000; /* = --pui-knob-sweep-lit, keeps Wah's red family */
+  --pui-tick-lit: #1c1c1a; /* grayscale on purpose, unlike --pui-knob-sweep-lit's
+                               red - variant="scale"'s value arc stays black/
+                               white/gray in both themes, no accent colour */
   --pui-divider: #cfcdc3;
   --pui-cap-grad-top: #fdfdfc;
   --pui-cap-grad-bottom: #e6e4dd;
@@ -111,7 +113,7 @@
   --pui-recess: #101416;
   --pui-recess-ink: #4d5f65;
   --pui-tick: #39474b;
-  --pui-tick-lit: #b9d3d9;
+  --pui-tick-lit: #ffffff; /* grayscale on purpose - see the :root comment */
 
   --pui-knob-body: #0b0e10; /* the ring */
   --pui-cap-grad-top: #364347;

@@ -76,10 +76,20 @@ function Collar({ radius, angle }) {
 
 /** The value readout: one continuous arc outside the knob, a pale track with
     the part up to the value lit. Outside rather than on the collar - a light
-    line on the dark ring reads as part of the knob, not as its value. */
-function Sweep({ diameter, value }) {
-  const r = diameter / 2 + SWEEP_GAP;
-  const box = r + SWEEP_WIDTH;
+    line on the dark ring reads as part of the knob, not as its value.
+    `gap`/`width`/the two colours default to the collar variant's own look
+    (unchanged); `variant="scale"` passes its own smaller gap and the
+    grayscale tick tokens instead - same arc, different geometry/palette. */
+function Sweep({
+  diameter,
+  value,
+  gap = SWEEP_GAP,
+  width = SWEEP_WIDTH,
+  trackColor = "var(--pui-knob-sweep)",
+  litColor = "var(--pui-knob-sweep-lit)",
+}) {
+  const r = diameter / 2 + gap;
+  const box = r + width;
 
   return (
     <svg
@@ -88,30 +98,11 @@ function Sweep({ diameter, value }) {
       width={box * 2}
       height={box * 2}
     >
-      <g fill="none" strokeWidth={SWEEP_WIDTH} strokeLinecap="round">
-        <path d={arcPath(r, MIN_ANGLE, MAX_ANGLE)} stroke="var(--pui-knob-sweep)" />
-        {value > 0.004 && <path d={arcPath(r, MIN_ANGLE, angleFor(value))} stroke="var(--pui-knob-sweep-lit)" />}
+      <g fill="none" strokeWidth={width} strokeLinecap="round">
+        <path d={arcPath(r, MIN_ANGLE, MAX_ANGLE)} stroke={trackColor} />
+        {value > 0.004 && <path d={arcPath(r, MIN_ANGLE, angleFor(value))} stroke={litColor} />}
       </g>
     </svg>
-  );
-}
-
-/** `variant="scale"`'s tick ring: two stacked copies of the same 20-tick
-    pattern (one dim, one lit), the lit one angularly masked to the swept
-    portion so it reads as "the ticks already passed" rather than a second
-    ring drawn on top. Both copies share one geometry (`repeating-conic-
-    gradient`, 13.5deg period = 270deg/20 ticks, each 1.8deg wide) so they
-    can never drift apart pixel-for-pixel the way two hand-drawn rings might.
-    `-webkit-mask` alongside `mask` throughout - this runs in WKWebView. */
-function TickScale({ diameter, value }) {
-  const sweep = `${value * 270}deg`;
-  return (
-    <div className="pui-knob__ticks-wrap" style={{ inset: diameter >= 60 ? -9 : -6 }}>
-      <div className="pui-knob__ticks" />
-      <div className="pui-knob__ticks-lit" style={{ "--pui-knob-tick-sweep": sweep }}>
-        <i />
-      </div>
-    </div>
   );
 }
 
@@ -152,9 +143,11 @@ function EndMarker({ label, radius, lit }) {
  * passing value/onChange/onDragStart/onDragEnd itself.
  *
  * `variant`: "collar" (default, unchanged) is the scalloped dark collar and
- * outer value arc every pedal has used so far. "scale" is the tick-ring +
- * needle face the onyx Delay layout uses - same controlled API, same drag/
- * keyboard handling below, only the dial's own markup and CSS differ.
+ * outer value arc every pedal has used so far. "scale" is the plain-ring +
+ * needle face the onyx Delay layout uses - same outer value arc as collar,
+ * just grayscale and closer to the ring, plus a needle instead of a dot.
+ * Same controlled API, same drag/keyboard handling below, only the dial's
+ * own markup and CSS differ.
  */
 export default function Knob({
   value,
@@ -250,7 +243,18 @@ export default function Knob({
   return (
     <div className="pui-reset pui-knob" style={{ width: size + 28 }}>
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
-        {isScale ? <TickScale diameter={size} value={value} /> : <Sweep diameter={size} value={value} />}
+        {isScale ? (
+          <Sweep
+            diameter={size}
+            value={value}
+            gap={size >= 60 ? 9 : 6}
+            width={size >= 60 ? 3 : 2.4}
+            trackColor="var(--pui-tick)"
+            litColor="var(--pui-tick-lit)"
+          />
+        ) : (
+          <Sweep diameter={size} value={value} />
+        )}
         <EndMarker label={endMarkerLabel} radius={radius} lit={value >= 0.999} />
 
         {cornerLabels?.topLeft && <span className="pui-knob__corner pui-knob__corner--tl">{cornerLabels.topLeft}</span>}
