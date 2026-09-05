@@ -81,9 +81,11 @@ namespace
     constexpr int kKnobGroupPad = 16;           // how far a filled group panel stands off its knobs
     constexpr int kKnobGroupCaptionHeight = 20; // the panel caption strip - taller than the outline style's
     constexpr int kKnobGroupToggleReserve = 34; // bottom slack for a Sync toggle hung under a bottom-row knob
-    constexpr int kKnobCellSidePad = 14;        // slack each side of a cap in its column (label room, horizontal groups)
-    constexpr int kKnobGroupExtraTop = 32;      // extra air between the caption and the first knob
-    constexpr int kKnobGroupExtraBottom = 32;   // extra air below the last knob's label
+    constexpr int kKnobCellSidePad = 14;       // slack each side of a cap in its column (label room, horizontal groups)
+    constexpr int kKnobGroupExtraTop = 32;     // extra air between the caption and the first knob
+    constexpr int kKnobGroupExtraBottom = 2;   // extra air below the last knob's label
+    constexpr int kKnobGroupFooterHeight = 30; // the footer strip along the bottom of a filled card
+    constexpr int kKnobGroupHeaderHeight = 30; // the header strip along the top - caption + on/off switch
 
     // Every filled card's shadow, CSS `box-shadow` style: a stack of real
     // gaussian layers { colour, radius, { dx, dy }, spread }. Shared by every
@@ -94,7 +96,7 @@ namespace
     // CSS: box-shadow: -2px 7px 6px -5px #00000094
     //      (offset-x offset-y blur spread colour) -> { colour, radius, {dx,dy}, spread }
     const std::vector<melatonin::ShadowParametersInt> kCardShadows {
-        { juce::Colour::fromRGBA (0, 0, 0, 0x94), 5, { -2, 4 }, -3 },
+        { juce::Colour::fromRGBA (0, 0, 0, 0x94), 5, { 3, 4 }, -3 },
     };
 
     // Fixed rather than a fraction of the column, so a knob is the same size on
@@ -331,6 +333,10 @@ private:
         `spec.knobGroups`. Empty unless the spec names groups. */
     std::vector<juce::Rectangle<int>> knobGroupBoxes;
 
+    /** Footer switch for each knob group, index-aligned with `spec.knobGroups`.
+        Null where a group's footer is blank (or the spec has no footers). */
+    std::vector<std::unique_ptr<DigitalSwitch>> footerSwitches;
+
     std::unique_ptr<juce::Component> sidePanel;
     int sidePanelWidth = 0;
     juce::Image grain;
@@ -362,7 +368,10 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
         // KnobSpec.
         auto ks = knobSpec;
         if (spec.captionUntilTouchedKnobs)
+        {
             ks.captionUntilTouched = true;
+            ks.tightCaptionLabel = true; // one short row, so the rows pack closer
+        }
 
         knobs.push_back (std::make_unique<Knob> (state, ks, theme));
     }
@@ -480,6 +489,30 @@ PedalEditor::Face::Face (juce::AudioProcessorValueTreeState& state,
 
         addAndMakeVisible (*entry.button);
         toggles.push_back (std::move (entry));
+    }
+
+    // One footer switch per knob-group card, where the group named a footer
+    // parameter. Placed in resized(), inside the card's footer strip.
+    if (spec.knobGroupFooters)
+    {
+        for (const auto& group : spec.knobGroups)
+        {
+            std::unique_ptr<DigitalSwitch> sw;
+            if (group.footer.parameterID.isNotEmpty())
+            {
+                sw = std::make_unique<DigitalSwitch> (state, group.footer, theme, DigitalSwitch::Size::compact);
+                sw->onStateChange = [this]
+                {
+                    for (auto& knob : knobs)
+                        if (knob != nullptr)
+                            knob->refreshValueText();
+                };
+                if (group.footerOnClick)
+                    sw->onClick = group.footerOnClick;
+                addAndMakeVisible (*sw);
+            }
+            footerSwitches.push_back (std::move (sw));
+        }
     }
 
     // Secondary knob row, each cell optionally carrying a button beneath it.
@@ -1108,13 +1141,16 @@ void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
     // frame, and centre the envelope - not just the knob band - in what is left.
     const bool filled = spec.filledKnobGroups;
     const int overhangSide = filled ? kKnobGroupPad : 0;
-    const int overhangTop = filled ? (kKnobGroupPad + kKnobGroupCaptionHeight + kKnobGroupPad / 2 + kKnobGroupExtraTop) : 0;
+    const int overhangTop =
+        filled ? (kKnobGroupPad + kKnobGroupCaptionHeight + kKnobGroupPad / 2 + kKnobGroupExtraTop) : 0;
     bool anyHangingToggle = false;
     for (const auto& tg : spec.toggles)
         if (tg.centeredBelow || tg.centeredAbove)
             anyHangingToggle = true;
+    const int footerH = (filled && spec.knobGroupFooters) ? kKnobGroupFooterHeight : 0;
     const int overhangBottom =
-        filled ? (kKnobGroupPad + kKnobGroupExtraBottom + (anyHangingToggle ? kKnobGroupToggleReserve : 0)) : 0;
+        filled ? (kKnobGroupPad + kKnobGroupExtraBottom + footerH + (anyHangingToggle ? kKnobGroupToggleReserve : 0))
+               : 0;
 
     area = area.reduced (overhangSide, 0);
 
@@ -1163,8 +1199,11 @@ void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
     const int fullCell = juce::jmax (1, (area.getWidth() - betweenBlocks - betweenCols) / juce::jmax (1, totalCols));
     const int cellW = juce::jmin (fullCell, biggestKnob + kKnobCellSidePad * 2);
     const int knobW = juce::jmin (maxKnob, cellW);
-    const int rowH = knobW + Knob::labelHeight;
-    const int rowGap = spec.knobRowGap > 0 ? spec.knobRowGap : kKnobGap;
+    const int labelH = spec.captionUntilTouchedKnobs ? Knob::valueRowHeight : Knob::labelHeight;
+    const int rowH = knobW + labelH;
+    // A negative gap is honoured here (tight single-column cards overlap the
+    // empty label rows); 0 still means "use the default".
+    const int rowGap = spec.knobRowGap != 0 ? spec.knobRowGap : kKnobGap;
 
     // Vertically centre every block against the tallest, and centre that band in
     // the area when it does not fill it.
@@ -1177,7 +1216,8 @@ void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
     int bandTop = area.getY() + overhangTop;
     if (const int slack = area.getHeight() - envH; slack > 0)
         bandTop += slack / 2;
-    if (spec.knobBlockRise > 0)
+    // Positive `knobBlockRise` lifts the cards; negative pushes them down.
+    if (spec.knobBlockRise != 0)
         bandTop = juce::jmax (contentArea().getY() + overhangTop, bandTop - spec.knobBlockRise);
 
     // Centre the row of blocks in the area horizontally too.
@@ -1215,7 +1255,7 @@ void PedalEditor::Face::layOutKnobGroupsRow (juce::Rectangle<int> area)
                     // component down into the row gap).
                     const int own = spec.knobs[static_cast<size_t> (k)].diameter;
                     const int capH = own > 0 ? juce::jmin (own, cellW) : knobW;
-                    const int h = juce::jmax (rowH, capH + Knob::labelHeight);
+                    const int h = juce::jmax (rowH, capH + labelH);
                     knob->setBounds (cell.getX(), cell.getY(), cell.getWidth(), h);
                 }
 
@@ -1266,7 +1306,7 @@ void PedalEditor::Face::paintGroupBox (juce::Graphics& g,
         // `panel`; the edge and caption are taken from the fill so they stay
         // legible whatever hue it is.
         const auto box = boxInt.toFloat();
-        constexpr float kCorner = 14.0f;
+        constexpr float kCorner = 8.0f;
 
         const bool custom = ! fill.isTransparent();
         const auto panelFill =
@@ -1299,13 +1339,31 @@ void PedalEditor::Face::paintGroupBox (juce::Graphics& g,
             g.drawRoundedRectangle (box.reduced (kLipWidth * 0.5f), kCorner, kLipWidth);
         }
 
-        g.setColour (custom ? panelFill.contrasting (0.85f) : theme.textSecondary);
+        const auto ink = custom ? panelFill.contrasting (0.85f) : theme.textSecondary;
+
+        // Header strip: the caption on the left, room for the on/off switch on
+        // the right (placed in resized()), a full-width rule underneath. Without
+        // footers the caption keeps its old spot just inside the top edge.
+        const bool strips = spec.knobGroupFooters;
+
+        g.setColour (ink);
         g.setFont (theme.bodyFont (13.0f).boldened());
         g.drawText (captionText.toUpperCase(),
-                    box.withTrimmedLeft (14.0f)
-                        .withHeight (static_cast<float> (kKnobGroupCaptionHeight))
-                        .translated (0.0f, 7.0f),
+                    strips ? box.withTrimmedLeft (14.0f).withHeight (static_cast<float> (kKnobGroupHeaderHeight))
+                           : box.withTrimmedLeft (14.0f)
+                                 .withHeight (static_cast<float> (kKnobGroupCaptionHeight))
+                                 .translated (0.0f, 7.0f),
                     juce::Justification::centredLeft, false);
+
+        if (strips)
+        {
+            g.setColour (ink.withAlpha (0.18f));
+            // header rule, full width
+            g.fillRect (box.getX(), box.getY() + static_cast<float> (kKnobGroupHeaderHeight), box.getWidth(), 1.0f);
+            // footer rule, full width, one footer height up from the bottom
+            g.fillRect (box.getX(), box.getBottom() - static_cast<float> (kKnobGroupFooterHeight), box.getWidth(),
+                        1.0f);
+        }
         return;
     }
 
@@ -1460,24 +1518,34 @@ void PedalEditor::Face::paint (juce::Graphics& g)
     if (! subKnobGroup.isEmpty())
         paintGroupBox (g, subKnobGroup, spec.subKnobGroupCaption);
 
-    for (size_t i = 0; i < knobGroupBoxes.size() && i < spec.knobGroups.size(); ++i)
+    for (size_t i = 0, firstKnob = 0; i < knobGroupBoxes.size() && i < spec.knobGroups.size(); ++i)
     {
         const auto& group = spec.knobGroups[i];
         const auto fill = group.fill.value_or (juce::Colour {});
         paintGroupBox (g, knobGroupBoxes[i], group.caption, spec.filledKnobGroups, fill);
 
-        // The group mark: centred at the top of the panel, in the gap between
-        // the caption line and the first knob.
+        const int n =
+            juce::jlimit (0, juce::jmax (0, static_cast<int> (knobs.size()) - static_cast<int> (firstKnob)), group.count);
+
+        // The group mark: sat in the gap between the header rule and the first
+        // knob's cap, centred in both axes.
         if (group.icon && spec.filledKnobGroups)
         {
             const auto box = knobGroupBoxes[i].toFloat();
-            constexpr float kIconSize = 14.0f;
+            constexpr float kIconSize = 41.0f; // 34 + 20%
+
+            const float gapTop = box.getY() + static_cast<float> (kKnobGroupHeaderHeight);
+            const float gapBottom = firstKnob < knobCells.size()
+                                        ? static_cast<float> (knobCells[firstKnob].getY())
+                                        : box.getY() + static_cast<float> (kKnobGroupHeaderHeight + 46);
             const juce::Rectangle<float> iconArea (box.getCentreX() - kIconSize * 0.5f,
-                                                   box.getY() + static_cast<float> (kKnobGroupCaptionHeight) + 8.0f,
+                                                   (gapTop + gapBottom) * 0.5f - kIconSize * 0.5f,
                                                    kIconSize, kIconSize);
             const auto ink = fill.isTransparent() ? theme.textSecondary : fill.contrasting (0.8f);
             group.icon (g, iconArea, ink);
         }
+
+        firstKnob += static_cast<size_t> (juce::jmax (0, n));
     }
 
     // A small emblem for the effect, centred in the gap the knobs leave above
@@ -1726,30 +1794,62 @@ void PedalEditor::Face::resized()
             }
         }
 
-        int groupFirst = 0;
-        for (const auto& group : spec.knobGroups)
+        // Each group's knob-cell bounding box.
+        std::vector<juce::Rectangle<int>> blocks;
         {
-            const int n = juce::jlimit (0, juce::jmax (0, count - groupFirst), group.count);
-            if (n <= 0)
-                continue;
-
-            juce::Rectangle<int> block;
-            for (int i = 0; i < n; ++i)
+            int groupFirst = 0;
+            for (const auto& group : spec.knobGroups)
             {
-                const auto& cell = knobCells[static_cast<size_t> (groupFirst + i)];
-                block = block.isEmpty() ? cell : block.getUnion (cell);
-            }
+                const int n = juce::jlimit (0, juce::jmax (0, count - groupFirst), group.count);
+                if (n <= 0)
+                    continue;
 
+                juce::Rectangle<int> block;
+                for (int i = 0; i < n; ++i)
+                {
+                    const auto& cell = knobCells[static_cast<size_t> (groupFirst + i)];
+                    block = block.isEmpty() ? cell : block.getUnion (cell);
+                }
+                blocks.push_back (block);
+                groupFirst += n;
+            }
+        }
+
+        // Filled cards all read as one height: every block's bottom is pulled
+        // down to the tallest group's, so a 2-knob card runs as long as a
+        // 4-knob one with empty air below its last knob.
+        int commonBottom = 0;
+        for (const auto& b : blocks)
+            commonBottom = juce::jmax (commonBottom, b.getBottom());
+
+        for (auto block : blocks)
+        {
             if (spec.filledKnobGroups)
-                knobGroupBoxes.push_back (block.expanded (kKnobGroupPad)
-                                              .withTrimmedTop (-(kKnobGroupCaptionHeight + kKnobGroupPad / 2 + kKnobGroupExtraTop))
-                                              .withTrimmedBottom (-(bottomReserve + kKnobGroupExtraBottom)));
+            {
+                block.setBottom (commonBottom);
+                knobGroupBoxes.push_back (
+                    block.expanded (kKnobGroupPad)
+                        .withTrimmedTop (-(kKnobGroupCaptionHeight + kKnobGroupPad / 2 + kKnobGroupExtraTop))
+                        .withTrimmedBottom (-(bottomReserve + kKnobGroupExtraBottom +
+                                              (spec.knobGroupFooters ? kKnobGroupFooterHeight : 0))));
+            }
             else
                 knobGroupBoxes.push_back (
                     block.expanded (kSubGroupPad, kSubGroupPad / 2).withTrimmedTop (-kSubGroupCaptionHeight / 2));
-
-            groupFirst += n;
         }
+    }
+
+    // Drop each footer switch into the bottom strip of its card, left-aligned
+    // inside the same inset the footer divider uses.
+    for (size_t i = 0; i < footerSwitches.size() && i < knobGroupBoxes.size(); ++i)
+    {
+        auto* sw = footerSwitches[i].get();
+        if (sw == nullptr)
+            continue;
+
+        const auto strip = knobGroupBoxes[i].withTop (knobGroupBoxes[i].getBottom() - kKnobGroupFooterHeight);
+        sw->setBounds (strip.getX() + 14, strip.getCentreY() - sw->switchHeight() / 2, sw->switchWidth(),
+                       sw->switchHeight());
     }
 
     // Rule down the gap between two columns, as tall as the whole block.
@@ -1932,7 +2032,9 @@ void PedalEditor::Face::resized()
 
             const auto box = knobGroupBoxes[static_cast<size_t> (gp)];
             constexpr int inset = 12;
-            juce::Point<int> tr { box.getRight() - inset - toggleW / 2, box.getY() + inset + toggleH / 2 };
+            const int headerMid =
+                spec.knobGroupFooters ? box.getY() + kKnobGroupHeaderHeight / 2 : box.getY() + inset + toggleH / 2;
+            juce::Point<int> tr { box.getRight() - inset - toggleW / 2, headerMid };
             tr.x -= toggles[t].metrics->switchTrackOffset();
 
             button.setVisible (true);

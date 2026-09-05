@@ -68,6 +68,10 @@ private:
     void onDensitySyncToggled();
     void onDelaySyncToggled();
 
+    /** The Grain card's single footer switch: carry its new state onto the
+        Destiny sync flag and run both grain knobs' handlers together. */
+    void onGrainSyncToggled();
+
     void syncToggled (const char* paramID,
                       std::atomic<float>& freeSlot,
                       std::atomic<float>& syncSlot,

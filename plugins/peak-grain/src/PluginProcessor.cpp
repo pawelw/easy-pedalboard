@@ -5,6 +5,8 @@
 #include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
+#include "BinaryData.h"
+
 #include <cmath>
 
 #if EE_GRAIN_TUNER
@@ -122,17 +124,6 @@ ee::dsp::GrainSyncMap makeDelayMap()
     return { r, true };
 }
 
-/** A plain "ms" wordmark, borrowed from Peak Delay: the button that swaps a
-    knob's reading from a note division to that division's length in
-    milliseconds. Same glyph the other tempo-sync pedals carry. */
-void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
-{
-    const auto box = area.withSizeKeepingCentre (area.getWidth() * 1.6f, area.getHeight());
-    g.setColour (colour);
-    g.setFont (juce::Font (juce::FontOptions (area.getHeight() * 0.95f)).boldened());
-    g.drawText ("ms", box, juce::Justification::centred, false);
-}
-
 /** One grain envelope, for the Shape knob's cap - the same idea as Peak Wah's
     morphing LFO glyph, but the curve that morphs here is the grain window:
     `shape` leans it from soft (a slow rise into a gentle tail) at 0 to plucky
@@ -179,17 +170,59 @@ void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour
     g.drawLine (c.x, r.getY(), c.x, c.y + radius * 0.10f, stroke);
 }
 
-/** Placeholder module mark - a little grain spray - pending the real per-module
-    icons from the design (grain dots, notes, gears, tape reel, reflection). */
-void drawGroupMarkPlaceholder (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+/** The icon set's own ink colour - sampled from the fully-opaque pixels of
+    all five files, which agree to within a couple of RGB steps (~68,68,70).
+    Used below as a fill, not a tint: `Graphics::drawImage` compositing these
+    PNGs' own RGB+alpha measurably washes the linework out at this draw size
+    on this build (confirmed by sampling pixels going in versus what actually
+    lands on screen); reading the image as an alpha stencil and flooding it
+    with this colour - matching the source almost exactly - does not, and
+    reads sharper regardless of scale. */
+constexpr juce::uint32 kIconInk = 0xff444446;
+
+/** A module's mark drawn from a bundled PNG, fitted to the icon box without
+    stretching. The tint argument is ignored - see `kIconInk` above. */
+void drawImageIcon (juce::Graphics& g, juce::Rectangle<float> area, const juce::Image& img)
 {
-    static const float pts[][2] = { { 0.30f, 0.28f }, { 0.66f, 0.22f }, { 0.50f, 0.50f },
-                                    { 0.24f, 0.66f }, { 0.72f, 0.62f }, { 0.46f, 0.82f } };
-    const float d = area.getWidth() * 0.17f;
-    g.setColour (colour.withAlpha (0.6f));
-    for (const auto& p : pts)
-        g.fillEllipse (area.getX() + p[0] * area.getWidth() - d * 0.5f,
-                       area.getY() + p[1] * area.getHeight() - d * 0.5f, d, d);
+    if (! img.isValid())
+        return;
+
+    g.setColour (juce::Colour (kIconInk));
+    g.drawImage (img, area, juce::RectanglePlacement::centred, true);
+}
+
+void drawRandomIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img = juce::ImageCache::getFromMemory (BinaryData::random_png, BinaryData::random_pngSize);
+    drawImageIcon (g, area, img);
+}
+
+void drawGrainIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img =
+        juce::ImageCache::getFromMemory (BinaryData::grainicon_png, BinaryData::grainicon_pngSize);
+    drawImageIcon (g, area, img);
+}
+
+void drawTapeIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img =
+        juce::ImageCache::getFromMemory (BinaryData::tapeicon_png, BinaryData::tapeicon_pngSize);
+    drawImageIcon (g, area, img);
+}
+
+void drawReverbIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img =
+        juce::ImageCache::getFromMemory (BinaryData::reverbicon_png, BinaryData::reverbicon_pngSize);
+    drawImageIcon (g, area, img);
+}
+
+void drawPitchIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
+{
+    static const juce::Image img =
+        juce::ImageCache::getFromMemory (BinaryData::pitchicon_png, BinaryData::pitchicon_pngSize);
+    drawImageIcon (g, area, img);
 }
 } // namespace
 
@@ -439,6 +472,20 @@ void PeakGrainProcessor::onDensitySyncToggled()
 void PeakGrainProcessor::onDelaySyncToggled()
 {
     syncToggled (kDelayTimeID, delayFree01, delaySync01, delaySyncParam);
+}
+
+void PeakGrainProcessor::onGrainSyncToggled()
+{
+    // One footer switch for the whole Grain card. It is bound to `ssync`, which
+    // has already flipped; carry `dsync` to the same state, then let each knob's
+    // own handler nudge Size and Destiny to what that mode remembers.
+    const bool nowSynced = sizeSyncParam != nullptr && sizeSyncParam->load() > 0.5f;
+
+    if (auto* dsync = apvts.getParameter (kDensitySyncID); dsync != nullptr && (dsync->getValue() > 0.5f) != nowSynced)
+        dsync->setValueNotifyingHost (nowSynced ? 1.0f : 0.0f);
+
+    onSizeSyncToggled();
+    onDensitySyncToggled();
 }
 
 void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
@@ -824,72 +871,71 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
     // Lavender-white panels standing off the cool grey face, each with its own
     // mark centred at the top (placeholder art for now).
     const juce::Colour kCardFill { 0xffe9e8f0 };
+
+    // Sync / ms switch in the card footer. The Grain card carries one switch
+    // that drives both grain knobs (Size + Destiny) at once; Delay carries one
+    // for Time. The switch is bound to the first of its pair - `footerOnClick`
+    // mirrors its new state onto the sibling before nudging the knobs. Off/on
+    // are silent: only the knob positions move to what each mode remembers.
+    const auto syncFooter = [] (const char* id) {
+        return ee::ui::SlideToggleSpec {
+            .parameterID = id, .labelOff = "ms", .labelOn = "Sync", .invertPosition = true
+        };
+    };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Random", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Delay", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
-        { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawGroupMarkPlaceholder },
+        { .caption = "Grain",
+          .count = 4,
+          .columns = 1,
+          .fill = kCardFill,
+          .icon = drawGrainIcon,
+          .footer = syncFooter (kSizeSyncID),
+          .footerOnClick = [this] { onGrainSyncToggled(); } },
+        { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawPitchIcon },
+        { .caption = "Random", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawRandomIcon },
+        { .caption = "Delay",
+          .count = 3,
+          .columns = 1,
+          .fill = kCardFill,
+          .icon = drawTapeIcon,
+          .footer = syncFooter (kDelaySyncID),
+          .footerOnClick = [this] { onDelaySyncToggled(); } },
+        { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawReverbIcon },
     };
     spec.knobGroupsHorizontal = true;
     spec.filledKnobGroups = true;
     spec.captionUntilTouchedKnobs = true; // caption at rest, value only while turning
+    spec.knobGroupFooters = true;
 
-    // A small Sync / ms button beside Size, Destiny and the delay Time knob:
-    // pressed, the knob picks a note division and the reading is the division
-    // label; released, it is the free unit at the host tempo. The toggle is
-    // silent - `onClick` only nudges the knob to its remembered position for
-    // the mode being entered.
     spec.toggles = {
-        { .parameterID = kSizeSyncID,
-          .caption = "Sync",
-          .afterKnobIndex = 1,
-          .centeredRight = true,
-          .iconSize = 16,
-          .onClick = [this] { onSizeSyncToggled(); },
-          .icon = drawMsIcon,
-          .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = kDensitySyncID,
-          .caption = "Sync",
-          .afterKnobIndex = 2,
-          .centeredRight = true,
-          .iconSize = 16,
-          .onClick = [this] { onDensitySyncToggled(); },
-          .icon = drawMsIcon,
-          .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = kDelaySyncID,
-          .caption = "Sync",
-          .afterKnobIndex = 12,
-          .centeredRight = true,
-          .iconSize = 16,
-          .onClick = [this] { onDelaySyncToggled(); },
-          .icon = drawMsIcon,
-          .controlStyle = ee::ui::ControlStyle::digital },
-
         // A power button in the top-right of each module panel: off feeds that
         // section its no-op values (see processBlock) without moving its knobs.
         { .parameterID = kGrainOnID,
           .caption = "On",
+          .iconSize = 18,
           .groupPanelIndex = 0,
           .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
         { .parameterID = kPitchOnID,
           .caption = "On",
+          .iconSize = 18,
           .groupPanelIndex = 1,
           .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
         { .parameterID = kRandomOnID,
           .caption = "On",
+          .iconSize = 18,
           .groupPanelIndex = 2,
           .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
         { .parameterID = kDelayOnID,
           .caption = "On",
+          .iconSize = 18,
           .groupPanelIndex = 3,
           .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
         { .parameterID = kReverbOnID,
           .caption = "On",
+          .iconSize = 18,
           .groupPanelIndex = 4,
           .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
@@ -942,9 +988,10 @@ juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
     // Five narrow modules side by side, one knob per row. The row gap still has
     // to clear the Sync buttons that hang under Size, Destiny and Time.
     spec.knobDiameter = 64;
-    spec.knobRowGap = 4;
+    spec.displayBandRise = -24; // push the scope band down too
+    spec.knobRowGap = -4;
     spec.width = 700;
-    spec.height = 745;
+    spec.height = 700;
 
     // Peak Wah's white theme, but the face is a cool light-grey box (matching
     // the design) so the lavender-white panels read as raised cards on it.

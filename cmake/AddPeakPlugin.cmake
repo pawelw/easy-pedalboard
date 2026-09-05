@@ -4,13 +4,19 @@
 #     BUNDLE      <com.synthpeak.something>
 #     CATEGORIES  <VST3 category words>
 #     [SOURCES    <extra .cpp beyond src/PluginProcessor.cpp>]
-#     [LIBS       <extra link targets beyond ee_shared>])
+#     [LIBS       <extra link targets beyond ee_shared>]
+#     [WEBVIEW])
 #
 # Every pedal is the same plugin with a different processor, so the twenty-odd
 # lines of juce_add_plugin boilerplate they used to each carry live here once.
 # Anything genuinely per-pedal is an argument.
+#
+# WEBVIEW opts a pedal into juce::WebBrowserComponent instead of the ee::ui
+# analog/digital face: NEEDS_WEBVIEW2 on Windows, JUCE_WEB_BROWSER=1 instead of
+# the default 0, and the caller is responsible for linking juce::juce_gui_extra
+# itself (it is not part of ee_shared).
 function(peak_add_plugin TARGET)
-    cmake_parse_arguments(ARG "" "CODE;PRODUCT;BUNDLE;CATEGORIES" "SOURCES;LIBS" ${ARGN})
+    cmake_parse_arguments(ARG "WEBVIEW" "CODE;PRODUCT;BUNDLE;CATEGORIES" "SOURCES;LIBS" ${ARGN})
 
     foreach(required CODE PRODUCT BUNDLE CATEGORIES)
         if(NOT ARG_${required})
@@ -43,12 +49,20 @@ function(peak_add_plugin TARGET)
         NEEDS_MIDI_OUTPUT       FALSE
         IS_MIDI_EFFECT          FALSE
         EDITOR_WANTS_KEYBOARD_FOCUS FALSE
+        NEEDS_WEBVIEW2          ${ARG_WEBVIEW}
         COPY_PLUGIN_AFTER_BUILD ${EE_INSTALL_PLUGINS})
 
     target_sources(${TARGET} PRIVATE src/PluginProcessor.cpp ${ARG_SOURCES})
 
+    if(ARG_WEBVIEW)
+        set(webBrowserFlag 1)
+    else()
+        set(webBrowserFlag 0)
+    endif()
+
     target_compile_definitions(${TARGET} PUBLIC
-        JUCE_WEB_BROWSER=0
+        JUCE_WEB_BROWSER=${webBrowserFlag}
+        JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0)
 

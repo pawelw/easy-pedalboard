@@ -7,11 +7,12 @@
 
 #include "ee/dsp/AutoWah.h"
 
-class PeakWahProcessor : public juce::AudioProcessor
+class PeakWahProcessor : public juce::AudioProcessor,
+                         private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     PeakWahProcessor();
-    ~PeakWahProcessor() override = default;
+    ~PeakWahProcessor() override;
 
     void prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock) override;
     void releaseResources() override;
@@ -53,11 +54,22 @@ public:
     std::atomic<float> lfoModLUi { 0.0f };
     std::atomic<float> lfoModRUi { 0.0f };
 
+    /** Live input level (0 = silent, 1 = 0 dBFS, mapped from -40..0 dB), for
+        the editor's signal glow on the logo. This is the dry input, not the
+        wah's LFO position - it tracks what you're actually playing, not
+        where the sweep happens to be. Written from the audio thread. */
+    std::atomic<float> peakLevelUi { 0.0f };
+
     /** Called by the editor when the Sync button is clicked: parks the Time knob
         where the mode being left had it and recalls the new mode's spot. */
     void onSyncToggled();
 
 private:
+    // Runs onSyncToggled() whenever "sync" changes, from any UI or automation -
+    // moved here from the editor's switch onClick when the WebView editor spike
+    // gave up having one.
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
+
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     static constexpr int kMaxChannels = 2;
@@ -99,6 +111,10 @@ private:
     bool wasPlaying = false;
 
     double sampleRate = 44100.0;
+
+    // Audio-thread-only smoothed peak, in linear gain - peakLevelUi above is
+    // the UI-facing 0..1 mapping of this.
+    float peakLevelSmoothed = 0.0f;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PeakWahProcessor)
 };

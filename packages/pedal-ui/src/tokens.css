@@ -1,0 +1,64 @@
+@import "@fontsource/space-grotesk/500.css";
+@import "@fontsource/space-grotesk/700.css";
+
+/* The rack-module look shared by every component: cream panels, black ink,
+   scalloped-collar knobs, pill switches. One palette so a pedal reads as one
+   family of modules rather than several pedals styled separately. */
+:root {
+  --pui-panel: #f3f2ed;
+  --pui-panel-edge: #e8e6de;
+  --pui-ink: #1c1c1a;
+  --pui-ink-soft: #6b6a63;
+  --pui-line: #1c1c1a;
+  --pui-screw: #cfcdc3;
+  --pui-screw-shadow: #9c9a90;
+
+  --pui-knob-body: #232320;
+  --pui-knob-body-hi: #3a3a35;
+  --pui-knob-cap: #f0efec;
+  --pui-knob-cap-shadow: #dcdad3;
+  --pui-knob-dot: #1c1c1a;
+  --pui-knob-sweep: #dedcd4;
+  --pui-knob-sweep-lit: #c60000;
+
+  --pui-track: #1c1c1a;
+  --pui-thumb: #f6f5f0;
+
+  --pui-led-off: #c9c7bd;
+  --pui-led-on: #3fb662;
+  --pui-led-on-glow: rgba(63, 182, 98, 0.45);
+
+  --pui-scope-bg: #e9e7e0;
+  --pui-scope-grid: #d9d7cd;
+  --pui-scope-base: #6c0000;
+  --pui-scope-sweep: #9aa0aa;
+  --pui-scope-fill: rgba(154, 160, 170, 0.22);
+
+  --pui-radius-panel: 14px;
+  --pui-radius-pill: 999px;
+
+  --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
+  --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
+}
+
+.pui-reset,
+.pui-reset * {
+  box-sizing: border-box;
+  /* This is a hardware panel, not a document - nothing on it is meant to be
+     selected as text. Without this, dragging across a label (a knob caption,
+     a toggle's, a button's) leaves it highlighted and swaps the cursor to an
+     I-beam, both of which read as broken on a control that isn't text. */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.pui-caption {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pui-ink);
+  text-align: center;
+  cursor: default;
+}

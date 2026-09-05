@@ -44,14 +44,17 @@ public:
         `liveValueText` closure depends on has moved. */
     void refreshValueText();
 
-    int getLabelHeight() const noexcept { return compact ? compactLabelHeight : labelHeight; }
+    int getLabelHeight() const noexcept
+    {
+        return compact ? compactLabelHeight : (tightLabel ? valueRowHeight : labelHeight);
+    }
 
     /** Bottom of the text this knob actually prints, in its parent's
         coordinates - lower than its own bounds' bottom whenever it leaves a
         label row empty. What to hang a button off. */
     int printedTextBottom() const noexcept
     {
-        return getBottom() - (captionUntilTouched && ! compact ? labelHeight - valueRowHeight : 0);
+        return getBottom() - (captionUntilTouched && ! compact && ! tightLabel ? labelHeight - valueRowHeight : 0);
     }
 
     /** Called after the value changes, once the readout has refreshed. Lets a
@@ -70,6 +73,7 @@ private:
     bool compact = false;
     bool compactCaption = false;
     bool captionUntilTouched = false;
+    bool tightLabel = false;        // one short label row, not the full two-row block
     bool touched = false;          // the knob is being dragged: show the reading
 
     std::function<juce::String()> liveValueText;

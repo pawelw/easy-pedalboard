@@ -1,0 +1,134 @@
+.pui-knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0px;
+}
+
+.pui-knob__dial {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pui-knob__sweep {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.pui-knob__corner {
+  position: absolute;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--pui-ink);
+  pointer-events: none;
+}
+.pui-knob__corner--tl {
+  top: -20px;
+  left: -16px;
+}
+.pui-knob__corner--tr {
+  top: -20px;
+  right: -16px;
+}
+.pui-knob__corner--bl {
+  bottom: -20px;
+  left: -16px;
+}
+.pui-knob__corner--br {
+  bottom: -20px;
+  right: -16px;
+}
+
+.pui-knob__body {
+  position: relative;
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+  filter: drop-shadow(6px 8px 7px rgba(0, 0, 0, 0.1));
+}
+
+.pui-knob__body--dragging {
+  cursor: grabbing;
+}
+
+.pui-knob__end-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--pui-ink-soft);
+  pointer-events: none;
+  transition: color 120ms ease;
+}
+
+.pui-knob__end-marker--lit {
+  color: var(--pui-knob-sweep-lit);
+}
+
+.pui-knob__body:focus-visible {
+  outline: 2px solid var(--pui-knob-sweep-lit);
+  outline-offset: 4px;
+}
+
+.pui-knob__collar {
+  position: absolute;
+  inset: 0;
+}
+
+.pui-knob__cap {
+  position: absolute;
+  inset: 10.5%; /* matches COLLAR_INNER in Knob.jsx */
+  border-radius: 50%;
+  background: linear-gradient(
+    135deg,
+    #cbc9c2 0%,
+    var(--pui-knob-cap-shadow) 14%,
+    var(--pui-knob-cap) 40%,
+    #fbfbfa 70%,
+    #ffffff 100%
+  );
+  /* Dished, not domed: with the light still coming from the top left it lands
+     on the far wall, so the shade sits under the near rim and the sheen pools
+     on the bottom right - the inverse of a raised cap. */
+  box-shadow:
+inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inset 0 -1px 0 rgba(255, 255, 255, 0.9), inset -5px -6px 11px -8px rgba(255, 255, 255, 1)
+}
+
+.pui-knob__dot {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 50%;
+}
+.pui-knob__dot::after {
+  content: "";
+  position: absolute;
+  top: 7%;
+  left: 50%;
+  width: 9%;
+  height: 9%;
+  margin-left: -4.5%;
+  border-radius: 50%;
+  background: var(--pui-knob-dot);
+}
+
+.pui-knob__icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-46%, -56%) rotate(180deg) scale(0.8);
+  color: #424242;
+  pointer-events: none;
+  display: flex;
+}
+
+.pui-knob__caption {
+  margin-top: 2px;
+}

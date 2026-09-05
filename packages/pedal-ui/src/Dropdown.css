@@ -1,0 +1,128 @@
+.pui-dropdown {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+/* unstyled also strips Mantine's own `position: relative` off this wrapper,
+   which is what let the input and its right-hand section (the chevron) stack
+   as normal flow siblings instead of the section overlaying the input's
+   right edge - the wrapper grew to fit both, taller than the input alone,
+   and everything centred against that taller box read as misaligned. */
+.pui-dropdown__wrapper {
+  position: relative;
+}
+
+.pui-dropdown__input {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--pui-ink);
+  background: var(--pui-panel);
+  border: 1.5px solid var(--pui-line);
+  border-radius: 8px;
+  padding: 8px 28px 8px 12px; /* right padding clears the overlaid chevron */
+  min-width: 120px;
+  cursor: pointer;
+  transition: background-color 120ms ease;
+  /* Same WebKit-native-chrome trap as Button.css - an <input> left alone
+     still draws its own bevel/shadow, doubling up with ours on hover/press. */
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* Left alone, this is a plain <input> and picks up the browser/OS's native
+   focus ring (the system accent colour, orange on this machine) on hover and
+   focus instead of anything we chose. */
+.pui-dropdown__input:hover,
+.pui-dropdown__input:focus,
+.pui-dropdown__input:focus-visible {
+  outline: none;
+  border-color: var(--pui-line);
+}
+
+.pui-dropdown__input:hover {
+  background: var(--pui-panel-edge);
+}
+
+.pui-dropdown__input:active {
+  background: var(--pui-screw);
+}
+
+.pui-dropdown__section {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  pointer-events: none;
+}
+
+/* Mantine's chevron reads its size from a CSS variable ("--combobox-chevron-
+   size-sm") that never resolves here, so an unconstrained SVG with no
+   width/height attribute falls back to the browser's ~300x150 replaced-
+   element default - fixing the size directly is more reliable than chasing
+   why that variable is missing. */
+.pui-dropdown__section svg {
+  width: 12px;
+  height: 12px;
+}
+
+.pui-dropdown__panel {
+  /* unstyled strips Mantine's own base Popover positioning class along with
+     its look, so floating-ui's computed offset has no `position` to apply
+     against and the panel was rendering in normal document flow whatever
+     the portal happened to sit near. */
+  position: absolute;
+  z-index: 1000;
+  min-width: 160px; /* wider than the closed input - room for longer option
+                        names without wrapping; menuAlign="end" is what makes
+                        that extra width grow left instead of overflowing
+                        right off the panel's edge */
+  background: var(--pui-panel);
+  border: 1.5px solid var(--pui-line);
+  border-radius: 8px;
+  padding: 4px;
+}
+
+.pui-dropdown__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--pui-ink);
+  padding: 7px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 100ms ease;
+}
+
+/* The selected option's check mark - Mantine marks it with "data-checked",
+   not the "data-combobox-selected" this used to (wrongly) look for, which is
+   why the highlight below never actually applied until now. */
+.pui-dropdown__option[data-checked="true"] {
+  background: var(--pui-ink);
+  color: var(--pui-panel);
+}
+
+.pui-dropdown__option[data-checked="true"] svg {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+.pui-dropdown__option[data-combobox-active]:not([data-checked="true"]) {
+  background: var(--pui-panel-edge);
+}
+
+.pui-dropdown__caption {
+  margin-top: 0;
+}
