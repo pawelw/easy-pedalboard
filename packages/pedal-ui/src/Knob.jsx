@@ -106,6 +106,34 @@ function Sweep({
   );
 }
 
+/** `variant="scale"`'s tick ring: two stacked copies of the same 20-tick
+    pattern (one dim, one lit), the lit one angularly masked to the swept
+    portion so it reads as "the ticks already passed" rather than a second
+    ring drawn on top. Both copies share one geometry (`repeating-conic-
+    gradient`, 13.5deg period = 270deg/20 ticks, each 1.8deg wide) so they
+    can never drift apart pixel-for-pixel the way two hand-drawn rings might.
+    Ticks stop cleanly at the same +-135deg travel limit as every other
+    control here (225deg start + 270deg sweep = wraps back to 225deg) - the
+    270/20=13.5deg period already lands exactly on that boundary, so there's
+    no partial tick clipped at the gap.
+
+    `gap`: the ring's distance outside the dial's own box, in pixels - like
+    Sweep's own `gap`, independent of `diameter`, so two differently-sized
+    scale knobs can be told to sit the same distance from a neighbour above
+    them (see Knob's own comment on this below). `-webkit-mask` alongside
+    `mask` throughout - this runs in WKWebView. */
+function TickScale({ diameter, value, gap = SWEEP_GAP }) {
+  const sweep = `${value * 270}deg`;
+  return (
+    <div className="pui-knob__ticks-wrap" style={{ inset: -gap }}>
+      <div className="pui-knob__ticks" />
+      <div className="pui-knob__ticks-lit" style={{ "--pui-knob-tick-sweep": sweep }}>
+        <i />
+      </div>
+    </div>
+  );
+}
+
 /** `variant="scale"`'s needle: a rounded bar pinned at the knob's centre and
     rotated to the value angle, the way `.pui-knob__dot` pins a dot in the
     collar variant - same wrapper-rotates-not-the-bar trick, so the bar's own
@@ -144,8 +172,7 @@ function EndMarker({ label, radius, lit }) {
  *
  * `variant`: "collar" (default, unchanged) is the scalloped dark collar and
  * outer value arc every pedal has used so far. "scale" is the plain-ring +
- * needle face the onyx Delay layout uses - same outer value arc as collar,
- * just grayscale and closer to the ring, plus a needle instead of a dot.
+ * tick-scale + needle face the onyx Delay layout uses (COMPONENTS.md).
  * Same controlled API, same drag/keyboard handling below, only the dial's
  * own markup and CSS differ.
  */
@@ -163,7 +190,6 @@ export default function Knob({
   step = 0.01,
   variant = "collar",
   sweepGap,
-  sweepWidth,
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
@@ -246,22 +272,20 @@ export default function Knob({
     <div className="pui-reset pui-knob" style={{ width: size + 28 }}>
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
         {isScale ? (
-          <Sweep
+          <TickScale
             diameter={size}
             value={value}
-            // The arc's own overshoot past the dial's box (what actually
+            // The ring's own distance past the dial's box (what actually
             // sets its visual distance from whatever sits above the knob,
-            // like Delay's TapScope) is gap+width, independent of `size` -
-            // so two differently-sized scale knobs read the same distance
-            // from that neighbour as long as these two numbers match,
-            // regardless of how big either knob itself is. Callers that
-            // need to line up with another scale knob of a different size
-            // (Delay's Mix/Feedback with its Time knobs) pass sweepGap/
-            // sweepWidth explicitly instead of relying on the size default.
+            // like Delay's TapScope) is `gap` alone, independent of `size` -
+            // the ring's outer edge sits at radius size/2+gap regardless of
+            // diameter, so two differently-sized scale knobs read the same
+            // distance from that neighbour as long as gap matches, whatever
+            // their own sizes are. Callers that need to line up with
+            // another scale knob of a different size (Delay's Mix/Feedback
+            // with its Time knobs) pass sweepGap explicitly instead of
+            // relying on the size default.
             gap={sweepGap ?? (size >= 60 ? 9 : 6)}
-            width={sweepWidth ?? (size >= 60 ? 3 : 2.4)}
-            trackColor="var(--pui-tick)"
-            litColor="var(--pui-tick-lit)"
           />
         ) : (
           <Sweep diameter={size} value={value} />
