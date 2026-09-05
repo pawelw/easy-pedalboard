@@ -20,7 +20,7 @@ export default function TimeControl({ side, parameterId }) {
   // ms figure alongside it is the only place that reading shows up at all.
   return (
     <div className="pd-time-control">
-      <JuceKnob parameterId={parameterId} variant="scale" size={42} />
+      <JuceKnob parameterId={parameterId} variant="scale" size={42} showValueLabel={false} />
       <Readout label={side} value={text} unit={isMs ? undefined : msText} />
     </div>
   );

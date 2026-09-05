@@ -54,8 +54,13 @@ function useFormattedText(parameterId, value) {
 
 /** Knob bound to a WebSliderRelay by parameter id. State is optimistic (set
     locally on drag, not only from the relay's echo) so it still works
-    stand-alone in a plain browser, where there is no backend to echo it. */
-export function JuceKnob({ parameterId, caption, size, variant, endMarkerLabel, sweepGap }) {
+    stand-alone in a plain browser, where there is no backend to echo it.
+
+    `showValueLabel` (default true): Knob swaps its caption for the live
+    value while dragging - suppress that for a knob whose value already has
+    a full-size readout right next to it (the Time knobs' Readout), where a
+    second copy popping up under the knob itself is redundant. */
+export function JuceKnob({ parameterId, caption, size, variant, endMarkerLabel, sweepGap, showValueLabel = true }) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const readout = useFormattedText(parameterId, value);
 
@@ -67,7 +72,7 @@ export function JuceKnob({ parameterId, caption, size, variant, endMarkerLabel, 
       caption={caption}
       endMarkerLabel={endMarkerLabel}
       value={value}
-      valueLabel={readout}
+      valueLabel={showValueLabel ? readout : undefined}
       onChange={setValue}
       onDragStart={() => sliderState.sliderDragStarted()}
       onDragEnd={() => sliderState.sliderDragEnded()}
