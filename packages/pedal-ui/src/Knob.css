@@ -89,11 +89,11 @@
   border-radius: 50%;
   background: linear-gradient(
     135deg,
-    #cbc9c2 0%,
+    var(--pui-knob-cap-hi) 0%,
     var(--pui-knob-cap-shadow) 14%,
     var(--pui-knob-cap) 40%,
-    #fbfbfa 70%,
-    #ffffff 100%
+    var(--pui-knob-cap-glow) 70%,
+    var(--pui-knob-cap-shine) 100%
   );
   /* Dished, not domed: with the light still coming from the top left it lands
      on the far wall, so the shade sits under the near rim and the sheen pools
@@ -124,7 +124,7 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
   left: 50%;
   top: 50%;
   transform: translate(-46%, -56%) rotate(180deg) scale(0.8);
-  color: #424242;
+  color: var(--pui-icon-ink);
   pointer-events: none;
   display: flex;
 }

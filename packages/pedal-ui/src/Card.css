@@ -9,7 +9,7 @@
   background: var(--pui-panel-grain) var(--pui-panel);
   border-radius: var(--pui-radius-panel);
   padding: 18px 22px 22px;
-  border: 1px solid rgba(0, 0, 0, 0.14);
+  border: 1px solid var(--pui-outline);
   box-shadow: var(--pui-panel-shadow);
 }
 

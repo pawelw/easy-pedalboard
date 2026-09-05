@@ -44,7 +44,7 @@
   width: 26px;
   margin-left: -13px;
   border-radius: 4px;
-  background: linear-gradient(180deg, #ffffff, var(--pui-knob-cap) 40%, var(--pui-knob-cap-shadow));
+  background: linear-gradient(180deg, var(--pui-fader-thumb-hi), var(--pui-knob-cap) 40%, var(--pui-knob-cap-shadow));
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);

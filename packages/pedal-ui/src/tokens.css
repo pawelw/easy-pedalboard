@@ -10,6 +10,7 @@
   --pui-ink: #1c1c1a;
   --pui-ink-soft: #6b6a63;
   --pui-line: #1c1c1a;
+  --pui-outline: rgba(0, 0, 0, 0.14); /* Card's border - was a literal on .pui-card itself */
   --pui-screw: #cfcdc3;
   --pui-screw-shadow: #9c9a90;
 
@@ -17,12 +18,21 @@
   --pui-knob-body-hi: #3a3a35;
   --pui-knob-cap: #f0efec;
   --pui-knob-cap-shadow: #dcdad3;
+  /* Collar cap gradient's 3 remaining literal stops, named so the
+     variant="collar" path is fully token-driven too - same numbers. */
+  --pui-knob-cap-hi: #cbc9c2;
+  --pui-knob-cap-glow: #fbfbfa;
+  --pui-knob-cap-shine: #ffffff;
   --pui-knob-dot: #1c1c1a;
   --pui-knob-sweep: #dedcd4;
   --pui-knob-sweep-lit: #c60000;
+  --pui-icon-ink: #424242; /* Knob's icon slot (Wah's Shape/Filter Type glyphs) */
 
   --pui-track: #1c1c1a;
   --pui-thumb: #f6f5f0;
+  --pui-fader-thumb-hi: #ffffff; /* top of the vertical Slider's thumb gradient -
+                                     unused by Wah; do not repoint the vertical
+                                     Slider's own rendering off this token's name */
 
   --pui-led-off: #c9c7bd;
   --pui-led-on: #3fb662;
@@ -79,6 +89,52 @@
     0 1px 0 var(--pui-panel-edge) inset,
     0 2px 6px rgba(0, 0, 0, 0.08),
     0 14px 28px rgba(0, 0, 0, 0.14);
+}
+
+/* Phase 2 of the onyx handoff (design_handoff_peak_delay_onyx/TOKENS.md) -
+   these values are the repo's own PedalTheme::onyx() (shared/src/ui/
+   PedalTheme.cpp), kept equal on purpose so the JUCE face and the web face
+   never drift apart. Applied via <PedalUIProvider theme="onyx">, which is
+   the only thing that ever sets data-pui-theme - Wah never passes `theme`,
+   so none of this reaches it. */
+[data-pui-theme="onyx"] {
+  --pui-page: #0f1315;
+  --pui-panel: #171d20;
+  --pui-panel-edge: #222b2e;
+  --pui-outline: #2a3336;
+  --pui-ink: #b9d3d9;
+  --pui-ink-soft: #8ba3a9;
+  --pui-ink-dim: #6c8288;
+  --pui-line: #2a3336;
+  --pui-divider: #222b2e;
+
+  --pui-recess: #101416;
+  --pui-recess-ink: #4d5f65;
+  --pui-tick: #39474b;
+  --pui-tick-lit: #b9d3d9;
+
+  --pui-knob-body: #0b0e10; /* the ring */
+  --pui-cap-grad-top: #364347;
+  --pui-cap-grad-bottom: #191f22;
+  --pui-cap-ring: rgba(185, 211, 217, 0.25);
+  --pui-pointer: #b9d3d9;
+
+  --pui-pill-on-bg: #b9d3d9;
+  --pui-pill-on-ink: #171d20;
+  --pui-pill-off-border: #2a3336;
+  --pui-pill-off-ink: #8ba3a9;
+
+  --pui-knob-shadow: 0 8px 18px rgba(0, 0, 0, 0.55);
+  --pui-well-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+  --pui-scope-grid: #233034;
+  --pui-logo-filter: brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg);
+
+  /* Card, per COMPONENTS.md's panel table: no grain, a bigger radius, a
+     softer/deeper shadow with no inset highlight (there's no panel-edge
+     bevel to catch light the way the cream panel's top edge does). */
+  --pui-radius-panel: 20px;
+  --pui-panel-grain: none;
+  --pui-panel-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
 }
 
 .pui-reset,
