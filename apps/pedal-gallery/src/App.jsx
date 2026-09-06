@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { PedalUIProvider } from "@synthpeak/pedal-ui";
 import { pedals } from "./pedals.js";
+import Components from "./Components.jsx";
 import "./index.css";
 
 function useHashSlug() {
@@ -9,6 +11,17 @@ function useHashSlug() {
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
+
+  // Every route used to be shorter than one screen (html/body were
+  // `overflow: hidden` - see plugins/*/jsui/src/index.css), so a leftover
+  // scroll position from the previous route was never visible. Now that a
+  // route (Components) can be taller than the viewport, switching away from
+  // a scrolled-down one needs an explicit reset - the browser doesn't do
+  // this on its own for a hash-only navigation within one page.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [slug]);
+
   return slug;
 }
 
@@ -21,6 +34,11 @@ function Home() {
       </header>
 
       <div className="gallery__grid">
+        <a key="components" href="#components" className="gallery__tile">
+          <span className="gallery__tile-name">pedal-ui components</span>
+          <span className="gallery__tile-status">Light / onyx showcase</span>
+        </a>
+
         {pedals.map((pedal) => (
           <a
             key={pedal.slug}
@@ -44,14 +62,21 @@ function PedalView({ pedal }) {
       <a href="#" className="gallery__back">
         ← All pedals
       </a>
-      <Face />
+      {/* App.jsx is imported directly (see pedals.js), bypassing the pedal's
+          own main.jsx - which is the only place that would otherwise wrap
+          it in PedalUIProvider. Without this, every pedal would render off
+          bare :root regardless of its own theme choice. */}
+      <PedalUIProvider theme={pedal.theme}>
+        <Face />
+      </PedalUIProvider>
     </div>
   );
 }
 
 export default function App() {
   const slug = useHashSlug();
-  const pedal = pedals.find((p) => p.slug === slug && p.face);
+  if (slug === "components") return <Components />;
 
+  const pedal = pedals.find((p) => p.slug === slug && p.face);
   return pedal ? <PedalView pedal={pedal} /> : <Home />;
 }

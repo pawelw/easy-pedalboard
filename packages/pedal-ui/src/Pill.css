@@ -1,0 +1,37 @@
+/* Scoped onto .pui-button's own selectors (two classes, or a class plus the
+   [data-pressed] attribute) rather than .pui-pill alone, so these always
+   outrank Button.css's base rules regardless of which stylesheet loads
+   first - the same reasoning as Peak Wah's own .pw-presets .pui-button
+   override (see peak-wah/jsui/src/index.css), just via a component class
+   instead of a layout-local one. */
+.pui-button.pui-pill {
+  padding: 6px 10px;
+  border-radius: var(--pui-radius-pill);
+  background: transparent;
+  border: 1px solid var(--pui-pill-off-border);
+  color: var(--pui-pill-off-ink);
+}
+
+.pui-button.pui-pill:hover,
+.pui-button.pui-pill:active {
+  background: transparent;
+}
+
+.pui-button.pui-pill[data-pressed] {
+  background: var(--pui-pill-on-bg);
+  color: var(--pui-pill-on-ink);
+  border-color: transparent;
+}
+
+.pui-button.pui-pill[data-pressed]:active {
+  background: var(--pui-pill-on-bg);
+}
+
+.pui-button.pui-pill .pui-button__label {
+  gap: 6px;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

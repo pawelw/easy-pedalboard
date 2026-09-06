@@ -35,6 +35,12 @@ folder from the JUCE version this repo pins (`GIT_TAG 8.0.15` in the
 top-level `CMakeLists.txt`). If that pin moves, re-copy it - nothing checks
 that these stay in sync.
 
+It lives at the repo root (`vendor/juce-framework-frontend/`, referenced here
+via a relative `file:` dependency) rather than inside this plugin's own
+`jsui/`, so every pedal's jsui project can point at the same copy - two
+`file:` deps with the same package name but different targets don't hoist
+cleanly under npm workspaces.
+
 ## What this does and doesn't prove
 
 Parameter binding (`WebSliderRelay` + `WebSliderParameterAttachment`) keeps

@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#dcdad2;font-family:'Space Grotesk',-apple-system,'Helvetica Neue',sans-serif}
+a{color:#2c5e3a}a:hover{color:#1d2e20}
+@keyframes tapfade{0%{opacity:.95}100%{opacity:.08}}
+</style></helmet>
+
+<section style="padding:44px 48px 8px">
+<div style="display:flex;align-items:baseline;gap:10px;margin:0 0 6px">
+<a href="#t2" style="font:700 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none">2</a>
+<span style="font:700 13px/1.2 'Space Grotesk',sans-serif;color:#1a1a1a">Onyx with a green tape footer</span>
+</div>
+<p style="margin:0 0 26px;font:400 12px/1.5 'Space Grotesk',sans-serif;color:rgba(0,0,0,.5);max-width:640px">The tape stage gets its own full-bleed band in the repo's deep green, so it reads as a separate machine sitting in front of the delay. Mod stays inside the onyx body where it belongs — it lives in the feedback loop.</p>
+
+<div style="display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start">
+
+<div id="2a" style="display:flex;flex-direction:column;gap:9px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 'Space Grotesk',sans-serif;color:rgba(0,0,0,.55)"><a href="#2a" style="font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">2a</a>Green band — same controls, own colour</div>
+<div style="width:568px;box-sizing:border-box;border-radius:20px;background:#171d20;border:1px solid #2a3336;box-shadow:0 20px 44px rgba(0,0,0,.4);overflow:hidden">
+  <div style="padding:22px 26px 22px">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:20px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="packages/pedal-ui/src/peak-logo.png" alt="" style="height:22px;width:auto;display:block;filter:brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg)">
+      <h1 style="margin:0;font:700 19px/1 'Space Grotesk',sans-serif;color:#b9d3d9">Peak Delay</h1>
+    </div>
+    <span style="font:500 9px/1 'Space Grotesk',sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8ba3a9">Stereo · 1/8 · 1/8T</span>
+  </header>
+
+  <!-- echo scope -->
+  <div style="height:78px;border-radius:12px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);position:relative;overflow:hidden;margin-bottom:22px">
+    <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:#233034"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 20px">
+      <div style="flex:1;display:flex;justify-content:space-between;align-items:center;height:100%">
+        <div style="width:4px;height:30px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:8px;animation:tapfade 2.4s linear infinite;animation-delay:0s"></div>
+        <div style="width:4px;height:24px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:8px;animation:tapfade 2.4s linear infinite;animation-delay:.18s"></div>
+        <div style="width:4px;height:22px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:14px;animation:tapfade 2.4s linear infinite;animation-delay:.36s"></div>
+        <div style="width:4px;height:17px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:12px;animation:tapfade 2.4s linear infinite;animation-delay:.54s"></div>
+        <div style="width:4px;height:15px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:19px;animation:tapfade 2.4s linear infinite;animation-delay:.72s"></div>
+        <div style="width:4px;height:11px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:17px;animation:tapfade 2.4s linear infinite;animation-delay:.9s"></div>
+        <div style="width:4px;height:9px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:24px;animation:tapfade 2.4s linear infinite;animation-delay:1.08s"></div>
+        <div style="width:4px;height:7px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:22px;animation:tapfade 2.4s linear infinite;animation-delay:1.26s"></div>
+      </div>
+    </div>
+    <div style="position:absolute;left:10px;top:7px;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#4d5f65">L</div>
+    <div style="position:absolute;left:10px;bottom:7px;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#4d5f65">R</div>
+  </div>
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+    <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+      <div style="position:relative;width:84px;height:84px">
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#39474b 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div>
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg);mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div></div>
+        <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)">
+          <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+            <div style="position:absolute;inset:0;transform:rotate(-46deg)"><div style="position:absolute;top:10%;left:50%;width:3px;height:26%;margin-left:-1.5px;border-radius:2px;background:#b9d3d9"></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:11px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#b9d3d9">Mix</div>
+      <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#8ba3a9">33 %</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+      <div style="position:relative;width:84px;height:84px">
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#39474b 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div>
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg);mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div></div>
+        <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)">
+          <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+            <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:10%;left:50%;width:3px;height:26%;margin-left:-1.5px;border-radius:2px;background:#b9d3d9"></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:11px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#b9d3d9">Feedback</div>
+      <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#8ba3a9">62 %</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:22px;padding-top:2px;width:236px">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="position:relative;width:42px;height:42px;flex:none">
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 83%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 83%,#000 83%);background:repeating-conic-gradient(from 225deg,#39474b 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 148deg,rgba(0,0,0,0) 148deg);mask:conic-gradient(from 225deg,#000 0 148deg,rgba(0,0,0,0) 148deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 83%,#000 83%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+            <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+              <div style="position:absolute;inset:0;transform:rotate(13deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;background:#101416;box-shadow:inset 0 1px 4px rgba(0,0,0,.5)">
+          <span style="width:34px;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#8ba3a9">LEFT</span>
+          <span style="flex:1;font:700 19px/1 'Space Grotesk',sans-serif;color:#b9d3d9">1/8</span>
+          <span style="font:500 9.5px/1 'Space Grotesk',sans-serif;color:#6c8288">250 ms</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="position:relative;width:42px;height:42px;flex:none">
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 83%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 83%,#000 83%);background:repeating-conic-gradient(from 225deg,#39474b 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg);mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 83%,#000 83%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+            <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+              <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;background:#101416;box-shadow:inset 0 1px 4px rgba(0,0,0,.5)">
+          <span style="width:34px;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#8ba3a9">RIGHT</span>
+          <span style="flex:1;font:700 19px/1 'Space Grotesk',sans-serif;color:#b9d3d9">1/8T</span>
+          <span style="font:500 9.5px/1 'Space Grotesk',sans-serif;color:#6c8288">167 ms</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#b9d3d9">
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#171d20" stroke-width="1.9"><g transform="rotate(45 10 10)"><rect x="6.6" y="2.4" width="6.8" height="10.4" rx="3.4"></rect><rect x="6.6" y="7.2" width="6.8" height="10.4" rx="3.4"></rect></g></svg>
+          <span style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#171d20">LINKED</span>
+        </div>
+        <div style="padding:6px 10px;border-radius:999px;border:1px solid #2a3336;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#8ba3a9">MS</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid #222b2e;display:flex;align-items:center;gap:14px">
+    <span style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;color:#4d5f65">POST-STAGE</span>
+    <div style="flex:1;display:flex;align-items:center;gap:9px">
+      <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#b9d3d9">MOD</span>
+      <div style="flex:1;height:5px;border-radius:3px;background:#222b2e;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:30%;border-radius:3px;background:#b9d3d9"></div><div style="position:absolute;left:30%;top:-4.5px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#b9d3d9"></div></div>
+      <span style="font:500 10px/1 'Space Grotesk',sans-serif;color:#6c8288">30 %</span>
+    </div>
+  </div>
+  </div>
+  <div style="background:#375916;padding:14px 26px 15px;display:flex;align-items:center;gap:14px;border-top:1px solid #46701c">
+    <svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="#d8f088" stroke-width="1.5" style="flex:none"><circle cx="7.6" cy="7" r="5.1"></circle><circle cx="18.4" cy="7" r="5.1"></circle><circle cx="7.6" cy="7" r="1.2"></circle><circle cx="18.4" cy="7" r="1.2"></circle><rect x="1.2" y="14.4" width="23.6" height="4.4" rx="1.4"></rect></svg>
+    <div style="display:flex;flex-direction:column;gap:3px;flex:none;width:126px">
+      <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;color:#f2f7e6">TAPE</span>
+      <span style="font:400 9px/1 'Space Grotesk',sans-serif;color:#c9dbb0">in front of the delay</span>
+    </div>
+    <div style="flex:1;height:5px;border-radius:3px;background:#24390e;position:relative">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:22%;border-radius:3px;background:#d8f088"></div>
+      <div style="position:absolute;left:22%;top:-5.5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#f2f7e6;box-shadow:0 2px 4px rgba(0,0,0,.35)"></div>
+    </div>
+    <span style="width:34px;text-align:right;font:500 10px/1 'Space Grotesk',sans-serif;color:#d8f088">22 %</span>
+  </div>
+</div>
+</div>
+
+<div id="2b" style="display:flex;flex-direction:column;gap:9px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 'Space Grotesk',sans-serif;color:rgba(0,0,0,.55)"><a href="#2b" style="font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">2b</a>Tape as its own machine — knob + drive</div>
+<div style="width:568px;box-sizing:border-box;border-radius:20px;background:#171d20;border:1px solid #2a3336;box-shadow:0 20px 44px rgba(0,0,0,.4);overflow:hidden">
+  <div style="padding:22px 26px 22px">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:20px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="packages/pedal-ui/src/peak-logo.png" alt="" style="height:22px;width:auto;display:block;filter:brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg)">
+      <h1 style="margin:0;font:700 19px/1 'Space Grotesk',sans-serif;color:#b9d3d9">Peak Delay</h1>
+    </div>
+    <span style="font:500 9px/1 'Space Grotesk',sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8ba3a9">Stereo · 1/8 · 1/8T</span>
+  </header>
+
+  <!-- echo scope -->
+  <div style="height:78px;border-radius:12px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);position:relative;overflow:hidden;margin-bottom:22px">
+    <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:#233034"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 20px">
+      <div style="flex:1;display:flex;justify-content:space-between;align-items:center;height:100%">
+        <div style="width:4px;height:30px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:8px;animation:tapfade 2.4s linear infinite;animation-delay:0s"></div>
+        <div style="width:4px;height:24px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:8px;animation:tapfade 2.4s linear infinite;animation-delay:.18s"></div>
+        <div style="width:4px;height:22px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:14px;animation:tapfade 2.4s linear infinite;animation-delay:.36s"></div>
+        <div style="width:4px;height:17px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:12px;animation:tapfade 2.4s linear infinite;animation-delay:.54s"></div>
+        <div style="width:4px;height:15px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:19px;animation:tapfade 2.4s linear infinite;animation-delay:.72s"></div>
+        <div style="width:4px;height:11px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:17px;animation:tapfade 2.4s linear infinite;animation-delay:.9s"></div>
+        <div style="width:4px;height:9px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:24px;animation:tapfade 2.4s linear infinite;animation-delay:1.08s"></div>
+        <div style="width:4px;height:7px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:22px;animation:tapfade 2.4s linear infinite;animation-delay:1.26s"></div>
+      </div>
+    </div>
+    <div style="position:absolute;left:10px;top:7px;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#4d5f65">L</div>
+    <div style="position:absolute;left:10px;bottom:7px;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#4d5f65">R</div>
+  </div>
+
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px">
+    <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+      <div style="position:relative;width:84px;height:84px">
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#39474b 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div>
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg);mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div></div>
+        <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)">
+          <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+            <div style="position:absolute;inset:0;transform:rotate(-46deg)"><div style="position:absolute;top:10%;left:50%;width:3px;height:26%;margin-left:-1.5px;border-radius:2px;background:#b9d3d9"></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:11px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#b9d3d9">Mix</div>
+      <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#8ba3a9">33 %</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;width:104px">
+      <div style="position:relative;width:84px;height:84px">
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#39474b 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div>
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg);mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div></div>
+        <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)">
+          <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+            <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:10%;left:50%;width:3px;height:26%;margin-left:-1.5px;border-radius:2px;background:#b9d3d9"></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:11px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#b9d3d9">Feedback</div>
+      <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#8ba3a9">62 %</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:22px;padding-top:2px;width:236px">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="position:relative;width:42px;height:42px;flex:none">
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 83%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 83%,#000 83%);background:repeating-conic-gradient(from 225deg,#39474b 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 148deg,rgba(0,0,0,0) 148deg);mask:conic-gradient(from 225deg,#000 0 148deg,rgba(0,0,0,0) 148deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 83%,#000 83%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+            <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+              <div style="position:absolute;inset:0;transform:rotate(13deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;background:#101416;box-shadow:inset 0 1px 4px rgba(0,0,0,.5)">
+          <span style="width:34px;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#8ba3a9">LEFT</span>
+          <span style="flex:1;font:700 19px/1 'Space Grotesk',sans-serif;color:#b9d3d9">1/8</span>
+          <span style="font:500 9.5px/1 'Space Grotesk',sans-serif;color:#6c8288">250 ms</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="position:relative;width:42px;height:42px;flex:none">
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 83%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 83%,#000 83%);background:repeating-conic-gradient(from 225deg,#39474b 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg);mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 83%,#000 83%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+            <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+              <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="flex:1;display:flex;align-items:center;gap:8px;padding:8px 11px;border-radius:10px;background:#101416;box-shadow:inset 0 1px 4px rgba(0,0,0,.5)">
+          <span style="width:34px;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#8ba3a9">RIGHT</span>
+          <span style="flex:1;font:700 19px/1 'Space Grotesk',sans-serif;color:#b9d3d9">1/8T</span>
+          <span style="font:500 9.5px/1 'Space Grotesk',sans-serif;color:#6c8288">167 ms</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:7px;align-items:center">
+        <div style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#b9d3d9">
+          <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="#171d20" stroke-width="1.9"><g transform="rotate(45 10 10)"><rect x="6.6" y="2.4" width="6.8" height="10.4" rx="3.4"></rect><rect x="6.6" y="7.2" width="6.8" height="10.4" rx="3.4"></rect></g></svg>
+          <span style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#171d20">LINKED</span>
+        </div>
+        <div style="padding:6px 10px;border-radius:999px;border:1px solid #2a3336;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#8ba3a9">MS</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;padding-top:16px;border-top:1px solid #222b2e;display:flex;align-items:center;gap:14px">
+    <span style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;color:#4d5f65">POST-STAGE</span>
+    <div style="flex:1;display:flex;align-items:center;gap:9px">
+      <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#b9d3d9">MOD</span>
+      <div style="flex:1;height:5px;border-radius:3px;background:#222b2e;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:30%;border-radius:3px;background:#b9d3d9"></div><div style="position:absolute;left:30%;top:-4.5px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#b9d3d9"></div></div>
+      <span style="font:500 10px/1 'Space Grotesk',sans-serif;color:#6c8288">30 %</span>
+    </div>
+  </div>
+  </div>
+  <div style="background:#375916;padding:17px 26px 18px;border-top:1px solid #46701c">
+    <div style="display:flex;align-items:center;gap:18px">
+      <div style="position:relative;width:64px;height:64px;flex:none">
+        <div style="position:absolute;inset:-8px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);background:repeating-conic-gradient(from 225deg,#5a7f2a 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div>
+        <div style="position:absolute;inset:-8px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 59deg,rgba(0,0,0,0) 59deg);mask:conic-gradient(from 225deg,#000 0 59deg,rgba(0,0,0,0) 59deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);background:repeating-conic-gradient(from 225deg,#d8f088 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div></div>
+        <div style="position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 36% 28%,#4c4c44 0%,#26261f 44%,#0c0c09 100%);box-shadow:0 7px 16px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.16),inset 0 -2px 4px rgba(0,0,0,.6);transform:rotate(-76deg)">
+          <div style="position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 0deg,rgba(255,255,255,.14) 0 1.6deg,rgba(0,0,0,.42) 1.6deg 5.2deg,rgba(255,255,255,0) 5.2deg 8deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 60%,#000 66%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 60%,#000 66%)"></div>
+          <div style="position:absolute;top:4%;left:50%;width:4px;height:32%;margin-left:-2px;border-radius:0 0 2px 2px;background:linear-gradient(180deg,#fdf7e4,#cfc4a2);box-shadow:0 0 3px rgba(0,0,0,.45)"></div>
+          <div style="position:absolute;inset:29%;border-radius:50%;background:conic-gradient(#eae7dd,#8d8e86,#f3f1e8,#7c7e76,#e6e3d9,#95968e,#efece2,#83857d,#eae7dd);box-shadow:inset 0 0 0 1px rgba(0,0,0,.45),0 1px 3px rgba(0,0,0,.55)"></div>
+          <div style="position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:#63655c;box-shadow:inset 0 1px 1.5px rgba(0,0,0,.7),0 0 0 1px rgba(0,0,0,.3)"></div>
+        </div>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:center;gap:9px">
+          <svg width="24" height="18.46153846153846" viewBox="0 0 26 20" fill="none" stroke="#d8f088" stroke-width="1.5" style="flex:none"><circle cx="7.6" cy="7" r="5.1"></circle><circle cx="18.4" cy="7" r="5.1"></circle><circle cx="7.6" cy="7" r="1.2"></circle><circle cx="18.4" cy="7" r="1.2"></circle><rect x="1.2" y="14.4" width="23.6" height="4.4" rx="1.4"></rect></svg>
+          <span style="font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.18em;color:#f2f7e6">TAPE</span>
+          <span style="flex:1;font:400 9.5px/1 'Space Grotesk',sans-serif;color:#c9dbb0">a machine in front of the delay — it colours the dry signal too</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:9px">
+          <span style="width:44px;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;color:#c9dbb0">DRIVE</span>
+          <div style="flex:1;height:5px;border-radius:3px;background:#24390e;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:22%;border-radius:3px;background:#d8f088"></div><div style="position:absolute;left:22%;top:-5.5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#f2f7e6;box-shadow:0 2px 4px rgba(0,0,0,.35)"></div></div>
+          <span style="width:34px;text-align:right;font:500 10px/1 'Space Grotesk',sans-serif;color:#d8f088">22 %</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;padding-top:1px">
+          <span style="padding:3px 7px;border-radius:4px;border:1px dashed #7fa348;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;color:#c9dbb0">PROPOSED</span>
+          <span style="font:400 9px/1 'Space Grotesk',sans-serif;color:#c9dbb0">room here for a second tape parameter — wow &amp; flutter, wear. Not in the plugin today.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+</div>
+</section>
+
+
+<section style="padding:44px 48px 40px">
+<div style="display:flex;align-items:baseline;gap:10px;margin:0 0 6px">
+<a href="#t1" style="font:700 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none">1</a>
+<span style="font:700 13px/1.2 'Space Grotesk',sans-serif;color:#1a1a1a">Peak Delay — recreation + three directions</span>
+</div>
+<p style="margin:0 0 26px;font:400 12px/1.5 'Space Grotesk',sans-serif;color:rgba(0,0,0,.5);max-width:640px">Everything below is plain markup and CSS — conic-gradient rings, gradient caps, no canvas or images beyond the Peak mark — so each one ports straight into the <code>pedal-ui</code> React components.</p>
+
+<div style="display:flex;flex-wrap:wrap;gap:34px;align-items:flex-start">
+
+<!-- ============ 1a  recreation ============ -->
+<div id="1a" style="display:flex;flex-direction:column;gap:9px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 'Space Grotesk',sans-serif;color:rgba(0,0,0,.55)"><a href="#1a" style="font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">1a</a>Today's face, recreated</div>
+
+<div style="width:466px;box-sizing:border-box;padding:18px 22px 22px;border-radius:14px;border:1px solid rgba(0,0,0,.14);background:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;),#f3f2ed;box-shadow:0 1px 0 #e8e6de inset,0 2px 6px rgba(0,0,0,.08),0 14px 28px rgba(0,0,0,.14)">
+
+  <header style="display:flex;align-items:center;gap:10px;padding:0 10px 22px">
+    <img src="packages/pedal-ui/src/peak-logo.png" alt="" style="height:26px;width:auto;display:block;filter:brightness(0)">
+    <h1 style="margin:0;font:700 22px/1 'Space Grotesk',sans-serif;letter-spacing:.01em;color:#1c1c1a">Peak Delay</h1>
+    <span style="font:500 11px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#6b6a63">Tempo-synced stereo delay</span>
+  </header>
+
+  <div style="padding:0 10px;display:flex;flex-direction:column;gap:26px">
+    <div style="display:flex;align-items:flex-start;gap:6px">
+      <!-- MIX -->
+      <div style="display:flex;flex-direction:column;align-items:center;width:150px">
+        <div style="position:relative;width:104px;height:104px">
+          <div style="position:absolute;inset:-9.4px;border-radius:50%;background:conic-gradient(from 225deg,#2f6b30 0deg 89deg,#b3d6a8 89deg 270deg,rgba(0,0,0,0) 270deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px));mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px))"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;filter:drop-shadow(6px 8px 7px rgba(0,0,0,.1))">
+            <div style="position:absolute;inset:0;border-radius:50%;background:#232320"></div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 52.5deg,rgba(0,0,0,0) 0 11.4deg,#f3f2ed 11.4deg 15deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%)"></div>
+            <div style="position:absolute;inset:19%;border-radius:50%;border:1.8px solid #3a3a35"></div>
+            <div style="position:absolute;inset:10.5%;border-radius:50%;background:linear-gradient(135deg,#cbc9c2 0%,#dcdad3 14%,#f0efec 40%,#fbfbfa 70%,#fff 100%);box-shadow:inset 0 1px 1px #fff,inset 6px 7px 13px -7px rgba(0,0,0,.19),inset 0 -1px 0 rgba(255,255,255,.9),inset -5px -6px 11px -8px #fff">
+              <div style="position:absolute;inset:0;transform:rotate(-46deg)"><div style="position:absolute;top:7%;left:50%;width:9%;height:9%;margin-left:-4.5%;border-radius:50%;background:#1c1c1a"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#1c1c1a">Mix</div>
+      </div>
+      <!-- LEFT TIME -->
+      <div style="display:flex;flex-direction:column;align-items:center;width:100px;padding-top:16px">
+        <div style="position:relative;width:72px;height:72px">
+          <div style="position:absolute;inset:-9.4px;border-radius:50%;background:conic-gradient(from 225deg,#2f6b30 0deg 189deg,#b3d6a8 189deg 270deg,rgba(0,0,0,0) 270deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px));mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px))"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;filter:drop-shadow(6px 8px 7px rgba(0,0,0,.1))">
+            <div style="position:absolute;inset:0;border-radius:50%;background:#232320"></div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 52.5deg,rgba(0,0,0,0) 0 11.4deg,#f3f2ed 11.4deg 15deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%)"></div>
+            <div style="position:absolute;inset:19%;border-radius:50%;border:1.6px solid #3a3a35"></div>
+            <div style="position:absolute;inset:10.5%;border-radius:50%;background:linear-gradient(135deg,#cbc9c2 0%,#dcdad3 14%,#f0efec 40%,#fbfbfa 70%,#fff 100%);box-shadow:inset 0 1px 1px #fff,inset 6px 7px 13px -7px rgba(0,0,0,.19),inset 0 -1px 0 rgba(255,255,255,.9),inset -5px -6px 11px -8px #fff">
+              <div style="position:absolute;inset:0;transform:rotate(54deg)"><div style="position:absolute;top:7%;left:50%;width:9%;height:9%;margin-left:-4.5%;border-radius:50%;background:#1c1c1a"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#1c1c1a">Left Time</div>
+      </div>
+      <!-- sync + ms -->
+      <div style="display:flex;flex-direction:column;gap:7px;padding-top:36px">
+        <div style="width:30px;height:30px;border-radius:8px;background:#232320;display:flex;align-items:center;justify-content:center">
+          <svg width="17" height="17" viewBox="0 0 20 20" fill="none" stroke="#f3f2ed" stroke-width="1.7"><g transform="rotate(45 10 10)"><rect x="6.6" y="2.4" width="6.8" height="10.4" rx="3.4"></rect><rect x="6.6" y="7.2" width="6.8" height="10.4" rx="3.4"></rect></g></svg>
+        </div>
+        <div style="width:30px;height:30px;border-radius:8px;background:#232320;display:flex;align-items:center;justify-content:center;font:700 12px/1 'Space Grotesk',sans-serif;color:#f3f2ed">ms</div>
+      </div>
+      <!-- RIGHT TIME -->
+      <div style="display:flex;flex-direction:column;align-items:center;width:100px;padding-top:16px">
+        <div style="position:relative;width:72px;height:72px">
+          <div style="position:absolute;inset:-9.4px;border-radius:50%;background:conic-gradient(from 225deg,#2f6b30 0deg 113deg,#b3d6a8 113deg 270deg,rgba(0,0,0,0) 270deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px));mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px))"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;filter:drop-shadow(6px 8px 7px rgba(0,0,0,.1))">
+            <div style="position:absolute;inset:0;border-radius:50%;background:#232320"></div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 52.5deg,rgba(0,0,0,0) 0 11.4deg,#f3f2ed 11.4deg 15deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%)"></div>
+            <div style="position:absolute;inset:19%;border-radius:50%;border:1.6px solid #3a3a35"></div>
+            <div style="position:absolute;inset:10.5%;border-radius:50%;background:linear-gradient(135deg,#cbc9c2 0%,#dcdad3 14%,#f0efec 40%,#fbfbfa 70%,#fff 100%);box-shadow:inset 0 1px 1px #fff,inset 6px 7px 13px -7px rgba(0,0,0,.19),inset 0 -1px 0 rgba(255,255,255,.9),inset -5px -6px 11px -8px #fff">
+              <div style="position:absolute;inset:0;transform:rotate(-22deg)"><div style="position:absolute;top:7%;left:50%;width:9%;height:9%;margin-left:-4.5%;border-radius:50%;background:#1c1c1a"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#1c1c1a">Right Time</div>
+      </div>
+    </div>
+
+    <div style="display:flex;align-items:flex-start;gap:6px">
+      <!-- FEEDBACK -->
+      <div style="display:flex;flex-direction:column;align-items:center;width:150px">
+        <div style="position:relative;width:72px;height:72px">
+          <div style="position:absolute;inset:-9.4px;border-radius:50%;background:conic-gradient(from 225deg,#2f6b30 0deg 167deg,#b3d6a8 167deg 270deg,rgba(0,0,0,0) 270deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px));mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px))"></div>
+          <div style="position:absolute;inset:0;border-radius:50%;filter:drop-shadow(6px 8px 7px rgba(0,0,0,.1))">
+            <div style="position:absolute;inset:0;border-radius:50%;background:#232320"></div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 52.5deg,rgba(0,0,0,0) 0 11.4deg,#f3f2ed 11.4deg 15deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%)"></div>
+            <div style="position:absolute;inset:19%;border-radius:50%;border:1.6px solid #3a3a35"></div>
+            <div style="position:absolute;inset:10.5%;border-radius:50%;background:linear-gradient(135deg,#cbc9c2 0%,#dcdad3 14%,#f0efec 40%,#fbfbfa 70%,#fff 100%);box-shadow:inset 0 1px 1px #fff,inset 6px 7px 13px -7px rgba(0,0,0,.19),inset 0 -1px 0 rgba(255,255,255,.9),inset -5px -6px 11px -8px #fff">
+              <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:7%;left:50%;width:9%;height:9%;margin-left:-4.5%;border-radius:50%;background:#1c1c1a"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#1c1c1a">Feedback</div>
+      </div>
+      <!-- MOD + TAPE group -->
+      <div style="flex:1;display:flex;gap:6px;border:1px solid #a9a7a0;border-radius:9px;padding:8px 4px 6px">
+        <div style="display:flex;flex-direction:column;align-items:center;width:100px">
+          <div style="position:relative;width:72px;height:72px">
+            <div style="position:absolute;inset:-9.4px;border-radius:50%;background:conic-gradient(from 225deg,#2f6b30 0deg 81deg,#b3d6a8 81deg 270deg,rgba(0,0,0,0) 270deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px));mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px))"></div>
+            <div style="position:absolute;inset:0;border-radius:50%;filter:drop-shadow(6px 8px 7px rgba(0,0,0,.1))">
+              <div style="position:absolute;inset:0;border-radius:50%;background:#232320"></div>
+              <div style="position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 52.5deg,rgba(0,0,0,0) 0 11.4deg,#f3f2ed 11.4deg 15deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%)"></div>
+              <div style="position:absolute;inset:19%;border-radius:50%;border:1.6px solid #3a3a35"></div>
+              <div style="position:absolute;inset:10.5%;border-radius:50%;background:linear-gradient(135deg,#cbc9c2 0%,#dcdad3 14%,#f0efec 40%,#fbfbfa 70%,#fff 100%);box-shadow:inset 0 1px 1px #fff,inset 6px 7px 13px -7px rgba(0,0,0,.19),inset 0 -1px 0 rgba(255,255,255,.9),inset -5px -6px 11px -8px #fff">
+                <div style="position:absolute;inset:0;transform:rotate(-54deg)"><div style="position:absolute;top:7%;left:50%;width:9%;height:9%;margin-left:-4.5%;border-radius:50%;background:#1c1c1a"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#1c1c1a">Mod</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;width:100px">
+          <div style="position:relative;width:72px;height:72px">
+            <div style="position:absolute;inset:-9.4px;border-radius:50%;background:conic-gradient(from 225deg,#2f6b30 0deg 59deg,#b3d6a8 59deg 270deg,rgba(0,0,0,0) 270deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px));mask:radial-gradient(closest-side,rgba(0,0,0,0) calc(100% - 3.3px),#000 calc(100% - 3.3px))"></div>
+            <div style="position:absolute;inset:0;border-radius:50%;filter:drop-shadow(6px 8px 7px rgba(0,0,0,.1))">
+              <div style="position:absolute;inset:0;border-radius:50%;background:#232320"></div>
+              <div style="position:absolute;inset:0;border-radius:50%;background:repeating-conic-gradient(from 52.5deg,rgba(0,0,0,0) 0 11.4deg,#f3f2ed 11.4deg 15deg);-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 76%,#000 76%)"></div>
+              <div style="position:absolute;inset:19%;border-radius:50%;border:1.6px solid #3a3a35"></div>
+              <div style="position:absolute;inset:10.5%;border-radius:50%;background:linear-gradient(135deg,#cbc9c2 0%,#dcdad3 14%,#f0efec 40%,#fbfbfa 70%,#fff 100%);box-shadow:inset 0 1px 1px #fff,inset 6px 7px 13px -7px rgba(0,0,0,.19),inset 0 -1px 0 rgba(255,255,255,.9),inset -5px -6px 11px -8px #fff">
+                <div style="position:absolute;inset:0;transform:rotate(-76deg)"><div style="position:absolute;top:7%;left:50%;width:9%;height:9%;margin-left:-4.5%;border-radius:50%;background:#1c1c1a"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.08em;text-transform:uppercase;color:#1c1c1a">Tape</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ 1b  ledger ============ -->
+<div id="1b" style="display:flex;flex-direction:column;gap:9px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 'Space Grotesk',sans-serif;color:rgba(0,0,0,.55)"><a href="#1b" style="font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">1b</a>Ledger — the note grid is the face</div>
+
+<div style="width:520px;box-sizing:border-box;padding:20px 24px 22px;border-radius:14px;border:1px solid rgba(0,0,0,.14);background:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E&quot;),#f3f2ed;box-shadow:0 1px 0 #e8e6de inset,0 2px 6px rgba(0,0,0,.08),0 14px 28px rgba(0,0,0,.14)">
+
+  <header style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;padding-bottom:16px;border-bottom:1.5px solid #1c1c1a">
+    <div style="display:flex;align-items:center;gap:9px">
+      <img src="packages/pedal-ui/src/peak-logo.png" alt="" style="height:22px;width:auto;display:block;filter:brightness(0)">
+      <h1 style="margin:0;font:700 19px/1 'Space Grotesk',sans-serif;color:#1c1c1a">Peak Delay</h1>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;font:500 10px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#6b6a63">
+      <span>Stereo · synced</span>
+      <span style="padding:3px 6px;border:1px solid #2f6b30;border-radius:4px;color:#2f6b30;letter-spacing:.1em">120 BPM</span>
+    </div>
+  </header>
+
+  <div style="padding-top:18px;display:flex;flex-direction:column;gap:16px">
+    <!-- L / R note ladders -->
+    <div style="display:flex;gap:14px;align-items:stretch">
+      <div style="flex:1;display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;color:#6b6a63">LEFT</span>
+          <span style="font:700 26px/1 'Space Grotesk',sans-serif;color:#1c1c1a">1/8<span style="font-size:14px;color:#2f6b30">&nbsp;250 ms</span></span>
+        </div>
+        <div style="display:flex;gap:3px;align-items:flex-end;height:26px">
+          <div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:26px;background:#2f6b30;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div>
+        </div>
+      </div>
+      <div style="width:34px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px">
+        <svg width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="#1c1c1a" stroke-width="1.7"><g transform="rotate(45 10 10)"><rect x="6.6" y="2.4" width="6.8" height="10.4" rx="3.4"></rect><rect x="6.6" y="7.2" width="6.8" height="10.4" rx="3.4"></rect></g></svg>
+        <span style="font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#6b6a63">LINK</span>
+      </div>
+      <div style="flex:1;display:flex;flex-direction:column;gap:9px">
+        <div style="display:flex;align-items:baseline;justify-content:space-between">
+          <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;color:#6b6a63">RIGHT</span>
+          <span style="font:700 26px/1 'Space Grotesk',sans-serif;color:#1c1c1a">1/8<span style="font-size:15px">T</span><span style="font-size:14px;color:#2f6b30">&nbsp;167 ms</span></span>
+        </div>
+        <div style="display:flex;gap:3px;align-items:flex-end;height:26px">
+          <div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:26px;background:#2f6b30;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div><div style="flex:1;height:9px;background:#cfcdc3;border-radius:1px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- stereo tap lane -->
+    <div style="position:relative;height:56px;background:#e9e7e0;border-radius:6px;border:1px solid #d9d7cd;overflow:hidden">
+      <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:#cfcdc3"></div>
+      <div style="position:absolute;left:12px;top:8px;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;color:#8a8880">L</div>
+      <div style="position:absolute;left:12px;bottom:8px;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;color:#8a8880">R</div>
+      <div style="position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;padding:0 26px;gap:0">
+        <div style="flex:1;display:flex;justify-content:space-between;align-items:center;height:100%">
+          <div style="width:3px;height:20px;background:#2f6b30;align-self:flex-start;margin-top:8px;opacity:.95"></div>
+          <div style="width:3px;height:16px;background:#2f6b30;align-self:flex-end;margin-bottom:8px;opacity:.75"></div>
+          <div style="width:3px;height:15px;background:#2f6b30;align-self:flex-start;margin-top:12px;opacity:.6"></div>
+          <div style="width:3px;height:12px;background:#2f6b30;align-self:flex-end;margin-bottom:11px;opacity:.45"></div>
+          <div style="width:3px;height:11px;background:#2f6b30;align-self:flex-start;margin-top:15px;opacity:.32"></div>
+          <div style="width:3px;height:8px;background:#2f6b30;align-self:flex-end;margin-bottom:14px;opacity:.22"></div>
+          <div style="width:3px;height:7px;background:#2f6b30;align-self:flex-start;margin-top:18px;opacity:.14"></div>
+          <div style="width:3px;height:5px;background:#2f6b30;align-self:flex-end;margin-bottom:17px;opacity:.08"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- knob row: mix / feedback, then pre-stage strip -->
+    <div style="display:flex;align-items:flex-start;gap:18px">
+      <div style="display:flex;gap:12px;flex:none">
+        <div style="display:flex;flex-direction:column;align-items:center;width:96px">
+          <div style="position:relative;width:78px;height:78px">
+            <div style="position:absolute;inset:-8px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);background:repeating-conic-gradient(from 225deg,#cfcdc3 0 1.6deg,rgba(0,0,0,0) 1.6deg 13.5deg)"></div>
+            <div style="position:absolute;inset:-8px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg);mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg)">
+              <div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);background:repeating-conic-gradient(from 225deg,#2f6b30 0 1.6deg,rgba(0,0,0,0) 1.6deg 13.5deg)"></div>
+            </div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(160deg,#fdfdfc,#e6e4dd);box-shadow:0 2px 5px rgba(0,0,0,.16),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(0,0,0,.06);border:1px solid #d5d3ca">
+              <div style="position:absolute;inset:0;transform:rotate(-46deg)"><div style="position:absolute;top:9%;left:50%;width:2.5px;height:24%;margin-left:-1.25px;border-radius:2px;background:#1c1c1a"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#1c1c1a">Mix</div>
+          <div style="margin-top:3px;font:500 10px/1 'Space Grotesk',sans-serif;color:#2f6b30">33 %</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;width:96px">
+          <div style="position:relative;width:78px;height:78px">
+            <div style="position:absolute;inset:-8px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);background:repeating-conic-gradient(from 225deg,#cfcdc3 0 1.6deg,rgba(0,0,0,0) 1.6deg 13.5deg)"></div>
+            <div style="position:absolute;inset:-8px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg);mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg)">
+              <div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 84%,#000 84%);background:repeating-conic-gradient(from 225deg,#2f6b30 0 1.6deg,rgba(0,0,0,0) 1.6deg 13.5deg)"></div>
+            </div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:linear-gradient(160deg,#fdfdfc,#e6e4dd);box-shadow:0 2px 5px rgba(0,0,0,.16),inset 0 1px 0 #fff,inset 0 -1px 0 rgba(0,0,0,.06);border:1px solid #d5d3ca">
+              <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:9%;left:50%;width:2.5px;height:24%;margin-left:-1.25px;border-radius:2px;background:#1c1c1a"></div></div>
+            </div>
+          </div>
+          <div style="margin-top:10px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;text-transform:uppercase;color:#1c1c1a">Feedback</div>
+          <div style="margin-top:3px;font:500 10px/1 'Space Grotesk',sans-serif;color:#2f6b30">62 %</div>
+        </div>
+      </div>
+
+      <div style="flex:1;align-self:stretch;display:flex;flex-direction:column;gap:11px;padding:11px 14px 12px;border-left:1.5px solid #1c1c1a">
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <span style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;color:#1c1c1a">IN FRONT</span>
+          <span style="font:400 9px/1 'Space Grotesk',sans-serif;color:#6b6a63">colours the dry signal too</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="width:38px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.08em;color:#1c1c1a">TAPE</span>
+            <div style="flex:1;height:6px;border-radius:3px;background:#d9d7cd;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:22%;border-radius:3px;background:#375916"></div><div style="position:absolute;left:22%;top:-4px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#375916;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>
+            <span style="width:30px;text-align:right;font:500 10px/1 'Space Grotesk',sans-serif;color:#375916">22 %</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:9px">
+            <span style="width:38px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.08em;color:#1c1c1a">MOD</span>
+            <div style="flex:1;height:6px;border-radius:3px;background:#d9d7cd;position:relative"><div style="position:absolute;left:0;top:0;bottom:0;width:30%;border-radius:3px;background:#2f6b30"></div><div style="position:absolute;left:30%;top:-4px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#2f6b30;box-shadow:0 1px 3px rgba(0,0,0,.3)"></div></div>
+            <span style="width:30px;text-align:right;font:500 10px/1 'Space Grotesk',sans-serif;color:#2f6b30">30 %</span>
+          </div>
+        </div>
+        <div style="font:400 9px/1.4 'Space Grotesk',sans-serif;color:#8a8880">Mod rides inside the feedback loop.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ 1c  onyx ============ -->
+<div id="1c" style="display:flex;flex-direction:column;gap:9px;flex:none">
+
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 'Space Grotesk',sans-serif;color:rgba(0,0,0,.55)"><a href="#1c" style="font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">1c</a>Onyx — green tape footer, all knobs</div>
+
+<div style="width:568px;box-sizing:border-box;border-radius:20px;background:#171d20;border:1px solid #2a3336;box-shadow:0 20px 44px rgba(0,0,0,.4);overflow:hidden">
+  <div style="padding:22px 26px 22px">
+  <header style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:20px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="packages/pedal-ui/src/peak-logo.png" alt="" style="height:22px;width:auto;display:block;filter:brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg)">
+      <h1 style="margin:0;font:700 19px/1 'Space Grotesk',sans-serif;color:#b9d3d9">Peak Delay</h1>
+    </div>
+    <span style="font:500 9px/1 'Space Grotesk',sans-serif;letter-spacing:.18em;text-transform:uppercase;color:#8ba3a9">Stereo · 1/8 · 1/8T</span>
+  </header>
+
+  <!-- echo scope -->
+  <div style="height:78px;border-radius:12px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);position:relative;overflow:hidden;margin-bottom:22px">
+    <div style="position:absolute;left:0;right:0;top:50%;height:1px;background:#233034"></div>
+    <div style="position:absolute;inset:0;display:flex;align-items:center;padding:0 20px">
+      <div style="flex:1;display:flex;justify-content:space-between;align-items:center;height:100%">
+        <div style="width:4px;height:30px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:8px;animation:tapfade 2.4s linear infinite;animation-delay:0s"></div>
+        <div style="width:4px;height:24px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:8px;animation:tapfade 2.4s linear infinite;animation-delay:.18s"></div>
+        <div style="width:4px;height:22px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:14px;animation:tapfade 2.4s linear infinite;animation-delay:.36s"></div>
+        <div style="width:4px;height:17px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:12px;animation:tapfade 2.4s linear infinite;animation-delay:.54s"></div>
+        <div style="width:4px;height:15px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:19px;animation:tapfade 2.4s linear infinite;animation-delay:.72s"></div>
+        <div style="width:4px;height:11px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:17px;animation:tapfade 2.4s linear infinite;animation-delay:.9s"></div>
+        <div style="width:4px;height:9px;border-radius:2px;background:#b9d3d9;align-self:flex-start;margin-top:24px;animation:tapfade 2.4s linear infinite;animation-delay:1.08s"></div>
+        <div style="width:4px;height:7px;border-radius:2px;background:#b9d3d9;align-self:flex-end;margin-bottom:22px;animation:tapfade 2.4s linear infinite;animation-delay:1.26s"></div>
+      </div>
+    </div>
+    <div style="position:absolute;left:10px;top:7px;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#8ba3a9">L</div>
+    <div style="position:absolute;left:10px;bottom:7px;font:700 8px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;color:#8ba3a9">R</div>
+  </div>
+
+  <div style="display:flex;align-items:flex-start;gap:18px">
+    <div style="display:flex;flex-direction:column;align-items:center;width:132px">
+      <div style="position:relative;width:96px;height:96px">
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#39474b 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div>
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg);mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div></div>
+        <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)">
+          <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+            <div style="position:absolute;inset:0;transform:rotate(-46deg)"><div style="position:absolute;top:10%;left:50%;width:3px;height:26%;margin-left:-1.5px;border-radius:2px;background:#b9d3d9"></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:11px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#b9d3d9">Mix</div>
+      <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#8ba3a9">33 %</div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;align-items:center;width:132px">
+      <div style="position:relative;width:96px;height:96px">
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#39474b 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div>
+        <div style="position:absolute;inset:-9px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg);mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 85%,#000 85%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 1.8deg,rgba(0,0,0,0) 1.8deg 13.5deg)"></div></div>
+        <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)">
+          <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+            <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:10%;left:50%;width:3px;height:26%;margin-left:-1.5px;border-radius:2px;background:#b9d3d9"></div></div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:11px;font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#b9d3d9">Feedback</div>
+      <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#8ba3a9">62 %</div>
+    </div>
+
+    <div style="position:relative;width:34px;height:106px;flex:none;margin-top:2px">
+      <div style="position:absolute;left:11px;top:21px;height:13px;width:1.5px;border-radius:4px;background:#313e42"></div>
+      <div style="position:absolute;left:11px;top:72px;bottom:21px;width:1.5px;border-radius:4px;background:#313e42"></div>
+      <div style="position:absolute;left:11px;right:-10px;top:21px;height:1.5px;border-radius:4px;background:#313e42"></div>
+      <div style="position:absolute;left:11px;right:-10px;bottom:20.25px;height:1.5px;border-radius:4px;background:#313e42"></div>
+      <div style="position:absolute;left:1px;top:50%;margin-top:-11px;width:22px;height:22px;border-radius:7px;background:#b9d3d9;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 6px rgba(0,0,0,.45)">
+        <svg width="12" height="12" viewBox="0 0 20 20" fill="none" stroke="#171d20" stroke-width="2"><g transform="rotate(45 10 10)"><rect x="6.6" y="2.4" width="6.8" height="10.4" rx="3.4"></rect><rect x="6.6" y="7.2" width="6.8" height="10.4" rx="3.4"></rect></g></svg>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:22px;padding-top:2px;flex:none">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="position:relative;width:42px;height:42px;flex:none">
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#39474b 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 148deg,rgba(0,0,0,0) 148deg);mask:conic-gradient(from 225deg,#000 0 148deg,rgba(0,0,0,0) 148deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+            <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+              <div style="position:absolute;inset:0;transform:rotate(13deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;width:112px;box-sizing:border-box;padding:7px 10px;border-radius:9px;background:#101416;box-shadow:inset 0 1px 4px rgba(0,0,0,.5)">
+          <span style="font:700 8.5px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;color:#8ba3a9">L</span>
+          <span style="font:700 17px/1 'Space Grotesk',sans-serif;color:#b9d3d9">1/8</span>
+          <span style="margin-left:auto;font:500 9px/1 'Space Grotesk',sans-serif;color:#6c8288">250ms</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="position:relative;width:42px;height:42px;flex:none">
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#39474b 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+          <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg);mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+            <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+              <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px;width:112px;box-sizing:border-box;padding:7px 10px;border-radius:9px;background:#101416;box-shadow:inset 0 1px 4px rgba(0,0,0,.5)">
+          <span style="font:700 8.5px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;color:#8ba3a9">R</span>
+          <span style="font:700 17px/1 'Space Grotesk',sans-serif;color:#b9d3d9">1/8T</span>
+          <span style="margin-left:auto;font:500 9px/1 'Space Grotesk',sans-serif;color:#6c8288">167ms</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-top:-8px">
+        <span style="font:700 8.5px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;color:#8ba3a9">TIME IN</span>
+        <div style="display:flex;padding:2px;border-radius:999px;background:#101416;box-shadow:inset 0 1px 3px rgba(0,0,0,.55)">
+          <span style="padding:5px 13px;border-radius:999px;background:#b9d3d9;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#171d20">SYNC</span>
+          <span style="padding:5px 13px;border-radius:999px;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;color:#8ba3a9">MS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;display:flex;border-top:1px solid #222b2e">
+    <div style="flex:1 1 50%;min-width:0;box-sizing:border-box;background:#375916;margin:0 0 -22px -26px;padding:14px 20px 18px 26px;display:flex;flex-direction:column;gap:11px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="30" height="24.5" viewBox="0 0 44 36" fill="none" stroke="#d8f088" stroke-width="1.8" stroke-linejoin="round" style="flex:none"><rect x="3.5" y="16.5" width="37" height="14" rx="2"></rect><rect x="6.5" y="30.5" width="4.5" height="2.4" rx="1"></rect><rect x="33" y="30.5" width="4.5" height="2.4" rx="1"></rect><rect x="15" y="21.5" width="14" height="7.2" rx="1.6"></rect><circle cx="18.2" cy="24" r="0.85" fill="#d8f088" stroke="none"></circle><circle cx="25.8" cy="24" r="0.85" fill="#d8f088" stroke="none"></circle><circle cx="11" cy="11" r="10" fill="#375916"></circle><circle cx="33" cy="11" r="10" fill="#375916"></circle><g fill="#d8f088" stroke="none"><path d="M9.69 6.7 L8.37 2.4 L13.63 2.4 L12.31 6.7 Z"></path><path d="M15.38 12.01 L19.77 13.03 L17.14 17.58 L14.07 14.29 Z"></path><path d="M7.93 14.29 L4.86 17.58 L2.23 13.03 L6.62 12.01 Z"></path><path d="M31.69 6.7 L30.37 2.4 L35.63 2.4 L34.31 6.7 Z"></path><path d="M37.38 12.01 L41.77 13.03 L39.14 17.58 L36.07 14.29 Z"></path><path d="M29.93 14.29 L26.86 17.58 L24.23 13.03 L28.62 12.01 Z"></path></g><circle cx="11" cy="11" r="3.2"></circle><circle cx="33" cy="11" r="3.2"></circle></svg><span style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;white-space:nowrap;color:#f2f7e6">TAPE</span>
+        <div style="display:flex;align-items:center;gap:2px;padding:3px 4px;border-radius:7px;background:#2b4410;box-shadow:inset 0 1px 3px rgba(0,0,0,.45)">
+          <span style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:5px;background:transparent"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="#d8f088" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 1.2 L1.6 5 L5.2 8.8"></path></svg></span>
+          <span style="min-width:26px;text-align:center;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;white-space:nowrap;color:#f2f7e6">PRE</span>
+          <span style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:5px;background:transparent"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="#d8f088" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 1.2 L5.4 5 L1.8 8.8"></path></svg></span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="position:relative;width:42px;height:42px;flex:none">
+            <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#5a7f2a 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+            <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 59deg,rgba(0,0,0,0) 59deg);mask:conic-gradient(from 225deg,#000 0 59deg,rgba(0,0,0,0) 59deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#d8f088 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:#1d2f08;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+              <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#5c7f2c,#2b4410);box-shadow:inset 0 1px 0 rgba(216,240,136,.3)">
+                <div style="position:absolute;inset:0;transform:rotate(-76deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#d8f088"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;white-space:nowrap;color:#f2f7e6">WEAR</span>
+            <span style="font:500 10px/1 'Space Grotesk',sans-serif;color:#d8f088">22 %</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="position:relative;width:42px;height:42px;flex:none">
+            <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#5a7f2a 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+            <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 113deg,rgba(0,0,0,0) 113deg);mask:conic-gradient(from 225deg,#000 0 113deg,rgba(0,0,0,0) 113deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#d8f088 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:#1d2f08;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+              <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#5c7f2c,#2b4410);box-shadow:inset 0 1px 0 rgba(216,240,136,.3)">
+                <div style="position:absolute;inset:0;transform:rotate(-22deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#d8f088"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;white-space:nowrap;color:#f2f7e6">FLUTTER</span>
+            <span style="font:500 10px/1 'Space Grotesk',sans-serif;color:#d8f088">44 %</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="flex:1 1 50%;min-width:0;box-sizing:border-box;margin:0 -26px -22px 0;padding:14px 26px 18px 20px;display:flex;flex-direction:column;gap:11px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <svg width="30" height="24.5" viewBox="0 0 44 36" fill="none" stroke="#b9d3d9" stroke-width="3.6" stroke-linecap="round" style="flex:none"><path d="M11 24 C16 6, 24 6, 29 18 C34 30, 42 30, 47 12" opacity=".3"></path><path d="M6 24 C11 6, 19 6, 24 18 C29 30, 37 30, 42 12" opacity=".55"></path><path d="M1 24 C6 6, 14 6, 19 18 C24 30, 32 30, 37 12"></path></svg><span style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;white-space:nowrap;color:#b9d3d9">MOD</span>
+        <div style="display:flex;align-items:center;gap:2px;padding:3px 4px;border-radius:7px;background:#101416;box-shadow:inset 0 1px 3px rgba(0,0,0,.55)">
+          <span style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:5px;background:transparent"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="#8ba3a9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 1.2 L1.6 5 L5.2 8.8"></path></svg></span>
+          <span style="min-width:26px;text-align:center;font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.14em;white-space:nowrap;color:#b9d3d9">POST</span>
+          <span style="display:flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:5px;background:transparent"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="#8ba3a9" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 1.2 L5.4 5 L1.8 8.8"></path></svg></span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="position:relative;width:42px;height:42px;flex:none">
+            <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#39474b 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+            <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 81deg,rgba(0,0,0,0) 81deg);mask:conic-gradient(from 225deg,#000 0 81deg,rgba(0,0,0,0) 81deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+              <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+                <div style="position:absolute;inset:0;transform:rotate(-54deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#b9d3d9"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;white-space:nowrap;color:#b9d3d9">CHORUS</span>
+            <span style="font:500 10px/1 'Space Grotesk',sans-serif;color:#8ba3a9">30 %</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="position:relative;width:42px;height:42px;flex:none">
+            <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#39474b 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div>
+            <div style="position:absolute;inset:-6px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 47deg,rgba(0,0,0,0) 47deg);mask:conic-gradient(from 225deg,#000 0 47deg,rgba(0,0,0,0) 47deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 82%,#000 82%);background:repeating-conic-gradient(from 225deg,#b9d3d9 0 2deg,rgba(0,0,0,0) 2deg 13.5deg)"></div></div>
+            <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 4px 10px rgba(0,0,0,.5)">
+              <div style="position:absolute;inset:9%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+                <div style="position:absolute;inset:0;transform:rotate(-88deg)"><div style="position:absolute;top:11%;left:50%;width:2.4px;height:27%;margin-left:-1.2px;border-radius:2px;background:#b9d3d9"></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.1em;white-space:nowrap;color:#b9d3d9">PHASER</span>
+            <span style="font:500 10px/1 'Space Grotesk',sans-serif;color:#8ba3a9">18 %</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+</div>
+</div>
+
+<!-- ============ 1d  moss slab ============ -->
+<div id="1d" style="display:flex;flex-direction:column;gap:9px;flex:none">
+<div style="display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 'Space Grotesk',sans-serif;color:rgba(0,0,0,.55)"><a href="#1d" style="font:700 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none">1d</a>Moss slab — soft-UI, Tape set apart</div>
+
+<div style="width:470px;box-sizing:border-box;border-radius:20px;background:#b2cfb5;border:1px solid #8aa88d;box-shadow:0 18px 36px rgba(29,46,32,.28);overflow:hidden">
+  <div style="padding:22px 24px 24px">
+    <header style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding-bottom:22px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <img src="packages/pedal-ui/src/peak-logo.png" alt="" style="height:24px;width:auto;display:block;filter:brightness(0) saturate(0) opacity(.88)">
+        <h1 style="margin:0;font:700 20px/1 'Space Grotesk',sans-serif;color:#17251a">Peak Delay</h1>
+      </div>
+      <div style="display:flex;align-items:center;gap:7px">
+        <div style="width:30px;height:30px;border-radius:9px;background:#b2cfb5;box-shadow:-3px -3px 6px #cfe4d1,3px 3px 7px rgba(30,48,32,.32);display:flex;align-items:center;justify-content:center">
+          <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="#2c5e3a" stroke-width="1.9"><g transform="rotate(45 10 10)"><rect x="6.6" y="2.4" width="6.8" height="10.4" rx="3.4"></rect><rect x="6.6" y="7.2" width="6.8" height="10.4" rx="3.4"></rect></g></svg>
+        </div>
+        <div style="width:30px;height:30px;border-radius:9px;background:#b2cfb5;box-shadow:inset 2px 2px 5px rgba(30,48,32,.28),inset -2px -2px 5px #cfe4d1;display:flex;align-items:center;justify-content:center;font:700 11px/1 'Space Grotesk',sans-serif;color:#43593f">ms</div>
+      </div>
+    </header>
+
+    <!-- headline note values -->
+    <div style="display:flex;gap:14px;margin-bottom:22px">
+      <div style="flex:1;padding:13px 16px 15px;border-radius:14px;background:#b2cfb5;box-shadow:inset 3px 3px 7px rgba(30,48,32,.26),inset -3px -3px 7px #cfe4d1">
+        <div style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.18em;color:#43593f">LEFT TIME</div>
+        <div style="margin-top:7px;display:flex;align-items:baseline;gap:8px"><span style="font:700 34px/1 'Space Grotesk',sans-serif;color:#17251a">1/8</span><span style="font:500 11px/1 'Space Grotesk',sans-serif;color:#2c5e3a">250 ms</span></div>
+      </div>
+      <div style="flex:1;padding:13px 16px 15px;border-radius:14px;background:#b2cfb5;box-shadow:inset 3px 3px 7px rgba(30,48,32,.26),inset -3px -3px 7px #cfe4d1">
+        <div style="font:700 9px/1 'Space Grotesk',sans-serif;letter-spacing:.18em;color:#43593f">RIGHT TIME</div>
+        <div style="margin-top:7px;display:flex;align-items:baseline;gap:8px"><span style="font:700 34px/1 'Space Grotesk',sans-serif;color:#17251a">1/8T</span><span style="font:500 11px/1 'Space Grotesk',sans-serif;color:#2c5e3a">167 ms</span></div>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;gap:6px">
+      <div style="display:flex;flex-direction:column;align-items:center;width:130px">
+        <div style="position:relative;width:106px;height:106px">
+          <div style="position:absolute;inset:-10px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);background:repeating-conic-gradient(from 225deg,#86a189 0 1.8deg,rgba(0,0,0,0) 1.8deg 11.25deg)"></div>
+          <div style="position:absolute;inset:-10px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg);mask:conic-gradient(from 225deg,#000 0 89deg,rgba(0,0,0,0) 89deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);background:repeating-conic-gradient(from 225deg,#2c5e3a 0 1.8deg,rgba(0,0,0,0) 1.8deg 11.25deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#23361f;box-shadow:6px 8px 16px rgba(23,37,26,.32)">
+            <div style="position:absolute;inset:7%;border-radius:50%;background:linear-gradient(170deg,#e8f4e1,#cce6c2)">
+              <div style="position:absolute;inset:0;transform:rotate(-46deg)"><div style="position:absolute;top:9%;left:50%;width:3.4px;height:25%;margin-left:-1.7px;border-radius:2px;background:#23361f"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#17251a">Mix</div>
+        <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#2c5e3a">33 %</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;width:130px">
+        <div style="position:relative;width:106px;height:106px">
+          <div style="position:absolute;inset:-10px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);background:repeating-conic-gradient(from 225deg,#86a189 0 1.8deg,rgba(0,0,0,0) 1.8deg 11.25deg)"></div>
+          <div style="position:absolute;inset:-10px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg);mask:conic-gradient(from 225deg,#000 0 167deg,rgba(0,0,0,0) 167deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);background:repeating-conic-gradient(from 225deg,#2c5e3a 0 1.8deg,rgba(0,0,0,0) 1.8deg 11.25deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#23361f;box-shadow:6px 8px 16px rgba(23,37,26,.32)">
+            <div style="position:absolute;inset:7%;border-radius:50%;background:linear-gradient(170deg,#e8f4e1,#cce6c2)">
+              <div style="position:absolute;inset:0;transform:rotate(32deg)"><div style="position:absolute;top:9%;left:50%;width:3.4px;height:25%;margin-left:-1.7px;border-radius:2px;background:#23361f"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#17251a">Feedback</div>
+        <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#2c5e3a">62 %</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;width:130px">
+        <div style="position:relative;width:106px;height:106px">
+          <div style="position:absolute;inset:-10px;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);background:repeating-conic-gradient(from 225deg,#86a189 0 1.8deg,rgba(0,0,0,0) 1.8deg 11.25deg)"></div>
+          <div style="position:absolute;inset:-10px;border-radius:50%;-webkit-mask:conic-gradient(from 225deg,#000 0 81deg,rgba(0,0,0,0) 81deg);mask:conic-gradient(from 225deg,#000 0 81deg,rgba(0,0,0,0) 81deg)"><div style="position:absolute;inset:0;border-radius:50%;-webkit-mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);mask:radial-gradient(closest-side,rgba(0,0,0,0) 86%,#000 86%);background:repeating-conic-gradient(from 225deg,#2c5e3a 0 1.8deg,rgba(0,0,0,0) 1.8deg 11.25deg)"></div></div>
+          <div style="position:absolute;inset:0;border-radius:50%;background:#23361f;box-shadow:6px 8px 16px rgba(23,37,26,.32)">
+            <div style="position:absolute;inset:7%;border-radius:50%;background:linear-gradient(170deg,#e8f4e1,#cce6c2)">
+              <div style="position:absolute;inset:0;transform:rotate(-54deg)"><div style="position:absolute;top:9%;left:50%;width:3.4px;height:25%;margin-left:-1.7px;border-radius:2px;background:#23361f"></div></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:12px;font:700 11px/1 'Space Grotesk',sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#17251a">Mod</div>
+        <div style="margin-top:4px;font:500 10px/1 'Space Grotesk',sans-serif;color:#2c5e3a">30 %</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- tape footer: a different machine, so a different strip -->
+  <div style="background:#375916;padding:15px 24px 16px;display:flex;align-items:center;gap:16px">
+    <div style="display:flex;flex-direction:column;gap:3px;flex:1">
+      <span style="font:700 10px/1 'Space Grotesk',sans-serif;letter-spacing:.16em;color:#f2f7e6">TAPE</span>
+      <span style="font:400 9.5px/1.3 'Space Grotesk',sans-serif;color:#c9dbb0">A machine in front of the delay — it colours the dry signal too</span>
+    </div>
+    <div style="width:150px;height:6px;border-radius:3px;background:#24390e;position:relative">
+      <div style="position:absolute;left:0;top:0;bottom:0;width:22%;border-radius:3px;background:#d8f088"></div>
+      <div style="position:absolute;left:22%;top:-5px;width:16px;height:16px;margin-left:-8px;border-radius:50%;background:#f2f7e6;box-shadow:0 2px 4px rgba(0,0,0,.35)"></div>
+    </div>
+    <span style="width:34px;text-align:right;font:500 10px/1 'Space Grotesk',sans-serif;color:#d8f088">22 %</span>
+  </div>
+</div>
+</div>
+
+</div>
+
+<p style="margin:26px 0 0;font:400 12px/1.5 'Space Grotesk',sans-serif;color:rgba(0,0,0,.5)">Try next: "take <a href="#1d">1d</a>'s note readouts into <a href="#1a">1a</a>" · "make <a href="#1c">1c</a>'s scope full width" · "more directions, weirder"</p>
+</section>
+</x-dc>
+</body>
+</html>

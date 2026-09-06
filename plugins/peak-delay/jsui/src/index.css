@@ -1,0 +1,179 @@
+/* html/body's own margin/overflow/background live in index.html now, not
+   here - see plugins/peak-wah/jsui/src/index.css for why. */
+
+.page {
+  display: flex;
+  justify-content: center;
+  /* The plugin window is sized to the panel plus exactly this much on every
+     side (see PeakDelayWebEditor::PeakDelayWebEditor's setSize call) - change
+     one, change the other. */
+  padding: 4px;
+}
+
+/* Card's own padding/title size are shared with Wah (18/22/22 and 22px) -
+   this face's spec calls for slightly different numbers (COMPONENTS.md's
+   face layout), scoped here the same way Wah's preset bar scopes its own
+   Button overrides (see peak-wah/jsui/src/index.css's .pw-presets rule)
+   rather than changing Card.css itself. */
+.pd-card.pui-card {
+  padding: 22px 26px 24px;
+  /* Clips the footer's green band back to the card's own 20px corner radius.
+     The band reaches the card edge by escaping this padding with negative
+     margins (see .pd-footer__half--tape), which without this would leave a
+     green square poking out past the rounded bottom-left corner. The handoff
+     gets there by moving the padding onto an inner div instead; the negative
+     margins the reference face itself uses do the same thing without
+     restructuring Card, which Wah and the gallery also render. */
+  overflow: hidden;
+}
+.pd-card .pui-card__header {
+  padding-bottom: 20px;
+}
+.pd-card .pui-card__title {
+  font-size: 19px;
+}
+
+.pd-meta {
+  font-family: var(--pui-font-label);
+  font-weight: 500;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+  white-space: nowrap;
+}
+
+.pd-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 32px;
+}
+
+.pd-time-col {
+  display: flex;
+  flex-direction: column;
+  width: calc(236px + var(--pd-link-col));
+  gap: 16px;
+}
+
+/* The link bracket's column, and the geometry the arms are pinned to. Named
+   rather than inlined because the card's own width is 568 + this, and the
+   arms have to meet the Time knobs' dial centres exactly. */
+.pd-card {
+  --pd-link-col: 38px; /* button + arm + the gap to the knob */
+  --pd-link-btn: 29px; /* the square button, icon 15 + 7px padding either side */
+  --pd-knob-dia: 42px; /* the Time knobs' dial: half of it is the arm's height */
+  --pd-arm-gap: 10px; /* "space between lines and knobs" */
+  --pd-arm-clear: 18px; /* how far the arms stop short of the button */
+}
+
+.pd-link-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.pd-time-rows {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 24px;
+  margin-left: 9px;
+}
+
+.pd-link {
+  position: relative;
+  flex: none;
+  width: var(--pd-link-col);
+}
+
+/* Two mirrored corner pieces: each runs vertically out from the button and
+   turns into its knob. Drawn as borders on an empty box rather than as an
+   SVG, so the 4px corner is just a border-radius and the whole thing tracks
+   the row geometry in CSS with nothing to keep in sync. */
+.pd-link__arm {
+  position: absolute;
+  left: calc(var(--pd-link-btn) / 2);
+  right: var(--pd-arm-gap);
+  border-left: 1px solid var(--pui-line);
+  pointer-events: none;
+}
+
+.pd-link__arm--top {
+  /* The horizontal run sits on the top knob's dial centre - which is half a
+     dial down only because TimeControl's knob is `bare`. */
+  top: calc(var(--pd-knob-dia) / 2);
+  bottom: calc(50% + var(--pd-arm-clear));
+  border-top: 1px solid var(--pui-line);
+  border-top-left-radius: 4px;
+}
+
+.pd-link__arm--bottom {
+  top: calc(50% + var(--pd-arm-clear));
+  bottom: calc(var(--pd-knob-dia) / 2);
+  border-bottom: 1px solid var(--pui-line);
+  border-bottom-left-radius: 4px;
+}
+
+.pd-link__button {
+  position: absolute;
+  left: 5%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Icon-only and square-ish, not the full-width capsule the Sync pill is -
+   scoped here rather than in Pill.css, which the Sync pill still wants. */
+.pd-link__button .pui-button.pui-pill {
+  padding: 4px;
+  border-radius: 4px;
+}
+
+
+.pd-time-control {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.pd-pills {
+  display: flex;
+  gap: 7px;
+  /* Lines up under the Time rows rather than under the link bracket. */
+  margin-left: calc(var(--pd-link-col) + 6px);
+}
+
+/* One row split in half: Tape (pre-stage, in front of the delay) on a green
+   band, Mod (post-stage, inside the feedback loop) on the plain panel.
+   COMPONENTS.md's face layout. */
+/* The negative margins take the whole footer - divider included - out to the
+   card's edge, so the tape band reads as part of the enclosure rather than as
+   a panel drawn on it, and the divider runs the band's full width instead of
+   stopping 10px short at each end.
+   Escaping the edge means clearing TWO nested paddings, which is why these
+   don't match the 26/24 in .pd-card: the card's own 26px sides and 24px
+   bottom, plus .pui-card__body's 10px sides (Card's, shared with Wah). The
+   1px border is deliberately left showing - the band stops just inside it,
+   as in the handoff's reference face. Card's overflow:hidden (see .pd-card)
+   rounds off the escaped bottom-left corner. */
+.pd-footer {
+  display: flex;
+  margin: 16px -36px -24px;
+  border-top: 1px solid var(--pui-divider);
+}
+
+/* Each half puts the content back where it belongs: 20px on the inside edge
+   where the two meet, the full bleed distance on the outside. */
+.pd-footer__half {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  padding: 20px 36px 16px 20px;
+}
+
+.pd-footer__half--tape {
+  background: var(--pui-tape-band);
+  padding: 20px 20px 16px 36px;
+}

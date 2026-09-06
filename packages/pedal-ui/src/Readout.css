@@ -1,0 +1,49 @@
+.pui-readout {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  /* A flex item's default min-width is auto (never shrink below its own
+     content), not 0 - without this override, a Readout next to a longer
+     one (a wider unit string, say) was forced wider than its flex-basis to
+     fit its own content, so two Readouts side by side (Delay's Left/Right
+     Time rows) ended up visibly different widths instead of both filling
+     their share of the row equally. */
+  min-width: 0;
+  gap: 6px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  /* margin-top: 0px; */
+  margin-left: 16px;
+}
+
+.pui-readout__label {
+  flex: 0 0 34px;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+}
+
+.pui-readout__value {
+  flex: 1;
+  min-width: 0; /* see .pui-readout's own comment on this */
+  font-family: var(--pui-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--pui-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pui-readout__unit {
+  font-family: var(--pui-font-label);
+  font-weight: 500;
+  font-size: 9.5px;
+  color: var(--pui-ink-dim);
+  white-space: nowrap;
+}

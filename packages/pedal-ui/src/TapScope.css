@@ -1,0 +1,99 @@
+.pui-tapscope {
+  position: relative;
+  border-radius: 12px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  overflow: hidden;
+}
+
+.pui-tapscope__centre {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--pui-scope-grid);
+  pointer-events: none;
+}
+
+.pui-tapscope__label {
+  position: absolute;
+  left: 10px;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--pui-recess-ink);
+  z-index: 1;
+}
+.pui-tapscope__label--l {
+  top: 10px;
+}
+.pui-tapscope__label--r {
+  bottom: 10px;
+}
+
+/* Taps are placed by `left` percentage, not distributed by flexbox: spacing
+   has to come from the delay time alone, so adding a tap (more feedback) must
+   leave every other tap exactly where it was. The right inset is wider than
+   the left to leave room for a tap sitting at the very end of the window. */
+.pui-tapscope__lane {
+  position: absolute;
+  left: 20px;
+  right: 24px;
+  top: 0;
+  bottom: 50%;
+}
+
+.pui-tapscope__lane--bottom {
+  top: 50%;
+  bottom: 0;
+}
+
+.pui-tapscope__tap {
+  position: absolute;
+  bottom: 0;
+  /* width comes from Lane - it narrows as the taps close in. translateX
+     rather than a fixed negative margin so the tap stays centred on its
+     instant at whatever width it ends up. */
+  transform: translateX(-50%);
+  border-radius: 2px;
+  background: var(--pui-ink);
+  /* Duration and delay come from Lane, per tap: the animation is a playhead
+     sweeping the lane's time axis, so each tap lights at the instant its own
+     repeat sounds. It used to be a fixed 2.4s loop with a flat 0.18s stagger,
+     which looked busy but meant nothing. A long delay pulses slowly now - that
+     is the point, it is how slowly the delay actually repeats. */
+  animation-name: pui-tapscope-hit;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  opacity: 0.26;
+}
+
+/* The bottom lane grows downward from the centre line. */
+.pui-tapscope__lane--bottom .pui-tapscope__tap {
+  bottom: auto;
+  top: 0;
+}
+
+/* The lit frame is a small share of the cycle, so a tap reads as being struck
+   rather than slowly throbbing. The cycle grows with the number of repeats, so
+   4% stays in the region of a third of the gap between taps at any setting. */
+@keyframes pui-tapscope-hit {
+  0% {
+    opacity: 1;
+  }
+  4% {
+    opacity: 0.26;
+  }
+  100% {
+    opacity: 0.26;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pui-tapscope__tap {
+    animation: none;
+    opacity: 0.85;
+  }
+}

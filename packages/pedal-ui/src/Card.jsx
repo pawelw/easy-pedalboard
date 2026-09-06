@@ -8,6 +8,8 @@ import "./Card.css";
  * pedal wants opposite the title (a preset bar, say) - Card itself stays
  * generic and doesn't know what presets are. `showLogo` defaults on; turn it
  * off for a pedal that places the brand mark somewhere else on its own face.
+ * Colour theme is picked once, above Card, with <PedalUIProvider theme="...">
+ * - Card itself only ever reads tokens, never chooses them.
  */
 export default function Card({ title, subtitle, width, headerRight, showLogo = true, children, className = "" }) {
   return (

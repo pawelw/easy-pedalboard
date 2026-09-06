@@ -73,3 +73,21 @@ body {
 .gallery__back:hover {
   text-decoration: underline;
 }
+
+.components-columns {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.components-columns__label {
+  font-size: 13px;
+  color: #6b6a63;
+  margin: 0 0 10px 2px;
+}
+
+.components-columns__pane {
+  padding: 20px;
+}

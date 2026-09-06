@@ -76,10 +76,20 @@ function Collar({ radius, angle }) {
 
 /** The value readout: one continuous arc outside the knob, a pale track with
     the part up to the value lit. Outside rather than on the collar - a light
-    line on the dark ring reads as part of the knob, not as its value. */
-function Sweep({ diameter, value }) {
-  const r = diameter / 2 + SWEEP_GAP;
-  const box = r + SWEEP_WIDTH;
+    line on the dark ring reads as part of the knob, not as its value.
+    `gap`/`width`/the two colours default to the collar variant's own look
+    (unchanged); `variant="scale"` passes its own smaller gap and the
+    grayscale tick tokens instead - same arc, different geometry/palette. */
+function Sweep({
+  diameter,
+  value,
+  gap = SWEEP_GAP,
+  width = SWEEP_WIDTH,
+  trackColor = "var(--pui-knob-sweep)",
+  litColor = "var(--pui-knob-sweep-lit)",
+}) {
+  const r = diameter / 2 + gap;
+  const box = r + width;
 
   return (
     <svg
@@ -88,11 +98,105 @@ function Sweep({ diameter, value }) {
       width={box * 2}
       height={box * 2}
     >
-      <g fill="none" strokeWidth={SWEEP_WIDTH} strokeLinecap="round">
-        <path d={arcPath(r, MIN_ANGLE, MAX_ANGLE)} stroke="var(--pui-knob-sweep)" />
-        {value > 0.004 && <path d={arcPath(r, MIN_ANGLE, angleFor(value))} stroke="var(--pui-knob-sweep-lit)" />}
+      <g fill="none" strokeWidth={width} strokeLinecap="round">
+        <path d={arcPath(r, MIN_ANGLE, MAX_ANGLE)} stroke={trackColor} />
+        {value > 0.004 && <path d={arcPath(r, MIN_ANGLE, angleFor(value))} stroke={litColor} />}
       </g>
     </svg>
+  );
+}
+
+const TICK_COUNT = 20;
+const TICK_LENGTH = 6;
+const TICK_THICKNESS = 2;
+const TICK_LENGTH_SMALL = 4;
+const TICK_THICKNESS_SMALL = 1.4;
+
+/** `variant="scale"`'s tick ring: 20 individual radial dashes, evenly spaced
+    from -135deg to +135deg *inclusive of both endpoints* - so the first and
+    last ticks sit exactly on the travel limits and are mirror images of
+    each other around the top (0deg), by construction rather than by hoping
+    a periodic pattern happens to land there.
+
+    Each tick's lit/unlit colour is a plain `index <= litCount` comparison,
+    not a continuous angular mask over a repeating pattern (the previous
+    approach) - that mask's own sweep angle and the ticks' 13.5deg period
+    were two independently-computed numbers that only lined up at exact
+    multiples of a tick's width, so at most values the sweep boundary fell
+    *inside* a tick rather than between two of them, leaving that tick part-
+    covered - including, at the very top of travel, one or two ticks whose
+    sliver of "still transparent" mask left them reading dim instead of lit.
+    Per-tick integer comparison can't have a boundary that lands wrong.
+
+    Colour is set via `style`, not the `stroke` attribute directly - WebKit
+    (the real plugin's WKWebView; this ran fine in Chromium-based preview
+    tools) doesn't reliably resolve `var(...)` custom properties written
+    into an SVG presentation attribute, only ones reached through the
+    ordinary CSS/style pipeline, so `stroke="var(--x)"` could render every
+    tick some default colour regardless of index.
+
+    `gap`: distance from the dial's own edge to the ticks' inner radius -
+    like Sweep's own `gap`, independent of `diameter`, so two differently-
+    sized scale knobs can be told to sit the same distance from a neighbour
+    above them (see Knob's own comment on this below). Below `diameter` 60,
+    the dashes themselves also shrink - full-size ones looked oversized next
+    to a 42px knob. */
+function TickScale({ diameter, value, gap = SWEEP_GAP }) {
+  const small = diameter < 60;
+  const tickLength = small ? TICK_LENGTH_SMALL : TICK_LENGTH;
+  const tickThickness = small ? TICK_THICKNESS_SMALL : TICK_THICKNESS;
+  const rInner = diameter / 2 + gap;
+  const rOuter = rInner + tickLength;
+  const box = rOuter + tickThickness;
+  // -1 (nothing lit) below the same threshold Sweep uses for its own arc,
+  // so a knob at rest shows no lit tick at all rather than always lighting
+  // index 0 (Math.round(0 * anything) is still 0, which would otherwise
+  // read as "the first tick has been passed" even at the very bottom).
+  const litCount = value > 0.004 ? Math.round(value * (TICK_COUNT - 1)) : -1;
+
+  const ticks = useMemo(() => {
+    const toRad = (d) => ((d - 90) * Math.PI) / 180;
+    const marks = [];
+    for (let i = 0; i < TICK_COUNT; i++) {
+      const angle = MIN_ANGLE + (i * (MAX_ANGLE - MIN_ANGLE)) / (TICK_COUNT - 1);
+      const rad = toRad(angle);
+      marks.push({
+        x1: Math.cos(rad) * rInner,
+        y1: Math.sin(rad) * rInner,
+        x2: Math.cos(rad) * rOuter,
+        y2: Math.sin(rad) * rOuter,
+      });
+    }
+    return marks;
+  }, [rInner, rOuter]);
+
+  return (
+    <svg className="pui-knob__ticks" viewBox={`${-box} ${-box} ${box * 2} ${box * 2}`} width={box * 2} height={box * 2}>
+      <g strokeWidth={tickThickness} strokeLinecap="round">
+        {ticks.map((t, i) => (
+          <line
+            key={i}
+            x1={t.x1}
+            y1={t.y1}
+            x2={t.x2}
+            y2={t.y2}
+            style={{ stroke: i <= litCount ? "var(--pui-tick-lit)" : "var(--pui-tick)" }}
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+/** `variant="scale"`'s needle: a rounded bar pinned at the knob's centre and
+    rotated to the value angle, the way `.pui-knob__dot` pins a dot in the
+    collar variant - same wrapper-rotates-not-the-bar trick, so the bar's own
+    box can be positioned in plain top/left percentages instead of trig. */
+function Pointer({ angle, diameter }) {
+  return (
+    <div className="pui-knob__pointer-wrap" style={{ transform: `rotate(${angle}deg)` }}>
+      <div className={`pui-knob__pointer${diameter < 60 ? " pui-knob__pointer--thin" : ""}`} />
+    </div>
   );
 }
 
@@ -119,6 +223,18 @@ function EndMarker({ label, radius, lit }) {
  * A rotary knob: controlled (0..1), drag-vertically to turn, arrow keys to
  * nudge. JUCE-agnostic - a plugin's jsui wires this to a WebSliderRelay by
  * passing value/onChange/onDragStart/onDragEnd itself.
+ *
+ * `variant`: "collar" (default, unchanged) is the scalloped dark collar and
+ * outer value arc every pedal has used so far. "scale" is the plain-ring +
+ * tick-scale + needle face the onyx Delay layout uses (COMPONENTS.md).
+ * Same controlled API, same drag/keyboard handling below, only the dial's
+ * own markup and CSS differ.
+ *
+ * `bare`: just the dial - no caption line under it, and no width padding for
+ * one. The default wrapper is `size + 28` wide so a caption longer than the
+ * knob still centres on it; in a row that puts its labels *beside* the knob
+ * instead (StageControl), that padding reads as ~14px of dead space either
+ * side, silently widening whatever gap the row asked for.
  */
 export default function Knob({
   value,
@@ -127,11 +243,15 @@ export default function Knob({
   onDragEnd,
   caption,
   valueLabel,
+  subLabel,
   size = 72,
   cornerLabels,
   icon,
   endMarkerLabel,
   step = 0.01,
+  variant = "collar",
+  sweepGap,
+  bare = false,
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
@@ -208,10 +328,30 @@ export default function Knob({
   const angle = angleFor(value);
   const radius = size / 2;
 
+  const isScale = variant === "scale";
+
   return (
-    <div className="pui-reset pui-knob" style={{ width: size + 28 }}>
+    <div className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}`} style={{ width: bare ? size : size + 28 }}>
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
-        <Sweep diameter={size} value={value} />
+        {isScale ? (
+          <TickScale
+            diameter={size}
+            value={value}
+            // The ring's own distance past the dial's box (what actually
+            // sets its visual distance from whatever sits above the knob,
+            // like Delay's TapScope) is `gap` alone, independent of `size` -
+            // the ring's outer edge sits at radius size/2+gap regardless of
+            // diameter, so two differently-sized scale knobs read the same
+            // distance from that neighbour as long as gap matches, whatever
+            // their own sizes are. Callers that need to line up with
+            // another scale knob of a different size (Delay's Mix/Feedback
+            // with its Time knobs) pass sweepGap explicitly instead of
+            // relying on the size default.
+            gap={sweepGap ?? (size >= 60 ? 9 : 6)}
+          />
+        ) : (
+          <Sweep diameter={size} value={value} />
+        )}
         <EndMarker label={endMarkerLabel} radius={radius} lit={value >= 0.999} />
 
         {cornerLabels?.topLeft && <span className="pui-knob__corner pui-knob__corner--tl">{cornerLabels.topLeft}</span>}
@@ -225,7 +365,7 @@ export default function Knob({
 
         <div
           ref={bodyRef}
-          className={`pui-knob__body${dragging ? " pui-knob__body--dragging" : ""}`}
+          className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
           style={{ width: size, height: size }}
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
@@ -236,11 +376,23 @@ export default function Knob({
           aria-valuemax={1}
           aria-valuenow={value}
         >
-          <Collar radius={radius} angle={angle} />
-          <div className="pui-knob__cap">
-            <div className="pui-knob__dot" style={{ transform: `rotate(${angle}deg)` }} />
-            {icon && <div className="pui-knob__icon">{icon(value)}</div>}
-          </div>
+          {isScale ? (
+            <>
+              <div className="pui-knob__scale-ring" />
+              <div className="pui-knob__scale-cap">
+                <Pointer angle={angle} diameter={size} />
+                {icon && <div className="pui-knob__icon">{icon(value)}</div>}
+              </div>
+            </>
+          ) : (
+            <>
+              <Collar radius={radius} angle={angle} />
+              <div className="pui-knob__cap">
+                <div className="pui-knob__dot" style={{ transform: `rotate(${angle}deg)` }} />
+                {icon && <div className="pui-knob__icon">{icon(value)}</div>}
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -248,7 +400,14 @@ export default function Knob({
           appearing as a second line below it - a second line meant the row's
           height (and everything below it in the grid) changed the instant
           you touched a knob. */}
-      <div className="pui-caption pui-knob__caption">{dragging && valueLabel ? valueLabel : caption}</div>
+      {!bare && <div className="pui-caption pui-knob__caption">{dragging && valueLabel ? valueLabel : caption}</div>}
+
+      {/* Unlike valueLabel above, this is a second, permanent line - Mix/
+          Feedback show their value here at all times, not only mid-drag
+          (COMPONENTS.md: "value line 4px under the caption"). Only rendered
+          when a caller actually passes one, so every other knob's layout is
+          untouched. */}
+      {!bare && subLabel && <div className="pui-knob__sublabel">{subLabel}</div>}
     </div>
   );
 }

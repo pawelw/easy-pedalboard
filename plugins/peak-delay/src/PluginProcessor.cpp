@@ -1,12 +1,8 @@
 #include "PluginProcessor.h"
 
-#include "ee/dsp/TempoDivision.h"
+#include "PeakDelayWebEditor.h"
+#include "TimeMap.h"
 #include "ee/plugin/ParamText.h"
-#include "ee/ui/PedalEditor.h"
-
-#if EE_TAPE_TUNER
-#include "TapeTunerPanel.h"
-#endif
 
 namespace
 {
@@ -23,64 +19,9 @@ constexpr const char* kTapeID = "tape";
 constexpr const char* kOnID = "on";
 
 constexpr int kDefaultDivision = 5; // 1/8
+constexpr float kDefaultTime01 = ee::peakdelay::time01ForDivision (kDefaultDivision);
 
 constexpr float kGainRampSeconds = 0.02f;
-
-float divisionSeconds (int index, double bpm) noexcept
-{
-    const int i = juce::jlimit (0, ee::dsp::kNumTempoDivisions - 1, index);
-    return ee::dsp::kTempoDivisions[i].beats * static_cast<float> (60.0 / bpm);
-}
-
-/** A chain link, for the Sync button: two capsule outlines lying along the same
-    diagonal and overlapping in the middle. Sync ties the delay time to the
-    host's tempo, which is a link rather than a word - and the button is too
-    small to print one legibly. */
-void drawLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
-{
-    const float side = juce::jmin (area.getWidth(), area.getHeight());
-    if (side <= 0.0f)
-        return;
-
-    // All of it in fractions of the box, so the glyph is the same drawing at
-    // any size.
-    const float linkW = side * 0.44f;  // capsule across
-    const float linkH = side * 0.74f;  // ... and along
-    const float offset = side * 0.19f; // each capsule off the centre
-    const float stroke = juce::jmax (1.2f, side * 0.11f);
-
-    juce::Path capsule;
-    capsule.addRoundedRectangle (-linkW * 0.5f, -linkH * 0.5f, linkW, linkH, linkW * 0.5f);
-
-    const auto centre = area.getCentre();
-    const float diagonal = offset * juce::MathConstants<float>::sqrt2 * 0.5f;
-
-    g.setColour (colour);
-
-    // Lower-left and upper-right, both turned onto the same 45-degree axis.
-    for (const float sign : { -1.0f, 1.0f })
-    {
-        const auto place = juce::AffineTransform::rotation (juce::MathConstants<float>::pi * 0.25f)
-                               .translated (centre.x - sign * diagonal, centre.y + sign * diagonal);
-
-        g.strokePath (
-            capsule, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), place);
-    }
-}
-
-/** A plain "ms" wordmark, for the button that swaps the Time knobs' reading
-    from a note division to that division's length in milliseconds. Text
-    rather than a glyph - there is no obvious picture for "milliseconds" the
-    way a chain link stands for "linked together". The bezel hands us a square;
-    the wordmark is wider than it is tall, so it borrows the width it needs from
-    the rest of the button and is lettered close to the square's height. */
-void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
-{
-    const auto box = area.withSizeKeepingCentre (area.getWidth() * 1.6f, area.getHeight());
-    g.setColour (colour);
-    g.setFont (juce::Font (juce::FontOptions (area.getHeight() * 0.95f)).boldened());
-    g.drawText ("ms", box, juce::Justification::centred, false);
-}
 } // namespace
 
 PeakDelayProcessor::PeakDelayProcessor()
@@ -111,17 +52,28 @@ PeakDelayProcessor::~PeakDelayProcessor()
     apvts.removeParameterListener (kSyncID, this);
 }
 
+bool PeakDelayProcessor::isSynced() const
+{
+    return timeUnitParam == nullptr || timeUnitParam->load() < 0.5f;
+}
+
 juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    const auto divisions = ee::dsp::tempoDivisionLabels();
+    // One normalised knob each; the Sync pill decides what it means (see
+    // TimeMap.h). The host-facing text assumes the synced reading, the same way
+    // Peak Trem & Pan's Rate does; the editor overrides it live off the pill.
+    const auto timeAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+        [] (float v, int) { return ee::peakdelay::timeMap().toText (v, true, ee::peakdelay::kReferenceBpm); });
 
-    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kLeftTimeID, 1 }, "Left Time",
-                                                              divisions, kDefaultDivision));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kLeftTimeID, 1 }, "Left Time",
+                                                             juce::NormalisableRange<float> (0.0f, 1.0f),
+                                                             kDefaultTime01, timeAttributes));
 
-    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kRightTimeID, 1 }, "Right Time",
-                                                              divisions, kDefaultDivision));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kRightTimeID, 1 }, "Right Time",
+                                                             juce::NormalisableRange<float> (0.0f, 1.0f),
+                                                             kDefaultTime01, timeAttributes));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kSyncID, 1 }, "Sync L/R", true));
 
@@ -148,7 +100,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
     return layout;
 }
 
-double PeakDelayProcessor::currentBpm() const
+double PeakDelayProcessor::readPlayHeadBpm()
 {
     double bpm = 120.0;
 
@@ -157,23 +109,35 @@ double PeakDelayProcessor::currentBpm() const
             if (const auto hostBpm = position->getBpm())
                 bpm = *hostBpm;
 
-    return juce::jlimit (20.0, 300.0, bpm);
+    bpm = juce::jlimit (20.0, 300.0, bpm);
+    lastKnownBpm.store (bpm, std::memory_order_relaxed);
+
+    return bpm;
+}
+
+double PeakDelayProcessor::currentBpm() const
+{
+    return lastKnownBpm.load (std::memory_order_relaxed);
 }
 
 juce::String PeakDelayProcessor::timeReadout (const std::atomic<float>* timeParam) const
 {
-    const int index = timeParam != nullptr ? static_cast<int> (timeParam->load()) : kDefaultDivision;
-    const auto divisions = ee::dsp::tempoDivisionLabels();
-    const int clamped = juce::jlimit (0, divisions.size() - 1, index);
-
-    if (timeUnitParam == nullptr || timeUnitParam->load() < 0.5f)
-        return divisions[clamped];
-
-    const float ms = divisionSeconds (clamped, currentBpm()) * 1000.0f;
-    return juce::String (juce::roundToInt (ms)) + " ms";
+    const float time01 = timeParam != nullptr ? timeParam->load() : kDefaultTime01;
+    return ee::peakdelay::timeMap().toText (time01, isSynced(), currentBpm());
 }
 
-void PeakDelayProcessor::mirrorDivision (const juce::String& from, const juce::String& to)
+float PeakDelayProcessor::timeMs (const std::atomic<float>* timeParam) const
+{
+    const float time01 = timeParam != nullptr ? timeParam->load() : kDefaultTime01;
+    return ee::peakdelay::timeMap().value (time01, isSynced(), currentBpm());
+}
+
+juce::String PeakDelayProcessor::timeMsReadout (const std::atomic<float>* timeParam) const
+{
+    return juce::String (juce::roundToInt (timeMs (timeParam))) + " ms";
+}
+
+void PeakDelayProcessor::mirrorTime (const juce::String& from, const juce::String& to)
 {
     auto* source = apvts.getParameter (from);
     auto* destination = apvts.getParameter (to);
@@ -202,9 +166,9 @@ void PeakDelayProcessor::parameterChanged (const juce::String& parameterID, floa
     // Turning sync on adopts the left value, which is the one the user set last
     // in the common case of reaching for the button after dialling the left knob.
     if (parameterID == kRightTimeID)
-        mirrorDivision (kRightTimeID, kLeftTimeID);
+        mirrorTime (kRightTimeID, kLeftTimeID);
     else
-        mirrorDivision (kLeftTimeID, kRightTimeID);
+        mirrorTime (kLeftTimeID, kRightTimeID);
 
     mirroring = false;
 }
@@ -232,8 +196,12 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     tape.setAmount (tapeParam->load() * 0.01f);
     delay.setFeedback (feedbackParam->load() * 0.01f);
     delay.setModulation (modParam->load() * 0.01f);
-    delay.setDelaySeconds (divisionSeconds (static_cast<int> (leftTimeParam->load()), 120.0),
-                           divisionSeconds (static_cast<int> (rightTimeParam->load()), 120.0));
+    // prepareToPlay is one of the callbacks where the playhead is valid, so
+    // the cache starts out holding the host's real tempo rather than 120.
+    const double startupBpm = readPlayHeadBpm();
+    const bool startupSynced = isSynced();
+    delay.setDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), startupSynced, startupBpm),
+                           ee::peakdelay::timeSeconds (rightTimeParam->load(), startupSynced, startupBpm));
     delay.snapDelays();
 
     dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
@@ -283,12 +251,16 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     for (int ch = numIn; ch < numOut; ++ch)
         buffer.clear (ch, 0, numSamples);
 
-    // The time knobs are note values, so a host that reports no tempo still has
-    // to land somewhere musical.
-    const double bpm = currentBpm();
+    // The time knobs are note values when synced, so a host that reports no
+    // tempo still has to land somewhere musical - currentBpm() falls back to
+    // 120. When not synced the knob is a plain millisecond time and the tempo
+    // is not consulted at all, so free-running time neither retunes itself on a
+    // host tempo change nor stays quantised to the divisions.
+    const double bpm = readPlayHeadBpm();
+    const bool synced = isSynced();
 
-    delay.setDelaySeconds (divisionSeconds (static_cast<int> (leftTimeParam->load()), bpm),
-                           divisionSeconds (static_cast<int> (rightTimeParam->load()), bpm));
+    delay.setDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), synced, bpm),
+                           ee::peakdelay::timeSeconds (rightTimeParam->load(), synced, bpm));
     delay.setFeedback (feedbackParam->load() * 0.01f);
     delay.setModulation (modParam->load() * 0.01f);
     tape.setAmount (tapeParam->load() * 0.01f);
@@ -359,58 +331,7 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
 juce::AudioProcessorEditor* PeakDelayProcessor::createEditor()
 {
-    ee::ui::PedalSpec spec;
-    spec.name = "Peak Delay";
-    spec.tagline = "Tempo-synced stereo delay";
-    spec.version = "v" JucePlugin_VersionString;
-
-    // Tape is a machine in front of the delay rather than part of it, so its
-    // knob is the odd one out twice over: a deep green cap, and the only
-    // photographic one on a face of digital caps.
-    const juce::Colour tapeCap { 0xff375916 };
-    const juce::Colour tapeBorder { 0xff17280b };
-
-    auto tape = ee::ui::KnobSpec { kTapeID, "Tape", tapeCap, tapeBorder, tapeCap };
-    tape.capStyle = ee::ui::ControlStyle::analog;
-
-    spec.knobs = { { .parameterID = kLeftTimeID,
-                     .caption = "Left Time",
-                     .liveValueText = [this] { return timeReadout (leftTimeParam); } },
-                   { .parameterID = kRightTimeID,
-                     .caption = "Right Time",
-                     .liveValueText = [this] { return timeReadout (rightTimeParam); } },
-                   { kFeedbackID, "Feedback" },
-                   { kMixID, "Mix" },
-                   { kModID, "Mod" },
-                   tape };
-
-    // Two small buttons share the gap between Left and Right Time, one above
-    // the other: Sync carries a chain link, lit in the face's ink while the two
-    // knobs are held together and pale grey while they move independently; ms
-    // swaps both knobs' reading from a note division to that division's length
-    // at the host tempo, in milliseconds - the toggle itself is silent, only the
-    // text changes, so it needs no `onClick` of its own to react to.
-    spec.toggles = {
-        { .parameterID = kSyncID, .caption = "Sync", .afterKnobIndex = 0, .icon = drawLinkIcon },
-        { .parameterID = kTimeUnitID, .caption = "ms", .afterKnobIndex = 0, .gapRise = -6, .icon = drawMsIcon },
-    };
-
-    spec.knobsPerRow = 3;
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow); // same column spacing as Peak Reverb
-
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::moss());
-
-#if EE_TAPE_TUNER
-    // Flip to true to bring the tuning panel back without reconfiguring CMake.
-    constexpr bool showTuner = false;
-
-    if (showTuner)
-        editor->setSidePanel (std::make_unique<TapeTunerPanel> (tape.getTuning(), [this] (const ee::dsp::TapeTuning& t)
-                                                                { tape.setTuning (t); }),
-                              TapeTunerPanel::preferredWidth);
-#endif
-
-    return editor;
+    return new PeakDelayWebEditor (*this);
 }
 void PeakDelayProcessor::getStateInformation (juce::MemoryBlock& destData)
 {

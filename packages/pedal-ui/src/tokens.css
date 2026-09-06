@@ -10,6 +10,7 @@
   --pui-ink: #1c1c1a;
   --pui-ink-soft: #6b6a63;
   --pui-line: #1c1c1a;
+  --pui-outline: rgba(0, 0, 0, 0.14); /* Card's border - was a literal on .pui-card itself */
   --pui-screw: #cfcdc3;
   --pui-screw-shadow: #9c9a90;
 
@@ -17,12 +18,21 @@
   --pui-knob-body-hi: #3a3a35;
   --pui-knob-cap: #f0efec;
   --pui-knob-cap-shadow: #dcdad3;
+  /* Collar cap gradient's 3 remaining literal stops, named so the
+     variant="collar" path is fully token-driven too - same numbers. */
+  --pui-knob-cap-hi: #cbc9c2;
+  --pui-knob-cap-glow: #fbfbfa;
+  --pui-knob-cap-shine: #ffffff;
   --pui-knob-dot: #1c1c1a;
   --pui-knob-sweep: #dedcd4;
   --pui-knob-sweep-lit: #c60000;
+  --pui-icon-ink: #424242; /* Knob's icon slot (Wah's Shape/Filter Type glyphs) */
 
   --pui-track: #1c1c1a;
   --pui-thumb: #f6f5f0;
+  --pui-fader-thumb-hi: #ffffff; /* top of the vertical Slider's thumb gradient -
+                                     unused by Wah; do not repoint the vertical
+                                     Slider's own rendering off this token's name */
 
   --pui-led-off: #c9c7bd;
   --pui-led-on: #3fb662;
@@ -39,6 +49,115 @@
 
   --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
   --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
+
+  /* Below: the light half of the two-theme token set (see PedalUIProvider's
+     `theme` prop and the `[data-pui-theme="onyx"]` block that overrides
+     these). Values here are either brand new (the `variant="scale"` Knob,
+     Readout, TapScope, Pill...) or a token wrapping something Card already
+     hardcoded - in both cases the number is identical to what was already
+     on screen, so nothing about today's rendering moves. */
+  --pui-page: #dcdad2;
+  --pui-recess: #e9e7e0; /* same value as --pui-scope-bg - a second name for the
+                             same "recessed display" colour, used by the new
+                             components rather than repointing FilterScope */
+  --pui-recess-ink: #8a8880;
+  /* Not in the handoff's light-theme list (onyx has --pui-ink-soft AND this
+     as two distinct dim shades; the light table only gave one). Picked to
+     sit between --pui-ink-soft and --pui-panel-edge, the same relationship
+     onyx's pair has - used by Readout's unit text and SliderRow's value
+     label, neither of which Wah uses, so this is free to adjust by eye. */
+  --pui-ink-dim: #8f8d84;
+  --pui-tick: #cfcdc3;
+  --pui-tick-lit: #1c1c1a; /* grayscale on purpose, unlike --pui-knob-sweep-lit's
+                               red - variant="scale"'s value arc stays black/
+                               white/gray in both themes, no accent colour */
+  --pui-divider: #cfcdc3;
+  --pui-cap-grad-top: #fdfdfc;
+  --pui-cap-grad-bottom: #e6e4dd;
+  --pui-cap-ring: #d5d3ca;
+  --pui-pointer: #1c1c1a;
+  --pui-pill-on-bg: #1c1c1a;
+  --pui-pill-on-ink: #f3f2ed;
+  --pui-pill-off-border: #1c1c1a;
+  --pui-pill-off-ink: #6b6a63;
+  --pui-knob-shadow: 0 2px 5px rgba(0, 0, 0, 0.16);
+  --pui-well-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.12);
+  --pui-logo-filter: brightness(0);
+
+  /* What Card's background/shadow already were, just named - the SVG grain
+     is the same data URI it always painted under `var(--pui-panel)`. */
+  --pui-panel-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --pui-panel-shadow:
+    0 1px 0 var(--pui-panel-edge) inset,
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 14px 28px rgba(0, 0, 0, 0.14);
+}
+
+/* Phase 2 of the onyx handoff (design_handoff_peak_delay_onyx/TOKENS.md) -
+   these values are the repo's own PedalTheme::onyx() (shared/src/ui/
+   PedalTheme.cpp), kept equal on purpose so the JUCE face and the web face
+   never drift apart. Applied via <PedalUIProvider theme="onyx">, which is
+   the only thing that ever sets data-pui-theme - Wah never passes `theme`,
+   so none of this reaches it. */
+[data-pui-theme="onyx"] {
+  --pui-page: #0f1315;
+  --pui-panel: #171d20;
+  --pui-panel-edge: #222b2e;
+  --pui-outline: #2a3336;
+  --pui-ink: #b9d3d9;
+  --pui-ink-soft: #8ba3a9;
+  --pui-ink-dim: #6c8288;
+  --pui-line: #2a3336;
+  --pui-divider: #222b2e;
+
+  --pui-recess: #101416;
+  --pui-recess-ink: #4d5f65;
+  --pui-tick: #39474b;
+  --pui-tick-lit: #b4b4b4; /* grayscale on purpose - see the :root comment */
+
+  --pui-knob-body: #0b0e10; /* the ring */
+  --pui-cap-grad-top: #364347;
+  --pui-cap-grad-bottom: #191f22;
+  --pui-cap-ring: rgba(185, 211, 217, 0.25);
+  --pui-pointer: #b9d3d9;
+
+  --pui-pill-on-bg: #b9d3d9;
+  --pui-pill-on-ink: #171d20;
+  --pui-pill-off-border: #2a3336;
+  --pui-pill-off-ink: #8ba3a9;
+
+  --pui-knob-shadow: 0 8px 18px rgba(0, 0, 0, 0.55);
+  --pui-well-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
+  --pui-scope-grid: #233034;
+  --pui-logo-filter: brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg);
+
+  /* Card, per COMPONENTS.md's panel table: no grain, a bigger radius, a
+     softer/deeper shadow with no inset highlight (there's no panel-edge
+     bevel to catch light the way the cream panel's top edge does). */
+  --pui-radius-panel: 20px;
+  --pui-panel-grain: none;
+  --pui-panel-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
+}
+
+/* StageControl's "tape" tone (design_handoff_peak_delay_onyx/TOKENS.md's
+   --pui-tape-* group). Deliberately outside the two theme blocks: this is a
+   fixed accent, a dark green band carrying its own light-on-dark ink, so it
+   reads the same whichever theme surrounds it - there is no light variant to
+   switch to. The knob half of the group shadows the plain --pui-* knob tokens
+   (StageControl re-points those on its own wrapper), so the same
+   variant="scale" Knob renders green inside the band and untouched outside
+   it, with no `tone` prop reaching Knob itself. */
+:root {
+  --pui-tape-band: #375916;
+  --pui-tape-edge: #46701c;
+  --pui-tape-ink: #f2f7e6; /* name */
+  --pui-tape-ink-soft: #c9dbb0; /* stage label */
+  --pui-tape-lit: #d8f088; /* value, icon, lit ticks, pointer */
+  --pui-tape-track: #5a7f2a; /* unlit ticks */
+  --pui-tape-knob-body: #1d2f08;
+  --pui-tape-cap-top: #5c7f2c;
+  --pui-tape-cap-bot: #2b4410;
+  --pui-tape-cap-rim: rgba(216, 240, 136, 0.3);
 }
 
 .pui-reset,

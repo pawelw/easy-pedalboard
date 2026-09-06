@@ -36,21 +36,69 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    /** Text under a Time knob: the division label ("1/8") normally, or that
-        division's length at the current host tempo in milliseconds when the
-        ms button is on. Re-derives the label rather than reading it off the
-        parameter, so it is correct however this is called. */
+    /** Text under a Time knob: the division label ("1/8") when synced, or the
+        free-running time ("333 ms", "1.50 s") when the ms button is on.
+        Re-derives the text from the knob position rather than reading it off
+        the parameter, so it is correct however this is called. */
     juce::String timeReadout (const std::atomic<float>* timeParam) const;
+
+    /** The millisecond reading regardless of the ms toggle - the onyx face's
+        Readout shows this as a small, constant figure alongside timeReadout's
+        toggle-aware one (which swaps to the very same reading when ms is on),
+        rather than only being able to see the ms conversion by turning ms on
+        and losing the division label. */
+    juce::String timeMsReadout (const std::atomic<float>* timeParam) const;
+
+    /** Milliseconds for one Time knob, in whichever mode the pill is in -
+        what both the ms readout and the scope are derived from. */
+    float timeMs (const std::atomic<float>* timeParam) const;
+
+    /** Thin wrappers over timeReadout()/timeMsReadout() for the web editor,
+        which - unlike the old ee::ui editor - isn't a member of this class
+        and so can't reach leftTimeParam/rightTimeParam directly. */
+    juce::String leftTimeReadout() const { return timeReadout (leftTimeParam); }
+    juce::String rightTimeReadout() const { return timeReadout (rightTimeParam); }
+    juce::String leftTimeMsReadout() const { return timeMsReadout (leftTimeParam); }
+    juce::String rightTimeMsReadout() const { return timeMsReadout (rightTimeParam); }
+
+    /** Both Time knobs as plain numbers of milliseconds, for the TapScope.
+        The scope places its taps on a real time axis, which it cannot get
+        from the normalised knob value alone: what a position means depends
+        on the Sync pill and, when synced, on the host tempo. The readouts
+        above carry the same figure, but as display text ("1/8", "1.50 s") -
+        parsing that back into a number would be a formatter dependency in
+        the wrong direction. */
+    float leftTimeMs() const { return timeMs (leftTimeParam); }
+    float rightTimeMs() const { return timeMs (rightTimeParam); }
+
+    /** The tape machine's current/default voicing, for the EE_TAPE_TUNER dev
+        panel - same reason as above, the web editor needs a way to reach
+        `tape` without being a member of this class. */
+    const ee::dsp::TapeTuning& tapeTuning() const noexcept { return tape.getTuning(); }
+    void setTapeTuning (const ee::dsp::TapeTuning& t) noexcept { tape.setTuning (t); }
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     void parameterChanged (const juce::String& parameterID, float newValue) override;
-    void mirrorDivision (const juce::String& from, const juce::String& to);
+    void mirrorTime (const juce::String& from, const juce::String& to);
 
-    /** Host tempo, clamped the same way processBlock's own lookup is. Safe off
-        the audio thread - this is only ever called from the editor. */
+    /** Reads the host's tempo off the playhead and caches it. ONLY safe from
+        processBlock/prepareToPlay: JUCE documents getPlayHead() as callable
+        only from the audio callback, and Ableton's playhead really is invalid
+        outside it - reading it from the message thread segfaulted Live inside
+        the editor's formatKnobValue handler. */
+    double readPlayHeadBpm();
+
+    /** The last tempo readPlayHeadBpm() saw, clamped to 20..300 and defaulting
+        to 120 before the first block. Safe from any thread - this is what the
+        readouts and the scope's time axis use. */
     double currentBpm() const;
+
+    /** Whether the Time knobs read as note divisions. The "ms" parameter is
+        the pill's own sense - true means free-running - so this is its
+        inverse, named for what the knobs are actually doing. */
+    bool isSynced() const;
 
     ee::dsp::TapeCharacter tape;
     ee::dsp::TapeDelay delay;
@@ -67,6 +115,9 @@ private:
 
     /** Stops the two time parameters echoing each other forever. */
     std::atomic<bool> mirroring { false };
+
+    /** Written on the audio thread, read from the editor - see currentBpm(). */
+    std::atomic<double> lastKnownBpm { 120.0 };
 
     juce::SmoothedValue<float> dryGain;
     juce::SmoothedValue<float> wetGain;
