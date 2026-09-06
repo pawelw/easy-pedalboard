@@ -20,7 +20,12 @@ export default function TimeControl({ side, parameterId }) {
   // ms figure alongside it is the only place that reading shows up at all.
   return (
     <div className="pd-time-control">
-      <JuceKnob parameterId={parameterId} variant="scale" size={42} showValueLabel={false} />
+      {/* `bare`: no caption line under the dial and no width padding for one.
+          This knob's value lives in the Readout beside it, so that slot was
+          always empty - it just made the row 48px tall with the dial sitting
+          21px down instead of centred, which the link bracket's arms would
+          then meet off-centre. */}
+      <JuceKnob parameterId={parameterId} variant="scale" size={42} showValueLabel={false} bare />
       <Readout label={side} value={text} unit={isMs ? undefined : msText} />
     </div>
   );

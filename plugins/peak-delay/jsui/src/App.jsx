@@ -33,7 +33,8 @@ export default function App() {
       {/* theme="onyx" on the Delay face only - see main.jsx. Wah never
           passes a theme, so none of this reaches it (packages/pedal-ui/src/
           tokens.css's [data-pui-theme="onyx"] block). */}
-      <Card title="Peak Delay" headerRight={<HeaderMeta />} className="pd-card" width={568}>
+      {/* 568 + the link bracket's own column - see --pd-link-col. */}
+      <Card title="Peak Delay" headerRight={<HeaderMeta />} className="pd-card" width={626}>
         <TapScope height={78} leftMs={leftMs} rightMs={rightMs} feedback01={feedback01} mix01={mix01} />
 
         <div className="pd-row">
@@ -70,11 +71,27 @@ export default function App() {
           />
 
           <div className="pd-time-col">
-            <TimeControl side="Left" parameterId="ltime" />
-            <TimeControl side="Right" parameterId="rtime" />
+            {/* Linked is a bracket joining the two Time rows rather than one
+                more pill in the row below: what it does is tie these two
+                knobs together, so it reads better drawn as the tie itself.
+                The two arms are pure decoration (see .pd-link in index.css);
+                only the button in the middle is a control. */}
+            <div className="pd-link-group">
+              <div className="pd-link">
+                <span className="pd-link__arm pd-link__arm--top" />
+                <span className="pd-link__arm pd-link__arm--bottom" />
+                <div className="pd-link__button">
+                  <JucePill parameterId="sync" icon={<LinkIcon size={15} />} />
+                </div>
+              </div>
+
+              <div className="pd-time-rows">
+                <TimeControl side="Left" parameterId="ltime" />
+                <TimeControl side="Right" parameterId="rtime" />
+              </div>
+            </div>
 
             <div className="pd-pills">
-              <JucePill parameterId="sync" icon={<LinkIcon size={13} />} label="Linked" />
               {/* "timeunit": false = note division, true = ms (unchanged -
                   see PluginProcessor.h). Lit means "synced to tempo", i.e.
                   timeunit is *false*, hence invert - the parameter's own

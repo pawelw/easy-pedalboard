@@ -79,6 +79,7 @@ export function JuceKnob({
   sweepGap,
   showValueLabel = true,
   showValueBelow = false,
+  bare = false,
 }) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const readout = useFormattedText(parameterId, value);
@@ -87,6 +88,7 @@ export function JuceKnob({
     <Knob
       variant={variant}
       size={size}
+      bare={bare}
       sweepGap={sweepGap}
       caption={caption}
       endMarkerLabel={endMarkerLabel}
