@@ -8,6 +8,11 @@ import { Knob, Pill, StageControl } from "@synthpeak/pedal-ui";
 // that aren't real parameters - see PluginProcessor.h's timeMsReadout().
 const formatKnobValue = Juce.getNativeFunction("formatKnobValue");
 
+// [leftMs, rightMs] as numbers - the TapScope's time axis. See the native
+// function's own comment in PeakDelayWebEditor.cpp for why the formatted
+// readouts above can't stand in for it.
+const getDelayTimesMs = Juce.getNativeFunction("getDelayTimesMs");
+
 /** A parameter's live normalised value (0..1), kept in sync with its
     WebSliderRelay for as long as the component is mounted - not just while
     it's being dragged.
@@ -121,6 +126,51 @@ export function useTimeReadoutText(parameterId) {
   const msText = useFormattedText(`${parameterId}Ms`, value);
 
   return [text, msText, isMs];
+}
+
+/** The two delay times in milliseconds, refetched whenever anything that
+    changes them moves: either Time knob, or the Sync pill (the same knob
+    position means a different time either side of it).
+
+    Host tempo can move them too, with nothing here to listen to - a synced
+    time follows the transport. Not polled for that: the readouts beside the
+    knobs have always had the same gap, and a timer running behind every
+    editor to catch an occasional tempo change is a poor trade. Touching any
+    control refreshes it.
+
+    Falls back to the last known pair (500/500 to start) while the call is in
+    flight, and forever in a plain browser tab where there is no backend to
+    answer - which is what keeps the scope drawing something sane in the
+    gallery. */
+export function useDelayTimesMs() {
+  const leftState = useRef(Juce.getSliderState("ltime")).current;
+  const rightState = useRef(Juce.getSliderState("rtime")).current;
+  const unitState = useRef(Juce.getToggleState("timeunit")).current;
+
+  const [times, setTimes] = useState([500, 500]);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setTick((t) => t + 1);
+    const ids = [
+      [leftState.valueChangedEvent, leftState.valueChangedEvent.addListener(bump)],
+      [rightState.valueChangedEvent, rightState.valueChangedEvent.addListener(bump)],
+      [unitState.valueChangedEvent, unitState.valueChangedEvent.addListener(bump)],
+    ];
+    return () => ids.forEach(([event, id]) => event.removeListener(id));
+  }, [leftState, rightState, unitState]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getDelayTimesMs().then((next) => {
+      if (!cancelled && Array.isArray(next) && next.length === 2) setTimes(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+
+  return times;
 }
 
 /** Toggle bound to a WebToggleButtonRelay by parameter id, rendered as the

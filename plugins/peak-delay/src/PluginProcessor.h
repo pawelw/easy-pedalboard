@@ -49,6 +49,10 @@ public:
         and losing the division label. */
     juce::String timeMsReadout (const std::atomic<float>* timeParam) const;
 
+    /** Milliseconds for one Time knob, in whichever mode the pill is in -
+        what both the ms readout and the scope are derived from. */
+    float timeMs (const std::atomic<float>* timeParam) const;
+
     /** Thin wrappers over timeReadout()/timeMsReadout() for the web editor,
         which - unlike the old ee::ui editor - isn't a member of this class
         and so can't reach leftTimeParam/rightTimeParam directly. */
@@ -56,6 +60,16 @@ public:
     juce::String rightTimeReadout() const { return timeReadout (rightTimeParam); }
     juce::String leftTimeMsReadout() const { return timeMsReadout (leftTimeParam); }
     juce::String rightTimeMsReadout() const { return timeMsReadout (rightTimeParam); }
+
+    /** Both Time knobs as plain numbers of milliseconds, for the TapScope.
+        The scope places its taps on a real time axis, which it cannot get
+        from the normalised knob value alone: what a position means depends
+        on the Sync pill and, when synced, on the host tempo. The readouts
+        above carry the same figure, but as display text ("1/8", "1.50 s") -
+        parsing that back into a number would be a formatter dependency in
+        the wrong direction. */
+    float leftTimeMs() const { return timeMs (leftTimeParam); }
+    float rightTimeMs() const { return timeMs (rightTimeParam); }
 
     /** The tape machine's current/default voicing, for the EE_TAPE_TUNER dev
         panel - same reason as above, the web editor needs a way to reach
@@ -69,7 +83,16 @@ private:
     void parameterChanged (const juce::String& parameterID, float newValue) override;
     void mirrorTime (const juce::String& from, const juce::String& to);
 
-    /** Host tempo, clamped the same way processBlock's own lookup is. */
+    /** Reads the host's tempo off the playhead and caches it. ONLY safe from
+        processBlock/prepareToPlay: JUCE documents getPlayHead() as callable
+        only from the audio callback, and Ableton's playhead really is invalid
+        outside it - reading it from the message thread segfaulted Live inside
+        the editor's formatKnobValue handler. */
+    double readPlayHeadBpm();
+
+    /** The last tempo readPlayHeadBpm() saw, clamped to 20..300 and defaulting
+        to 120 before the first block. Safe from any thread - this is what the
+        readouts and the scope's time axis use. */
     double currentBpm() const;
 
     /** Whether the Time knobs read as note divisions. The "ms" parameter is
@@ -92,6 +115,9 @@ private:
 
     /** Stops the two time parameters echoing each other forever. */
     std::atomic<bool> mirroring { false };
+
+    /** Written on the audio thread, read from the editor - see currentBpm(). */
+    std::atomic<double> lastKnownBpm { 120.0 };
 
     juce::SmoothedValue<float> dryGain;
     juce::SmoothedValue<float> wetGain;

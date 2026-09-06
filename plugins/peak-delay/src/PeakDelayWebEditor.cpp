@@ -104,6 +104,21 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
 
                                             complete (text);
                                         })
+                   // The TapScope's time axis. Numbers, not the formatted
+                   // readouts above: the scope places taps at multiples of
+                   // the delay time, and what a knob position means in
+                   // milliseconds depends on the Sync pill and the host
+                   // tempo, neither of which the web view knows.
+                   .withNativeFunction ("getDelayTimesMs",
+                                        [this] (const juce::Array<juce::var>&,
+                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                        {
+                                            juce::Array<juce::var> times;
+                                            times.add (processorRef.leftTimeMs());
+                                            times.add (processorRef.rightTimeMs());
+
+                                            complete (times);
+                                        })
                    .withResourceProvider ([this] (const auto& url) { return getResource (url); },
                                           juce::URL { devServerAddress }.getOrigin())),
       leftTimeAttachment (*p.apvts.getParameter (kParamLeftTime), leftTimeRelay, p.apvts.undoManager),
@@ -120,7 +135,13 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
     webView.goToURL (kUseDevServer ? devServerAddress : juce::WebBrowserComponent::getResourceProviderRoot());
     // Just a starting size for the brief moment before the page's own
     // ResizeObserver reports its real rendered size - see jsui/src/autoSize.js.
-    setSize (460, 260);
+    // Close to the real thing on purpose: the width is exact (the card is a
+    // fixed 568 plus .page's 4px each side), the height only a guess, so the
+    // host sees at most a small vertical correction rather than a window that
+    // visibly jumps. It must not be *relied* on - a face whose card can't fit
+    // in the starting window used to deadlock here, which is what Card.css's
+    // `flex: none` now prevents.
+    setSize (576, 470);
     setResizable (false, false);
 
 #if EE_TAPE_TUNER

@@ -35,7 +35,24 @@ function Showcase() {
 
         <Readout label="Left" value="1/8" unit="250 ms" />
 
-        <TapScope height={78} feedback01={0.82} />
+        {/* The three things the scope has to keep separable: feedback changes
+            how far the run trails off, mix changes only the heights, and an
+            uneven L/R pair reads as two combs at different rates. */}
+        {[
+          { caption: "25 % feedback — 3 audible repeats", leftMs: 600, rightMs: 600, feedback01: 0.25, mix01: 1 },
+          { caption: "50 % feedback — 5", leftMs: 600, rightMs: 600, feedback01: 0.5, mix01: 1 },
+          { caption: "80 % feedback — 10", leftMs: 600, rightMs: 600, feedback01: 0.8, mix01: 1 },
+          { caption: "100 % feedback — 23", leftMs: 600, rightMs: 600, feedback01: 1, mix01: 1 },
+          { caption: "Same 50 %, but 150 ms — tighter, same count", leftMs: 150, rightMs: 150, feedback01: 0.5, mix01: 1 },
+          { caption: "Default patch — 250 ms, 35 % fb, 35 % mix", leftMs: 250, rightMs: 250, feedback01: 0.35, mix01: 0.35 },
+          { caption: "50 % fb at 16 % mix — same 5, just quieter", leftMs: 600, rightMs: 600, feedback01: 0.5, mix01: 0.16 },
+          { caption: "Unlinked — left 600 ms / right 380 ms", leftMs: 600, rightMs: 380, feedback01: 0.65, mix01: 0.7 },
+        ].map(({ caption, ...props }) => (
+          <div key={caption} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <SectionLabel>{caption}</SectionLabel>
+            <TapScope height={78} {...props} />
+          </div>
+        ))}
 
         <SliderRow
           name="Tape"

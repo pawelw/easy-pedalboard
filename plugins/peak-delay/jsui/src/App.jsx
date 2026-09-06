@@ -1,6 +1,13 @@
 import { useEffect } from "react";
 import { Card, TapScope, LinkIcon, TapeIcon, ModIcon } from "@synthpeak/pedal-ui";
-import { JuceKnob, JucePill, JuceStageControl, useJuceSliderValue, useTimeReadoutText } from "./juceBindings.jsx";
+import {
+  JuceKnob,
+  JucePill,
+  JuceStageControl,
+  useDelayTimesMs,
+  useJuceSliderValue,
+  useTimeReadoutText,
+} from "./juceBindings.jsx";
 import TimeControl from "./TimeControl.jsx";
 import { installAutoResize } from "./autoSize.js";
 import "./index.css";
@@ -17,9 +24,9 @@ function HeaderMeta() {
 export default function App() {
   useEffect(() => installAutoResize(), []);
 
-  const [leftTime01] = useJuceSliderValue("ltime");
-  const [rightTime01] = useJuceSliderValue("rtime");
+  const [leftMs, rightMs] = useDelayTimesMs();
   const [feedback01] = useJuceSliderValue("fb");
+  const [mix01] = useJuceSliderValue("mix");
 
   return (
     <div className="page">
@@ -27,7 +34,7 @@ export default function App() {
           passes a theme, so none of this reaches it (packages/pedal-ui/src/
           tokens.css's [data-pui-theme="onyx"] block). */}
       <Card title="Peak Delay" headerRight={<HeaderMeta />} className="pd-card" width={568}>
-        <TapScope height={78} leftTime01={leftTime01} rightTime01={rightTime01} feedback01={feedback01} />
+        <TapScope height={78} leftMs={leftMs} rightMs={rightMs} feedback01={feedback01} mix01={mix01} />
 
         <div className="pd-row">
           {/* sweepGap pinned to the 42px Time knobs' own value explicitly,
@@ -92,7 +99,7 @@ export default function App() {
             />
           </div>
 
-          <div className="pd-footer__half">
+          <div className="pd-footer__half pd-footer__half--mode">
             <JuceStageControl parameterId="mod" label="Post-stage" name="Mod" icon={<ModIcon />} />
           </div>
         </div>

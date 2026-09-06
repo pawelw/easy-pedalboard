@@ -11,6 +11,16 @@
   padding: 18px 22px 22px;
   border: 1px solid var(--pui-outline);
   box-shadow: var(--pui-panel-shadow);
+  /* Never shrink to the window. A rack panel is a fixed-width object, and it
+     sits as a flex item inside each face's centring .page - so by default a
+     window narrower than the card squeezes it instead.
+     That is worse than it looks, because a face measures THIS element to tell
+     its editor how big to open (see plugins/peak-delay/jsui/src/autoSize.js).
+     The editor starts at a placeholder size, the card shrinks to fit that, the
+     measurement reports the shrunken width back, and the window never grows -
+     a stable deadlock at the placeholder, with the card's contents overflowing
+     inside it. */
+  flex: none;
 }
 
 .pui-screw {

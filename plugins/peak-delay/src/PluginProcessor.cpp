@@ -100,7 +100,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
     return layout;
 }
 
-double PeakDelayProcessor::currentBpm() const
+double PeakDelayProcessor::readPlayHeadBpm()
 {
     double bpm = 120.0;
 
@@ -109,7 +109,15 @@ double PeakDelayProcessor::currentBpm() const
             if (const auto hostBpm = position->getBpm())
                 bpm = *hostBpm;
 
-    return juce::jlimit (20.0, 300.0, bpm);
+    bpm = juce::jlimit (20.0, 300.0, bpm);
+    lastKnownBpm.store (bpm, std::memory_order_relaxed);
+
+    return bpm;
+}
+
+double PeakDelayProcessor::currentBpm() const
+{
+    return lastKnownBpm.load (std::memory_order_relaxed);
 }
 
 juce::String PeakDelayProcessor::timeReadout (const std::atomic<float>* timeParam) const
@@ -118,12 +126,15 @@ juce::String PeakDelayProcessor::timeReadout (const std::atomic<float>* timePara
     return ee::peakdelay::timeMap().toText (time01, isSynced(), currentBpm());
 }
 
-juce::String PeakDelayProcessor::timeMsReadout (const std::atomic<float>* timeParam) const
+float PeakDelayProcessor::timeMs (const std::atomic<float>* timeParam) const
 {
     const float time01 = timeParam != nullptr ? timeParam->load() : kDefaultTime01;
-    const float ms = ee::peakdelay::timeMap().value (time01, isSynced(), currentBpm());
+    return ee::peakdelay::timeMap().value (time01, isSynced(), currentBpm());
+}
 
-    return juce::String (juce::roundToInt (ms)) + " ms";
+juce::String PeakDelayProcessor::timeMsReadout (const std::atomic<float>* timeParam) const
+{
+    return juce::String (juce::roundToInt (timeMs (timeParam))) + " ms";
 }
 
 void PeakDelayProcessor::mirrorTime (const juce::String& from, const juce::String& to)
@@ -185,7 +196,9 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     tape.setAmount (tapeParam->load() * 0.01f);
     delay.setFeedback (feedbackParam->load() * 0.01f);
     delay.setModulation (modParam->load() * 0.01f);
-    const double startupBpm = currentBpm();
+    // prepareToPlay is one of the callbacks where the playhead is valid, so
+    // the cache starts out holding the host's real tempo rather than 120.
+    const double startupBpm = readPlayHeadBpm();
     const bool startupSynced = isSynced();
     delay.setDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), startupSynced, startupBpm),
                            ee::peakdelay::timeSeconds (rightTimeParam->load(), startupSynced, startupBpm));
@@ -243,7 +256,7 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     // 120. When not synced the knob is a plain millisecond time and the tempo
     // is not consulted at all, so free-running time neither retunes itself on a
     // host tempo change nor stays quantised to the divisions.
-    const double bpm = currentBpm();
+    const double bpm = readPlayHeadBpm();
     const bool synced = isSynced();
 
     delay.setDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), synced, bpm),
