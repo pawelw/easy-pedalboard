@@ -41,7 +41,7 @@ scoped override block for **onyx**.
   --pui-recess:          #101416;
   --pui-recess-ink:      #4d5f65;
   --pui-tick:            #39474b;
-  --pui-tick-lit:        #b9d3d9;
+  --pui-tick-lit:        #b4b4b4;
 
   --pui-knob-body:       #0b0e10;   /* the ring */
   --pui-cap-grad-top:    #364347;
@@ -93,29 +93,3 @@ Radius, grain and shadow therefore need to be token-driven too:
 | section label | 9 px / 700 | .16em, uppercase |
 | slider name | 10 px / 700 | .1em, uppercase |
 | pill label | 9 px / 700 | .1em, uppercase |
-
-## Tape band tokens
-
-The pre-stage band is a second accent scope, not hard-coded green. Add it
-alongside the onyx block so the band can be retoned (or neutralised on the light
-theme) without touching markup:
-
-```css
-[data-pui-theme="onyx"] {
-  --pui-tape-band:      #375916;
-  --pui-tape-edge:      #46701c;
-  --pui-tape-ink:       #f2f7e6;   /* name */
-  --pui-tape-ink-soft:  #c9dbb0;   /* stage label */
-  --pui-tape-lit:       #d8f088;   /* value, icon, lit ticks, pointer */
-  --pui-tape-track:     #5a7f2a;   /* unlit ticks */
-  --pui-tape-knob-body: #1d2f08;
-  --pui-tape-cap-top:   #5c7f2c;
-  --pui-tape-cap-bot:   #2b4410;
-  --pui-tape-cap-rim:   rgba(216, 240, 136, 0.3);
-}
-```
-
-`StageControl tone="tape"` reads the `--pui-tape-*` group; `tone="default"`
-reads the plain `--pui-*` group. Contrast check: `--pui-tape-ink-soft` on the
-band is 5.3:1; the mod half's `--pui-ink-soft` on panel is 4.9:1. Do not use
-`--pui-recess-ink` for either stage label (2.6:1).

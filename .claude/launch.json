@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "peak-delay-jsui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "plugins/peak-delay/jsui"],
+      "port": 3001
+    }
+  ]
+}

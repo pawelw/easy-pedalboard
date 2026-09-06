@@ -14,6 +14,7 @@
   border-radius: 10px;
   background: var(--pui-recess);
   box-shadow: var(--pui-well-shadow);
+  margin-top: -8px;
 }
 
 .pui-readout__label {

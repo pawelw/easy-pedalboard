@@ -19,3 +19,6 @@ export { default as SliderRow } from "./SliderRow.jsx";
 export { default as Pill } from "./Pill.jsx";
 export { default as LinkIcon } from "./LinkIcon.jsx";
 export { default as SectionLabel } from "./SectionLabel.jsx";
+export { default as StageControl } from "./StageControl.jsx";
+export { default as TapeIcon } from "./TapeIcon.jsx";
+export { default as ModIcon } from "./ModIcon.jsx";

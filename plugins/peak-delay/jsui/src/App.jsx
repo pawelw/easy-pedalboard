@@ -1,6 +1,6 @@
 import { useEffect } from "react";
-import { Card, TapScope, SectionLabel, LinkIcon } from "@synthpeak/pedal-ui";
-import { JuceKnob, JucePill, JuceSliderRow, useJuceSliderValue, useTimeReadoutText } from "./juceBindings.jsx";
+import { Card, TapScope, LinkIcon, TapeIcon, ModIcon } from "@synthpeak/pedal-ui";
+import { JuceKnob, JucePill, JuceStageControl, useJuceSliderValue, useTimeReadoutText } from "./juceBindings.jsx";
 import TimeControl from "./TimeControl.jsx";
 import { installAutoResize } from "./autoSize.js";
 import "./index.css";
@@ -77,11 +77,24 @@ export default function App() {
           </div>
         </div>
 
-        <div className="pd-stage">
-          <SectionLabel>Pre-stage</SectionLabel>
-          <JuceSliderRow parameterId="tape" name="Tape" />
-          <SectionLabel>Post-stage</SectionLabel>
-          <JuceSliderRow parameterId="mod" name="Mod" />
+        {/* The footer's two halves, split down the middle. The tape half
+            full-bleeds its green band out to the card's left and bottom
+            edge - see .pd-footer in index.css for how, and why the bleed
+            lives here rather than inside StageControl. */}
+        <div className="pd-footer">
+          <div className="pd-footer__half pd-footer__half--tape">
+            <JuceStageControl
+              parameterId="tape"
+              label="Pre-stage"
+              name="Tape"
+              tone="tape"
+              icon={<TapeIcon />}
+            />
+          </div>
+
+          <div className="pd-footer__half">
+            <JuceStageControl parameterId="mod" label="Post-stage" name="Mod" icon={<ModIcon />} />
+          </div>
         </div>
       </Card>
     </div>

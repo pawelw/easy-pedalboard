@@ -128,12 +128,16 @@ public:
     {
         juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-        const auto divisions = ee::dsp::tempoDivisionLabels();
+        // Mirrors plugins/peak-delay/src/TimeMap.h: one normalised knob per
+        // side, the Sync pill deciding whether it reads as a division or as a
+        // continuous millisecond time.
+        const auto time01 = juce::NormalisableRange<float> (0.0f, 1.0f);
+        const float defaultTime01 = 5.0f / static_cast<float> (ee::dsp::kNumTempoDivisions - 1); // 1/8
 
-        layout.add (
-            std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "ltime", 1 }, "Left Time", divisions, 5));
-        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "rtime", 1 }, "Right Time",
-                                                                  divisions, 5));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "ltime", 1 }, "Left Time", time01,
+                                                                 defaultTime01));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rtime", 1 }, "Right Time", time01,
+                                                                 defaultTime01));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "sync", 1 }, "Sync L/R", true));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "timeunit", 1 }, "Time Unit", false));
 

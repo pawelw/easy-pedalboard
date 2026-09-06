@@ -229,6 +229,12 @@ function EndMarker({ label, radius, lit }) {
  * tick-scale + needle face the onyx Delay layout uses (COMPONENTS.md).
  * Same controlled API, same drag/keyboard handling below, only the dial's
  * own markup and CSS differ.
+ *
+ * `bare`: just the dial - no caption line under it, and no width padding for
+ * one. The default wrapper is `size + 28` wide so a caption longer than the
+ * knob still centres on it; in a row that puts its labels *beside* the knob
+ * instead (StageControl), that padding reads as ~14px of dead space either
+ * side, silently widening whatever gap the row asked for.
  */
 export default function Knob({
   value,
@@ -245,6 +251,7 @@ export default function Knob({
   step = 0.01,
   variant = "collar",
   sweepGap,
+  bare = false,
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
@@ -324,7 +331,7 @@ export default function Knob({
   const isScale = variant === "scale";
 
   return (
-    <div className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}`} style={{ width: size + 28 }}>
+    <div className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}`} style={{ width: bare ? size : size + 28 }}>
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
         {isScale ? (
           <TickScale
@@ -393,14 +400,14 @@ export default function Knob({
           appearing as a second line below it - a second line meant the row's
           height (and everything below it in the grid) changed the instant
           you touched a knob. */}
-      <div className="pui-caption pui-knob__caption">{dragging && valueLabel ? valueLabel : caption}</div>
+      {!bare && <div className="pui-caption pui-knob__caption">{dragging && valueLabel ? valueLabel : caption}</div>}
 
       {/* Unlike valueLabel above, this is a second, permanent line - Mix/
           Feedback show their value here at all times, not only mid-drag
           (COMPONENTS.md: "value line 4px under the caption"). Only rendered
           when a caller actually passes one, so every other knob's layout is
           untouched. */}
-      {subLabel && <div className="pui-knob__sublabel">{subLabel}</div>}
+      {!bare && subLabel && <div className="pui-knob__sublabel">{subLabel}</div>}
     </div>
   );
 }

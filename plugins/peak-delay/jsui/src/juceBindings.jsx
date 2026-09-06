@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
-import { Knob, Pill, SliderRow } from "@synthpeak/pedal-ui";
+import { Knob, Pill, StageControl } from "@synthpeak/pedal-ui";
 
 // A native function, not the parameter's own C++ stringFromValue - JUCE's
 // web-view relays only carry start/end/skew/interval, not the format string.
@@ -34,8 +34,8 @@ export function useJuceSliderValue(parameterId) {
 }
 
 /** A parameter's live formatted text (via formatKnobValue), re-fetched
-    whenever `value` changes - shared by JuceKnob and JuceSliderRow so both
-    read the same live-readout pattern. */
+    whenever `value` changes - shared by JuceKnob and JuceStageControl so
+    both read the same live-readout pattern. */
 function useFormattedText(parameterId, value) {
   const [text, setText] = useState("");
 
@@ -156,15 +156,20 @@ export function JucePill({ parameterId, icon, label, invert = false }) {
   );
 }
 
-/** SliderRow bound to a WebSliderRelay by parameter id - Tape/Mod's
-    pre/post-stage strip. */
-export function JuceSliderRow({ parameterId, name }) {
+/** StageControl bound to a WebSliderRelay by parameter id - the footer's
+    Tape (pre-stage) and Mod (post-stage) halves. Replaces the JuceSliderRow
+    these two used to be: COMPONENTS.md #5 is explicit that they are knobs,
+    not sliders. */
+export function JuceStageControl({ parameterId, label, name, icon, tone }) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const valueLabel = useFormattedText(parameterId, value);
 
   return (
-    <SliderRow
+    <StageControl
+      label={label}
       name={name}
+      icon={icon}
+      tone={tone}
       value={value}
       valueLabel={valueLabel}
       onChange={setValue}

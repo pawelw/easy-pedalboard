@@ -11,10 +11,9 @@ previous one's checks pass.
 2. `PedalUIProvider` gains `theme = "light"` and renders the
    `data-pui-theme` wrapper.
 3. Build the missing components against the light theme only:
-   `Knob variant="scale"`, `Readout`, `TimeControl`, `TapScope`,
-   `StageControl`, `Pill`, `LinkIcon`, `TapeIcon`, `ModIcon`,
-   `SectionLabel`; `Logo` tint via token. Export all from `index.js`.
-   No new slider component is needed — the stage controls are knobs.
+   `Knob variant="scale"`, `Readout`, `TapScope`, `SliderRow`, `Pill`,
+   `LinkIcon`, `SectionLabel`; `Logo` tint via token. Export all from
+   `index.js`.
 4. Add them to the gallery so they can be eyeballed:
    `apps/pedal-gallery` — a "components" tile rendering each new component at
    both themes side by side is the cheapest way to review this.
@@ -32,10 +31,9 @@ Every new component looks correct on the light panel.
    theme.
 3. Gallery: theme switch on the components tile.
 
-**Checks:** every component readable on `#171d20`; check the unpressed pill,
-the tick track, and both stage labels — they must measure ≥4.5:1 and look
-equally bright (an under-lit `POST-STAGE` next to the green `PRE-STAGE` is the
-mistake to avoid). Light theme still unchanged.
+**Checks:** every component readable on `#171d20`; contrast of `--pui-ink`
+(`#b9d3d9`) on panel is fine, but check the unpressed pill and the tick track.
+Light theme still unchanged.
 
 ## Phase 3 — Peak Delay jsui, new layout
 

@@ -49,14 +49,8 @@ Top to bottom:
    visibly changeable; the readout is the value.
 5. **Pill row** — `LINKED` (chain-link icon + label, lit = filled) and `MS`
    (outline when off). These are the `sync` and `timeunit` parameters.
-6. **Split footer** — one row above a hairline divider, halved. The left half
-   is a full-bleed green band (the tape stage — a machine in front of the delay,
-   and a selling point, so it gets its own colour) holding the reel-to-reel icon,
-   `PRE-STAGE`, a 42 px Tape knob and its value. The right half keeps the onyx
-   panel with the phased-sine icon, `POST-STAGE`, a 42 px Mod knob and its
-   value — identical layout, different tone. Both stages are knobs, not sliders.
-   The band bleeds to the card's left and bottom edges, so the card shell is
-   `overflow:hidden` with its padding on an inner div.
+6. **Stage strip** — hairline divider, then `PRE-STAGE` → Tape slider,
+   `POST-STAGE` → Mod slider, each with a live percentage.
 
 Exact geometry per component: `COMPONENTS.md`. Exact colours: `TOKENS.md`.
 
@@ -90,8 +84,6 @@ bound through `Juce.getSliderState` / `getToggleState` exactly as
 - `peak-logo.png` — already in the repo at `packages/pedal-ui/src/peak-logo.png`.
   Use the existing `Logo` component; it needs a token-driven tint so the mark
   can be light on the onyx panel (today it hard-codes `brightness(0)`).
-- Two new line icons ship with the face — `TapeIcon` (reel-to-reel deck) and
-  `ModIcon` (three phase-offset sine waves). Geometry in `COMPONENTS.md` §8b.
 - Chain-link icon: currently only exists as C++ vector drawing
   (`drawLinkIcon` in `plugins/peak-delay/src/PluginProcessor.cpp`). Port it to a
   `LinkIcon` React component — two rounded capsules on a 45° axis (geometry in

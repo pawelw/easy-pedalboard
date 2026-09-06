@@ -17,6 +17,14 @@
    rather than changing Card.css itself. */
 .pd-card.pui-card {
   padding: 22px 26px 24px;
+  /* Clips the footer's green band back to the card's own 20px corner radius.
+     The band reaches the card edge by escaping this padding with negative
+     margins (see .pd-footer__half--tape), which without this would leave a
+     green square poking out past the rounded bottom-left corner. The handoff
+     gets there by moving the padding onto an inner div instead; the negative
+     margins the reference face itself uses do the same thing without
+     restructuring Card, which Wah and the gallery also render. */
+  overflow: hidden;
 }
 .pd-card .pui-card__header {
   padding-bottom: 20px;
@@ -40,7 +48,7 @@
   align-items: flex-start;
   justify-content: center;
   gap: 24px;
-  margin-top: 22px;
+  margin-top: 32px;
 }
 
 .pd-time-col {
@@ -61,11 +69,36 @@
   gap: 7px;
 }
 
-.pd-stage {
+/* One row split in half: Tape (pre-stage, in front of the delay) on a green
+   band, Mod (post-stage, inside the feedback loop) on the plain panel.
+   COMPONENTS.md's face layout. */
+/* The negative margins take the whole footer - divider included - out to the
+   card's edge, so the tape band reads as part of the enclosure rather than as
+   a panel drawn on it, and the divider runs the band's full width instead of
+   stopping 10px short at each end.
+   Escaping the edge means clearing TWO nested paddings, which is why these
+   don't match the 26/24 in .pd-card: the card's own 26px sides and 24px
+   bottom, plus .pui-card__body's 10px sides (Card's, shared with Wah). The
+   1px border is deliberately left showing - the band stops just inside it,
+   as in the handoff's reference face. Card's overflow:hidden (see .pd-card)
+   rounds off the escaped bottom-left corner. */
+.pd-footer {
+  display: flex;
+  margin: 20px -36px -24px;
+  border-top: 1px solid var(--pui-divider);
+}
+
+/* Each half puts the content back where it belongs: 20px on the inside edge
+   where the two meet, the full bleed distance on the outside. */
+.pd-footer__half {
+  flex: 1;
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 22px;
-  margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--pui-divider);
+  padding: 16px 36px 20px 20px;
+}
+
+.pd-footer__half--tape {
+  background: var(--pui-tape-band);
+  padding: 16px 20px 20px 36px;
 }

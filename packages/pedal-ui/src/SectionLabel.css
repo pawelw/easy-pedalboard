@@ -4,6 +4,11 @@
   font-size: 9px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--pui-recess-ink);
+  /* COMPONENTS.md #8 is explicit that this is --pui-ink-soft and *not*
+     --pui-recess-ink, which fails contrast at 9px (it was written for text
+     inside a recessed well, on a much darker ground than the panel). The
+     indirection lets a caller re-point it per context without a prop -
+     StageControl's tape tone puts it on the green band. */
+  color: var(--pui-section-label-ink, var(--pui-ink-soft));
   white-space: nowrap;
 }

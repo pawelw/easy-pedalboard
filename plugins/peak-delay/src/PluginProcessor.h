@@ -36,15 +36,15 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    /** Text under a Time knob: the division label ("1/8") normally, or that
-        division's length at the current host tempo in milliseconds when the
-        ms button is on. Re-derives the label rather than reading it off the
-        parameter, so it is correct however this is called. */
+    /** Text under a Time knob: the division label ("1/8") when synced, or the
+        free-running time ("333 ms", "1.50 s") when the ms button is on.
+        Re-derives the text from the knob position rather than reading it off
+        the parameter, so it is correct however this is called. */
     juce::String timeReadout (const std::atomic<float>* timeParam) const;
 
     /** The millisecond reading regardless of the ms toggle - the onyx face's
         Readout shows this as a small, constant figure alongside timeReadout's
-        toggle-aware one (which swaps to the very same text when ms is on),
+        toggle-aware one (which swaps to the very same reading when ms is on),
         rather than only being able to see the ms conversion by turning ms on
         and losing the division label. */
     juce::String timeMsReadout (const std::atomic<float>* timeParam) const;
@@ -67,21 +67,15 @@ private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     void parameterChanged (const juce::String& parameterID, float newValue) override;
-    void mirrorDivision (const juce::String& from, const juce::String& to);
+    void mirrorTime (const juce::String& from, const juce::String& to);
 
     /** Host tempo, clamped the same way processBlock's own lookup is. */
     double currentBpm() const;
 
-    /** currentBpm() when synced, or a fixed reference tempo when the ms
-        toggle is on. Free-running time is supposed to mean the delay stops
-        tracking the host's tempo, not just that its *reading* switches from
-        a division name to a millisecond one - using currentBpm() here
-        regardless of the toggle left the sound re-tuning itself on every
-        host tempo change even with "Sync" off, and made the knob's smooth
-        drag motion misleading (the readout it drove was still quantised to
-        whatever the current tempo happened to make each of the ~20 division
-        stops resolve to in ms, not to ~20 fixed millisecond values). */
-    double effectiveBpm() const;
+    /** Whether the Time knobs read as note divisions. The "ms" parameter is
+        the pill's own sense - true means free-running - so this is its
+        inverse, named for what the knobs are actually doing. */
+    bool isSynced() const;
 
     ee::dsp::TapeCharacter tape;
     ee::dsp::TapeDelay delay;

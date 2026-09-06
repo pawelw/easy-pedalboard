@@ -77,25 +77,17 @@ then a `Readout`. Column width 236 px, 22 px between the two rows.
 - Fade animation: `@keyframes tapfade { 0% {opacity:.95} 100% {opacity:.08} }`,
   `2.4s linear infinite`, per-tap delay `n × 0.18s`.
 
-## 5. `StageControl` — knob + caption + value (replaces the stage sliders)
+## 5. `SliderRow` — horizontal slider with label and value
 
-Tape and Mod are **not** sliders. Each is a 42 px `Knob variant="scale"` (the
-same knob as the time controls) with a two-line block beside it:
+`<SliderRow name="Tape" value={v} onChange={...} valueLabel="22 %" />`
 
-```
-<StageControl label="PRE-STAGE" name="TAPE" value={v} valueLabel="22 %" icon={<TapeIcon/>} tone="tape" />
-```
-
-Row: `display:flex; align-items:center; gap:11px`; the text block is
-`flex-direction:column; gap:4px` — name 10px/700 .1em uppercase, value
-10px/500. 16 px between the stage label and the knob.
-
-The stage label, name, value, tick and knob colours come from the tone (see
-`--pui-tape-*` in TOKENS.md) so the same component renders the green tape half
-and the onyx mod half.
-
-Keep the existing vertical `Slider` untouched — Peak EQ/Wah rely on it, and
-this face no longer uses a horizontal one.
+`flex:1`, `align-items:center; gap:9px`. Name 10px/700 .1em `--pui-ink`. Track:
+`flex:1`, height 5 px, radius 3 px, `background: var(--pui-panel-edge)`; fill
+`var(--pui-ink)` to `value`; thumb 14 px circle `var(--pui-ink)` centred on the
+value. Value label 10px/500 `--pui-ink-dim`. (The existing vertical `Slider`
+stays as it is — add this as a separate component or as
+`orientation="horizontal"`, your call, but do not change the vertical
+rendering Peak EQ/Wah rely on.)
 
 ## 6. `Pill` — icon/label toggle button
 
@@ -118,26 +110,9 @@ elsewhere.
 
 ## 8. `SectionLabel`
 
-9px/700, .16em, uppercase. `PRE-STAGE` (Tape, in front of the delay) uses
-`var(--pui-tape-ink-soft)` on the green band; `POST-STAGE` (Mod, inside the
-feedback loop) uses `var(--pui-ink-soft)` — **not** `--pui-recess-ink`, which
-fails contrast at 9 px. The two halves must read as peers.
-
-## 8b. `TapeIcon` / `ModIcon`
-
-Both 38×31 rendered, stroke `currentColor`.
-
-- `TapeIcon` — viewBox `0 0 44 36`: deck body `rect 3.5,16.5 37×14 rx2`, two
-  feet `4.5×2.4 rx1` at y 30.5, head-cover `rect 15,21.5 14×7.2 rx1.6` with two
-  `r .85` filled screws at y 24; two reels `r 10` at (11,11) and (33,11) filled
-  with the band colour so they occlude the deck, each with three filled spokes
-  (120° apart, inner r 4.5 → outer r 9, ~34° wide) and a `r 3.2` hub ring.
-  Stroke-width 1.6.
-- `ModIcon` — viewBox `0 0 44 36`: one sine cycle drawn three times at x
-  offsets 0 / +5 / +10, opacity 1 / .55 / .3, stroke-width 3.4, round caps —
-  the phase-smear reading of modulation. Front path:
-  `M1 24 C6 6, 14 6, 19 18 C24 30, 32 30, 37 12`. The back copy runs past the
-  viewBox on the right, which is intended — it reads as continuing motion.
+9px/700, .16em, uppercase, `var(--pui-recess-ink)`. Used for `PRE-STAGE`
+(Tape — it sits in front of the delay and colours the dry signal) and
+`POST-STAGE` (Mod).
 
 ## 9. `Logo` — token-driven tint
 
@@ -164,13 +139,6 @@ Card  568px wide (padding 22px 26px 24px, radius 20)
 │        ├─ TimeControl  LEFT  1/8   250 ms
 │        ├─ TimeControl  RIGHT 1/8T  167 ms
 │        └─ pills  [LINKED] [MS]      gap 7
-└─ footer: one row, split in half, top border 1px var(--pui-divider), mt 20
-    ├─ LEFT half   flex:1, full-bleed green band — background var(--pui-tape-band),
-    │              margin 0 0 -22px -26px, padding 16px 20px 20px 26px
-    │              (bleeds to the card's left and bottom edge; the card shell is
-    │               overflow:hidden with the padding on an inner div, so the band
-    │               picks up the 20px bottom-left corner radius)
-    │              TapeIcon · PRE-STAGE · Knob42 · TAPE / 22 %
-    └─ RIGHT half  flex:1, margin 0 -26px -22px 0, padding 16px 26px 20px 20px
-                   ModIcon · POST-STAGE · Knob42 · MOD / 30 %
+└─ divider (mt 20, pt 16, 1px var(--pui-divider))
+    └─ row gap 22:  PRE-STAGE · SliderRow Tape · POST-STAGE · SliderRow Mod
 ```
