@@ -5,6 +5,14 @@ const MIN_ANGLE = -135;
 const MAX_ANGLE = 135;
 const PIXELS_PER_FULL_SWEEP = 200;
 
+// Fine tune: holding shift scales every increment of a drag (and of an arrow
+// key) down by this much, so the same hand movement covers a fifth of the
+// range - the gesture a DAW's own controls use for the last few percent of a
+// value. It is a factor on the *increment*, not a second mapping of the
+// pointer's absolute position, so shift can go down and come back up
+// mid-drag without the knob jumping.
+const FINE_FACTOR = 0.2;
+
 // The value sweep, in pixels off the knob's rim so it keeps the same visual
 // gap at every knob size.
 const SWEEP_GAP = 6;
@@ -260,8 +268,9 @@ function EndMarker({ label, radius, lit }) {
 
 /**
  * A rotary knob: controlled (0..1), drag-vertically to turn, arrow keys to
- * nudge. JUCE-agnostic - a plugin's jsui wires this to a WebSliderRelay by
- * passing value/onChange/onDragStart/onDragEnd itself.
+ * nudge, shift for fine tune (FINE_FACTOR). JUCE-agnostic - a plugin's jsui
+ * wires this to a WebSliderRelay by passing value/onChange/onDragStart/
+ * onDragEnd itself.
  *
  * `variant`: "collar" (default, unchanged) is the scalloped dark collar and
  * outer value arc every pedal has used so far. "scale" is the plain-ring +
@@ -337,8 +346,26 @@ export default function Knob({
       // relative motion the OS still reports) instead, folded onto the last
       // committed value rather than measured against a fixed start point.
       const locked = document.pointerLockElement === bodyRef.current;
-      const raw = locked ? -event.movementY : start.y - event.clientY;
+      const fine = event.shiftKey;
+
+      // Unlocked, the delta is measured from a fixed anchor, so a shift press
+      // or release part-way through a drag has to re-anchor - otherwise the
+      // whole distance travelled so far gets re-scaled at once and the knob
+      // jumps. The anchor moves to the *previous* sample rather than this
+      // one, paired with the value that sample produced, so the movement
+      // carried by the very event that noticed the change still counts. The
+      // locked branch is already incremental (each event carries only its own
+      // movement) and needs none of this.
+      if (!locked && start.fine !== fine) {
+        start.y = start.lastY;
+        start.value = latest.current.value;
+        start.fine = fine;
+      }
+
+      const travel = locked ? -event.movementY : start.y - event.clientY;
+      const raw = travel * (fine ? FINE_FACTOR : 1);
       const base = locked ? latest.current.value : start.value;
+      start.lastY = event.clientY;
       latest.current.onChange(Math.min(1, Math.max(0, base + raw / PIXELS_PER_FULL_SWEEP)));
     };
 
@@ -361,7 +388,7 @@ export default function Knob({
   const onPointerDown = (event) => {
     event.preventDefault();
     onDragStart?.();
-    dragStartRef.current = { y: event.clientY, value };
+    dragStartRef.current = { y: event.clientY, lastY: event.clientY, value, fine: event.shiftKey };
     setDragging(true);
     // Locks the OS cursor in place for the rest of the drag, the way a
     // hardware knob's own travel isn't tied to how far your hand moves -
@@ -372,12 +399,14 @@ export default function Knob({
   };
 
   const onKeyDown = (event) => {
+    // Same shift-is-finer rule as the drag above, on the arrow keys.
+    const nudge = step * (event.shiftKey ? FINE_FACTOR : 1);
     if (event.key === "ArrowUp" || event.key === "ArrowRight") {
       event.preventDefault();
-      onChange(Math.min(1, value + step));
+      onChange(Math.min(1, value + nudge));
     } else if (event.key === "ArrowDown" || event.key === "ArrowLeft") {
       event.preventDefault();
-      onChange(Math.max(0, value - step));
+      onChange(Math.max(0, value - nudge));
     }
   };
 
