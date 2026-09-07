@@ -241,31 +241,12 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
    a diagonal highlight on an undecorated disc reads as a sphere, and this
    is meant to read as a flat-topped cap seen straight on. The rim is an
    inset hairline instead of a border so it costs the cap no diameter, and
-   the inner top highlight is what keeps a dark onyx cap from going flat. */
+   the inner top highlight is what keeps a dark onyx cap from going flat.
+   The two offset crescents over that hairline light it from above. */
 .pui-knob__soft-cap {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: linear-gradient(180deg, var(--pui-soft-face-top), var(--pui-soft-face-bottom));
-  box-shadow:
-    inset 0 0 0 1px var(--pui-soft-rim),
-    inset 0 1.5px 1px var(--pui-soft-face-hi),
-    var(--pui-soft-shadow);
-}
-
-/* The needle: a hairline from the cap's centre out to just short of the rim,
-   where the scale variant's pointer is a stub parked near the edge. Pinned
-   and rotated by the shared .pui-knob__pointer-wrap. */
-.pui-knob__pointer--needle {
-  top: 13%;
-  height: 37%;
-  width: 2.2px;
-  margin-left: -1.1px;
-  border-radius: 999px;
-  background: var(--pui-soft-needle);
-}
-
-.pui-knob__pointer--needle-thin {
-  width: 1.8px;
-  margin-left: -0.9px;
+    position: absolute;
+    inset: 2px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, var(--pui-soft-face-top), var(--pui-soft-face-bottom));
+    box-shadow: inset 0 -1px 0.5px var(--pui-soft-rim-lo), inset 0 0.5px 1px var(--pui-soft-face-hi), var(--pui-soft-shadow);
 }
