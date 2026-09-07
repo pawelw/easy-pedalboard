@@ -1,0 +1,120 @@
+/* Covers the whole plugin window. `fixed` rather than absolute: the face's
+   own card is a positioned, clipped box, and an absolutely-positioned dialog
+   inside it would be cropped by whichever ancestor happens to have overflow
+   hidden. */
+.pui-presetsave {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pui-presetsave__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 55%);
+}
+
+.pui-presetsave__box {
+  position: relative;
+  /* Wide enough for Cancel + Save to Factory + Save on one line in an author
+     build, and still inside the narrowest face's window. */
+  width: min(320px, calc(100vw - 40px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  background: var(--pui-panel);
+  border: 1.5px solid var(--pui-line);
+  border-radius: var(--pui-radius-panel);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 45%);
+}
+
+.pui-presetsave__title {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+}
+
+/* Recessed, like every other place on a face where you read a value out of a
+   dark well - this is the one place you type one into it. */
+.pui-presetsave__input {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  color: var(--pui-recess-ink);
+  background: var(--pui-recess);
+  border: 1.5px solid var(--pui-line);
+  border-radius: 7px;
+  padding: 9px 11px;
+  width: 100%;
+  box-sizing: border-box;
+  /* Same native-chrome trap as Button.css and Dropdown.css: left alone, an
+     <input> draws the OS focus ring in the system accent colour. */
+  appearance: none;
+  -webkit-appearance: none;
+  outline: none;
+}
+
+.pui-presetsave__input::placeholder {
+  color: var(--pui-ink-dim);
+}
+
+.pui-presetsave__error {
+  font-family: var(--pui-font-label);
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  line-height: 1.4;
+  color: #e07a6a;
+}
+
+.pui-presetsave__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 7px;
+  /* Three buttons and 300px: the author one only appears in a dev build, and
+     wrapping there is better than shrinking the labels on every face. */
+  flex-wrap: wrap;
+}
+
+.pui-presetsave .pui-button.pui-presetsave__button {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  padding: 8px 12px;
+  border-radius: 6px;
+  /* A flex item shrinks below its content by default, and .pui-button's own
+     `overflow` lets it shrink all the way - which put all three labels on top
+     of each other in the middle of the row rather than wrapping. Each button
+     is its own width or nothing; the row wraps instead. */
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.pui-presetsave .pui-button.pui-presetsave__button--primary {
+  background: var(--pui-ink);
+  color: var(--pui-panel);
+  border-color: transparent;
+}
+
+.pui-presetsave .pui-button.pui-presetsave__button--primary:hover {
+  background: var(--pui-ink-soft);
+}
+
+/* The author button is the odd one out and should look it - outlined in the
+   panel's own accent rather than filled, so it never reads as the default
+   action in a build that happens to have it. */
+.pui-presetsave .pui-button.pui-presetsave__button--author {
+  color: var(--pui-ink-soft);
+  border-style: dashed;
+}
+
+.pui-presetsave .pui-button.pui-presetsave__button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

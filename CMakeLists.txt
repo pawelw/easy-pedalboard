@@ -175,6 +175,7 @@ option(EE_LTO "Link with link-time optimisation (slow; for release builds)" ON)
 option(EE_SHIMMER_TUNER "Add the shimmer tuning panel to Peak Reverb (development only)" OFF)
 option(EE_TAPE_TUNER "Add the tape tuning panel to Peak Delay (development only)" OFF)
 option(EE_JSUI_DEV_SERVER "Point the WebView faces at their Vite dev server instead of jsui/dist (development only)" OFF)
+option(EE_PRESET_AUTHOR "Add the face's \"save into the shipped bank\" button, which writes to a pedal's presets/ source folder (development only)" OFF)
 option(EE_GRAIN_TUNER "Add the grain tuning panel to Peak Grain (development only)" OFF)
 option(EE_GRAIN_TRACE "Log Peak Grain's in/out levels when its output runs away (development only)" OFF)
 

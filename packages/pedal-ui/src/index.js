@@ -10,6 +10,12 @@ export { default as Toggle } from "./Toggle.jsx";
 export { default as Button } from "./Button.jsx";
 export { default as Dropdown } from "./Dropdown.jsx";
 export { default as PresetBar } from "./PresetBar.jsx";
+// The bar wired to a processor's ee::plugin::PresetStore - what a pedal
+// actually drops into its header. PresetBar above stays prop-driven for the
+// gallery and for a face with no store behind it.
+export { default as JucePresetBar } from "./JucePresetBar.jsx";
+export { default as PresetPicker } from "./PresetPicker.jsx";
+export { default as PresetSaveDialog } from "./PresetSaveDialog.jsx";
 export { default as WaveIcon } from "./WaveIcon.jsx";
 export { default as FilterCurveIcon } from "./FilterCurveIcon.jsx";
 export { default as FilterScope } from "./FilterScope.jsx";

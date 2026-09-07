@@ -1,0 +1,115 @@
+/* The closed control is Dropdown's, class for class (see PresetPicker.jsx's
+   classNames) - a preset picker and a plain select should be the same box on
+   a face. Only the open panel differs, because only the open panel has
+   columns. */
+
+/* Mantine lays the columns out itself; this just supplies the strip they sit
+   in. `align-items: stretch` rather than the default so a short User Presets
+   column and a long factory one share one bottom edge instead of each ending
+   where its own content does. */
+.pui-presetpicker__panel {
+  padding: 0;
+  overflow: hidden;
+}
+
+.pui-presetpicker__columns {
+  display: flex;
+  align-items: stretch;
+}
+
+/* The divider between columns is the second column's left border, not a
+   separate element - so a picker showing one column (nothing expanded yet)
+   draws no stray line. */
+/* Capped at both ends. The floor keeps a column of short names from coming out
+   as a sliver; the ceiling matters more, because preset names are typed by the
+   user and the face's card is `overflow: hidden` - two columns of unbounded
+   width would eventually run under the card's edge and be cropped there, with
+   no scrollbar and no clue why. 190 leaves both columns inside the narrowest
+   face with room to spare.
+
+   The cap has to be repeated on the row (below) rather than left to inherit:
+   Mantine puts a content-sized scroll wrapper between the column and its rows,
+   so a row's own `width: 100%` resolves against *that*, not against the capped
+   column - which clipped long names at the column edge with no ellipsis. The
+   shared variable is what keeps the two numbers from drifting apart. */
+.pui-presetpicker__column {
+  --pui-preset-column: 190px;
+
+  padding: 4px;
+  min-width: 132px;
+  max-width: var(--pui-preset-column);
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.pui-presetpicker__column + .pui-presetpicker__column {
+  border-left: 1.5px solid var(--pui-line);
+}
+
+/* A row that opens another column carries Mantine's own chevron in
+   `columnOptionIcon`; the label has to give it somewhere to go, so it takes
+   the slack rather than the row centring its two children as a pair.
+
+   The rest is the native-chrome reset Button.css and Dropdown.css already
+   document, and it is not optional here: a Cascader row is a real <button>
+   (mantine-UnstyledButton-root), and `unstyled` strips Mantine's own reset
+   along with its look - so without this WebKit draws every row as a grey
+   `2px outset` platform button on top of the panel.
+
+   Font and colour are deliberately not restated: the row also carries
+   `.pui-dropdown__option`, whose class-level rules already beat the UA
+   stylesheet's button font - and an `inherit` here would depend on which of
+   the two stylesheets the bundler happened to emit last. */
+.pui-presetpicker__option {
+  justify-content: space-between;
+  gap: 10px;
+  white-space: nowrap;
+  width: 100%;
+  max-width: calc(var(--pui-preset-column) - 8px); /* the column's own padding */
+  background: transparent;
+  border: none;
+  text-align: left;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.pui-presetpicker__option:hover:not([data-disabled]) {
+  background: var(--pui-panel-edge);
+}
+
+/* `min-width: 0` is what actually lets it shrink: a flex item's default
+   `min-width: auto` is its content width, so without this the label pushes the
+   row wider instead of truncating inside it. */
+.pui-presetpicker__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pui-presetpicker__option svg {
+  width: 10px;
+  height: 10px;
+  flex-shrink: 0;
+}
+
+/* Only ever seen with a Cascader that has been searched into a corner - the
+   "no user presets yet" case is a real disabled row instead, so that the User
+   Presets node keeps its chevron and does not read as a selectable leaf. */
+.pui-presetpicker__empty {
+  font-family: var(--pui-font-label);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  color: var(--pui-ink-dim);
+  padding: 7px 10px;
+}
+
+.pui-presetpicker__option[data-disabled],
+.pui-presetpicker__option[data-disabled="true"] {
+  color: var(--pui-ink-dim);
+  cursor: default;
+}
+
+.pui-presetpicker__option[data-disabled]:hover,
+.pui-presetpicker__option[data-disabled="true"]:hover {
+  background: transparent;
+}

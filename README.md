@@ -194,8 +194,25 @@ still.
 At Mix 0 the display is empty but for the dry line: there are no repeats to
 draw, and nothing is drawn.
 
-The preset bar in the header is layout only for now - browsing and Save change
-nothing, because there is no preset storage in the project yet.
+The preset bar in the header browses two banks. The **factory** presets are
+compiled into the plugin and are the same on every machine; **User Presets** is
+the cascade at the top of the list, and holds whatever you have saved yourself,
+in `~/Library/Application Support/Peak/Peak Delay/Presets`. The arrows step
+through both as one list, factory first.
+
+The save button opens a box to name the preset. Saving always writes to your own
+bank - a factory preset is inside the binary and cannot be overwritten - so
+saving over a factory name gives you a preset of your own that shadows it in the
+list, and the shipped one is still there under the same name after a reinstall.
+Saving a name you already have overwrites that one.
+
+A development build configured with `-DEE_PRESET_AUTHOR=ON` grows a third button
+in that box, **Save to Factory**, which writes the preset into the pedal's own
+`plugins/peak-delay/presets/` folder in the source tree so it can be committed
+and shipped with the next release. It does not appear in a normal build, and the
+plugin refuses the request even if something asks for it anyway. The new preset
+shows up in the list once it has actually been built in, because that is the
+point at which it is real.
 
 **Tape** is not part of the delay. It is a section of its own, the way a
 separate pedal would sit somewhere in a chain, and the `‹ PRE ›` router in its

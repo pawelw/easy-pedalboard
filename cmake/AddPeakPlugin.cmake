@@ -1,3 +1,52 @@
+# Factory presets, if the pedal has any: every .xml in its own presets/ folder
+# is compiled into the binary, so the bank a release ships with is pinned by
+# the release rather than by whatever happens to be on the machine. Drop a file
+# in the folder and it is in the next build - there is nothing per-pedal to
+# register, which is the point.
+#
+# CONFIGURE_DEPENDS so adding or removing one re-globs on the next build
+# instead of needing a manual cmake run. The usual objection to globbing is
+# that it hides new source files from your collaborators' incremental builds;
+# that is exactly what CONFIGURE_DEPENDS fixes, and preset files are data with
+# no other build-system meaning.
+function(peak_add_factory_presets TARGET)
+    file(GLOB presetFiles CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/presets/*.xml")
+
+    # PUBLIC throughout, not PRIVATE: a pedal's PluginProcessor.h includes the
+    # generated header behind EE_HAS_FACTORY_PRESETS, so every target that
+    # includes that header - the offline test harnesses in tests/ - needs the
+    # same macro *and* the same include directory. Split them and a harness
+    # compiles with the macro on and no header to find.
+    if(NOT presetFiles)
+        # Still tell the processor where the folder would be: with
+        # EE_PRESET_AUTHOR on, the face's author button creates it.
+        target_compile_definitions(${TARGET} PUBLIC
+            EE_HAS_FACTORY_PRESETS=0
+            EE_PRESET_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/presets")
+        return()
+    endif()
+
+    # NAMESPACE is the same in every pedal on purpose - each target links only
+    # its own binary-data library and sees only its own generated header, so
+    # one name lets ee/plugin/PresetStore.h's EE_FACTORY_PRESETS macro be
+    # written once instead of once per pedal.
+    juce_add_binary_data(${TARGET}_presets
+        NAMESPACE   FactoryPresets
+        HEADER_NAME FactoryPresets.h
+        SOURCES     ${presetFiles})
+
+    set_target_properties(${TARGET}_presets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
+
+    target_link_libraries(${TARGET} PUBLIC ${TARGET}_presets)
+    target_compile_definitions(${TARGET} PUBLIC
+        EE_HAS_FACTORY_PRESETS=1
+        EE_FACTORY_PRESETS_HEADER="FactoryPresets.h"
+        EE_PRESET_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/presets")
+
+    list(LENGTH presetFiles presetCount)
+    message(STATUS "${TARGET}: ${presetCount} factory preset(s)")
+endfunction()
+
 # peak_add_plugin(<Target>
 #     CODE        <four-letter plugin code>
 #     PRODUCT     <"Peak Something">
@@ -54,6 +103,8 @@ function(peak_add_plugin TARGET)
 
     target_sources(${TARGET} PRIVATE src/PluginProcessor.cpp ${ARG_SOURCES})
 
+    peak_add_factory_presets(${TARGET})
+
     if(ARG_WEBVIEW)
         set(webBrowserFlag 1)
     else()
@@ -72,7 +123,17 @@ function(peak_add_plugin TARGET)
         set(devServerFlag 0)
     endif()
 
+    # The face's third save button, which writes a preset into the pedal's own
+    # presets/ source folder for committing. An authoring tool, not a feature:
+    # off unless asked for, like the tuning panels.
+    if(EE_PRESET_AUTHOR)
+        set(presetAuthorFlag 1)
+    else()
+        set(presetAuthorFlag 0)
+    endif()
+
     target_compile_definitions(${TARGET} PUBLIC
+        EE_PRESET_AUTHOR=${presetAuthorFlag}
         JUCE_WEB_BROWSER=${webBrowserFlag}
         EE_JSUI_DEV_SERVER=${devServerFlag}
         JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1

@@ -46,6 +46,7 @@ means "something you changed". The individual binaries, if you want one directly
 
 ```bash
 ./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests          # 60 DSP tests, exits non-zero on failure
+./build/tests/ee_preset_tests_artefacts/Release/ee_preset_tests    # ee::plugin::PresetStore, both banks
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress      # tape knob sweep, non-finite hunt
 ./build/tests/ee_reverb_stress_artefacts/Release/ee_reverb_stress  # reverb tail stability
 ./build/tests/ee_trempan_stress_artefacts/Release/ee_trempan_stress
@@ -59,6 +60,11 @@ means "something you changed". The individual binaries, if you want one directly
 
 `auval -v aufx <CODE> Peak` runs Apple's AU validation; the four-letter codes are
 in each plugin's `CMakeLists.txt` (`PLUGIN_CODE`).
+
+`-DEE_PRESET_AUTHOR=ON` adds a third button to the face's save box, **Save to
+Factory**, which writes the preset into the pedal's own `presets/` folder in the
+source tree for committing. Off by default and refused by the bridge in a normal
+build; never ship one.
 
 Three pedals carry a development side panel that drives the part of their
 voicing that is not on the face, and prints the header lines for whatever you
@@ -126,7 +132,9 @@ shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knob
 shared/src/dsp/           FdnReverb, SpringReverb + TapeDelay implementations
 shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knob…)
 shared/src/ui/            its implementation
-shared/include/ee/plugin/ the bypass crossfade and shared parameter formatters
+shared/include/ee/plugin/ the bypass crossfade, shared parameter formatters,
+                          and the preset store + its WebView bridge
+plugins/peak-*/presets/   that pedal's factory presets - see below
 cmake/AddPeakPlugin.cmake the juce_add_plugin boilerplate, once
 plugins/peak-*/src/       one PluginProcessor.{h,cpp} each: parameters + processBlock
 plugins/peak-*/CMakeLists.txt  a peak_add_plugin() call — six lines
@@ -185,6 +193,55 @@ the slider's `digitalCap` property.
 DSP voicing constants live in `*Config.h`, not inline in the processors. When
 changing a sound, change the config header — the tests and the tuning panels read
 the same values.
+
+## Presets
+
+`ee::plugin::PresetStore` (header-only, `shared/include/ee/plugin/`) is the one
+preset store, and it is meant to be adopted by every pedal. Two banks:
+
+- **Factory** - every `*.xml` in the pedal's own `presets/` folder, compiled in
+  by `peak_add_factory_presets` in `cmake/AddPeakPlugin.cmake`. There is nothing
+  per-pedal to register: drop a file in the folder and the next build ships it
+  (the glob is `CONFIGURE_DEPENDS`). Read-only at runtime, by design.
+- **User** - one XML file per preset under
+  `~/Library/Application Support/Peak/<Product>/Presets`.
+
+A preset is `apvts.copyState()` and nothing else, so state a processor keeps
+outside the tree is not in one. **Every parameter must appear in every preset
+file**: `APVTS::replaceState` re-appends a parameter the tree is missing and
+fills it from whatever that parameter currently holds, so a partial preset
+silently inherits from whichever preset was loaded before it. `ee_preset_tests`
+guards this.
+
+Wiring a WebView pedal up is three things and nothing else:
+
+```cpp
+// PluginProcessor.h - after apvts, and #include EE_FACTORY_PRESETS_HEADER
+ee::plugin::PresetStore presets { apvts, "Peak Whatever", EE_FACTORY_PRESETS };
+
+// the editor - wrap the options you already build
+webView (ee::plugin::presetBridge (juce::WebBrowserComponent::Options {} ... ,
+                                   p.presets, EE_PRESET_SOURCE_DIR))
+```
+
+```jsx
+// the face
+headerCenter={<JucePresetBar />}
+```
+
+`JucePresetBar` (`@synthpeak/pedal-ui`) takes no props - it talks to the five
+native functions `presetBridge` registers. `PresetBar` is the same bar
+prop-driven, for the gallery and for a face with no store behind it. Loading a
+preset says nothing to the knobs: it replaces the APVTS tree and every relay
+attachment already listens to its own parameter.
+
+Two pedals are **not** on it yet. Peak Wah has its own older copy of the bar
+(`plugins/peak-wah/jsui/src/PresetBar.jsx`, literal colours against that face's
+cream panel); Peak Grain has its own `ee::grain::PresetStore`, flat, user-only,
+and its own preset folder - migrating it would move presets a user may already
+have saved. The nine `ee::ui` faces have a native preset bar
+(`ee::ui::PresetBar` + `PresetBarSpec`) with a menu rather than this dialog;
+`PresetStore` suits them as a store, but the save box here is web-only.
 
 ## Traps
 

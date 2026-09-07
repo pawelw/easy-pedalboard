@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import {
   Card,
-  PresetBar,
+  JucePresetBar,
   StageGroup,
   StageHeader,
   TapScope,
@@ -54,7 +54,7 @@ export default function App() {
       {/* 568 + the link bracket's own column - see --pd-link-col. */}
       <Card
         title="Peak Delay"
-        headerCenter={<PresetBar />}
+        headerCenter={<JucePresetBar />}
         headerRight={<HeaderLevels />}
         className="pd-card"
         width={626}

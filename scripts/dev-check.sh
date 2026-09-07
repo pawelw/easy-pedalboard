@@ -59,6 +59,7 @@ run() {
 
 echo "==> tests"
 run ee_dsp_tests
+run ee_preset_tests
 run ee_tape_stress
 run ee_reverb_stress
 run ee_trempan_stress

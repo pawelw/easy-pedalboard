@@ -1,6 +1,7 @@
 #include "PeakDelayWebEditor.h"
 
 #include "PluginProcessor.h"
+#include "ee/plugin/PresetBridge.h"
 #include "ee/plugin/WebFace.h"
 
 namespace
@@ -42,90 +43,97 @@ bool PeakDelayWebEditor::SinglePageBrowser::pageLoadHadNetworkError (const juce:
 
 PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
     : juce::AudioProcessorEditor (&p), processorRef (p),
-      webView (juce::WebBrowserComponent::Options {}
-                   .withNativeIntegrationEnabled()
-                   // WKWebView's own right-click context menu ("Reload" is
-                   // its only useful item here - there's no navigation
-                   // history for Back/Forward) has no dedicated JUCE option
-                   // to turn off, so this suppresses it the ordinary web way
-                   // instead: a knob click-drag that starts with a right
-                   // button, or a trackpad two-finger tap mid-drag, was
-                   // popping it up over the control being turned.
-                   .withUserScript ("document.addEventListener('contextmenu', function (e) { e.preventDefault(); });")
-                   .withOptionsFrom (leftTimeRelay)
-                   .withOptionsFrom (rightTimeRelay)
-                   .withOptionsFrom (feedbackRelay)
-                   .withOptionsFrom (mixRelay)
-                   .withOptionsFrom (wearRelay)
-                   .withOptionsFrom (flutterRelay)
-                   .withOptionsFrom (driftRelay)
-                   .withOptionsFrom (phaserRelay)
-                   .withOptionsFrom (loCutRelay)
-                   .withOptionsFrom (hiCutRelay)
-                   .withOptionsFrom (inGainRelay)
-                   .withOptionsFrom (outGainRelay)
-                   .withOptionsFrom (typeRelay)
-                   .withOptionsFrom (syncRelay)
-                   .withOptionsFrom (timeUnitRelay)
-                   .withOptionsFrom (tapePreRelay)
-                   .withOptionsFrom (onRelay)
-                   .withOptionsFrom (controlParameterIndexReceiver)
-                   // See jsui/src/autoSize.js: the page measures its own real
-                   // rendered size and reports it here, rather than this
-                   // editor opening at a size guessed from a browser that
-                   // isn't the WebView engine actually rendering it.
-                   .withNativeFunction ("reportContentSize",
-                                        [this] (const juce::Array<juce::var>& args,
-                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
-                                        {
-                                            const int width = juce::jmax (100, static_cast<int> (args[0]));
-                                            const int height = juce::jmax (100, static_cast<int> (args[1]));
+      // The preset bar's five native functions, added in one call - see
+      // ee/plugin/PresetBridge.h. Wrapping the options rather than chaining
+      // more .withNativeFunction here is what keeps the next pedal's copy of
+      // this line one line long.
+      webView (ee::plugin::presetBridge (
+          juce::WebBrowserComponent::Options {}
+              .withNativeIntegrationEnabled()
+              // WKWebView's own right-click context menu ("Reload" is
+              // its only useful item here - there's no navigation
+              // history for Back/Forward) has no dedicated JUCE option
+              // to turn off, so this suppresses it the ordinary web way
+              // instead: a knob click-drag that starts with a right
+              // button, or a trackpad two-finger tap mid-drag, was
+              // popping it up over the control being turned.
+              .withUserScript ("document.addEventListener('contextmenu', function (e) { e.preventDefault(); });")
+              .withOptionsFrom (leftTimeRelay)
+              .withOptionsFrom (rightTimeRelay)
+              .withOptionsFrom (feedbackRelay)
+              .withOptionsFrom (mixRelay)
+              .withOptionsFrom (wearRelay)
+              .withOptionsFrom (flutterRelay)
+              .withOptionsFrom (driftRelay)
+              .withOptionsFrom (phaserRelay)
+              .withOptionsFrom (loCutRelay)
+              .withOptionsFrom (hiCutRelay)
+              .withOptionsFrom (inGainRelay)
+              .withOptionsFrom (outGainRelay)
+              .withOptionsFrom (typeRelay)
+              .withOptionsFrom (syncRelay)
+              .withOptionsFrom (timeUnitRelay)
+              .withOptionsFrom (tapePreRelay)
+              .withOptionsFrom (onRelay)
+              .withOptionsFrom (controlParameterIndexReceiver)
+              // See jsui/src/autoSize.js: the page measures its own real
+              // rendered size and reports it here, rather than this
+              // editor opening at a size guessed from a browser that
+              // isn't the WebView engine actually rendering it.
+              .withNativeFunction ("reportContentSize",
+                                   [this] (const juce::Array<juce::var>& args,
+                                           juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                   {
+                                       const int width = juce::jmax (100, static_cast<int> (args[0]));
+                                       const int height = juce::jmax (100, static_cast<int> (args[1]));
 #if EE_TAPE_TUNER
-                                            const int panelWidth =
-                                                tunerPanel != nullptr ? TapeTunerPanel::preferredWidth : 0;
+                                       const int panelWidth =
+                                           tunerPanel != nullptr ? TapeTunerPanel::preferredWidth : 0;
 #else
                                             const int panelWidth = 0;
 #endif
-                                            setSize (width + panelWidth, height);
-                                            complete (true);
-                                        })
-                   .withNativeFunction ("formatKnobValue",
-                                        [this] (const juce::Array<juce::var>& args,
-                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
-                                        {
-                                            const auto id = args[0].toString();
-                                            juce::String text;
+                                       setSize (width + panelWidth, height);
+                                       complete (true);
+                                   })
+              .withNativeFunction ("formatKnobValue",
+                                   [this] (const juce::Array<juce::var>& args,
+                                           juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                   {
+                                       const auto id = args[0].toString();
+                                       juce::String text;
 
-                                            if (id == kParamLeftTime)
-                                                text = processorRef.leftTimeReadout();
-                                            else if (id == kParamRightTime)
-                                                text = processorRef.rightTimeReadout();
-                                            else if (id == kParamLeftTimeMs)
-                                                text = processorRef.leftTimeMsReadout();
-                                            else if (id == kParamRightTimeMs)
-                                                text = processorRef.rightTimeMsReadout();
-                                            else if (auto* param = processorRef.apvts.getParameter (id))
-                                                text = param->getCurrentValueAsText();
+                                       if (id == kParamLeftTime)
+                                           text = processorRef.leftTimeReadout();
+                                       else if (id == kParamRightTime)
+                                           text = processorRef.rightTimeReadout();
+                                       else if (id == kParamLeftTimeMs)
+                                           text = processorRef.leftTimeMsReadout();
+                                       else if (id == kParamRightTimeMs)
+                                           text = processorRef.rightTimeMsReadout();
+                                       else if (auto* param = processorRef.apvts.getParameter (id))
+                                           text = param->getCurrentValueAsText();
 
-                                            complete (text);
-                                        })
-                   // The TapScope's time axis. Numbers, not the formatted
-                   // readouts above: the scope places taps at multiples of
-                   // the delay time, and what a knob position means in
-                   // milliseconds depends on the Sync pill and the host
-                   // tempo, neither of which the web view knows.
-                   .withNativeFunction ("getDelayTimesMs",
-                                        [this] (const juce::Array<juce::var>&,
-                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
-                                        {
-                                            juce::Array<juce::var> times;
-                                            times.add (processorRef.leftTimeMs());
-                                            times.add (processorRef.rightTimeMs());
+                                       complete (text);
+                                   })
+              // The TapScope's time axis. Numbers, not the formatted
+              // readouts above: the scope places taps at multiples of
+              // the delay time, and what a knob position means in
+              // milliseconds depends on the Sync pill and the host
+              // tempo, neither of which the web view knows.
+              .withNativeFunction (
+                  "getDelayTimesMs",
+                  [this] (const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                  {
+                      juce::Array<juce::var> times;
+                      times.add (processorRef.leftTimeMs());
+                      times.add (processorRef.rightTimeMs());
 
-                                            complete (times);
-                                        })
-                   .withResourceProvider ([this] (const auto& url) { return getResource (url); },
-                                          juce::URL { devServerAddress }.getOrigin())),
+                      complete (times);
+                  })
+              .withResourceProvider ([this] (const auto& url) { return getResource (url); },
+                                     juce::URL { devServerAddress }.getOrigin()),
+          p.presets,
+          EE_PRESET_SOURCE_DIR)),
       leftTimeAttachment (*p.apvts.getParameter (kParamLeftTime), leftTimeRelay, p.apvts.undoManager),
       rightTimeAttachment (*p.apvts.getParameter (kParamRightTime), rightTimeRelay, p.apvts.undoManager),
       feedbackAttachment (*p.apvts.getParameter ("fb"), feedbackRelay, p.apvts.undoManager),

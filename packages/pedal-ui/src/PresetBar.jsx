@@ -1,14 +1,13 @@
 import { useState } from "react";
 import Button from "./Button.jsx";
-import Dropdown from "./Dropdown.jsx";
+import PresetPicker from "./PresetPicker.jsx";
+import PresetSaveDialog from "./PresetSaveDialog.jsx";
 import "./PresetBar.css";
 
-// Placeholder list. There is no preset storage anywhere in the project yet -
-// no file format, no native save/load bridge - so this proves out the layout
-// and nothing else: picking a name, stepping with the arrows, or pressing Save
-// changes no parameter and writes nothing. Wiring it up means giving the
-// processor a program list and this component the callbacks below.
-const DEFAULT_PRESETS = ["Init", "Slapback", "Dotted Eighth", "Tape Wash", "Long Trails"];
+// What the bar shows with nothing behind it: a plain browser tab, the
+// component gallery, a pedal whose processor has no store wired up yet. The
+// picker still opens and still reads correctly - it just cannot load anything.
+const DEMO_FACTORY = ["Init", "Slapback", "Dotted Eighth", "Tape Wash", "Long Trails"];
 
 function ChevronLeftIcon() {
   return (
@@ -39,43 +38,80 @@ function SaveIcon() {
 /**
  * Browse and save: prev/next/name as one joined control, then Save.
  *
- * Holds the selected name itself, because with no storage behind it there is
- * nothing else that could - `onChange`/`onSave` are there for the day there
- * is. Token-driven throughout, so it reads correctly on a light face and on
- * onyx without either one restyling it.
+ * Presentational and stateless about the presets themselves - it is handed two
+ * lists and a selection and calls back. `JucePresetBar` is the same bar with
+ * the native bridge wired to it, and is what a pedal actually drops into its
+ * header; this stays prop-driven so the gallery, and any face without a store
+ * behind it, can still render one.
+ *
+ * The only state it does own is whether the save dialog is open and what the
+ * last save said, because neither is anyone else's business.
  *
  * Peak Wah has its own copy of this (plugins/peak-wah/jsui/src/PresetBar.jsx)
  * predating the shared one, styled with literal colours against that pedal's
  * cream panel. Fold it in here when Wah is next touched; doing it blind would
  * move that face's header for no reason of its own.
  */
-export default function PresetBar({ presets = DEFAULT_PRESETS, onChange, onSave }) {
-  const [index, setIndex] = useState(0);
-  const preset = presets[index];
+export default function PresetBar({
+  factory = DEMO_FACTORY,
+  user = [],
+  value,
+  canAuthor = false,
+  onLoad,
+  onStep,
+  onSave,
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [error, setError] = useState("");
 
-  const select = (next) => {
-    setIndex(next);
-    onChange?.(presets[next]);
+  const save = async (kind, name) => {
+    // onSave answers with the native side's verdict, so a name the store
+    // refused keeps the dialog open with the name still in the box.
+    const result = await onSave?.(kind, name);
+
+    if (result && result.ok === false) {
+      setError(result.error || "Could not save that preset.");
+      return;
+    }
+
+    setError("");
+    setDialogOpen(false);
   };
-
-  const step = (delta) => select((index + delta + presets.length) % presets.length);
-  const selectByName = (name) => select(Math.max(0, presets.indexOf(name)));
 
   return (
     <div className="pui-reset pui-presetbar">
       <div className="pui-presetbar__group">
-        <Button onClick={() => step(-1)} aria-label="Previous preset">
+        <Button onClick={() => onStep?.(-1)} aria-label="Previous preset">
           <ChevronLeftIcon />
         </Button>
-        <Button onClick={() => step(1)} aria-label="Next preset">
+        <Button onClick={() => onStep?.(1)} aria-label="Next preset">
           <ChevronRightIcon />
         </Button>
-        <Dropdown options={presets} value={preset} onChange={selectByName} />
+        <PresetPicker factory={factory} user={user} value={value} onChange={onLoad} />
       </div>
 
-      <Button onClick={() => onSave?.(preset)} aria-label="Save preset">
+      <Button
+        onClick={() => {
+          setError("");
+          setDialogOpen(true);
+        }}
+        aria-label="Save preset"
+      >
         <SaveIcon />
       </Button>
+
+      <PresetSaveDialog
+        open={dialogOpen}
+        // Offers the loaded preset's name, so re-saving your own is one click
+        // and two keys. Saving over a *factory* name is allowed and makes a
+        // user preset that shadows it - the shipped one is in the binary and
+        // is not going anywhere.
+        initialName={value?.name ?? ""}
+        canAuthor={canAuthor}
+        error={error}
+        onSave={save}
+        onCancel={() => setDialogOpen(false)}
+      />
     </div>
   );
 }

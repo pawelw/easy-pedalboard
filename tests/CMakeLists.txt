@@ -113,6 +113,28 @@ if(TARGET PeakDelay)
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
+if(TARGET PeakDelay)
+    # ee::plugin::PresetStore against a real pedal - the factory bank compiled
+    # in from plugins/peak-delay/presets, and a user bank in a folder of its
+    # own. Shared machinery every pedal is meant to adopt, so it is worth a
+    # suite rather than a manual click through one face.
+    juce_add_console_app(ee_preset_tests PRODUCT_NAME "ee_preset_tests")
+
+    target_sources(ee_preset_tests PRIVATE PresetTests.cpp)
+
+    target_compile_definitions(ee_preset_tests PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_preset_tests
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
+
+    target_link_libraries(ee_preset_tests
+        PRIVATE PeakDelay ee_shared
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
 if(TARGET PeakTremPan)
     # Sweeps the Trem & Pan processor over every parameter combo and adverse input,
     # watching for a non-finite or runaway output.

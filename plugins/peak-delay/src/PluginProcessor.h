@@ -9,6 +9,11 @@
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
 #include "ee/dsp/TapeTransport.h"
+#include "ee/plugin/PresetStore.h"
+
+#if EE_HAS_FACTORY_PRESETS
+#include EE_FACTORY_PRESETS_HEADER
+#endif
 
 class PeakDelayProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener
 {
@@ -40,6 +45,13 @@ public:
     void setStateInformation (const void*, int) override;
 
     juce::AudioProcessorValueTreeState apvts;
+
+    /** The pedal's preset banks: the one compiled in from plugins/peak-delay/
+        presets/, and the user's own on disk. Public because the editor's
+        bridge takes a reference to it - see ee/plugin/PresetBridge.h, which is
+        the whole of what a face needs to browse and save. Declared after apvts
+        so the tree it reads and writes is already built. */
+    ee::plugin::PresetStore presets { apvts, "Peak Delay", EE_FACTORY_PRESETS };
 
     /** The Filter section's travel, shared with the readouts and with Peak EQ,
         whose Low Cut / High Cut these are the same two filters as. Public
@@ -231,10 +243,7 @@ private:
             tape.process (left, right, numSamples);
         }
 
-        int latencySamples() const noexcept
-        {
-            return transport.getLatencySamples() + tape.getLatencySamples();
-        }
+        int latencySamples() const noexcept { return transport.getLatencySamples() + tape.getLatencySamples(); }
     };
 
     /** Both of the Tape section's placements, wired in permanently: one in

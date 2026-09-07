@@ -4,7 +4,15 @@
   gap: 8px;
 }
 
-.pui-presetbar .pui-button {
+/* The three square glyph buttons the bar itself owns - the two arrows inside
+   the group, and Save beside it. Named by child combinator rather than as
+   `.pui-presetbar .pui-button`, because the save dialog renders inside the bar
+   (it has to stay under the `data-pui-theme` wrapper to keep the pedal's
+   palette) and a descendant selector was forcing its Cancel/Save buttons to
+   26x26 too - three labels stacked on top of each other in the middle of the
+   dialog. */
+.pui-presetbar > .pui-button,
+.pui-presetbar__group > .pui-button {
   height: 26px;
   width: 26px;
   padding: 0;
@@ -18,12 +26,14 @@
    plus one pseudo-class each), so without these the background above would
    win the tie by cascade order and the shared hover/press feedback would
    silently never show. */
-.pui-presetbar .pui-button:hover {
+.pui-presetbar > .pui-button:hover,
+.pui-presetbar__group > .pui-button:hover {
   background: var(--pui-panel);
   color: var(--pui-ink);
 }
 
-.pui-presetbar .pui-button:active {
+.pui-presetbar > .pui-button:active,
+.pui-presetbar__group > .pui-button:active {
   background: var(--pui-recess);
 }
 
@@ -62,11 +72,11 @@
   align-items: center;
 }
 
-.pui-presetbar__group .pui-button:first-child {
+.pui-presetbar__group > .pui-button:first-child {
   border-radius: 5px 0 0 5px;
 }
 
-.pui-presetbar__group .pui-button:nth-child(2) {
+.pui-presetbar__group > .pui-button:nth-child(2) {
   border-radius: 0;
   margin-left: -1px;
 }
