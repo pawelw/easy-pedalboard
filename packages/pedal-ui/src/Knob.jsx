@@ -106,6 +106,13 @@ function Sweep({
   );
 }
 
+// variant="soft"'s arc: thicker than the collar's and pulled in tight to the
+// rim (see the Sweep call in Knob below). The small pair is for the 42px-class
+// knobs, where the full-size arc reads as a band rather than a line.
+const SOFT_SWEEP_GAP = 3.5;
+const SOFT_SWEEP_WIDTH = 4;
+const SOFT_SWEEP_WIDTH_SMALL = 3;
+
 const TICK_COUNT = 20;
 const TICK_LENGTH = 6;
 const TICK_THICKNESS = 2;
@@ -205,10 +212,19 @@ function TickScale({ diameter, value, gap = SWEEP_GAP, from = "min" }) {
     rotated to the value angle, the way `.pui-knob__dot` pins a dot in the
     collar variant - same wrapper-rotates-not-the-bar trick, so the bar's own
     box can be positioned in plain top/left percentages instead of trig. */
-function Pointer({ angle, diameter }) {
+function Pointer({ angle, diameter, soft = false }) {
+  // `soft`: variant="soft"'s needle instead - one hairline running from the
+  // cap's centre out towards the rim, rather than a stub parked near the
+  // edge. Same wrapper and the same rotation; only the bar's own geometry
+  // (set in Knob.css) differs, so there is one place that knows how a
+  // pointer is pinned and rotated.
+  const cls = soft
+    ? `pui-knob__pointer pui-knob__pointer--needle${diameter < 60 ? " pui-knob__pointer--needle-thin" : ""}`
+    : `pui-knob__pointer${diameter < 60 ? " pui-knob__pointer--thin" : ""}`;
+
   return (
     <div className="pui-knob__pointer-wrap" style={{ transform: `rotate(${angle}deg)` }}>
-      <div className={`pui-knob__pointer${diameter < 60 ? " pui-knob__pointer--thin" : ""}`} />
+      <div className={cls} />
     </div>
   );
 }
@@ -240,6 +256,10 @@ function EndMarker({ label, radius, lit }) {
  * `variant`: "collar" (default, unchanged) is the scalloped dark collar and
  * outer value arc every pedal has used so far. "scale" is the plain-ring +
  * tick-scale + needle face the onyx Delay layout uses (COMPONENTS.md).
+ * "soft" is the third: no collar and no ring at all, just a soft-UI cap that
+ * fills the whole dial, a hairline needle from its centre, and one continuous
+ * accent arc hugging the rim - the tick ring's information without the twenty
+ * dashes, for a face that wants the control to read as one quiet disc.
  * Same controlled API, same drag/keyboard handling below, only the dial's
  * own markup and CSS differ.
  *
@@ -365,11 +385,28 @@ export default function Knob({
   const radius = size / 2;
 
   const isScale = variant === "scale";
+  const isSoft = variant === "soft";
 
   return (
-    <div className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}`} style={{ width: bare ? size : size + 28 }}>
+    <div
+      className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}${isSoft ? " pui-knob--soft" : ""}`}
+      style={{ width: bare ? size : size + 28 }}
+    >
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
-        {isScale ? (
+        {isSoft ? (
+          // The same arc the collar variant draws, on the soft palette and
+          // sitting closer in: with no ring or collar around the cap there is
+          // nothing between the arc and the knob, so the old 6px gap read as
+          // a detached circle rather than the knob's own value.
+          <Sweep
+            diameter={size}
+            value={value}
+            gap={sweepGap ?? SOFT_SWEEP_GAP}
+            width={size >= 60 ? SOFT_SWEEP_WIDTH : SOFT_SWEEP_WIDTH_SMALL}
+            trackColor="var(--pui-soft-track)"
+            litColor="var(--pui-soft-lit)"
+          />
+        ) : isScale ? (
           <TickScale
             diameter={size}
             value={value}
@@ -402,7 +439,7 @@ export default function Knob({
 
         <div
           ref={bodyRef}
-          className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
+          className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${isSoft ? " pui-knob__body--soft" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
           style={{ width: size, height: size }}
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
@@ -414,7 +451,17 @@ export default function Knob({
           aria-valuemax={1}
           aria-valuenow={value}
         >
-          {isScale ? (
+          {isSoft ? (
+            <>
+              {/* One element, not the ring+cap pair the scale variant needs:
+                  there is no ring here, so the cap itself carries both the
+                  face gradient and the raised shadow. */}
+              <div className="pui-knob__soft-cap">
+                <Pointer angle={angle} diameter={size} soft />
+                {icon && <div className="pui-knob__icon">{icon(value)}</div>}
+              </div>
+            </>
+          ) : isScale ? (
             <>
               <div className="pui-knob__scale-ring" />
               <div className="pui-knob__scale-cap">

@@ -42,7 +42,7 @@
 }
 
 .pui-router__value {
-  min-width: 26px;
+  min-width: 28px;
   text-align: center;
   font-family: var(--pui-font-label);
   font-weight: 700;

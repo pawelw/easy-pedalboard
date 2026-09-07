@@ -34,6 +34,8 @@ function useDemoStrikes(everyMs = 2000) {
 // `[data-pui-theme="onyx"]` block - that's expected, not a bug in this page.
 function Showcase() {
   const [knob, setKnob] = useState(0.4);
+  const [soft, setSoft] = useState(0.5);
+  const [softSmall, setSoftSmall] = useState(0.72);
   const [slider, setSlider] = useState(0.3);
   const [inLevel, setInLevel] = useState(0.66);
   const [outLevel, setOutLevel] = useState(0.66);
@@ -58,6 +60,7 @@ function Showcase() {
       }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <SectionLabel>Scale knob</SectionLabel>
         <Knob
           variant="scale"
           value={knob}
@@ -66,6 +69,33 @@ function Showcase() {
           valueLabel={`${Math.round(knob * 100)}`}
           size={84}
         />
+
+        {/* variant="soft" at both of the sizes the set uses: the 84px face
+            knob beside the same 42px one the footer stages are built from,
+            since the arc and the needle are the two things that had to be
+            checked at the small size (both shrink - Knob.jsx's SOFT_SWEEP_*
+            pair and .pui-knob__pointer--needle-thin). */}
+        <SectionLabel>Soft knob — 84 px and 42 px</SectionLabel>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 34 }}>
+          <Knob
+            variant="soft"
+            value={soft}
+            onChange={setSoft}
+            caption="Stereo"
+            valueLabel={`${Math.round(soft * 100)} %`}
+            subLabel={`${Math.round(soft * 100)} %`}
+            size={84}
+          />
+          <Knob
+            variant="soft"
+            value={softSmall}
+            onChange={setSoftSmall}
+            caption="Wear"
+            valueLabel={`${Math.round(softSmall * 100)} %`}
+            subLabel={`${Math.round(softSmall * 100)} %`}
+            size={42}
+          />
+        </div>
 
         <Readout label="Left" value="1/8" unit="250 ms" />
 

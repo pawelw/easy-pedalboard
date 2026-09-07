@@ -268,6 +268,14 @@ both pedals together rather than letting the two drift apart. The Tape section
 is the green band, because it is not really part of the same effect as the rest
 of the face.
 
+Wear is the one that does not reach as far here as it does on its own pedal: a
+fully-turned Wear on this face drives the machine half as hard as a fully-turned
+Wear on Peak Tape. The stage is the same and Peak Tape still reaches all of it -
+what is shorter is this knob's own travel, because on Peak Tape the machine is
+the effect and its top end is the point, while here it is a colour on a delay
+and that top end swamped the repeats long before the knob ran out. The knob
+still reads 0 - 100 %: what it is a percentage of is how worn this pedal goes.
+
 The voicing is measured against a reference machine rather than invented. It is
 not a bit crusher — decimation and quantisation read as digital however they are
 dressed up. What the reference actually does at full tilt is leave the midband

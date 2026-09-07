@@ -262,7 +262,7 @@ export function JuceFader({ parameterId, label, resetTo = 0 }) {
       compact
       fine
       orientation="horizontal"
-      length={74}
+      length={64}
       label={label}
       value={value}
       valueLabel={valueLabel}

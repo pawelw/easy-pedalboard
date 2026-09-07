@@ -56,6 +56,25 @@ constexpr float kGainRampSeconds = 0.02f;
 // shorter starts to read as a step in the drive rather than as a move.
 constexpr double kPlacementSeconds = 0.25;
 
+// How much of the tape stage's own Wear travel this pedal's knob reaches: a
+// fully-turned Wear here drives the machine half as hard as a fully-turned Wear
+// on Peak Tape.
+//
+// Not in TapeMachineConfig.h with the rest of the tape voicing, and not a change
+// to the stage itself. The machine is shared, Peak Tape's knob still reaches all
+// of it, and re-voicing the engine would move both pedals - which is the thing
+// the shared stage exists to prevent. What is different here is only how far
+// *this* face's knob turns it, which is this pedal's business: on Peak Tape the
+// machine is the effect and its top end is the point, while here it is a colour
+// on a delay and the top of that range swamped the repeats long before the knob
+// ran out. Halving the reach spreads the useful part across the whole travel
+// instead of the first half of it.
+//
+// It is deliberately a scale on the amount rather than a smaller parameter
+// range: the knob still reads 0-100 %, because what it is a percentage of is
+// "as worn as this pedal goes", not "as worn as the machine goes".
+constexpr float kWearScale = 0.5f;
+
 // The Input/Output faders' range. Asymmetric on purpose: they are a trim and a
 // level, not a gain stage, so there is more cut than boost.
 constexpr float kMinGainDb = -24.0f;
@@ -470,7 +489,10 @@ bool PeakDelayProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
 
 void PeakDelayProcessor::updateTapeAmounts (float placement) noexcept
 {
-    const float wear = juce::jlimit (0.0f, 1.0f, wearParam->load() * 0.01f);
+    // Wear is scaled back to half the stage's travel - see kWearScale. Flutter
+    // is not: the transport's wobble is a movement rather than a drive, and at
+    // the top of its range it is still musical on a repeat.
+    const float wear = juce::jlimit (0.0f, 1.0f, wearParam->load() * 0.01f) * kWearScale;
     const float flutter = juce::jlimit (0.0f, 1.0f, flutterParam->load() * 0.01f);
 
     // The router is a fader between the two placements, not a switch. A
@@ -523,8 +545,8 @@ void PeakDelayProcessor::meterInput (const float* left, const float* right, int 
     // audibly being played.
     const bool fromSilence = onsetFloor < kOnsetThreshold;
 
-    if (onsetHoldSamples == 0 && blockPeak > kOnsetThreshold
-        && (fromSilence || blockPeak > onsetFloor * kOnsetOverFloor))
+    if (onsetHoldSamples == 0 && blockPeak > kOnsetThreshold &&
+        (fromSilence || blockPeak > onsetFloor * kOnsetOverFloor))
     {
         strikeCountUi.fetch_add (1, std::memory_order_relaxed);
         onsetHoldSamples = static_cast<int> (kOnsetHoldSeconds * sr);
@@ -631,9 +653,8 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const double bpm = readPlayHeadBpm();
     const bool synced = isSynced();
 
-    delay.setDelaySeconds (
-        trimmedDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), synced, bpm)),
-        trimmedDelaySeconds (ee::peakdelay::timeSeconds (rightTimeParam->load(), synced, bpm)));
+    delay.setDelaySeconds (trimmedDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), synced, bpm)),
+                           trimmedDelaySeconds (ee::peakdelay::timeSeconds (rightTimeParam->load(), synced, bpm)));
     delay.setFeedback (feedbackParam->load() * 0.01f);
 
     // Which way the two lines are wired, this block. Cheap to set every time:
