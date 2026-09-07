@@ -59,15 +59,19 @@
   transform: translateX(-50%);
   border-radius: 2px;
   background: var(--pui-ink);
-  /* Duration and delay come from Lane, per tap: the animation is a playhead
-     sweeping the lane's time axis, so each tap lights at the instant its own
-     repeat sounds. It used to be a fixed 2.4s loop with a flat 0.18s stagger,
-     which looked busy but meant nothing. A long delay pulses slowly now - that
-     is the point, it is how slowly the delay actually repeats. */
-  animation-name: pui-tapscope-hit;
-  animation-timing-function: linear;
-  animation-iteration-count: infinite;
+  /* The resting level. Taps are lit from JS - a playhead per note onset walks
+     the lane writing this property, so what is drawn here is only where they
+     sit between notes and where they sit when nothing is being played at all.
+     Nothing animates on a timer: see TapScope.jsx. */
   opacity: 0.26;
+}
+
+/* The dry signal at the origin of the time axis. The one mark on the scope
+   that is not a repeat, so it is the one mark that is not drawn in the ink
+   colour - it stays put while the comb to its right grows and shrinks, and the
+   two need to be told apart at a glance. */
+.pui-tapscope__tap--dry {
+  background: var(--pui-scope-dry);
 }
 
 /* The bottom lane grows downward from the centre line. */
@@ -76,24 +80,8 @@
   top: 0;
 }
 
-/* The lit frame is a small share of the cycle, so a tap reads as being struck
-   rather than slowly throbbing. The cycle grows with the number of repeats, so
-   4% stays in the region of a third of the gap between taps at any setting. */
-@keyframes pui-tapscope-hit {
-  0% {
-    opacity: 1;
-  }
-  4% {
-    opacity: 0.26;
-  }
-  100% {
-    opacity: 0.26;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .pui-tapscope__tap {
-    animation: none;
     opacity: 0.85;
   }
 }

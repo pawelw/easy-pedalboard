@@ -60,8 +60,21 @@ function(peak_add_plugin TARGET)
         set(webBrowserFlag 0)
     endif()
 
+    # A web face reads its page from the built jsui/dist by default, so a plugin
+    # installed into ~/Library works in a DAW on its own. EE_JSUI_DEV_SERVER
+    # points it at the Vite dev server instead, for the hot-reload loop - never
+    # ship one: with no server running the editor has to fall back, and a face
+    # that depends on a process the user has to remember to start is how you get
+    # a blank plugin window in Ableton.
+    if(ARG_WEBVIEW AND EE_JSUI_DEV_SERVER)
+        set(devServerFlag 1)
+    else()
+        set(devServerFlag 0)
+    endif()
+
     target_compile_definitions(${TARGET} PUBLIC
         JUCE_WEB_BROWSER=${webBrowserFlag}
+        EE_JSUI_DEV_SERVER=${devServerFlag}
         JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1
         JUCE_USE_CURL=0
         JUCE_VST3_CAN_REPLACE_VST2=0)

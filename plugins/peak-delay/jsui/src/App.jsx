@@ -1,24 +1,30 @@
 import { useEffect } from "react";
-import { Card, TapScope, LinkIcon, TapeIcon, ModIcon } from "@synthpeak/pedal-ui";
+import { Card, PresetBar, StageGroup, StageHeader, TapScope, LinkIcon, TapeIcon, ModIcon } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
+  JuceMiniSlider,
   JucePill,
-  JuceStageControl,
+  JuceStageKnob,
+  JuceStageRouter,
+  useDelayMeter,
   useDelayTimesMs,
   useJuceSliderValue,
-  useTimeReadoutText,
 } from "./juceBindings.jsx";
 import TimeControl from "./TimeControl.jsx";
 import { installAutoResize } from "./autoSize.js";
 import "./index.css";
 
-/** "STEREO · 1/8 · 1/8T" - the same toggle-aware text each Time row's own
-    Readout shows for its value, just concatenated into the header's meta
-    line rather than fetched a third time some other way. */
-function HeaderMeta() {
-  const [leftText] = useTimeReadoutText("ltime");
-  const [rightText] = useTimeReadoutText("rtime");
-  return <span className="pd-meta">Stereo · {leftText} · {rightText}</span>;
+/** The two level faders, stacked in the header's right-hand slot. They
+    replaced a line of text that repeated what the face already said twice
+    over - "STEREO · 1/8 · 1/8T", the same two readouts that sit beside the
+    Time knobs - with the one pair of controls the pedal was missing. */
+function HeaderLevels() {
+  return (
+    <div className="pd-levels">
+      <JuceMiniSlider parameterId="ingain" label="In" />
+      <JuceMiniSlider parameterId="outgain" label="Out" />
+    </div>
+  );
 }
 
 export default function App() {
@@ -27,6 +33,7 @@ export default function App() {
   const [leftMs, rightMs] = useDelayTimesMs();
   const [feedback01] = useJuceSliderValue("fb");
   const [mix01] = useJuceSliderValue("mix");
+  const { strikes, level } = useDelayMeter();
 
   return (
     <div className="page">
@@ -34,8 +41,22 @@ export default function App() {
           passes a theme, so none of this reaches it (packages/pedal-ui/src/
           tokens.css's [data-pui-theme="onyx"] block). */}
       {/* 568 + the link bracket's own column - see --pd-link-col. */}
-      <Card title="Peak Delay" headerRight={<HeaderMeta />} className="pd-card" width={626}>
-        <TapScope height={78} leftMs={leftMs} rightMs={rightMs} feedback01={feedback01} mix01={mix01} />
+      <Card
+        title="Peak Delay"
+        headerCenter={<PresetBar />}
+        headerRight={<HeaderLevels />}
+        className="pd-card"
+        width={626}
+      >
+        <TapScope
+          height={78}
+          leftMs={leftMs}
+          rightMs={rightMs}
+          feedback01={feedback01}
+          mix01={mix01}
+          strikes={strikes}
+          level={level}
+        />
 
         <div className="pd-row">
           {/* sweepGap pinned to the 42px Time knobs' own value explicitly,
@@ -104,20 +125,36 @@ export default function App() {
         {/* The footer's two halves, split down the middle. The tape half
             full-bleeds its green band out to the card's left and bottom
             edge - see .pd-footer in index.css for how, and why the bleed
-            lives here rather than inside StageControl. */}
+            lives here rather than inside StageGroup.
+
+            Only Tape carries a router. Mod's Drift is the delay line's own
+            modulation, inside the feedback loop where it compounds with every
+            repeat - it is not before or after the delay, it is part of it, so
+            a Pre/Post there would have governed only half the section. The
+            Phaser is fixed after the delay instead. "tape"/"mod" are the
+            parameter ids Wear and Drift kept from the single-knob face. */}
         <div className="pd-footer">
           <div className="pd-footer__half pd-footer__half--tape">
-            <JuceStageControl
-              parameterId="tape"
-              label="Pre-stage"
-              name="Tape"
+            <StageGroup
               tone="tape"
-              icon={<TapeIcon />}
-            />
+              header={
+                <StageHeader icon={<TapeIcon size={30} />} name="Tape">
+                  <JuceStageRouter parameterId="tapepre" label="Tape" labels={["Post", "Pre"]} />
+                </StageHeader>
+              }
+            >
+              <JuceStageKnob parameterId="tape" name="Wear" />
+              <JuceStageKnob parameterId="flutter" name="Flutter" />
+            </StageGroup>
           </div>
 
-          <div className="pd-footer__half pd-footer__half--mode">
-            <JuceStageControl parameterId="mod" label="Post-stage" name="Mod" icon={<ModIcon />} />
+          <div className="pd-footer__half pd-footer__half--mod">
+            <StageGroup
+              header={<StageHeader icon={<ModIcon size={30} />} name="Mod" />}
+            >
+              <JuceStageKnob parameterId="mod" name="Drift" />
+              <JuceStageKnob parameterId="phaser" name="Phaser" />
+            </StageGroup>
           </div>
         </div>
       </Card>

@@ -43,9 +43,27 @@
   --pui-scope-base: #6c0000;
   --pui-scope-sweep: #9aa0aa;
   --pui-scope-fill: rgba(154, 160, 170, 0.22);
+  /* TapScope's dry mark. An amber, not the ink the repeats are drawn in: it is
+     the note itself standing at the origin rather than one of its copies, and
+     the whole point of the mark is that Mix trades it against them. */
+  --pui-scope-dry: #b8860b;
 
   --pui-radius-panel: 14px;
   --pui-radius-pill: 999px;
+
+  /* How far a small (<60px) variant="scale" Knob's tick ring reaches past the
+     dial's own box. TickScale draws its dashes from radius size/2 + gap out to
+     + tickLength, on an SVG box one stroke wider again, and the ring is
+     absolutely positioned - so it overflows the dial without taking part in
+     layout:
+
+       gap 6  +  TICK_LENGTH_SMALL 4  +  TICK_THICKNESS_SMALL 1.4  =  11.4px
+
+     Layout measures gaps from the dial; the eye reads them from the ticks. Any
+     gap next to one of these knobs adds this back, or it renders that much
+     tighter than it was drawn - at the design's 8px knob-to-label gap, tight
+     enough to overlap. Recompute it if a caller stops passing sweepGap 6. */
+  --pui-knob-reach-small: 11.4px;
 
   --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
   --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
@@ -129,6 +147,7 @@
   --pui-knob-shadow: 0 8px 18px rgba(0, 0, 0, 0.55);
   --pui-well-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.6);
   --pui-scope-grid: #233034;
+  --pui-scope-dry: #e0b23c;
   --pui-logo-filter: brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg);
 
   /* Card, per COMPONENTS.md's panel table: no grain, a bigger radius, a
@@ -139,14 +158,14 @@
   --pui-panel-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
 }
 
-/* StageControl's "tape" tone (design_handoff_peak_delay_onyx/TOKENS.md's
+/* StageGroup's "tape" tone (design_handoff_peak_delay_onyx/TOKENS.md's
    --pui-tape-* group). Deliberately outside the two theme blocks: this is a
    fixed accent, a dark green band carrying its own light-on-dark ink, so it
    reads the same whichever theme surrounds it - there is no light variant to
    switch to. The knob half of the group shadows the plain --pui-* knob tokens
-   (StageControl re-points those on its own wrapper), so the same
+   (StageGroup re-points those on its own wrapper), so the same
    variant="scale" Knob renders green inside the band and untouched outside
-   it, with no `tone` prop reaching Knob itself. */
+   it, with no `tone` prop reaching Knob or StageRouter itself. */
 :root {
   --pui-tape-band: #375916;
   --pui-tape-edge: #46701c;
@@ -154,6 +173,7 @@
   --pui-tape-ink-soft: #c9dbb0; /* stage label */
   --pui-tape-lit: #d8f088; /* value, icon, lit ticks, pointer */
   --pui-tape-track: #5a7f2a; /* unlit ticks */
+  --pui-tape-well: #2b4410; /* the router's recessed switcher, on the band */
   --pui-tape-knob-body: #1d2f08;
   --pui-tape-cap-top: #5c7f2c;
   --pui-tape-cap-bot: #2b4410;

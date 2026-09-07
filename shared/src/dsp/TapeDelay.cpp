@@ -1,5 +1,6 @@
 #include "ee/dsp/TapeDelay.h"
 
+#include <algorithm>
 #include <cmath>
 
 namespace ee::dsp
@@ -20,6 +21,35 @@ namespace
     // Right runs its wobble slightly slower so the two sides drift apart.
     constexpr float kRateScale[2] = { 1.0f, 0.83f };
 
+    // How the feedback tap re-aims when the time changes. It does not glide
+    // the way the output tap does: it holds its position, then crossfades to
+    // the new one over this long. A resampled read is what warps pitch, so a
+    // tap that only ever steps writes unwarped audio back into the line - the
+    // head-shift warble is heard once on the way out instead of being baked
+    // into the loop and repeated for the whole tail.
+    //
+    // 20 ms is the usual crossfade compromise: long enough that the splice is
+    // a soft flange rather than a click, short enough that a knob being swept
+    // tracks in steps too small to hear individually.
+    constexpr float kLoopFadeSeconds = 0.020f;
+
+    // Target movement below this doesn't start a crossfade, so once the knob
+    // stops the loop tap can sit this far from the exact time - a repeat
+    // spacing error of one sample, twenty microseconds, against an output tap
+    // that is exact. Small enough to be a rounding error, and having a floor
+    // at all is what stops a parameter dithering by a fraction of a sample
+    // from splicing the loop forever.
+    constexpr float kLoopStepSamples = 1.0f;
+
+    // Equal-power would be wrong here: the two taps are the same signal read a
+    // few milliseconds apart, so they are correlated, and a linear fade is
+    // what keeps the sum level through the splice. Smoothstepped so the fade
+    // starts and ends without a corner.
+    inline float fadeShape (float t) noexcept
+    {
+        return t * t * (3.0f - 2.0f * t);
+    }
+
     float onePoleCoeff (float cornerHz, double sampleRate) noexcept
     {
         const float w = kTwoPi * cornerHz / static_cast<float> (sampleRate);
@@ -31,6 +61,7 @@ void TapeDelay::prepare (double sampleRate)
 {
     sr = sampleRate;
     glideCoeff = onePoleCoeff (2.6f, sr); // ~60 ms tape-style glide
+    loopFadeInc = 1.0f / std::max (1.0f, kLoopFadeSeconds * static_cast<float> (sr));
 
     for (auto& ch : channels)
         ch.line.prepare (sr, kMaxDelaySeconds + 0.1f);
@@ -46,6 +77,7 @@ void TapeDelay::reset()
         auto& ch = channels[c];
         ch.line.reset();
         ch.lowpassState = 0.0f;
+        ch.loopLowpassState = 0.0f;
         ch.wowPhase = c == 0 ? 0.0f : 0.27f;
     }
 }
@@ -61,7 +93,12 @@ void TapeDelay::setDelaySeconds (float left, float right) noexcept
 void TapeDelay::snapDelays() noexcept
 {
     for (auto& ch : channels)
+    {
         ch.currentSamples = ch.targetSamples;
+        ch.loopSamples = ch.targetSamples;
+        ch.loopFromSamples = ch.targetSamples;
+        ch.loopFade = 1.0f;
+    }
 }
 
 void TapeDelay::setFeedback (float amount01) noexcept
@@ -105,6 +142,16 @@ void TapeDelay::process (const float* inL, const float* inR,
 
             ch.currentSamples += glideCoeff * (ch.targetSamples - ch.currentSamples);
 
+            // The feedback tap only ever moves between crossfades, and only
+            // when the move is worth splicing for. Anything smaller is left
+            // for the next step to pick up.
+            if (ch.loopFade >= 1.0f && std::abs (ch.targetSamples - ch.loopSamples) > kLoopStepSamples)
+            {
+                ch.loopFromSamples = ch.loopSamples;
+                ch.loopSamples = ch.targetSamples;
+                ch.loopFade = 0.0f;
+            }
+
             float wobble = 0.0f;
 
             if (wowDepth > 0.0f)
@@ -115,17 +162,47 @@ void TapeDelay::process (const float* inL, const float* inR,
                 wobble += wowDepth * std::sin (kTwoPi * ch.wowPhase);
             }
 
-            float y = ch.line.read (ch.currentSamples + wobble);
+            // Drift rides both taps. It is the delay line's own modulation,
+            // documented as compounding with every repeat, so it has to be in
+            // the loop - unlike the head-shift warp, which is exactly what
+            // must not be.
+            //
+            // Two reads of one line, then: where the head is now, and where
+            // the loop is spliced to. They coincide whenever the knob is
+            // still, and the second read costs a handful of ops, so this is
+            // unconditional rather than branched on their being equal - a
+            // branch that flips mid-signal would put a step in the loop's read
+            // position, which is the one thing this whole tap exists to avoid.
+            const float y = ch.line.read (ch.currentSamples + wobble);
+
+            float loop = ch.line.read (ch.loopSamples + wobble);
+
+            if (ch.loopFade < 1.0f)
+            {
+                const float from = ch.line.read (ch.loopFromSamples + wobble);
+
+                loop = from + (loop - from) * fadeShape (ch.loopFade);
+                ch.loopFade = std::min (1.0f, ch.loopFade + loopFadeInc);
+            }
+
+            // Both rolloff states run every sample, settled or not: they see
+            // the same input and the same history while the taps coincide, so
+            // the loop filter is never picking up from a stale value when a
+            // step does begin.
+            float outSample = y;
 
             if (lowpassCoeff < 1.0f)
             {
                 ch.lowpassState += lowpassCoeff * (y - ch.lowpassState);
-                y = ch.lowpassState;
+                ch.loopLowpassState += lowpassCoeff * (loop - ch.loopLowpassState);
+
+                outSample = ch.lowpassState;
+                loop = ch.loopLowpassState;
             }
 
-            out[c][i] = y;
+            out[c][i] = outSample;
 
-            ch.line.write (in[c][i] + y * feedbackGain);
+            ch.line.write (in[c][i] + loop * feedbackGain);
             ch.line.advance();
         }
     }

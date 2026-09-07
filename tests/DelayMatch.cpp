@@ -11,23 +11,65 @@ namespace
         if (auto* param = state.getParameter (id))
             param->setValueNotifyingHost (juce::jlimit (0.0f, 1.0f, percent * 0.01f));
     }
+
+    void setFlag (juce::AudioProcessorValueTreeState& state, const char* id, bool on)
+    {
+        if (auto* param = state.getParameter (id))
+            param->setValueNotifyingHost (on ? 1.0f : 0.0f);
+    }
+
+    /** `--name value` anywhere after the positional arguments. The four
+        controls the positional list does not reach - the pedal has eight now,
+        and a ninth positional argument nobody can remember the order of is
+        worse than a flag. */
+    float flagValue (int argc, char* argv[], const char* name, float fallback)
+    {
+        for (int i = 5; i + 1 < argc; ++i)
+            if (juce::String (argv[i]) == name)
+                return juce::String (argv[i + 1]).getFloatValue();
+
+        return fallback;
+    }
+
+    bool hasFlag (int argc, char* argv[], const char* name)
+    {
+        for (int i = 5; i < argc; ++i)
+            if (juce::String (argv[i]) == name)
+                return true;
+
+        return false;
+    }
 }
 
 int main (int argc, char* argv[])
 {
     if (argc < 5)
     {
-        std::printf ("usage: ee_delay_match <in.wav> <out.wav> <tape%%> <mix%%> [feedback%%] [mod%%]\n");
+        std::printf ("usage: ee_delay_match <in.wav> <out.wav> <wear%%> <mix%%> [feedback%%] [drift%%]\n"
+                     "                      [--flutter %%] [--phaser %%] [--tape-post]\n");
         return 1;
     }
 
     const juce::File inFile { juce::String (argv[1]) };
     const juce::File outFile { juce::String (argv[2]) };
 
-    const float tape = juce::String (argv[3]).getFloatValue();
+    const float wear = juce::String (argv[3]).getFloatValue();
     const float mix = juce::String (argv[4]).getFloatValue();
-    const float feedback = argc > 5 ? juce::String (argv[5]).getFloatValue() : 35.0f;
-    const float mod = argc > 6 ? juce::String (argv[6]).getFloatValue() : 0.0f;
+    // Guarded against the flags below, so `... 35 20 --flutter 60` reads the
+    // 20 as Chorus rather than the "--flutter" as a number (which parses as 0).
+    const auto positional = [argc, argv] (int index, float fallback)
+    {
+        return index < argc && ! juce::String (argv[index]).startsWith ("--")
+                   ? juce::String (argv[index]).getFloatValue()
+                   : fallback;
+    };
+
+    const float feedback = positional (5, 35.0f);
+    const float drift = positional (6, 0.0f);
+
+    const float flutter = flagValue (argc, argv, "--flutter", 0.0f);
+    const float phaser = flagValue (argc, argv, "--phaser", 0.0f);
+    const bool tapePost = hasFlag (argc, argv, "--tape-post");
 
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
@@ -50,10 +92,15 @@ int main (int argc, char* argv[])
 
     PeakDelayProcessor processor;
 
-    setParam (processor.apvts, "tape", tape);
+    // "tape" and "mod" are the ids Wear and Drift kept when the single-knob
+    // stages became two-knob sections - see plugins/peak-delay's processor.
+    setParam (processor.apvts, "tape", wear);
     setParam (processor.apvts, "mix", mix);
     setParam (processor.apvts, "fb", feedback);
-    setParam (processor.apvts, "mod", mod);
+    setParam (processor.apvts, "mod", drift);
+    setParam (processor.apvts, "flutter", flutter);
+    setParam (processor.apvts, "phaser", phaser);
+    setFlag (processor.apvts, "tapepre", ! tapePost);
 
     constexpr int block = 512;
     processor.setPlayConfigDetails (2, 2, reader->sampleRate, block);
@@ -81,8 +128,11 @@ int main (int argc, char* argv[])
             writer->writeFromAudioSampleBuffer (buffer, 0, numSamples);
     }
 
-    std::printf ("wrote %s  (tape %.0f %%, mix %.0f %%, feedback %.0f %%, mod %.0f %%, latency %d)\n",
-                 outFile.getFullPathName().toRawUTF8(), tape, mix, feedback, mod,
-                 processor.getLatencySamples());
+    std::printf ("wrote %s\n"
+                 "  tape %s: wear %.0f %%, flutter %.0f %%\n"
+                 "  mod: drift %.0f %% (in the loop), phaser %.0f %% (post)\n"
+                 "  mix %.0f %%, feedback %.0f %%, latency %d\n",
+                 outFile.getFullPathName().toRawUTF8(), tapePost ? "post" : "pre", wear, flutter,
+                 drift, phaser, mix, feedback, processor.getLatencySamples());
     return 0;
 }

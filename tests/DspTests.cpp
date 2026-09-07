@@ -528,6 +528,83 @@ void testDelayStability()
     check (silentPeak == 0.0f, "delay generated signal from silence");
 }
 
+/** The head-shift warp a moving Time knob puts on the output must not be
+    written back into the feedback loop and repeated for the rest of the tail -
+    see TapeDelay::setDelaySeconds and kLoopFadeSeconds.
+
+    Measured as purity rather than as pitch: fill the loop with one tone, move
+    the time while it rings, and ask how much of what is still circulating a
+    couple of seconds later is at that tone's own frequency. A tap that glides
+    reads the line at a changing rate, which does not shift the tone so much as
+    smear it - at this size of move the read pointer briefly runs backwards -
+    so the surviving tail is barely at the tone's frequency at all. */
+void testDelayTimeChangeStaysOutOfTheLoop()
+{
+    std::printf ("Delay time change does not recirculate:\n");
+
+    constexpr float toneHz = 1000.0f;
+    constexpr float feedback = 0.75f;
+
+    ee::dsp::TapeDelay delay;
+    delay.prepare (kSampleRate);
+    delay.setDelaySeconds (0.25f, 0.25f);
+    delay.snapDelays();
+    delay.setFeedback (feedback);
+    delay.setModulation (0.0f);
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    // A second of tone, which at a quarter-second delay is four trips round the
+    // loop - long enough that what is circulating is the tone and nothing else.
+    int n = 0;
+    for (int b = 0; b < static_cast<int> (kSampleRate / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i, ++n)
+        {
+            inL[i] = std::sin (2.0f * juce::MathConstants<float>::pi * toneHz * n / static_cast<float> (kSampleRate));
+            inR[i] = inL[i];
+        }
+
+        delay.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+    }
+
+    // The knob moves with the input already stopped, so everything measured
+    // below came out of the loop rather than off the input.
+    std::fill (inL.begin(), inL.end(), 0.0f);
+    std::fill (inR.begin(), inR.end(), 0.0f);
+    delay.setDelaySeconds (0.40f, 0.40f);
+
+    std::vector<float> tail;
+    const int tailBlocks = static_cast<int> (kSampleRate * 3.0 / kBlock);
+    const int measureFrom = static_cast<int> (kSampleRate * 2.0 / kBlock);
+
+    for (int b = 0; b < tailBlocks; ++b)
+    {
+        delay.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+        if (b >= measureFrom)
+            tail.insert (tail.end(), outL.begin(), outL.end());
+    }
+
+    // One DFT bin at the tone, against the window's total energy.
+    double re = 0.0, im = 0.0, energy = 0.0;
+    for (size_t i = 0; i < tail.size(); ++i)
+    {
+        const double w = 2.0 * juce::MathConstants<double>::pi * toneHz * static_cast<double> (i) / kSampleRate;
+        re += tail[i] * std::cos (w);
+        im += tail[i] * std::sin (w);
+        energy += static_cast<double> (tail[i]) * tail[i];
+    }
+
+    const double purity = energy > 0.0 ? 2.0 * (re * re + im * im) / static_cast<double> (tail.size()) / energy : 0.0;
+
+    std::printf ("  tail energy at %.0f Hz, two seconds after the move: %.1f %%\n", toneHz, purity * 100.0);
+
+    // A stepped feedback tap measures around 0.91 here; a gliding one, 0.007.
+    // The threshold sits between the two rather than beside either.
+    check (purity > 0.5, "a time change warped the signal circulating in the delay");
+}
+
 void testTapeCharacter()
 {
     std::printf ("Tape stage:\n");
@@ -3475,6 +3552,8 @@ int main()
     testDelayTaps();
     std::printf ("\n");
     testDelayStability();
+    std::printf ("\n");
+    testDelayTimeChangeStaysOutOfTheLoop();
     std::printf ("\n");
     testTapeCharacter();
     std::printf ("\n");

@@ -1,0 +1,21 @@
+.pui-stage-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pui-stage-header__icon {
+  flex: none;
+  display: flex;
+  color: var(--pui-stage-icon);
+}
+
+.pui-stage-header__name {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--pui-stage-name);
+}

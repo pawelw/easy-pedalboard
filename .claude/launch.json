@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "plugins/peak-delay/jsui"],
       "port": 3001
+    },
+    {
+      "name": "pedal-gallery",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "apps/pedal-gallery"],
+      "port": 3100
     }
   ]
 }

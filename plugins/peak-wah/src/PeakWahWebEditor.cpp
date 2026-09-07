@@ -1,6 +1,7 @@
 #include "PeakWahWebEditor.h"
 
 #include "PluginProcessor.h"
+#include "ee/plugin/WebFace.h"
 
 namespace
 {
@@ -9,17 +10,6 @@ juce::String kParamSync = "sync";
 juce::String kParamFreq = "freq";
 juce::String kParamTime = "time";
 juce::String kParamType = "ftype";
-
-const char* mimeForExtension (const juce::String& extension)
-{
-    if (extension == "html") return "text/html";
-    if (extension == "js") return "text/javascript";
-    if (extension == "css") return "text/css";
-    if (extension == "json") return "application/json";
-    if (extension == "svg") return "image/svg+xml";
-    if (extension == "png") return "image/png";
-    return "application/octet-stream";
-}
 } // namespace
 
 #if JUCE_ANDROID
@@ -33,9 +23,21 @@ bool PeakWahWebEditor::SinglePageBrowser::pageAboutToLoad (const juce::String& n
     return newURL == PeakWahWebEditor::devServerAddress || newURL == getResourceProviderRoot();
 }
 
+bool PeakWahWebEditor::SinglePageBrowser::pageLoadHadNetworkError (const juce::String&)
+{
+    // Only a dev-server build gets here, and only when the server is not
+    // running. Fall back to whatever was last built into jsui/dist rather
+    // than leaving the host showing WKWebView's "cannot connect" page.
+    if (triedFallback)
+        return true;
+
+    triedFallback = true;
+    goToURL (getResourceProviderRoot());
+    return false;
+}
+
 PeakWahWebEditor::PeakWahWebEditor (PeakWahProcessor& p)
-    : juce::AudioProcessorEditor (&p),
-      processorRef (p),
+    : juce::AudioProcessorEditor (&p), processorRef (p),
       webView (juce::WebBrowserComponent::Options {}
                    .withNativeIntegrationEnabled()
                    .withOptionsFrom (rangeRelay)
@@ -56,7 +58,8 @@ PeakWahWebEditor::PeakWahWebEditor (PeakWahProcessor& p)
                    // size guessed from a browser that isn't the WebView
                    // engine actually rendering it.
                    .withNativeFunction ("reportContentSize",
-                                        [this] (const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                        [this] (const juce::Array<juce::var>& args,
+                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
                                         {
                                             const int width = juce::jmax (100, static_cast<int> (args[0]));
                                             const int height = juce::jmax (100, static_cast<int> (args[1]));
@@ -64,7 +67,8 @@ PeakWahWebEditor::PeakWahWebEditor (PeakWahProcessor& p)
                                             complete (true);
                                         })
                    .withNativeFunction ("formatKnobValue",
-                                        [this] (const juce::Array<juce::var>& args, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                        [this] (const juce::Array<juce::var>& args,
+                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
                                         {
                                             const auto id = args[0].toString();
                                             juce::String text;
@@ -81,7 +85,7 @@ PeakWahWebEditor::PeakWahWebEditor (PeakWahProcessor& p)
                                             complete (text);
                                         })
                    .withResourceProvider ([this] (const auto& url) { return getResource (url); },
-                                           juce::URL { devServerAddress }.getOrigin())),
+                                          juce::URL { devServerAddress }.getOrigin())),
       rangeAttachment (*p.apvts.getParameter ("range"), rangeRelay, p.apvts.undoManager),
       freqAttachment (*p.apvts.getParameter (kParamFreq), freqRelay, p.apvts.undoManager),
       qAttachment (*p.apvts.getParameter ("q"), qRelay, p.apvts.undoManager),
@@ -130,21 +134,5 @@ void PeakWahWebEditor::timerCallback()
 
 std::optional<juce::WebBrowserComponent::Resource> PeakWahWebEditor::getResource (const juce::String& url)
 {
-    const auto requested = url == "/" ? juce::String { "index.html" } : url.fromFirstOccurrenceOf ("/", false, false);
-
-    const juce::File distDir = juce::File (PEAKWAH_JSUI_DIR).getChildFile ("dist");
-    const auto file = distDir.getChildFile (requested);
-
-    if (! file.existsAsFile())
-        return std::nullopt;
-
-    juce::MemoryBlock block;
-    if (! file.loadFileAsData (block))
-        return std::nullopt;
-
-    std::vector<std::byte> bytes (block.getSize());
-    std::memcpy (bytes.data(), block.getData(), block.getSize());
-
-    return juce::WebBrowserComponent::Resource { std::move (bytes),
-                                                 juce::String (mimeForExtension (file.getFileExtension().substring (1))) };
+    return ee::plugin::webface::serveFromDist (juce::File (PEAKWAH_JSUI_DIR), url);
 }

@@ -7,24 +7,29 @@ project is stale; see the branch's commit history for why).
 
 ## Dev loop
 
+**The face is served out of `jsui/dist` by default** (see
+`ee::plugin::webface::serveFromDist`). Build it once after checkout, and again
+after any change to `src/`, or the plugin opens on a notice saying so:
+
 ```bash
-cd plugins/peak-wah/jsui
-npm install
-npm run dev      # Vite dev server on http://localhost:3000
+npm run build --prefix plugins/peak-wah/jsui
 ```
 
-With the dev server running, build and launch the Standalone Peak Wah as
-usual (`cmake --preset fast -DEE_PLUGINS="peak-wah"`, then run the built app).
-Its editor points at `localhost:3000` and picks up edits live - no C++
-rebuild between changes to `src/App.jsx` or the CSS.
+For hot reload while iterating on `src/`, configure with the dev-server flag
+and run Vite alongside the build:
 
-For a build that does not need the dev server running, `npm run build`
-writes `jsui/dist/`, and `PeakWahWebEditor` falls back to serving that
-directory straight off disk via a resource provider (see
-`WebEditor::getResource`) when it cannot reach the dev server. There is no
-packaging step yet - `dist/` is not embedded into the plugin binary via
-BinaryData, so this only works on a machine that still has the checkout.
-That is the next thing to solve if this spike is kept.
+```bash
+cmake --preset fast -DEE_PLUGINS="peak-wah" -DEE_JSUI_DEV_SERVER=ON
+npm run dev --prefix plugins/peak-wah/jsui   # http://localhost:3000
+```
+
+The editor then points at `localhost:3000` and picks up edits live - no C++
+rebuild between changes to `src/App.jsx` or the CSS. If the server is not
+running it falls back to `dist/`. Never install a dev-server build.
+
+There is no packaging step yet - `dist/` is not embedded into the plugin
+binary via BinaryData, so this only works on a machine that still has the
+checkout. That is the next thing to solve if this spike is kept.
 
 ## `vendor/juce-framework-frontend/`
 

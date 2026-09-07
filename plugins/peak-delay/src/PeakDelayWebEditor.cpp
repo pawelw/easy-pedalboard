@@ -1,6 +1,7 @@
 #include "PeakDelayWebEditor.h"
 
 #include "PluginProcessor.h"
+#include "ee/plugin/WebFace.h"
 
 namespace
 {
@@ -13,23 +14,6 @@ constexpr const char* kParamRightTime = "rtime";
 // value at kParamLeftTime/kParamRightTime.
 constexpr const char* kParamLeftTimeMs = "ltimeMs";
 constexpr const char* kParamRightTimeMs = "rtimeMs";
-
-const char* mimeForExtension (const juce::String& extension)
-{
-    if (extension == "html")
-        return "text/html";
-    if (extension == "js")
-        return "text/javascript";
-    if (extension == "css")
-        return "text/css";
-    if (extension == "json")
-        return "application/json";
-    if (extension == "svg")
-        return "image/svg+xml";
-    if (extension == "png")
-        return "image/png";
-    return "application/octet-stream";
-}
 } // namespace
 
 #if JUCE_ANDROID
@@ -41,6 +25,19 @@ const juce::String PeakDelayWebEditor::devServerAddress = "http://localhost:3001
 bool PeakDelayWebEditor::SinglePageBrowser::pageAboutToLoad (const juce::String& newURL)
 {
     return newURL == PeakDelayWebEditor::devServerAddress || newURL == getResourceProviderRoot();
+}
+
+bool PeakDelayWebEditor::SinglePageBrowser::pageLoadHadNetworkError (const juce::String&)
+{
+    // Only a dev-server build gets here, and only when the server is not
+    // running. Fall back to whatever was last built into jsui/dist rather
+    // than leaving the host showing WKWebView's "cannot connect" page.
+    if (triedFallback)
+        return true;
+
+    triedFallback = true;
+    goToURL (getResourceProviderRoot());
+    return false;
 }
 
 PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
@@ -59,10 +56,15 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
                    .withOptionsFrom (rightTimeRelay)
                    .withOptionsFrom (feedbackRelay)
                    .withOptionsFrom (mixRelay)
-                   .withOptionsFrom (modRelay)
-                   .withOptionsFrom (tapeRelay)
+                   .withOptionsFrom (wearRelay)
+                   .withOptionsFrom (flutterRelay)
+                   .withOptionsFrom (driftRelay)
+                   .withOptionsFrom (phaserRelay)
+                   .withOptionsFrom (inGainRelay)
+                   .withOptionsFrom (outGainRelay)
                    .withOptionsFrom (syncRelay)
                    .withOptionsFrom (timeUnitRelay)
+                   .withOptionsFrom (tapePreRelay)
                    .withOptionsFrom (onRelay)
                    .withOptionsFrom (controlParameterIndexReceiver)
                    // See jsui/src/autoSize.js: the page measures its own real
@@ -125,10 +127,15 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
       rightTimeAttachment (*p.apvts.getParameter (kParamRightTime), rightTimeRelay, p.apvts.undoManager),
       feedbackAttachment (*p.apvts.getParameter ("fb"), feedbackRelay, p.apvts.undoManager),
       mixAttachment (*p.apvts.getParameter ("mix"), mixRelay, p.apvts.undoManager),
-      modAttachment (*p.apvts.getParameter ("mod"), modRelay, p.apvts.undoManager),
-      tapeAttachment (*p.apvts.getParameter ("tape"), tapeRelay, p.apvts.undoManager),
+      wearAttachment (*p.apvts.getParameter ("tape"), wearRelay, p.apvts.undoManager),
+      flutterAttachment (*p.apvts.getParameter ("flutter"), flutterRelay, p.apvts.undoManager),
+      driftAttachment (*p.apvts.getParameter ("mod"), driftRelay, p.apvts.undoManager),
+      phaserAttachment (*p.apvts.getParameter ("phaser"), phaserRelay, p.apvts.undoManager),
+      inGainAttachment (*p.apvts.getParameter ("ingain"), inGainRelay, p.apvts.undoManager),
+      outGainAttachment (*p.apvts.getParameter ("outgain"), outGainRelay, p.apvts.undoManager),
       syncAttachment (*p.apvts.getParameter ("sync"), syncRelay, p.apvts.undoManager),
       timeUnitAttachment (*p.apvts.getParameter ("timeunit"), timeUnitRelay, p.apvts.undoManager),
+      tapePreAttachment (*p.apvts.getParameter ("tapepre"), tapePreRelay, p.apvts.undoManager),
       onAttachment (*p.apvts.getParameter ("on"), onRelay, p.apvts.undoManager)
 {
     addAndMakeVisible (webView);
@@ -144,6 +151,8 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
     setSize (634, 440);
     setResizable (false, false);
 
+    startTimerHz (45); // the rate Peak Wah's own live feed runs at
+
 #if EE_TAPE_TUNER
     // Flip to true to bring the tuning panel back without reconfiguring CMake.
     constexpr bool showTuner = false;
@@ -158,7 +167,18 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
 #endif
 }
 
-PeakDelayWebEditor::~PeakDelayWebEditor() = default;
+PeakDelayWebEditor::~PeakDelayWebEditor()
+{
+    stopTimer();
+}
+
+void PeakDelayWebEditor::timerCallback()
+{
+    auto* payload = new juce::DynamicObject();
+    payload->setProperty ("level", processorRef.inputLevelUi.load (std::memory_order_relaxed));
+    payload->setProperty ("strikes", processorRef.strikeCountUi.load (std::memory_order_relaxed));
+    webView.emitEventIfBrowserIsVisible ("delayMeter", juce::var (payload));
+}
 
 void PeakDelayWebEditor::resized()
 {
@@ -176,21 +196,5 @@ void PeakDelayWebEditor::resized()
 
 std::optional<juce::WebBrowserComponent::Resource> PeakDelayWebEditor::getResource (const juce::String& url)
 {
-    const auto requested = url == "/" ? juce::String { "index.html" } : url.fromFirstOccurrenceOf ("/", false, false);
-
-    const juce::File distDir = juce::File (PEAKDELAY_JSUI_DIR).getChildFile ("dist");
-    const auto file = distDir.getChildFile (requested);
-
-    if (! file.existsAsFile())
-        return std::nullopt;
-
-    juce::MemoryBlock block;
-    if (! file.loadFileAsData (block))
-        return std::nullopt;
-
-    std::vector<std::byte> bytes (block.getSize());
-    std::memcpy (bytes.data(), block.getData(), block.getSize());
-
-    return juce::WebBrowserComponent::Resource { std::move (bytes), juce::String (mimeForExtension (
-                                                                        file.getFileExtension().substring (1))) };
+    return ee::plugin::webface::serveFromDist (juce::File (PEAKDELAY_JSUI_DIR), url);
 }

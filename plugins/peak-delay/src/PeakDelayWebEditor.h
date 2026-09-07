@@ -3,6 +3,15 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
+// Off by default (see EE_JSUI_DEV_SERVER in cmake/AddPeakPlugin.cmake): the
+// face is served out of jsui/dist through the resource provider below, so an
+// installed plugin renders in a DAW with nothing else running. ON points the
+// browser at the Vite dev server instead, for hot reload while iterating on
+// jsui/src - a dev-only build, never one you hand to anyone.
+#ifndef EE_JSUI_DEV_SERVER
+#define EE_JSUI_DEV_SERVER 0
+#endif
+
 #if EE_TAPE_TUNER
 #include "TapeTunerPanel.h"
 #endif
@@ -13,7 +22,7 @@ class PeakDelayProcessor;
     approach as Peak Wah's (see PeakWahWebEditor) instead of ee::ui::PedalEditor.
     The Tape knob shares the same knob look as everything else here rather
     than the old face's distinct photographic cap - see jsui/README.md. */
-class PeakDelayWebEditor : public juce::AudioProcessorEditor
+class PeakDelayWebEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
     explicit PeakDelayWebEditor (PeakDelayProcessor&);
@@ -27,25 +36,40 @@ public:
     }
 
 private:
+    /** Pushes the processor's input level and onset count to the page as the
+        one "delayMeter" event - neither is a parameter, so there is no relay
+        to carry them. The TapScope animates off this and nothing else: no
+        signal, no movement. Same shape as Peak Wah's "filterMod" feed. */
+    void timerCallback() override;
+
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
 
     PeakDelayProcessor& processorRef;
 
-    // kUseDevServer true points the browser at the Vite dev server for
-    // hot-reload while iterating on jsui/src; false serves jsui/dist off disk
-    // (built with `npm run build`) through the resource provider below.
-    static constexpr bool kUseDevServer = true;
+    // Where the page comes from - see EE_JSUI_DEV_SERVER above.
+    static constexpr bool kUseDevServer = EE_JSUI_DEV_SERVER != 0;
     static const juce::String devServerAddress;
 
     juce::WebSliderRelay leftTimeRelay { "ltime" };
     juce::WebSliderRelay rightTimeRelay { "rtime" };
     juce::WebSliderRelay feedbackRelay { "fb" };
     juce::WebSliderRelay mixRelay { "mix" };
-    juce::WebSliderRelay modRelay { "mod" };
-    juce::WebSliderRelay tapeRelay { "tape" };
+    // The footer's two stage sections: Tape (Wear + Flutter), with a router
+    // saying which side of the delay it sits on, and Mod (Drift + Phaser).
+    // "mod" and "tape" are the ids Drift and Wear kept from the single-knob
+    // face - see PluginProcessor.cpp.
+    juce::WebSliderRelay wearRelay { "tape" };
+    juce::WebSliderRelay flutterRelay { "flutter" };
+    juce::WebSliderRelay driftRelay { "mod" };
+    juce::WebSliderRelay phaserRelay { "phaser" };
+
+    // The header's two faders, either end of the pedal.
+    juce::WebSliderRelay inGainRelay { "ingain" };
+    juce::WebSliderRelay outGainRelay { "outgain" };
 
     juce::WebToggleButtonRelay syncRelay { "sync" };
     juce::WebToggleButtonRelay timeUnitRelay { "timeunit" };
+    juce::WebToggleButtonRelay tapePreRelay { "tapepre" };
     juce::WebToggleButtonRelay onRelay { "on" };
 
     juce::WebControlParameterIndexReceiver controlParameterIndexReceiver;
@@ -54,6 +78,13 @@ private:
     {
         using WebBrowserComponent::WebBrowserComponent;
         bool pageAboutToLoad (const juce::String& newURL) override;
+        bool pageLoadHadNetworkError (const juce::String& errorInfo) override;
+
+        /** One shot. Only a dev-server build can reach the error path at all,
+            and the page it falls back to is served locally so it cannot fail
+            the same way - but goToURL() from inside that callback is
+            documented as loopable, so this makes a loop impossible. */
+        bool triedFallback = false;
     };
 
     SinglePageBrowser webView;
@@ -62,11 +93,16 @@ private:
     juce::WebSliderParameterAttachment rightTimeAttachment;
     juce::WebSliderParameterAttachment feedbackAttachment;
     juce::WebSliderParameterAttachment mixAttachment;
-    juce::WebSliderParameterAttachment modAttachment;
-    juce::WebSliderParameterAttachment tapeAttachment;
+    juce::WebSliderParameterAttachment wearAttachment;
+    juce::WebSliderParameterAttachment flutterAttachment;
+    juce::WebSliderParameterAttachment driftAttachment;
+    juce::WebSliderParameterAttachment phaserAttachment;
+    juce::WebSliderParameterAttachment inGainAttachment;
+    juce::WebSliderParameterAttachment outGainAttachment;
 
     juce::WebToggleButtonParameterAttachment syncAttachment;
     juce::WebToggleButtonParameterAttachment timeUnitAttachment;
+    juce::WebToggleButtonParameterAttachment tapePreAttachment;
     juce::WebToggleButtonParameterAttachment onAttachment;
 
 #if EE_TAPE_TUNER

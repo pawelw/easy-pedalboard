@@ -57,9 +57,32 @@
   gap: 10px;
 }
 
+/* The centre slot is centred on the card, not on whatever space its two
+   neighbours happen to leave: left and right each take an equal share of the
+   free space, which puts the middle item exactly on the card's centre line
+   however long the title is. A card with no centre slot lays out as it always
+   did - the two halves still sit against their own edges.
+
+   No `min-width: 0` on purpose. These two keep their automatic minimum, so a
+   header whose left half is genuinely wider than half the card pushes the
+   centre slot along instead of being drawn underneath it - off centre, but
+   legible, which is the right way round for this to fail. */
+.pui-card__header-left,
+.pui-card__header-right {
+  flex: 1 1 0;
+}
+
+.pui-card__header-center {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
 .pui-card__header-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
 }
 
@@ -74,6 +97,11 @@
   letter-spacing: 0.01em;
   color: var(--pui-ink);
   margin: 0;
+  /* Both of these measure as one unbreakable word, so the automatic minimum
+     above is the whole title rather than its longest word - a header that
+     runs out of room shifts its centre slot rather than wrapping the title
+     underneath it. */
+  white-space: nowrap;
 }
 
 .pui-card__subtitle {
@@ -83,6 +111,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--pui-ink-soft);
+  white-space: nowrap;
 }
 
 .pui-card__body {

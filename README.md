@@ -119,7 +119,8 @@ path open, so whatever is still ringing rings out.
 
 ### Peak Delay
 
-A tempo-synced stereo delay with independent left and right times. Six controls:
+A tempo-synced stereo delay with independent left and right times, and two
+effect sections either side of it:
 
 | Knob           | Range         | What it does                                                                   |
 | -------------- | ------------- | ------------------------------------------------------------------------------ |
@@ -127,25 +128,64 @@ A tempo-synced stereo delay with independent left and right times. Six controls:
 | **Right Time** | 1/32 - 1/1.   | Same for the right channel                                                     |
 | **Feedback**   | 0 - 100 %     | 0 % is a single slap; 100 % is a long run of repeats that still lands          |
 | **Mix**        | 0 - 100 %     | Blend of dry signal and repeats                                                |
-| **Mod**        | 0 - 100 %     | Slow, wide wow inside the feedback loop — the warm, moving end                  |
-| **Tape**       | 0 - 100 %     | A tape machine in front of the delay: flutter, drive, head loss and grit        |
+| **Wear**       | 0 - 100 %     | Tape section: drive, head loss and grit — how tired the tape is                 |
+| **Flutter**    | 0 - 100 %     | Tape section: the transport's wobble, a ~2 Hz wow with a wandering rate         |
+| **Drift**      | 0 - 100 %     | Mod section: the repeats wander in pitch and lose top end, a bit more each pass |
+| **Phaser**     | 0 - 100 %     | Mod section: how much of a six-stage sweeping phaser is blended in             |
+| **In**         | -24 - +12 dB  | Header fader: trims what the pedal is fed, dry path and delay input alike       |
+| **Out**        | -24 - +12 dB  | Header fader: rides the finished signal                                        |
 
 The **Sync** button between the two time knobs links them: with it on, moving
 either knob moves the other, so the two channels stay on the same note value.
 
 Every division comes in straight, dotted (`.`) and triplet (`T`) flavours.
 
-**Tape** is not part of the delay. It sits in front of it, the way a separate
-pedal would sit earlier in a chain, so it colours the dry signal whether or not
-any delay is being heard. Turn **Mix** all the way down and the repeats go
-silent but the tape keeps working on the dry signal. Its knob is the green one,
-because it is not really part of the same effect as the rest of the face.
+Moving a time knob glides the read head rather than jumping it, so a repeat
+that is ringing when you turn it warps in pitch on its way out - the sound a
+tape machine makes when the head moves, and the reason the glide is there. What
+it does *not* do is put that warp into the tail: the feedback path reads its own
+tap, which re-aims in short crossfaded steps instead of gliding, so nothing
+resampled is written back into the loop. You hear the head move once, and the
+repeats after it are at the new time and at the pitch you played.
 
-The face uses a mustard `gold()` theme (`#c09d28`), with the green (`#375916`)
-Tape cap and the amber `Sync` toggle set apart from the black caps.
+The display above the knobs is the delay drawn out on a time axis: the amber
+line at the left is the dry signal, whose height is the dry half of the Mix
+crossfade, and the marks running right of it are the repeats - spacing from the
+time knobs, count and decay from Feedback, height from Mix. It animates only
+when something is being played: each note starts a playhead that lights the dry
+line as the note sounds and then each repeat as it comes back. Silence leaves it
+still.
 
-Mod is the one that lives inside the feedback loop and compounds with every
-pass.
+The preset bar in the header is layout only for now - browsing and Save change
+nothing, because there is no preset storage in the project yet.
+
+**Tape** is not part of the delay. It is a section of its own, the way a
+separate pedal would sit somewhere in a chain, and the `‹ PRE ›` router in its
+header says where: **Pre** puts it in front of the delay, **Post** puts it on
+the repeats. In front, it colours the dry signal and everything the delay goes
+on to repeat, whether or not any delay is being heard - turn **Mix** all the way
+down and the repeats go silent but the tape keeps working on the dry signal.
+Post is the other way round: it is on the delay's output alone, so the wear and
+the flutter are on the repeats and the note you are playing stays clean. The two
+settings are the two ways a tape echo can be built, and which one you want is
+usually decided by whether you want to hear the machine on your own playing.
+
+**Mod** has no router, because its two knobs sit in different places and only
+one of them has a choice. **Drift** is the delay line's own modulation, inside
+the feedback path: a slow wow on the tap plus a rolloff, both applied again on
+every pass, so the repeats wander further out of tune and lose more top end the
+longer the tail runs. It is not before or after the delay - it is part of it.
+That compounding is the whole point of the knob and the one thing an insert
+cannot do: with Drift at 100 % a repeat carries about half the top end its
+seventh predecessor had, while at 0 % every repeat is an identical copy. The
+**Phaser** is an ordinary insert and sits after the delay.
+
+Nothing here is its own model of anything. **Wear** is Peak Tape's Wear,
+**Flutter** is Peak Tape's transport and **Phaser** is Peak Phase, each on its
+own pedal's default voicing with one knob here - so retuning any of them moves
+both pedals together rather than letting the two drift apart. The Tape section
+is the green band, because it is not really part of the same effect as the rest
+of the face.
 
 The voicing is measured against a reference machine rather than invented. It is
 not a bit crusher — decimation and quantisation read as digital however they are
@@ -168,8 +208,13 @@ plugin, so the chain can be checked end to end. With Mix at 0 % and Tape at
 100 %, the plugin's dry output carries grit 36.6 dB below the signal against the
 reference's 36.4 dB, where the untouched input sits at 55.8 dB.
 
-At 0 % the stage is bit exact, and it reports a constant 1.5 ms of latency so
-the timing never shifts as the knob moves.
+With Wear and Flutter at 0 the tape section is bit exact, and it reports a
+constant 6.0 ms of latency - the transport's 4.5 ms and the tape's own 1.5 ms -
+so the timing never shifts as the knobs move or the router flips. On Post, where
+the dry signal has no stage to pass through, it is held back by that same 6.0 ms
+by hand, which is what keeps the figure constant and the router silent to move.
+Drift and Phaser add none: one is inside the delay line and the other is a
+wet/dry blend.
 
 Like the reverb it has no on/off switch of its own, and the `on` parameter has
 trails: bypassing fades the tape off the dry path and closes the delay input,

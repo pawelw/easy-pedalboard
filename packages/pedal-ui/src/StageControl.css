@@ -1,36 +1,16 @@
 .pui-stage {
   display: flex;
   align-items: center;
-  flex: 1;
+  /* 8px from the knob's tick ring to the label, not from its dial - the ring
+     overflows the dial's box. See --pui-knob-reach-small in tokens.css. */
+  gap: calc(8px + var(--pui-knob-reach-small, 0px));
   min-width: 0;
-}
-
-.pui-stage__icon {
-  flex: none;
-  display: flex;
-  margin-right: 14px;
-  color: var(--pui-stage-icon);
-}
-
-.pui-stage__main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.pui-stage__control {
-  display: flex;
-  align-items: center;
-  gap: 11px;
 }
 
 .pui-stage__text {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-left: 12px;
 }
 
 .pui-stage__name {
@@ -49,28 +29,4 @@
   font-size: 10px;
   color: var(--pui-stage-value);
   white-space: nowrap;
-}
-
-/* The two tones. Each sets its own text colours *and* re-points the knob
-   tokens, which the Knob below inherits - that is the whole mechanism, so
-   Knob itself needs no `tone` prop and nothing outside this file changes. */
-.pui-stage--default {
-  --pui-stage-icon: var(--pui-ink);
-  --pui-stage-name: var(--pui-ink);
-  --pui-stage-value: var(--pui-ink-dim);
-}
-
-.pui-stage--tape {
-  --pui-stage-icon: var(--pui-tape-lit);
-  --pui-section-label-ink: var(--pui-tape-ink-soft);
-  --pui-stage-name: var(--pui-tape-ink);
-  --pui-stage-value: var(--pui-tape-lit);
-
-  --pui-tick: var(--pui-tape-track);
-  --pui-tick-lit: var(--pui-tape-lit);
-  --pui-knob-body: var(--pui-tape-knob-body);
-  --pui-cap-grad-top: var(--pui-tape-cap-top);
-  --pui-cap-grad-bottom: var(--pui-tape-cap-bot);
-  --pui-cap-ring: var(--pui-tape-cap-rim);
-  --pui-pointer: var(--pui-tape-lit);
 }

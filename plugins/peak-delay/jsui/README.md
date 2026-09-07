@@ -6,22 +6,51 @@ web-view relay/attachment classes, no third-party bridge.
 
 ## Dev loop
 
+**The face is served out of `jsui/dist` by default.** Build it once after
+checkout, and again after any change to `src/`, or the plugin opens on a
+notice saying so:
+
 ```bash
-cd plugins/peak-delay/jsui
-npm install
-npm run dev      # Vite dev server on http://localhost:3001
+npm run build --prefix plugins/peak-delay/jsui
+```
+
+That is the mode an installed plugin runs in: no dev server, nothing to
+remember to start. A face that pointed at Vite by default is how you get a
+blank plugin window in a DAW.
+
+For hot reload while iterating on `src/`, configure with the dev-server flag
+and run Vite alongside the build:
+
+```bash
+cmake --preset fast -DEE_PLUGINS="peak-delay" -DEE_JSUI_DEV_SERVER=ON
+npm run dev --prefix plugins/peak-delay/jsui   # http://localhost:3001
 ```
 
 Different port from Peak Wah's (3000) so both dev servers can run at once.
-With the dev server running, build and launch the Standalone Peak Delay as
-usual (`cmake --preset fast -DEE_PLUGINS="peak-delay"`, then run the built
-app). Its editor points at `localhost:3001` and picks up edits live - no C++
-rebuild between changes to `src/App.jsx` or the CSS.
+The editor then points at `localhost:3001` and picks up edits live - no C++
+rebuild between changes to `src/App.jsx` or the CSS. If the server is not
+running, the editor falls back to `dist/` rather than showing WKWebView's
+"cannot connect" page. **Never install a dev-server build** - `EE_INSTALL_PLUGINS`
+is on outside the `fast` preset, so a full build overwrites what is in
+`~/Library/Audio/Plug-Ins`.
 
-For a build that does not need the dev server running, `npm run build`
-writes `jsui/dist/`, and `PeakDelayWebEditor` falls back to serving that
-directory straight off disk via a resource provider when it cannot reach the
-dev server.
+## What crosses the bridge
+
+Parameters travel the ordinary way, on `WebSliderRelay`/`WebToggleButtonRelay`
+pairs declared in `PeakDelayWebEditor.h`. Three things are not parameters and
+need their own crossing:
+
+- **`formatKnobValue`** (native function) - a knob's display text. The relays
+  carry only start/end/skew/interval, never the format string, so the page asks
+  C++ for the string. It also answers two ids that are not parameters at all,
+  `ltimeMs`/`rtimeMs`, for the Readout's small always-milliseconds figure.
+- **`getDelayTimesMs`** (native function) - both delay times as numbers, the
+  TapScope's time axis. A knob position alone doesn't say what it means: the
+  Sync pill and the host tempo do.
+- **`delayMeter`** (event, 45 Hz) - `{ level, strikes }` from the processor's
+  input meter. `strikes` is a monotonic count of note onsets, and it is the
+  only thing that makes the TapScope move: a face with nothing playing into it
+  is a still picture, on purpose. Same shape as Peak Wah's `filterMod` feed.
 
 ## `vendor/juce-framework-frontend/`
 

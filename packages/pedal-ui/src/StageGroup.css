@@ -1,0 +1,48 @@
+.pui-stage-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Every gap down here is drawn from the knobs' tick rings, not their dial
+     boxes - see --pui-knob-reach-small in tokens.css. 11px to the ticks. */
+  gap: calc(11px + var(--pui-knob-reach-small));
+}
+
+.pui-stage-group__knobs {
+  display: flex;
+  align-items: center;
+  /* 14px from one pair's label to the next pair's ticks. */
+  gap: calc(14px + var(--pui-knob-reach-small));
+}
+
+/* The two tones. Each sets its own text colours *and* re-points the knob
+   tokens, which the Knobs below inherit - that is the whole mechanism, so
+   neither Knob nor StageRouter needs a `tone` prop and nothing outside this
+   file changes.
+
+   Stage values are on --pui-ink-soft, never --pui-ink-dim: the dim ink
+   measures 4.2:1 on the panel and makes the mod half read as disabled beside
+   the green one (TOKENS.md). */
+.pui-stage-group--default {
+  --pui-stage-icon: var(--pui-ink);
+  --pui-stage-name: var(--pui-ink);
+  --pui-stage-value: var(--pui-ink-soft);
+  --pui-stage-well: var(--pui-recess);
+  --pui-stage-arrow: var(--pui-ink-soft);
+}
+
+.pui-stage-group--tape {
+  --pui-stage-icon: var(--pui-tape-lit);
+  --pui-stage-name: var(--pui-tape-ink);
+  --pui-stage-value: var(--pui-tape-lit);
+  --pui-stage-well: var(--pui-tape-well);
+  --pui-stage-arrow: var(--pui-tape-lit);
+
+  --pui-tick: var(--pui-tape-track);
+  --pui-tick-lit: var(--pui-tape-lit);
+  --pui-knob-body: var(--pui-tape-knob-body);
+  --pui-cap-grad-top: var(--pui-tape-cap-top);
+  --pui-cap-grad-bottom: var(--pui-tape-cap-bot);
+  --pui-cap-ring: var(--pui-tape-cap-rim);
+  --pui-pointer: var(--pui-tape-lit);
+}

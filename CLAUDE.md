@@ -65,6 +65,21 @@ voicing that is not on the face, and prints the header lines for whatever you
 dial in: `-DEE_SHIMMER_TUNER=ON` (Peak Reverb), `-DEE_TAPE_TUNER=ON` (Peak
 Delay), `-DEE_GRAIN_TUNER=ON` (Peak Grain). Never ship one.
 
+The two WebView faces (Peak Wah, Peak Delay) read their page out of the
+pedal's `jsui/dist` by default, so an installed plugin renders in a DAW with
+nothing else running - **build it once after checkout**, or the editor opens on
+a notice telling you to:
+
+```bash
+npm run build --prefix plugins/peak-delay/jsui
+```
+
+`-DEE_JSUI_DEV_SERVER=ON` points both faces at their Vite dev server instead
+(Wah 3000, Delay 3001) for hot reload while iterating on `jsui/src`. Never
+install one: `EE_INSTALL_PLUGINS` is on outside the `fast` preset, so a full
+build of a dev-server tree overwrites `~/Library/Audio/Plug-Ins` with a face
+that is blank whenever Vite is not running.
+
 The last two binaries above are diagnostic tools rather than pass/fail suites,
 for the class of bug that only appears in a host. `ee_grain_host` instantiates
 the real processor and drives it the way a host does - `--sr`, `--block`,

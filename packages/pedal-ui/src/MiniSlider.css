@@ -1,0 +1,72 @@
+.pui-minislider {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.pui-minislider__label {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+  /* Fixed, so "In" and "Out" stacked above each other line their tracks up
+     rather than each starting wherever its own word ends. */
+  width: 20px;
+  flex: none;
+}
+
+.pui-minislider__track {
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--pui-tick);
+  box-shadow: var(--pui-well-shadow);
+  cursor: ew-resize;
+  touch-action: none;
+  flex: none;
+  outline-offset: 5px;
+}
+
+.pui-minislider__fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: var(--pui-tick-lit);
+}
+
+.pui-minislider__thumb {
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-left: -5px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, var(--pui-cap-grad-top), var(--pui-cap-grad-bottom));
+  border: 1px solid var(--pui-cap-ring);
+  box-shadow: var(--pui-knob-shadow);
+  pointer-events: none;
+}
+
+.pui-minislider__track--dragging .pui-minislider__thumb {
+  border-color: var(--pui-ink);
+}
+
+.pui-minislider__value {
+  font-family: var(--pui-font-label);
+  font-weight: 500;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--pui-ink-dim);
+  /* Right-aligned in a fixed column: the text is "+3.5 dB" one moment and
+     "-12.0 dB" the next, and a value that re-centres itself on every drag
+     step drags the whole header about with it. */
+  width: 46px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}

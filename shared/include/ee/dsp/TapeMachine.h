@@ -1,9 +1,9 @@
 #pragma once
 
 #include "ee/dsp/Aa4.h"
-#include "ee/dsp/ModDelayLine.h"
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeMachineConfig.h"
+#include "ee/dsp/TapeTransport.h"
 
 #include <juce_core/juce_core.h>
 
@@ -21,6 +21,7 @@ namespace ee::dsp
 
       1. the whole signal is read off a delay line whose length wanders - a
          ~2 Hz sine, and the slower one the Stereo switch opens (Flutter);
+         TapeTransport, the same stage Peak Delay's Flutter knob drives;
       2. record head: drive into an asymmetric tanh, 2x oversampled, wrapped in
          a record-EQ shelf and its exact inverse so the treble hits the head
          hotter than the bass and distorts first (Saturation);
@@ -30,9 +31,10 @@ namespace ee::dsp
       5. tilt tone control around a fixed pivot, on a centre-detented knob (Tone);
       6. DC blocker, engaged with the saturation that can leave an offset.
 
-    Wear is deliberately not its own model. It is the delay's tape stage, driven
-    by this knob, so the two pedals cannot drift apart: retuning
-    ee/dsp/TapeTuning.h moves both.
+    Neither Wear nor Flutter is its own model. Wear is the delay's tape stage
+    and Flutter is TapeTransport, both driven by this pedal's knobs, so the two
+    pedals cannot drift apart: retuning ee/dsp/TapeTuning.h or this file's
+    TRANSPORT block moves both.
 
     The noise bed is a recording of a real machine's floor, handed to the engine
     by the pedal and looped with a crossfaded seam. It is not gated and does not
@@ -64,22 +66,15 @@ public:
     {
         sr = sampleRateIn > 0.0 ? sampleRateIn : 44100.0;
 
-        // Rounded to a whole sample so that with the transport still the line
-        // reads a stored sample rather than an interpolated one, and the stage
-        // is bit exact.
-        const float nominalSeconds = tape::kNominalDelayMs * 0.001f;
-        nominalSamples = std::round (nominalSeconds * static_cast<float> (sr));
-        wobbleLimit = tape::kWobbleLimit * nominalSamples;
-
         const double osRate = sr * tape::kOversampleFactor;
 
         for (auto& c : channels)
         {
-            c.line.prepare (sr, nominalSeconds * 3.0f);
             c.aaUp.setup (tape::kOversampleCutoffHz, static_cast<float> (osRate));
             c.aaDown.setup (tape::kOversampleCutoffHz, static_cast<float> (osRate));
         }
 
+        transport.prepare (sr);
         wearStage.prepare (sr);
 
         // The record EQ runs inside the oversampled region, so its corner is
@@ -92,15 +87,6 @@ public:
         dcCoeff      = onePoleCoeff (tape::kDcBlockerHz, sr);
         paramCoeff   = onePoleCoeff (tape::kParamSmoothingHz, sr);
 
-        wowInc    = static_cast<float> (tape::kWowRateHz / sr);
-        stereoInc = static_cast<float> (tape::kStereoRateHz / sr);
-
-        setNoiseFilter (wowJitterCoeff, wowJitterNorm, tape::kWowJitterHz);
-
-        const float perMs = static_cast<float> (sr) * 0.001f;
-        wowDepthSamples    = tape::kWowDepthMs * perMs;
-        stereoDepthSamples = tape::kStereoDepthMs * perMs;
-
         updateNoiseLoop();
 
         snapSmoothing();
@@ -112,7 +98,6 @@ public:
     {
         for (auto& c : channels)
         {
-            c.line.reset();
             c.aaUp.reset();
             c.aaDown.reset();
             c.preEmphasisLp = 0.0f;
@@ -122,6 +107,7 @@ public:
             c.dc = 0.0f;
         }
 
+        transport.reset();
         wearStage.reset();
 
         uint32_t seed = 0x9e3779b9u;
@@ -136,10 +122,6 @@ public:
                                         ? noiseLoopLength * 0.5   // decorrelate a mono floor
                                         : 0.0;
 
-        modRng = 0x2545f491u;
-        wowPhase = 0.0f;
-        stereoPhase = 0.0f;
-        wowJitterState = 0.0f;
         scratch.fill (0.0f);
     }
 
@@ -147,8 +129,8 @@ public:
         same voicing, as Peak Delay's Tape knob. */
     void setWear01 (float v) noexcept       { wearTarget = juce::jlimit (0.0f, 1.0f, v); }
 
-    /** Depth of the wow, flutter and scrape riding the transport. */
-    void setFlutter01 (float v) noexcept    { flutterTarget = juce::jlimit (0.0f, 1.0f, v); }
+    /** Depth of the wow riding the transport. */
+    void setFlutter01 (float v) noexcept    { transport.setFlutter01 (v); }
 
     /** -1 = dark, 0 = flat and bypassed, +1 = bright. A tilt around the pivot. */
     void setTone (float v) noexcept         { toneTarget = juce::jlimit (-1.0f, 1.0f, v); }
@@ -156,7 +138,7 @@ public:
     /** Opens the two channels onto different points of a slow modulation, which
         widens the image the way a chorus does. A switch, not a knob: 0 is one
         transport for both sides, 1 is full width. */
-    void setStereo01 (float v) noexcept     { stereoTarget = juce::jlimit (0.0f, 1.0f, v); }
+    void setStereo01 (float v) noexcept     { transport.setStereo01 (v); }
 
     /** The tape floor. Constant: it does not ride the programme. */
     void setNoise01 (float v) noexcept      { noiseTarget = juce::jlimit (0.0f, 1.0f, v); }
@@ -188,7 +170,7 @@ public:
         The transport line plus the tape stage's own. */
     int getLatencySamples() const noexcept
     {
-        return static_cast<int> (nominalSamples) + wearStage.getLatencySamples();
+        return transport.getLatencySamples() + wearStage.getLatencySamples();
     }
 
     /** In-place, one channel per pointer. `right` may be null for mono. */
@@ -200,32 +182,24 @@ public:
         for (int c = 0; c < numCh; ++c)
             scrubIfBroken (channels[static_cast<size_t> (c)]);
 
-        // 1-2: transport, then the record head.
+        // 1: the transport. Its own knob smoothing runs a sample at a time
+        // inside it, in step with the loop below - two passes over the block
+        // rather than one, but the same per-sample values either way: the
+        // record head reads the transport's output and nothing the other way
+        // round.
+        transport.process (left, right, numSamples);
+
+        // 2: the record head.
         for (int i = 0; i < numSamples; ++i)
         {
             advanceSmoothing();
             refreshControls();
 
-            float wobble[2];
-            transportOffset (wobble);
+            if (! satEngaged)
+                continue;
 
             for (int c = 0; c < numCh; ++c)
-            {
-                auto& ch = channels[static_cast<size_t> (c)];
-
-                float x = io[c][i];
-                if (! std::isfinite (x))
-                    x = 0.0f;
-
-                ch.line.write (x);
-                float y = ch.line.read (nominalSamples + wobble[c]);
-                ch.line.advance();
-
-                if (satEngaged)
-                    y = saturate (ch, y);
-
-                io[c][i] = y;
-            }
+                io[c][i] = saturate (channels[static_cast<size_t> (c)], io[c][i]);
         }
 
         // 3: the tape. TapeCharacter always works in pairs, so a mono call gets
@@ -287,7 +261,6 @@ private:
     //==========================================================================
     struct Channel
     {
-        ModDelayLine line;
         Aa4 aaUp, aaDown;
 
         float preEmphasisLp = 0.0f;
@@ -310,14 +283,6 @@ private:
     {
         const float w = kTwoPi * cornerHz / static_cast<float> (sampleRate);
         return juce::jlimit (0.0f, 1.0f, 1.0f - std::exp (-w));
-    }
-
-    /** A one-pole on white noise has variance c / (2 - c); the normaliser undoes
-        it, so a depth setting in milliseconds means what it says. */
-    void setNoiseFilter (float& coeff, float& norm, float cornerHz) const noexcept
-    {
-        coeff = onePoleCoeff (std::max (0.02f, cornerHz), sr);
-        norm = std::sqrt ((2.0f - coeff) / coeff);
     }
 
     static float whiteNoise (uint32_t& state) noexcept
@@ -343,19 +308,16 @@ private:
     void snapSmoothing() noexcept
     {
         wear = wearTarget;
-        flutter = flutterTarget;
         tone = toneTarget;
-        stereo = stereoTarget;
         noise = noiseTarget;
         sat = satTarget;
+        transport.snapSmoothing();
     }
 
     void advanceSmoothing() noexcept
     {
         smooth (wear, wearTarget, paramCoeff);
-        smooth (flutter, flutterTarget, paramCoeff);
         smooth (tone, toneTarget, paramCoeff);
-        smooth (stereo, stereoTarget, paramCoeff);
         smooth (noise, noiseTarget, paramCoeff);
         smooth (sat, satTarget, paramCoeff);
     }
@@ -421,36 +383,6 @@ private:
     }
 
     //==========================================================================
-    /** Fills the per-channel read offsets, in samples. */
-    void transportOffset (float (&out)[2]) noexcept
-    {
-        // The capstan's own rate wanders, so the wow never locks into an LFO.
-        wowJitterState += wowJitterCoeff * (whiteNoise (modRng) - wowJitterState);
-        const float jitter = 1.0f + tape::kWowRateJitter * wowJitterState * wowJitterNorm;
-
-        wowPhase += wowInc * jitter;
-        wowPhase -= std::floor (wowPhase);
-
-        stereoPhase += stereoInc;
-        stereoPhase -= std::floor (stereoPhase);
-
-        // Shared by both channels: one transport under the whole machine. The
-        // sine and nothing else - noise riding it roughens the vibe rather than
-        // deepening it.
-        const float common = flutter * std::sin (kTwoPi * wowPhase) * wowDepthSamples;
-
-        // Width: the two sides read the same slow modulation a third of a cycle
-        // apart, so they pull away from each other without ever mirroring.
-        const float widthDepth = stereo * stereoDepthSamples;
-
-        for (int c = 0; c < 2; ++c)
-        {
-            const float phase = stereoPhase + (c == 1 ? tape::kStereoPhaseSpanCycles : 0.0f);
-            const float offset = common + widthDepth * std::sin (kTwoPi * phase);
-            out[c] = juce::jlimit (-wobbleLimit, wobbleLimit, offset);
-        }
-    }
-
     float shape (Channel& ch, float v) noexcept
     {
         // Record EQ: lift the top end going into the head, so the treble
@@ -584,27 +516,17 @@ private:
     double sr = 44100.0;
 
     std::array<Channel, 2> channels;
+    TapeTransport transport;
     TapeCharacter wearStage;
     std::array<float, kScratchSamples> scratch {};
 
     // Knob targets and their smoothed values.
-    float wearTarget = 0.0f, flutterTarget = 0.0f, toneTarget = 0.0f;
-    float stereoTarget = 0.0f, noiseTarget = 0.0f, satTarget = 0.0f;
-    float wear = 0.0f, flutter = 0.0f, tone = 0.0f;
-    float stereo = 0.0f, noise = 0.0f, sat = 0.0f;
+    float wearTarget = 0.0f, toneTarget = 0.0f, noiseTarget = 0.0f, satTarget = 0.0f;
+    float wear = 0.0f, tone = 0.0f, noise = 0.0f, sat = 0.0f;
     float paramCoeff = 0.0f;
 
     // What the derived values below were last computed from.
     float lastSat = -1.0f, lastTone = -2.0f, lastNoise = -1.0f;
-
-    // Transport.
-    float nominalSamples = 198.0f;
-    float wobbleLimit = 0.0f;
-    float wowPhase = 0.0f, wowInc = 0.0f;
-    float stereoPhase = 0.0f, stereoInc = 0.0f;
-    float wowJitterState = 0.0f, wowJitterCoeff = 0.0f, wowJitterNorm = 1.0f;
-    float wowDepthSamples = 0.0f, stereoDepthSamples = 0.0f;
-    uint32_t modRng = 0x2545f491u;
 
     // Record head.
     bool satEngaged = false;

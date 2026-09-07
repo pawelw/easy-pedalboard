@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
-import { Knob, Pill, StageControl } from "@synthpeak/pedal-ui";
+import { Knob, MiniSlider, Pill, StageControl, StageRouter } from "@synthpeak/pedal-ui";
 
 // A native function, not the parameter's own C++ stringFromValue - JUCE's
 // web-view relays only carry start/end/skew/interval, not the format string.
@@ -175,6 +175,69 @@ export function useDelayTimesMs() {
   return times;
 }
 
+/** The processor's live input level and note-onset count, pushed from
+    PeakDelayWebEditor's Timer as the one "delayMeter" event - neither is a
+    parameter, so there is no relay for them.
+
+    Stays at zero until a real host starts sending it, which a plain browser
+    tab never will: the TapScope then draws its taps and simply never lights
+    them, which is the same thing it does in a host with nothing playing. */
+export function useDelayMeter() {
+  const [meter, setMeter] = useState({ level: 0, strikes: 0 });
+
+  useEffect(() => {
+    if (typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;
+    const id = window.__JUCE__.backend.addEventListener("delayMeter", (event) => setMeter(event));
+    return () => window.__JUCE__.backend.removeEventListener(id);
+  }, []);
+
+  return meter;
+}
+
+/** One of the header's two level faders, bound to a WebSliderRelay by
+    parameter id. Same optimistic-state pattern as JuceKnob - the value is set
+    locally on drag rather than waiting for a relay echo that only a real host
+    sends. */
+export function JuceMiniSlider({ parameterId, label }) {
+  const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
+  const valueLabel = useFormattedText(parameterId, value);
+
+  return (
+    <MiniSlider
+      label={label}
+      value={value}
+      valueLabel={valueLabel}
+      onChange={setValue}
+      onDragStart={() => sliderState.sliderDragStarted()}
+      onDragEnd={() => sliderState.sliderDragEnded()}
+    />
+  );
+}
+
+/** A boolean parameter's live value, kept in sync with its
+    WebToggleButtonRelay - the toggle counterpart of useJuceSliderValue, and
+    shared by every control built on one (the pills and the stage routers).
+
+    `setValue` updates local state as well as the relay for the same reason
+    useJuceSliderValue does: outside a real host nothing echoes the change
+    back, and without it the gallery's toggles would never move. */
+function useJuceToggleValue(parameterId) {
+  const toggleState = useRef(Juce.getToggleState(parameterId)).current;
+  const [checked, setChecked] = useState(toggleState.getValue());
+
+  useEffect(() => {
+    const id = toggleState.valueChangedEvent.addListener(() => setChecked(toggleState.getValue()));
+    return () => toggleState.valueChangedEvent.removeListener(id);
+  }, [toggleState]);
+
+  const setValue = (next) => {
+    setChecked(next);
+    toggleState.setValue(next);
+  };
+
+  return [checked, setValue];
+}
+
 /** Toggle bound to a WebToggleButtonRelay by parameter id, rendered as the
     shared Pill (Linked/Sync's round-cornered chip) rather than a full-width
     switch - the compact control the onyx layout uses everywhere a Toggle
@@ -186,42 +249,27 @@ export function useDelayTimesMs() {
     lit for the opposite: synced to tempo). Only the display flips; a click
     still just flips the real boolean either way. */
 export function JucePill({ parameterId, icon, label, invert = false }) {
-  const toggleState = useRef(Juce.getToggleState(parameterId)).current;
-  const [checked, setChecked] = useState(toggleState.getValue());
-
-  useEffect(() => {
-    const id = toggleState.valueChangedEvent.addListener(() => setChecked(toggleState.getValue()));
-    return () => toggleState.valueChangedEvent.removeListener(id);
-  }, [toggleState]);
+  const [checked, setChecked] = useJuceToggleValue(parameterId);
 
   return (
     <Pill
       icon={icon}
       label={label}
       pressed={invert ? !checked : checked}
-      onClick={() => {
-        const next = !checked;
-        setChecked(next);
-        toggleState.setValue(next);
-      }}
+      onClick={() => setChecked(!checked)}
     />
   );
 }
 
-/** StageControl bound to a WebSliderRelay by parameter id - the footer's
-    Tape (pre-stage) and Mod (post-stage) halves. Replaces the JuceSliderRow
-    these two used to be: COMPONENTS.md #5 is explicit that they are knobs,
-    not sliders. */
-export function JuceStageControl({ parameterId, label, name, icon, tone }) {
+/** One knob in a footer stage, bound to a WebSliderRelay by parameter id -
+    Wear/Flutter on the tape half, Chorus/Phaser on the mod half. */
+export function JuceStageKnob({ parameterId, name }) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const valueLabel = useFormattedText(parameterId, value);
 
   return (
     <StageControl
-      label={label}
       name={name}
-      icon={icon}
-      tone={tone}
       value={value}
       valueLabel={valueLabel}
       onChange={setValue}
@@ -229,4 +277,19 @@ export function JuceStageControl({ parameterId, label, name, icon, tone }) {
       onDragEnd={() => sliderState.sliderDragEnded()}
     />
   );
+}
+
+/** A section's placement stepper, bound to that section's parameter - where
+    the section sits relative to the delay line. Only Tape has one: the Mod
+    section's Drift is inside the delay's feedback loop and so has no side to
+    be on (see PluginProcessor.h).
+
+    `labels` is [false, true] in the parameter's own sense - "tapepre" reads
+    "is this in front", so it passes ["Post", "Pre"]. Two states, so both
+    chevrons flip the same flag whichever way they point; stepping can only
+    ever wrap. */
+export function JuceStageRouter({ parameterId, label, labels }) {
+  const [checked, setChecked] = useJuceToggleValue(parameterId);
+
+  return <StageRouter label={label} value={labels[checked ? 1 : 0]} onStep={() => setChecked(!checked)} />;
 }
