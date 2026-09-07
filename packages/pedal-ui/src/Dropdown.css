@@ -70,6 +70,10 @@
   justify-content: center;
   width: 28px;
   pointer-events: none;
+  /* The chevron is `fill: currentColor` and nothing on the way down sets one -
+     `unstyled` strips Mantine's, and the input's own colour is a sibling's,
+     not an ancestor's - so it inherited the document default and drew black. */
+  color: var(--pui-ink);
 }
 
 /* Mantine's chevron reads its size from a CSS variable ("--combobox-chevron-

@@ -92,6 +92,7 @@ export default function PresetPicker({ factory = [], user = [], value, onChange,
           column: "pui-presetpicker__column",
           columnOption: "pui-dropdown__option pui-presetpicker__option",
           columnOptionLabel: "pui-presetpicker__label",
+          columnOptionIcon: "pui-presetpicker__chevron",
           columnEmpty: "pui-presetpicker__empty",
         }}
       />

@@ -84,10 +84,10 @@
 }
 
 .pui-presetsave .pui-button.pui-presetsave__button {
-  font-size: 9px;
+  font-size: 11px;
   letter-spacing: 0.08em;
-  padding: 8px 12px;
-  border-radius: 6px;
+  padding: 11px 18px;
+  border-radius: 7px;
   /* A flex item shrinks below its content by default, and .pui-button's own
      `overflow` lets it shrink all the way - which put all three labels on top
      of each other in the middle of the row rather than wrapping. Each button

@@ -94,6 +94,13 @@
   flex-shrink: 0;
 }
 
+/* Mantine's row chevron points down, as it would in a flat menu. This column
+   opens sideways, so it points that way instead. */
+.pui-presetpicker__chevron {
+  display: flex;
+  transform: rotate(-90deg);
+}
+
 /* Only ever seen with a Cascader that has been searched into a corner - the
    "no user presets yet" case is a real disabled row instead, so that the User
    Presets node keeps its chevron and does not read as a selectable leaf. */
