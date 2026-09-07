@@ -21,8 +21,44 @@ class TapeDelay
 public:
     static constexpr float kMaxDelaySeconds = 6.0f;
 
+    /** How the two lines are wired between the pedal's input and its output.
+
+        `normal` is the plain stereo pair: left in, left line, left out, and
+        the same again on the right - two independent echoes that never meet.
+
+        `wide` feeds both lines the mono sum and offsets the right *output* tap
+        by kWideSpreadSeconds. Width has to be manufactured here rather than
+        taken from the Time knobs: those are linked by default, so with a mono
+        source the two lines would otherwise carry the same signal at the same
+        moment and the repeats would sit dead centre. A Haas offset spreads
+        them whatever the knobs say, and because it rides the output tap only
+        the feedback loop stays exactly where it was - the repeats spread out
+        without the tail slowly falling apart. Mono-safe: summing combs the
+        repeats a little, it does not cancel them.
+
+        `pingPong` is the usual bounce - the input enters the left line, whose
+        repeats feed the right one, whose repeats feed the left one back. Taps
+        land at T, T+T', 2T+T'... alternating sides, one feedback gain per hop. */
+    enum class Routing
+    {
+        normal,
+        wide,
+        pingPong
+    };
+
+    /** How far apart `wide` pulls the two output taps. 18 ms is inside the
+        precedence window - the ear fuses the two into one wide image rather
+        than hearing a second echo - and well clear of the flanging that sets
+        in below about 5 ms. */
+    static constexpr float kWideSpreadSeconds = 0.018f;
+
     void prepare (double sampleRate);
     void reset();
+
+    /** Takes effect from the next sample. The Haas offset `wide` adds glides
+        into place on the same one-pole the Time knob uses, so switching modes
+        under a ringing tail warps once rather than splicing. */
+    void setRouting (Routing) noexcept;
 
     /** Delay per channel, in seconds. The *output* tap glides rather than
         jumps, so moving the knob while a repeat is ringing warps its pitch -
@@ -66,6 +102,16 @@ private:
 
         float wowPhase = 0.0f;
 
+        /** Routing's own contribution to the output tap - `wide`'s Haas
+            offset, zero in every other mode. Deliberately not folded into
+            targetSamples: it must not reach the feedback tap, or each pass
+            round the loop would push the right side another 18 ms behind the
+            left until the two sides had nothing to do with each other. Glided
+            rather than stepped so a mode change under a ringing tail is a
+            warp, not a splice. */
+        float spreadSamples = 0.0f;
+        float spreadTarget = 0.0f;
+
         /** One loop rolloff state per tap. They see the same input and the
             same history whenever the two taps coincide, so in the steady state
             the feedback path is sample-for-sample what a single shared filter
@@ -76,9 +122,16 @@ private:
 
     void updateCharacter() noexcept;
 
+    /** Re-derives the Haas offset each output tap is aiming for. Depends on
+        both the routing and the sample rate, so it is re-run by prepare() as
+        well as by setRouting(). */
+    void updateSpreadTargets() noexcept;
+
     double sr = 44100.0;
 
     std::array<Channel, 2> channels;
+
+    Routing routing = Routing::normal;
 
     float feedbackGain = 0.0f;
     float modAmount = 0.0f;

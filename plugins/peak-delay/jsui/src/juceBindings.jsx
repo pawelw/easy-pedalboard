@@ -107,7 +107,12 @@ export function JuceKnob({
     timeReadout() already does the swapping) and the always-ms figure next
     to it. The "ms" toggle doesn't touch ltime/rtime's own value, so both
     texts need their own listener on it as well as on the knob's value -
-    listening to the knob alone would miss a same-value ms/division swap. */
+    listening to the knob alone would miss a same-value ms/division swap.
+
+    Host tempo is the third thing that moves them, and the only one with no
+    control behind it: a synced knob is a note division, so "1/4" is 500 ms at
+    120 and 375 at 160 with the knob never having moved. useHostBpm watches
+    the meter feed for it. */
 export function useTimeReadoutText(parameterId) {
   const sliderState = useRef(Juce.getSliderState(parameterId)).current;
   const timeUnitState = useRef(Juce.getToggleState("timeunit")).current;
@@ -124,21 +129,22 @@ export function useTimeReadoutText(parameterId) {
     return () => timeUnitState.valueChangedEvent.removeListener(id);
   }, [timeUnitState]);
 
-  const text = useFormattedText(parameterId, `${value}:${isMs}`);
-  const msText = useFormattedText(`${parameterId}Ms`, value);
+  const bpm = useHostBpm();
+
+  const text = useFormattedText(parameterId, `${value}:${isMs}:${bpm}`);
+  const msText = useFormattedText(`${parameterId}Ms`, `${value}:${bpm}`);
 
   return [text, msText, isMs];
 }
 
 /** The two delay times in milliseconds, refetched whenever anything that
-    changes them moves: either Time knob, or the Sync pill (the same knob
-    position means a different time either side of it).
-
-    Host tempo can move them too, with nothing here to listen to - a synced
-    time follows the transport. Not polled for that: the readouts beside the
-    knobs have always had the same gap, and a timer running behind every
-    editor to catch an occasional tempo change is a poor trade. Touching any
-    control refreshes it.
+    changes them moves: either Time knob, the Sync pill (the same knob
+    position means a different time either side of it), or the host tempo -
+    a synced time follows the transport, and that is the one input with no
+    control on the face to listen to. It arrives on the meter feed the scope
+    is already driven by (see useHostBpm), so the scope's own time axis now
+    follows a tempo change rather than staying where it was until something
+    was touched.
 
     Falls back to the last known pair (500/500 to start) while the call is in
     flight, and forever in a plain browser tab where there is no backend to
@@ -148,6 +154,7 @@ export function useDelayTimesMs() {
   const leftState = useRef(Juce.getSliderState("ltime")).current;
   const rightState = useRef(Juce.getSliderState("rtime")).current;
   const unitState = useRef(Juce.getToggleState("timeunit")).current;
+  const bpm = useHostBpm();
 
   const [times, setTimes] = useState([500, 500]);
   const [tick, setTick] = useState(0);
@@ -170,9 +177,32 @@ export function useDelayTimesMs() {
     return () => {
       cancelled = true;
     };
-  }, [tick]);
+  }, [tick, bpm]);
 
   return times;
+}
+
+/** Subscribes to the backend's "delayMeter" event, passing each one through
+    `pick` and storing the result. Shared by the two hooks below, which want
+    very different things out of the same 45 Hz feed.
+
+    Outside a real host there is no backend at all and nothing ever arrives -
+    the initial value stands forever, which is what keeps the face drawing
+    something sane in a plain browser tab. */
+function useDelayMeterField(initial, pick) {
+  const [value, setValue] = useState(initial);
+
+  useEffect(() => {
+    if (typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;
+    const id = window.__JUCE__.backend.addEventListener("delayMeter", (event) => setValue(pick(event)));
+    return () => window.__JUCE__.backend.removeEventListener(id);
+    // Subscribed once, deliberately. `pick` is a fresh closure on every
+    // render, so listing it here would tear the listener down and rebuild it
+    // on every one of these 45-a-second events; both callers' picks are pure
+    // and capture nothing, so the first one is as good as any.
+  }, []);
+
+  return value;
 }
 
 /** The processor's live input level and note-onset count, pushed from
@@ -183,15 +213,21 @@ export function useDelayTimesMs() {
     tab never will: the TapScope then draws its taps and simply never lights
     them, which is the same thing it does in a host with nothing playing. */
 export function useDelayMeter() {
-  const [meter, setMeter] = useState({ level: 0, strikes: 0 });
+  return useDelayMeterField({ level: 0, strikes: 0 }, (event) => event);
+}
 
-  useEffect(() => {
-    if (typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;
-    const id = window.__JUCE__.backend.addEventListener("delayMeter", (event) => setMeter(event));
-    return () => window.__JUCE__.backend.removeEventListener(id);
-  }, []);
+/** The host tempo, off the same feed. Its own hook rather than a field of
+    useDelayMeter's object because of how differently the two are consumed:
+    that object is new on every event and re-renders the scope 45 times a
+    second, which is what the scope is for. The readouts must not do that -
+    each re-render of theirs costs a round trip to formatKnobValue. Stored on
+    its own, a tempo that has not changed is the same number, React bails out
+    of the render, and nothing downstream refetches.
 
-  return meter;
+    120 until a host says otherwise, matching the processor's own fallback
+    (see PluginProcessor.h's currentBpm()). */
+export function useHostBpm() {
+  return useDelayMeterField(120, (event) => (typeof event.bpm === "number" ? event.bpm : 120));
 }
 
 /** One of the header's two level faders, bound to a WebSliderRelay by
@@ -283,6 +319,65 @@ export function JucePill({ parameterId, icon, label, invert = false }) {
       onClick={() => setChecked(!checked)}
     />
   );
+}
+
+/** A choice parameter's live index, kept in sync with its WebComboBoxRelay -
+    the third of the three "live value" hooks here, alongside
+    useJuceSliderValue and useJuceToggleValue, and optimistic for the same
+    reason: outside a real host nothing echoes a change back.
+
+    `count` comes from the caller rather than from the relay's own
+    properties.choices, because those cannot be relied on: the backend pushes
+    them in a propertiesChanged event some time after the page loads, and in a
+    plain browser tab there is no backend to push them at all. Until they
+    land, ComboBoxState scales its index by an empty list and answers 0 for
+    every position - so an echo read back then would drag the button home
+    again. Adopted only once the relay really knows its choices; the local
+    state is what the button draws either way.
+
+    Both of the relay's events are listened to, and for the same reason: the
+    initial value and the properties arrive in no guaranteed order, so
+    whichever is second is the one that first makes a real index readable. */
+function useJuceChoiceValue(parameterId, count) {
+  const comboState = useRef(Juce.getComboBoxState(parameterId)).current;
+  const [index, setIndex] = useState(() =>
+    (comboState.properties.choices?.length ?? 0) > 1 ? comboState.getChoiceIndex() : 0,
+  );
+
+  useEffect(() => {
+    const adopt = () => {
+      if ((comboState.properties.choices?.length ?? 0) > 1) setIndex(comboState.getChoiceIndex());
+    };
+    const ids = [
+      [comboState.valueChangedEvent, comboState.valueChangedEvent.addListener(adopt)],
+      [comboState.propertiesChangedEvent, comboState.propertiesChangedEvent.addListener(adopt)],
+    ];
+    return () => ids.forEach(([event, id]) => event.removeListener(id));
+  }, [comboState]);
+
+  const select = (next) => {
+    const wrapped = ((next % count) + count) % count;
+
+    setIndex(wrapped);
+    comboState.setChoiceIndex(wrapped);
+  };
+
+  return [index, select];
+}
+
+/** A choice parameter as one cycling pill - the Delay Type button beside
+    Sync. A pill rather than a StageRouter's chevrons because it sits in the
+    row of pills and reads as one of them; three positions is few enough that
+    stepping through them is quicker than any menu would be.
+
+    Lit for every position but the first, so the mode the pedal has always had
+    reads as "nothing switched on" and the two that rewire it announce
+    themselves. `labels` is in the parameter's own index order - see
+    JuceStageRouter, which passes its two the same way. */
+export function JuceChoicePill({ parameterId, labels }) {
+  const [index, select] = useJuceChoiceValue(parameterId, labels.length);
+
+  return <Pill label={labels[index] ?? labels[0]} pressed={index > 0} onClick={() => select(index + 1)} />;
 }
 
 /** One knob in a footer stage, bound to a WebSliderRelay by parameter id -

@@ -31,6 +31,27 @@ namespace
         return fallback;
     }
 
+    juce::String flagText (int argc, char* argv[], const char* name, const char* fallback)
+    {
+        for (int i = 5; i + 1 < argc; ++i)
+            if (juce::String (argv[i]) == name)
+                return juce::String (argv[i + 1]);
+
+        return juce::String (fallback);
+    }
+
+    /** `--type normal|wide|pingpong`, matched against kTypeID's own choice
+        names so the tool cannot drift out of step with the parameter. */
+    int routingIndex (juce::AudioProcessorValueTreeState& state, const juce::String& wanted)
+    {
+        if (auto* param = dynamic_cast<juce::AudioParameterChoice*> (state.getParameter ("dtype")))
+            for (int i = 0; i < param->choices.size(); ++i)
+                if (param->choices[i].removeCharacters (" ").equalsIgnoreCase (wanted.removeCharacters (" -_")))
+                    return i;
+
+        return -1;
+    }
+
     bool hasFlag (int argc, char* argv[], const char* name)
     {
         for (int i = 5; i < argc; ++i)
@@ -46,7 +67,8 @@ int main (int argc, char* argv[])
     if (argc < 5)
     {
         std::printf ("usage: ee_delay_match <in.wav> <out.wav> <wear%%> <mix%%> [feedback%%] [drift%%]\n"
-                     "                      [--flutter %%] [--phaser %%] [--tape-post]\n");
+                     "                      [--flutter %%] [--phaser %%] [--tape-post]\n"
+                     "                      [--type normal|wide|pingpong]\n");
         return 1;
     }
 
@@ -70,6 +92,7 @@ int main (int argc, char* argv[])
     const float flutter = flagValue (argc, argv, "--flutter", 0.0f);
     const float phaser = flagValue (argc, argv, "--phaser", 0.0f);
     const bool tapePost = hasFlag (argc, argv, "--tape-post");
+    const juce::String type = flagText (argc, argv, "--type", "normal");
 
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
@@ -102,6 +125,17 @@ int main (int argc, char* argv[])
     setParam (processor.apvts, "phaser", phaser);
     setFlag (processor.apvts, "tapepre", ! tapePost);
 
+    const int typeIndex = routingIndex (processor.apvts, type);
+
+    if (typeIndex < 0)
+    {
+        std::printf ("unknown --type '%s'\n", type.toRawUTF8());
+        return 1;
+    }
+
+    if (auto* typeParam = processor.apvts.getParameter ("dtype"))
+        typeParam->setValueNotifyingHost (typeParam->convertTo0to1 (static_cast<float> (typeIndex)));
+
     constexpr int block = 512;
     processor.setPlayConfigDetails (2, 2, reader->sampleRate, block);
     processor.prepareToPlay (reader->sampleRate, block);
@@ -130,9 +164,13 @@ int main (int argc, char* argv[])
 
     std::printf ("wrote %s\n"
                  "  tape %s: wear %.0f %%, flutter %.0f %%\n"
-                 "  mod: drift %.0f %% (in the loop), phaser %.0f %% (post)\n"
-                 "  mix %.0f %%, feedback %.0f %%, latency %d\n",
+                 "  mod: drift %.0f %% (in the loop), phaser %.0f %% (on the repeats)\n"
+                 "  type %s, mix %.0f %%, feedback %.0f %%, latency %d\n",
                  outFile.getFullPathName().toRawUTF8(), tapePost ? "post" : "pre", wear, flutter,
-                 drift, phaser, mix, feedback, processor.getLatencySamples());
+                 drift, phaser,
+                 dynamic_cast<juce::AudioParameterChoice*> (processor.apvts.getParameter ("dtype"))
+                     ->choices[typeIndex]
+                     .toRawUTF8(),
+                 mix, feedback, processor.getLatencySamples());
     return 0;
 }

@@ -74,6 +74,15 @@ public:
     juce::String leftTimeMsReadout() const { return timeMsReadout (leftTimeParam); }
     juce::String rightTimeMsReadout() const { return timeMsReadout (rightTimeParam); }
 
+    /** The host tempo the readouts above were worked out at, for the web
+        editor's timer feed. A synced Time knob is a note division, so the
+        millisecond figure beside it moves whenever the host's tempo does -
+        with nothing on the face changing and no parameter to listen to. The
+        page watches this number instead and re-reads the readouts when it
+        moves. Same wrapper reason as the four above: currentBpm() is private
+        and the editor is not a member. */
+    double hostBpm() const { return currentBpm(); }
+
     /** Both Time knobs as plain numbers of milliseconds, for the TapScope.
         The scope places its taps on a real time axis, which it cannot get
         from the normalised knob value alone: what a position means depends
@@ -109,13 +118,18 @@ public:
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
+    /** The Delay Type button's three positions, read off kTypeID's choice
+        index. Out of range means the state came from somewhere odd, so it
+        falls back to the mode the pedal has always had. */
+    ee::dsp::TapeDelay::Routing routing() const noexcept;
+
     /** Where the Tape section sits relative to the delay line - the target
         tapePlacement glides towards, not a decision the audio path branches on.
 
         Only Tape has a router. Of the Mod section's two knobs, Drift is inside
         the delay's own feedback loop - it is not before or after the delay, it
         is part of it - so a Pre/Post control there would have governed only
-        half its own section. The Phaser is fixed after the delay instead. */
+        half its own section. The Phaser is fixed on the repeats instead. */
     bool tapeIsPost() const noexcept;
 
     /** Splits Wear and Flutter between the two tape placements - all to the
@@ -154,7 +168,13 @@ private:
         own default voicing; its wet/dry is fixed at the setting where the
         notches are deepest (ee::dsp::phaser::kWetMix), so the knob blends the
         whole stage in from out here. At 0 the stage is skipped and the input is
-        left bit exact. */
+        left bit exact.
+
+        Runs on the repeats only, after the delay, its tape placement and the
+        Filter section - the last stage of the wet path. It used to sit on the
+        finished mix, which put the sweep on the note being played as well as
+        on its echoes, and at Mix 0 the pedal was still audibly phasing a signal
+        that had never been near the delay. */
     void runPhaser (float* left, float* right, int numSamples) noexcept;
 
     void parameterChanged (const juce::String& parameterID, float newValue) override;
@@ -252,6 +272,7 @@ private:
     std::atomic<float>* leftTimeParam = nullptr;
     std::atomic<float>* rightTimeParam = nullptr;
     std::atomic<float>* syncParam = nullptr;
+    std::atomic<float>* typeParam = nullptr;
     std::atomic<float>* timeUnitParam = nullptr;
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* mixParam = nullptr;

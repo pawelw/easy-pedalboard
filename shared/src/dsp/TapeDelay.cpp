@@ -66,6 +66,7 @@ void TapeDelay::prepare (double sampleRate)
     for (auto& ch : channels)
         ch.line.prepare (sr, kMaxDelaySeconds + 0.1f);
 
+    updateSpreadTargets();
     updateCharacter();
     reset();
 }
@@ -79,6 +80,7 @@ void TapeDelay::reset()
         ch.lowpassState = 0.0f;
         ch.loopLowpassState = 0.0f;
         ch.wowPhase = c == 0 ? 0.0f : 0.27f;
+        ch.spreadSamples = ch.spreadTarget;
     }
 }
 
@@ -98,7 +100,26 @@ void TapeDelay::snapDelays() noexcept
         ch.loopSamples = ch.targetSamples;
         ch.loopFromSamples = ch.targetSamples;
         ch.loopFade = 1.0f;
+        ch.spreadSamples = ch.spreadTarget;
     }
+}
+
+void TapeDelay::updateSpreadTargets() noexcept
+{
+    // Only `wide` spreads the taps, and only the right one - the left keeps
+    // reading exactly where the Time knob points, so the first repeat still
+    // lands when the readout says it does.
+    channels[0].spreadTarget = 0.0f;
+    channels[1].spreadTarget = routing == Routing::wide ? kWideSpreadSeconds * static_cast<float> (sr) : 0.0f;
+}
+
+void TapeDelay::setRouting (Routing next) noexcept
+{
+    if (next == routing)
+        return;
+
+    routing = next;
+    updateSpreadTargets();
 }
 
 void TapeDelay::setFeedback (float amount01) noexcept
@@ -136,11 +157,18 @@ void TapeDelay::process (const float* inL, const float* inR,
 
     for (int i = 0; i < numSamples; ++i)
     {
+        // Both channels are read before either is written, which is what lets
+        // pingPong feed one line from the other's loop tap inside the same
+        // sample. The lines are separate objects, so in every other mode this
+        // is the order it always was.
+        float loopOut[2] = { 0.0f, 0.0f };
+
         for (size_t c = 0; c < channels.size(); ++c)
         {
             auto& ch = channels[c];
 
             ch.currentSamples += glideCoeff * (ch.targetSamples - ch.currentSamples);
+            ch.spreadSamples += glideCoeff * (ch.spreadTarget - ch.spreadSamples);
 
             // The feedback tap only ever moves between crossfades, and only
             // when the move is worth splicing for. Anything smaller is left
@@ -173,7 +201,11 @@ void TapeDelay::process (const float* inL, const float* inR,
             // unconditional rather than branched on their being equal - a
             // branch that flips mid-signal would put a step in the loop's read
             // position, which is the one thing this whole tap exists to avoid.
-            const float y = ch.line.read (ch.currentSamples + wobble);
+            //
+            // `spreadSamples` joins the first read and not the second: Wide's
+            // offset is a place to listen from, not a longer loop (see
+            // Channel::spreadSamples).
+            const float y = ch.line.read (ch.currentSamples + ch.spreadSamples + wobble);
 
             float loop = ch.line.read (ch.loopSamples + wobble);
 
@@ -201,9 +233,50 @@ void TapeDelay::process (const float* inL, const float* inR,
             }
 
             out[c][i] = outSample;
+            loopOut[c] = loop;
+        }
 
-            ch.line.write (in[c][i] + loop * feedbackGain);
-            ch.line.advance();
+        // What each line is fed next - the only thing the routing modes
+        // actually change. See Routing for what each one is trying to be.
+        float feed[2];
+
+        switch (routing)
+        {
+            case Routing::wide:
+            {
+                // Both lines hear the whole input, so the width comes from
+                // where they are read rather than from what happens to be on
+                // one side of the source.
+                const float mono = 0.5f * (in[0][i] + in[1][i]);
+
+                feed[0] = mono + loopOut[0] * feedbackGain;
+                feed[1] = mono + loopOut[1] * feedbackGain;
+                break;
+            }
+
+            case Routing::pingPong:
+            {
+                // One loop through both lines: the input enters on the left
+                // only, and each hop across costs one feedback gain, so the
+                // repeats alternate sides and fall away evenly.
+                const float mono = 0.5f * (in[0][i] + in[1][i]);
+
+                feed[0] = mono + loopOut[1] * feedbackGain;
+                feed[1] = loopOut[0] * feedbackGain;
+                break;
+            }
+
+            case Routing::normal:
+            default:
+                feed[0] = in[0][i] + loopOut[0] * feedbackGain;
+                feed[1] = in[1][i] + loopOut[1] * feedbackGain;
+                break;
+        }
+
+        for (size_t c = 0; c < channels.size(); ++c)
+        {
+            channels[c].line.write (feed[c]);
+            channels[c].line.advance();
         }
     }
 }

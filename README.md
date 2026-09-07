@@ -145,6 +145,36 @@ either knob moves the other, so the two channels stay on the same note value.
 
 Every division comes in straight, dotted (`.`) and triplet (`T`) flavours.
 
+The button beside Sync cycles the **delay type** - how the two delay lines are
+wired between the input and the output. It reads **Normal** unlit, and lights up
+on the two settings that rewire the pedal:
+
+| Type          | What it does                                                                |
+| ------------- | --------------------------------------------------------------------------- |
+| **Normal**    | The plain stereo pair: left in, left line, left out, and the same on the right |
+| **Wide**      | Both lines hear the whole input; the right one is read 18 ms behind the left  |
+| **Ping Pong** | The input enters on the left and the repeats bounce between the two sides     |
+
+**Wide** has to manufacture its width rather than take it from the Time knobs,
+because those are linked by default: with a mono source both lines would
+otherwise carry the same signal at the same moment and the repeats would sit
+dead centre. So every repeat arrives on the left when the Time knob says it
+should and again on the right 18 ms later. That is inside the precedence window
+- the ear fuses the two into one wide image rather than hearing a second echo -
+and well clear of the flanging that sets in below about 5 ms. The offset rides
+the output tap only, never the feedback path, so the tail does not walk further
+apart with every pass, and summing to mono costs the repeats less than a
+decibel.
+
+**Ping Pong** is the usual bounce, with one feedback gain per hop: with both
+times equal the repeats land at T on the left, 2T on the right, 3T on the left
+and so on, each quieter than the last. Unequal times work too - the pair is the
+round trip, so the two sides get their own spacing.
+
+Neither setting touches the dry signal, and **Normal** is sample-for-sample the
+delay this pedal has always been - a session saved before the button existed
+loads on it.
+
 Moving a time knob glides the read head rather than jumping it, so a repeat
 that is ringing when you turn it warps in pitch on its way out - the sound a
 tape machine makes when the head moves, and the reason the glide is there. What
@@ -208,7 +238,11 @@ longer the tail runs. It is not before or after the delay - it is part of it.
 That compounding is the whole point of the knob and the one thing an insert
 cannot do: with Drift at 100 % a repeat carries about half the top end its
 seventh predecessor had, while at 0 % every repeat is an identical copy. The
-**Phaser** is an ordinary insert and sits after the delay.
+**Phaser** is an ordinary insert and sits on the repeats, last of the wet
+stages - after the delay, its tape section and the Filter. It is on the echoes
+alone rather than on the finished mix, for the same reason Tape's **Post** is:
+a stage on the mix is audible on a dry signal that never went near the delay, at
+any Mix setting and even at zero.
 
 Nothing here is its own model of anything. **Wear** is Peak Tape's Wear,
 **Flutter** is Peak Tape's transport and **Phaser** is Peak Phase, each on its

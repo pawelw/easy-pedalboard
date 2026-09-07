@@ -36,10 +36,18 @@ public:
     }
 
 private:
-    /** Pushes the processor's input level and onset count to the page as the
-        one "delayMeter" event - neither is a parameter, so there is no relay
-        to carry them. The TapScope animates off this and nothing else: no
-        signal, no movement. Same shape as Peak Wah's "filterMod" feed. */
+    /** Pushes the processor's input level, onset count and the host tempo to
+        the page as the one "delayMeter" event - none of them is a parameter,
+        so there is no relay to carry them. The TapScope animates off the first
+        two and nothing else: no signal, no movement. Same shape as Peak Wah's
+        "filterMod" feed.
+
+        Tempo rides along because a synced Time knob means a different number
+        of milliseconds at every tempo, and the host can change tempo with
+        nothing on the face moving at all - so the readouts beside the knobs
+        had no way to hear about it and sat on a stale figure until something
+        was touched. This feed is already running at 45 Hz for the scope; the
+        page only re-reads the readouts when the number actually changes. */
     void timerCallback() override;
 
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
@@ -70,6 +78,11 @@ private:
     // The header's two faders, either end of the pedal.
     juce::WebSliderRelay inGainRelay { "ingain" };
     juce::WebSliderRelay outGainRelay { "outgain" };
+
+    // The Delay Type button next to Sync. A combo relay rather than a toggle
+    // one, because there are three positions rather than two; the page draws
+    // its own labels for them (App.jsx), the same way the Tape router does.
+    juce::WebComboBoxRelay typeRelay { "dtype" };
 
     juce::WebToggleButtonRelay syncRelay { "sync" };
     juce::WebToggleButtonRelay timeUnitRelay { "timeunit" };
@@ -105,6 +118,8 @@ private:
     juce::WebSliderParameterAttachment hiCutAttachment;
     juce::WebSliderParameterAttachment inGainAttachment;
     juce::WebSliderParameterAttachment outGainAttachment;
+
+    juce::WebComboBoxParameterAttachment typeAttachment;
 
     juce::WebToggleButtonParameterAttachment syncAttachment;
     juce::WebToggleButtonParameterAttachment timeUnitAttachment;

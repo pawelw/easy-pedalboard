@@ -14,6 +14,7 @@ import {
   JuceKnob,
   JuceFader,
   JucePill,
+  JuceChoicePill,
   JuceStageKnob,
   JuceStageRouter,
   useDelayMeter,
@@ -128,6 +129,13 @@ export default function App() {
                   timeunit is *false*, hence invert - the parameter's own
                   sense is "is this in ms mode", not "is this synced". */}
               <JucePill parameterId="timeunit" label="Sync" invert />
+
+              {/* How the two delay lines are wired: Normal is the stereo pair
+                  the pedal has always been, Wide spreads the repeats across
+                  the field, Ping Pong bounces them between the sides. The
+                  labels are in the parameter's index order and must stay in
+                  step with kTypeID's choices in PluginProcessor.cpp. */}
+              <JuceChoicePill parameterId="dtype" labels={["Normal", "Wide", "Ping Pong"]} />
             </div>
           </div>
         </div>
@@ -142,7 +150,7 @@ export default function App() {
             inside the feedback loop where it compounds with every repeat - it
             is not before or after the delay, it is part of it, so a Pre/Post
             there would have governed only half the section; the Phaser is fixed
-            after the delay. Filter is fixed on the repeats: the in-loop,
+            on the repeats. Filter is fixed on the repeats too: the in-loop,
             compounding version of a tone control is Drift, and a second one
             would only have blurred the first. "tape"/"mod" are the parameter
             ids Wear and Drift kept from the single-knob face. */}

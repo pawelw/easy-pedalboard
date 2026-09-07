@@ -64,6 +64,7 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
                    .withOptionsFrom (hiCutRelay)
                    .withOptionsFrom (inGainRelay)
                    .withOptionsFrom (outGainRelay)
+                   .withOptionsFrom (typeRelay)
                    .withOptionsFrom (syncRelay)
                    .withOptionsFrom (timeUnitRelay)
                    .withOptionsFrom (tapePreRelay)
@@ -137,6 +138,7 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
       hiCutAttachment (*p.apvts.getParameter ("hicut"), hiCutRelay, p.apvts.undoManager),
       inGainAttachment (*p.apvts.getParameter ("ingain"), inGainRelay, p.apvts.undoManager),
       outGainAttachment (*p.apvts.getParameter ("outgain"), outGainRelay, p.apvts.undoManager),
+      typeAttachment (*p.apvts.getParameter ("dtype"), typeRelay, p.apvts.undoManager),
       syncAttachment (*p.apvts.getParameter ("sync"), syncRelay, p.apvts.undoManager),
       timeUnitAttachment (*p.apvts.getParameter ("timeunit"), timeUnitRelay, p.apvts.undoManager),
       tapePreAttachment (*p.apvts.getParameter ("tapepre"), tapePreRelay, p.apvts.undoManager),
@@ -181,6 +183,7 @@ void PeakDelayWebEditor::timerCallback()
     auto* payload = new juce::DynamicObject();
     payload->setProperty ("level", processorRef.inputLevelUi.load (std::memory_order_relaxed));
     payload->setProperty ("strikes", processorRef.strikeCountUi.load (std::memory_order_relaxed));
+    payload->setProperty ("bpm", processorRef.hostBpm());
     webView.emitEventIfBrowserIsVisible ("delayMeter", juce::var (payload));
 }
 

@@ -12,6 +12,11 @@ constexpr const char* kLeftTimeID = "ltime";
 constexpr const char* kRightTimeID = "rtime";
 constexpr const char* kSyncID = "sync";
 constexpr const char* kTimeUnitID = "timeunit"; // false = note division text, true = ms
+
+// How the two delay lines are wired up - see ee::dsp::TapeDelay::Routing. A
+// choice rather than two booleans: the three are mutually exclusive positions
+// of one switch, and a host should see them by name.
+constexpr const char* kTypeID = "dtype";
 constexpr const char* kFeedbackID = "fb";
 constexpr const char* kMixID = "mix";
 
@@ -119,6 +124,7 @@ PeakDelayProcessor::PeakDelayProcessor()
     leftTimeParam = apvts.getRawParameterValue (kLeftTimeID);
     rightTimeParam = apvts.getRawParameterValue (kRightTimeID);
     syncParam = apvts.getRawParameterValue (kSyncID);
+    typeParam = apvts.getRawParameterValue (kTypeID);
     timeUnitParam = apvts.getRawParameterValue (kTimeUnitID);
     feedbackParam = apvts.getRawParameterValue (kFeedbackID);
     mixParam = apvts.getRawParameterValue (kMixID);
@@ -150,6 +156,21 @@ bool PeakDelayProcessor::isSynced() const
     return timeUnitParam == nullptr || timeUnitParam->load() < 0.5f;
 }
 
+ee::dsp::TapeDelay::Routing PeakDelayProcessor::routing() const noexcept
+{
+    using Routing = ee::dsp::TapeDelay::Routing;
+
+    switch (typeParam != nullptr ? juce::roundToInt (typeParam->load()) : 0)
+    {
+    case 1:
+        return Routing::wide;
+    case 2:
+        return Routing::pingPong;
+    default:
+        return Routing::normal;
+    }
+}
+
 bool PeakDelayProcessor::tapeIsPost() const noexcept
 {
     // The parameter reads "is the tape stage in front of the delay", so this is
@@ -178,6 +199,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kSyncID, 1 }, "Sync L/R", true));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kTimeUnitID, 1 }, "Time Unit", false));
+
+    // Normal first, so a session saved before this parameter existed loads at
+    // index 0 and sounds exactly as it did.
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kTypeID, 1 }, "Delay Type",
+                                                              juce::StringArray { "Normal", "Wide", "Ping Pong" }, 0));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kFeedbackID, 1 }, "Feedback", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 35.0f,
@@ -387,6 +413,7 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     tapeOut.transport.snapSmoothing();
 
     phaserBlend = juce::jlimit (0.0f, 1.0f, phaserParam->load() * 0.01f);
+    delay.setRouting (routing());
     delay.setFeedback (feedbackParam->load() * 0.01f);
     delay.setModulation (driftParam->load() * 0.01f);
     // prepareToPlay is one of the callbacks where the playhead is valid, so
@@ -609,6 +636,11 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         trimmedDelaySeconds (ee::peakdelay::timeSeconds (rightTimeParam->load(), synced, bpm)));
     delay.setFeedback (feedbackParam->load() * 0.01f);
 
+    // Which way the two lines are wired, this block. Cheap to set every time:
+    // the engine ignores a routing it is already in, and the one thing a change
+    // does move - Wide's Haas offset - glides there rather than stepping.
+    delay.setRouting (routing());
+
     // Where the tape is, this block. Per block rather than per sample because
     // what it feeds is the two sections' Wear and Flutter, and those are
     // knob-rate settings with their own smoothing behind them - the same path a
@@ -711,6 +743,12 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         // The Filter section, on the repeats and nothing else - see runFilter.
         runFilter (wetL, wetR, chunk);
 
+        // ...and the Mod section's insert half, last of the wet stages. On the
+        // repeats and nothing else, for the same reason the tape's Post
+        // placement is: a stage on the finished mix is audible on a dry signal
+        // that never went near the delay, at any Mix setting and even at zero.
+        runPhaser (wetL, wetR, chunk);
+
         float* mixL = mixBuffer.getWritePointer (0);
         float* mixR = mixBuffer.getWritePointer (1);
 
@@ -723,23 +761,19 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             mixR[i] = preR[i] * dg + wetR[i] * wg;
         }
 
-        // ...and what goes after the mix: the phaser, which works on the
-        // repeats and the dry together - the delay's output, the way the next
-        // pedal along would hear it - and then the Output fader. stageBuffer
-        // is free again by now: the pre pass is finished with and preL/preR
-        // have been folded into the mix.
+        // ...and what goes after the mix: the Output fader, on its own now
+        // that the phaser has moved onto the repeats. stageBuffer is free
+        // again by now - the pre pass is finished with and preL/preR have been
+        // folded into the mix.
 
-        // With the phaser at zero and the fader at 0 dB (exactly 1.0 out of
-        // decibelsToGain) the copy, the multiply and the crossfade below are
-        // all exact, so the output is bit identical to the mix rather than
-        // merely close.
+        // With the fader at 0 dB (exactly 1.0 out of decibelsToGain) the copy,
+        // the multiply and the crossfade below are all exact, so the output is
+        // bit identical to the mix rather than merely close.
         float* postL = stageBuffer.getWritePointer (0);
         float* postR = stageBuffer.getWritePointer (1);
 
         juce::FloatVectorOperations::copy (postL, mixL, chunk);
         juce::FloatVectorOperations::copy (postR, mixR, chunk);
-
-        runPhaser (postL, postR, chunk);
 
         for (int i = 0; i < chunk; ++i)
         {
