@@ -5,18 +5,91 @@
   gap: 8px;
 }
 
+/* On its side, the parts stay the same and only the axis turns: the label,
+   the track and the value read left to right on one line. */
+.pui-fader--horizontal {
+  flex-direction: row;
+  align-items: center;
+  gap: 7px;
+}
+
 .pui-fader__track {
   position: relative;
-  width: 46px;
   display: flex;
+  align-items: stretch;
+  justify-content: center;
+  /* The whole box is the pointer target, not just the rail inside it - see
+     Slider.jsx. `grab` rather than a resize cursor: this is a control you take
+     hold of, the same gesture a knob answers, and the double-headed arrow read
+     as "drag the edge of a panel". */
+  cursor: grab;
+  touch-action: none;
+  flex: none;
+  outline-offset: 4px;
+}
+
+.pui-fader__track--dragging {
+  cursor: grabbing;
+}
+
+.pui-fader--horizontal .pui-fader__track {
+  flex-direction: column;
   align-items: stretch;
   justify-content: center;
 }
 
+/* `flex: none` matters: the rail is a fixed 2px line sharing a fixed-height
+   track with two tick ladders, and it is the only item in there flexible
+   enough to absorb an overflow - so without it, a ladder one pixel too tall
+   silently squashes the rail to nothing rather than overflowing visibly. */
 .pui-fader__rail {
   width: 2px;
   background: var(--pui-track);
   border-radius: 1px;
+  align-self: center;
+  height: 100%;
+  flex: none;
+}
+
+.pui-fader--horizontal .pui-fader__rail {
+  width: 100%;
+  height: 2px;
+}
+
+/* The compact rail is a groove rather than a hairline: thick enough to read as
+   a track under a round grip, and the part behind the value is filled in. */
+.pui-fader--compact .pui-fader__rail {
+  background: var(--pui-tick);
+  border-radius: 999px;
+  position: relative;
+  overflow: hidden;
+}
+
+.pui-fader--horizontal.pui-fader--compact .pui-fader__rail {
+  height: 4px;
+}
+
+.pui-fader--compact:not(.pui-fader--horizontal) .pui-fader__rail {
+  width: 4px;
+}
+
+.pui-fader__fill {
+  position: absolute;
+  background: var(--pui-ink-soft);
+  border-radius: inherit;
+}
+
+.pui-fader--horizontal .pui-fader__fill {
+  left: 0;
+  top: 0;
+  bottom: 0;
+}
+
+/* A vertical fader fills from the bottom, which is where its zero is. */
+.pui-fader:not(.pui-fader--horizontal) .pui-fader__fill {
+  left: 0;
+  right: 0;
+  bottom: 0;
 }
 
 .pui-fader__ticks {
@@ -25,11 +98,34 @@
   justify-content: space-between;
   padding: 2px 0;
 }
-.pui-fader__ticks--left {
+.pui-fader__ticks--near {
   margin-right: 6px;
 }
-.pui-fader__ticks--right {
+.pui-fader__ticks--far {
   margin-left: 6px;
+}
+
+.pui-fader--horizontal .pui-fader__ticks {
+  flex-direction: row;
+  padding: 0 2px;
+}
+.pui-fader--horizontal .pui-fader__ticks--near {
+  margin: 0 0 5px 0;
+}
+.pui-fader--horizontal .pui-fader__ticks--far {
+  margin: 5px 0 0 0;
+}
+
+/* 3 + 4 + 2 + 4 + 3 = 16 inside an 18px track. The ladders and the rail have
+   to add up to less than the track is tall - see .pui-fader__rail. */
+.pui-fader--horizontal.pui-fader--compact .pui-fader__ticks--near {
+  margin: 0 0 4px 0;
+}
+.pui-fader--horizontal.pui-fader--compact .pui-fader__ticks--far {
+  margin: 4px 0 0 0;
+}
+.pui-fader--horizontal.pui-fader--compact .pui-fader__tick {
+  height: 3px;
 }
 
 .pui-fader__tick {
@@ -38,21 +134,47 @@
   background: var(--pui-ink-soft);
 }
 
+.pui-fader--horizontal .pui-fader__tick {
+  width: 1.4px;
+  height: 4px;
+}
+
+.pui-fader--compact .pui-fader__tick {
+  background: var(--pui-tick);
+}
+
 .pui-fader__thumb {
   position: absolute;
+  /* Centred on the rail with a transform rather than a negative margin, so it
+     stays centred at whatever size the variant draws it - a margin would have
+     to be half the thumb's own width, which the CSS doesn't know. */
   left: 50%;
-  width: 26px;
-  margin-left: -13px;
+  transform: translateX(-50%);
   border-radius: 4px;
   background: linear-gradient(180deg, var(--pui-fader-thumb-hi), var(--pui-knob-cap) 40%, var(--pui-knob-cap-shadow));
   box-shadow:
     0 2px 4px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.6);
-  cursor: ns-resize;
-  touch-action: none;
-  outline-offset: 3px;
+  pointer-events: none;
 }
 
+.pui-fader--horizontal .pui-fader__thumb {
+  left: auto;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* A plain circular grip, flat rather than moulded: at 13px a gradient and a
+   pair of grip lines read as noise, and the rail behind it is already saying
+   where the value is. */
+.pui-fader--compact .pui-fader__thumb {
+  border-radius: 50%;
+  background: var(--pui-ink);
+  border: none;
+  box-shadow: var(--pui-knob-shadow);
+}
+
+/* The moulded grip: two lines across the thumb, turning with it. */
 .pui-fader__thumb::before,
 .pui-fader__thumb::after {
   content: "";
@@ -69,11 +191,58 @@
   bottom: 30%;
 }
 
-.pui-fader__thumb--dragging {
-  box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.6),
-    0 0 0 3px rgba(63, 182, 98, 0.35);
+.pui-fader--horizontal .pui-fader__thumb::before,
+.pui-fader--horizontal .pui-fader__thumb::after {
+  left: auto;
+  right: auto;
+  top: 15%;
+  bottom: 15%;
+  width: 1.5px;
+  height: auto;
+}
+.pui-fader--horizontal .pui-fader__thumb::before {
+  left: 30%;
+}
+.pui-fader--horizontal .pui-fader__thumb::after {
+  right: 30%;
+}
+
+/* No moulding on the round grip - see above. */
+.pui-fader--compact .pui-fader__thumb::before,
+.pui-fader--compact .pui-fader__thumb::after {
+  display: none;
+}
+
+.pui-fader__track--dragging .pui-fader__thumb {
+  border-color: var(--pui-ink);
+}
+
+.pui-fader__label {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+  /* Fixed, so "In" and "Out" stacked above each other line their tracks up
+     rather than each starting wherever its own word ends. */
+  width: 20px;
+  flex: none;
+}
+
+.pui-fader__value {
+  font-family: var(--pui-font-label);
+  font-weight: 500;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--pui-ink-dim);
+  /* Right-aligned in a fixed column: the text is "+3.5 dB" one moment and
+     "-12.0 dB" the next, and a value that re-centres itself on every drag step
+     drags the whole header about with it. */
+  width: 46px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .pui-fader__caption {

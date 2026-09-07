@@ -605,6 +605,139 @@ void testDelayTimeChangeStaysOutOfTheLoop()
     check (purity > 0.5, "a time change warped the signal circulating in the delay");
 }
 
+/** Moving the Tape section from one side of the delay to the other must not
+    click - see PeakDelayProcessor's tapeIn/tapeOut.
+
+    The click was never the *colour* changing. It was that one tape section
+    handed a different signal keeps playing the previous one out of its delay
+    line for six milliseconds first, and a splice from one signal to another is
+    a step in the waveform however gently the knobs around it move. The fix is
+    that the section does not move: there is one at each end of the delay, and
+    what the router does is turn one down while the other comes up.
+
+    Measured by level rather than by slew. A splice between two waveforms can
+    land anywhere in their cycles and be small by luck, so the two signals here
+    differ by 28 dB instead: the loud one is what the section was being fed
+    before the flip, the quiet one is what it is fed after. Anything of the loud
+    signal appearing in the quiet path is the stale line coming out, and no
+    phase relationship can hide it.
+*/
+void testTapeRouterDoesNotSplice()
+{
+    std::printf ("Tape router placement change:\n");
+
+    const int total = static_cast<int> (kSampleRate);
+    const int flipAt = total / 2;
+
+    constexpr float kLoudAmp = 0.5f;
+    constexpr float kQuietAmp = 0.02f;
+
+    std::vector<float> loud (total), quiet (total);
+    for (int i = 0; i < total; ++i)
+    {
+        const float t = static_cast<float> (i) / static_cast<float> (kSampleRate);
+        loud[i] = kLoudAmp * std::sin (2.0f * juce::MathConstants<float>::pi * 220.0f * t);
+        quiet[i] = kQuietAmp * std::sin (2.0f * juce::MathConstants<float>::pi * 660.0f * t);
+    }
+
+    const auto peakOver = [] (const std::vector<float>& v, int from, int to)
+    {
+        float worst = 0.0f;
+        for (int i = juce::jmax (0, from); i < juce::jmin (static_cast<int> (v.size()), to); ++i)
+            worst = juce::jmax (worst, std::abs (v[i]));
+        return worst;
+    };
+
+    struct Section
+    {
+        ee::dsp::TapeTransport transport;
+        ee::dsp::TapeCharacter tape;
+
+        void prepare (double sr)
+        {
+            transport.prepare (sr);
+            tape.prepare (sr);
+        }
+
+        void setAmounts (float wear, float flutter) noexcept
+        {
+            transport.setFlutter01 (flutter);
+            tape.setAmount (wear);
+        }
+
+        void process (float* l, float* r, int n) noexcept
+        {
+            transport.process (l, r, n);
+            tape.process (l, r, n);
+        }
+    };
+
+    constexpr float kWear = 0.6f;
+    constexpr float kFlutter = 0.6f;
+    constexpr int block = 64;
+
+    // The router's own glide, as a fraction per block - the processor smooths it
+    // over a quarter of a second.
+    const float perBlock = static_cast<float> (block / (0.25 * kSampleRate));
+
+    std::vector<float> moved (total, 0.0f), paired (total, 0.0f);
+
+    {
+        // The old arrangement: one section, which was on the dry path and is
+        // now handed the repeats.
+        Section one;
+        one.prepare (kSampleRate);
+        one.setAmounts (kWear, kFlutter);
+
+        for (int i = 0; i + block <= total; i += block)
+        {
+            const float* source = i < flipAt ? loud.data() : quiet.data();
+            std::vector<float> l (source + i, source + i + block), r (l);
+            one.process (l.data(), r.data(), block);
+            std::copy (l.begin(), l.end(), moved.begin() + i);
+        }
+    }
+
+    {
+        // The new one: this section has been on the repeats all along and only
+        // its amount changes.
+        Section post;
+        post.prepare (kSampleRate);
+        post.setAmounts (0.0f, 0.0f);
+
+        float placement = 0.0f;
+
+        for (int i = 0; i + block <= total; i += block)
+        {
+            if (i >= flipAt)
+                placement = juce::jmin (1.0f, placement + perBlock);
+
+            post.setAmounts (kWear * placement, kFlutter * placement);
+
+            std::vector<float> l (quiet.begin() + i, quiet.begin() + i + block), r (l);
+            post.process (l.data(), r.data(), block);
+            std::copy (l.begin(), l.end(), paired.begin() + i);
+        }
+    }
+
+    // The first 20 ms after the flip: long enough to contain the six
+    // milliseconds of stale line the old arrangement flushes out.
+    const int to = flipAt + static_cast<int> (kSampleRate * 0.02);
+
+    const float movedPeak = peakOver (moved, flipAt, to);
+    const float pairedPeak = peakOver (paired, flipAt, to);
+
+    std::printf ("  the quiet signal alone:                     %.4f\n", kQuietAmp);
+    std::printf ("  ...a section moved across the delay:        %.4f\n", movedPeak);
+    std::printf ("  ...a section at each end, amounts crossed:  %.4f\n", pairedPeak);
+
+    // The moved section dumps most of the loud signal into the quiet path; the
+    // paired one never carries anything that was not already there.
+    check (movedPeak > kQuietAmp * 5.0f,
+           "the moved-section model failed to splice - the test no longer proves anything");
+    check (pairedPeak < kQuietAmp * 2.0f, "crossing the tape amounts leaked the other path into this one");
+}
+
 void testTapeCharacter()
 {
     std::printf ("Tape stage:\n");
@@ -3554,6 +3687,8 @@ int main()
     testDelayStability();
     std::printf ("\n");
     testDelayTimeChangeStaysOutOfTheLoop();
+    std::printf ("\n");
+    testTapeRouterDoesNotSplice();
     std::printf ("\n");
     testTapeCharacter();
     std::printf ("\n");

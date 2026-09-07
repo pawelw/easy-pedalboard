@@ -1,6 +1,10 @@
+/* Centred over the section's own width, which is what the knobs below are
+   spread across too (see StageGroup's space-evenly) - so a header sits over
+   the middle of its pair rather than over the left-hand one. */
 .pui-stage-header {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
 }
 

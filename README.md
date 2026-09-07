@@ -132,8 +132,13 @@ effect sections either side of it:
 | **Flutter**    | 0 - 100 %     | Tape section: the transport's wobble, a ~2 Hz wow with a wandering rate         |
 | **Drift**      | 0 - 100 %     | Mod section: the repeats wander in pitch and lose top end, a bit more each pass |
 | **Phaser**     | 0 - 100 %     | Mod section: how much of a six-stage sweeping phaser is blended in             |
+| **Low Cut**    | 0 - 1.2 kHz   | Filter section: a high pass on the repeats. Rests at 0 Hz, cutting nothing      |
+| **High Cut**   | 1.2 - 20 kHz  | Filter section: a low pass on them. Rests at ∞, cutting nothing                 |
 | **In**         | -24 - +12 dB  | Header fader: trims what the pedal is fed, dry path and delay input alike       |
 | **Out**        | -24 - +12 dB  | Header fader: rides the finished signal                                        |
+
+Every knob on the face answers a double-click by going back to twelve o'clock -
+the middle of its own travel, not whatever it happens to open at.
 
 The **Sync** button between the two time knobs links them: with it on, moving
 either knob moves the other, so the two channels stay on the same note value.
@@ -156,6 +161,9 @@ when something is being played: each note starts a playhead that lights the dry
 line as the note sounds and then each repeat as it comes back. Silence leaves it
 still.
 
+At Mix 0 the display is empty but for the dry line: there are no repeats to
+draw, and nothing is drawn.
+
 The preset bar in the header is layout only for now - browsing and Save change
 nothing, because there is no preset storage in the project yet.
 
@@ -169,6 +177,28 @@ Post is the other way round: it is on the delay's output alone, so the wear and
 the flutter are on the repeats and the note you are playing stays clean. The two
 settings are the two ways a tape echo can be built, and which one you want is
 usually decided by whether you want to hear the machine on your own playing.
+
+The router moves the section over about a quarter of a second rather than
+switching it, and what actually travels is Wear and Flutter: there is a tape
+machine wired in permanently at each end of the delay, and the router turns one
+down as it turns the other up. At zero both stages are bit-exact pass-through,
+so the idle one costs a delay line and colours nothing. It works this way
+because a section that *moved* had to be handed a different signal the instant
+it moved, and the six milliseconds of the previous one still inside its delay
+line came out as a click on every flip.
+
+**Filter** is fixed on the repeats: **Low Cut** is a high pass and **High Cut**
+a low pass, the same pair of cuts Peak EQ carries in its top corner, and they
+keep that pedal's names for them - on the same ranges and built from the same coefficients so a given position means the same
+frequency on either pedal. Both rest wide open - 0 Hz and ∞ - and are bypassed
+outright there, so a Filter section nobody has touched is not in the path at
+all. High Cut counts *down* from its resting position and its scale fills from
+that end, the same way Peak EQ's own High Cut draws an inverted arc.
+
+It shapes the repeats once, on the delay's output, rather than sitting inside
+the feedback loop - because the compounding version of this control already
+exists and is called Drift. Putting a second lowpass in the loop would only have
+blurred the first.
 
 **Mod** has no router, because its two knobs sit in different places and only
 one of them has a choice. **Drift** is the delay line's own modulation, inside
@@ -210,11 +240,12 @@ reference's 36.4 dB, where the untouched input sits at 55.8 dB.
 
 With Wear and Flutter at 0 the tape section is bit exact, and it reports a
 constant 6.0 ms of latency - the transport's 4.5 ms and the tape's own 1.5 ms -
-so the timing never shifts as the knobs move or the router flips. On Post, where
-the dry signal has no stage to pass through, it is held back by that same 6.0 ms
-by hand, which is what keeps the figure constant and the router silent to move.
-Drift and Phaser add none: one is inside the delay line and the other is a
-wet/dry blend.
+so the timing never shifts as the knobs move or the router flips. That figure is
+the dry path's, which is the one a host compensates against; the section on the
+repeats costs the same again, and that much is taken back off the delay's own
+time, so the gap between a note and its first repeat is what the Time knob says
+in either placement. Drift, Phaser and the Filter add none: two are inside the
+delay line or a wet/dry blend, and the cuts are biquads.
 
 Like the reverb it has no on/off switch of its own, and the `on` parameter has
 trails: bypassing fades the tape off the dry path and closes the delay input,

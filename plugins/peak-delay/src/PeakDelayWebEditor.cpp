@@ -60,6 +60,8 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
                    .withOptionsFrom (flutterRelay)
                    .withOptionsFrom (driftRelay)
                    .withOptionsFrom (phaserRelay)
+                   .withOptionsFrom (loCutRelay)
+                   .withOptionsFrom (hiCutRelay)
                    .withOptionsFrom (inGainRelay)
                    .withOptionsFrom (outGainRelay)
                    .withOptionsFrom (syncRelay)
@@ -131,6 +133,8 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
       flutterAttachment (*p.apvts.getParameter ("flutter"), flutterRelay, p.apvts.undoManager),
       driftAttachment (*p.apvts.getParameter ("mod"), driftRelay, p.apvts.undoManager),
       phaserAttachment (*p.apvts.getParameter ("phaser"), phaserRelay, p.apvts.undoManager),
+      loCutAttachment (*p.apvts.getParameter ("locut"), loCutRelay, p.apvts.undoManager),
+      hiCutAttachment (*p.apvts.getParameter ("hicut"), hiCutRelay, p.apvts.undoManager),
       inGainAttachment (*p.apvts.getParameter ("ingain"), inGainRelay, p.apvts.undoManager),
       outGainAttachment (*p.apvts.getParameter ("outgain"), outGainRelay, p.apvts.undoManager),
       syncAttachment (*p.apvts.getParameter ("sync"), syncRelay, p.apvts.undoManager),

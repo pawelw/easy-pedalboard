@@ -3,8 +3,8 @@ import {
   PedalUIProvider,
   Card,
   Knob,
-  MiniSlider,
   PresetBar,
+  Slider,
   Readout,
   TapScope,
   SliderRow,
@@ -52,8 +52,8 @@ function Showcase() {
       headerCenter={<PresetBar />}
       headerRight={
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-          <MiniSlider label="In" value={inLevel} onChange={setInLevel} valueLabel={`${Math.round(inLevel * 36 - 24)}.0 dB`} />
-          <MiniSlider label="Out" value={outLevel} onChange={setOutLevel} valueLabel={`${Math.round(outLevel * 36 - 24)}.0 dB`} />
+          <Slider compact fine orientation="horizontal" length={74} label="In" value={inLevel} onChange={setInLevel} centreValue={2 / 3} valueLabel={`${Math.round(inLevel * 36 - 24)}.0 dB`} />
+          <Slider compact fine orientation="horizontal" length={74} label="Out" value={outLevel} onChange={setOutLevel} centreValue={2 / 3} valueLabel={`${Math.round(outLevel * 36 - 24)}.0 dB`} />
         </div>
       }
     >
@@ -81,6 +81,7 @@ function Showcase() {
           { caption: "100 % feedback — 23", leftMs: 600, rightMs: 600, feedback01: 1, mix01: 1 },
           { caption: "Same 50 %, but 150 ms — tighter, same count", leftMs: 150, rightMs: 150, feedback01: 0.5, mix01: 1 },
           { caption: "Default patch — 250 ms, 35 % fb, 35 % mix", leftMs: 250, rightMs: 250, feedback01: 0.35, mix01: 0.35 },
+          { caption: "Mix at 0 — nothing wet to draw, dry line at full height", leftMs: 600, rightMs: 600, feedback01: 0.5, mix01: 0 },
           { caption: "50 % fb at 16 % mix — same 5, just quieter, dry line tall", leftMs: 600, rightMs: 600, feedback01: 0.5, mix01: 0.16 },
           { caption: "Same, at 90 % mix — dry line all but gone", leftMs: 600, rightMs: 600, feedback01: 0.5, mix01: 0.9 },
           { caption: "Unlinked — left 600 ms / right 380 ms", leftMs: 600, rightMs: 380, feedback01: 0.65, mix01: 0.7 },

@@ -1,8 +1,18 @@
 import { useEffect } from "react";
-import { Card, PresetBar, StageGroup, StageHeader, TapScope, LinkIcon, TapeIcon, ModIcon } from "@synthpeak/pedal-ui";
+import {
+  Card,
+  PresetBar,
+  StageGroup,
+  StageHeader,
+  TapScope,
+  LinkIcon,
+  TapeIcon,
+  ModIcon,
+  FilterIcon,
+} from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
-  JuceMiniSlider,
+  JuceFader,
   JucePill,
   JuceStageKnob,
   JuceStageRouter,
@@ -21,8 +31,8 @@ import "./index.css";
 function HeaderLevels() {
   return (
     <div className="pd-levels">
-      <JuceMiniSlider parameterId="ingain" label="In" />
-      <JuceMiniSlider parameterId="outgain" label="Out" />
+      <JuceFader parameterId="ingain" label="In" />
+      <JuceFader parameterId="outgain" label="Out" />
     </div>
   );
 }
@@ -77,7 +87,7 @@ export default function App() {
             caption="Mix"
             variant="scale"
             size={76}
-            sweepGap={6}
+            sweepGap={4}
             showValueBelow
             showValueLabel={false}
           />
@@ -86,7 +96,7 @@ export default function App() {
             caption="Feedback"
             variant="scale"
             size={76}
-            sweepGap={6}
+            sweepGap={4}
             showValueBelow
             showValueLabel={false}
           />
@@ -122,19 +132,22 @@ export default function App() {
           </div>
         </div>
 
-        {/* The footer's two halves, split down the middle. The tape half
-            full-bleeds its green band out to the card's left and bottom
-            edge - see .pd-footer in index.css for how, and why the bleed
-            lives here rather than inside StageGroup.
+        {/* The footer's three sections. The tape one full-bleeds its green
+            band out to the card's left and bottom edge - see .pd-footer in
+            index.css for how, and why the bleed lives here rather than inside
+            StageGroup.
 
-            Only Tape carries a router. Mod's Drift is the delay line's own
-            modulation, inside the feedback loop where it compounds with every
-            repeat - it is not before or after the delay, it is part of it, so
-            a Pre/Post there would have governed only half the section. The
-            Phaser is fixed after the delay instead. "tape"/"mod" are the
-            parameter ids Wear and Drift kept from the single-knob face. */}
+            Only Tape carries a router, because it is the only section with a
+            choice to make. Mod's Drift is the delay line's own modulation,
+            inside the feedback loop where it compounds with every repeat - it
+            is not before or after the delay, it is part of it, so a Pre/Post
+            there would have governed only half the section; the Phaser is fixed
+            after the delay. Filter is fixed on the repeats: the in-loop,
+            compounding version of a tone control is Drift, and a second one
+            would only have blurred the first. "tape"/"mod" are the parameter
+            ids Wear and Drift kept from the single-knob face. */}
         <div className="pd-footer">
-          <div className="pd-footer__half pd-footer__half--tape">
+          <div className="pd-footer__section pd-footer__section--tape">
             <StageGroup
               tone="tape"
               header={
@@ -148,12 +161,21 @@ export default function App() {
             </StageGroup>
           </div>
 
-          <div className="pd-footer__half pd-footer__half--mod">
-            <StageGroup
-              header={<StageHeader icon={<ModIcon size={30} />} name="Mod" />}
-            >
+          <div className="pd-footer__section">
+            <StageGroup header={<StageHeader icon={<ModIcon size={30} />} name="Mod" />}>
               <JuceStageKnob parameterId="mod" name="Drift" />
               <JuceStageKnob parameterId="phaser" name="Phaser" />
+            </StageGroup>
+          </div>
+
+          {/* High rests wide open at the top of its travel and counts down
+              from there, so its scale fills from the maximum end - the same
+              distinction Peak EQ draws with an inverted arc on its High Cut.
+              Low is an ordinary knob: it rests at 0 Hz and fills as it opens. */}
+          <div className="pd-footer__section">
+            <StageGroup header={<StageHeader icon={<FilterIcon size={30} />} name="Filter" />}>
+              <JuceStageKnob parameterId="locut" name="Low Cut" />
+              <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" />
             </StageGroup>
           </div>
         </div>

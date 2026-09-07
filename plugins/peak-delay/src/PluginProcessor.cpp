@@ -29,6 +29,10 @@ constexpr const char* kFlutterID = "flutter";
 // PluginProcessor.h's tapeIsPost().
 constexpr const char* kTapePreID = "tapepre";
 
+// The Filter section: the two cuts either end of the band, on the repeats.
+constexpr const char* kLoCutID = "locut";
+constexpr const char* kHiCutID = "hicut";
+
 // The header's two faders, either end of the whole pedal.
 constexpr const char* kInGainID = "ingain";
 constexpr const char* kOutGainID = "outgain";
@@ -39,6 +43,13 @@ constexpr int kDefaultDivision = 5; // 1/8
 constexpr float kDefaultTime01 = ee::peakdelay::time01ForDivision (kDefaultDivision);
 
 constexpr float kGainRampSeconds = 0.02f;
+
+// How long the Tape router takes to move the section from one side of the
+// delay to the other. Slow on purpose: what actually travels is Wear and
+// Flutter, so this is a hand turning one knob down while another comes up, and
+// a quarter of a second is about how fast a hand does that. Anything much
+// shorter starts to read as a step in the drive rather than as a move.
+constexpr double kPlacementSeconds = 0.25;
 
 // The Input/Output faders' range. Asymmetric on purpose: they are a trim and a
 // level, not a gain stage, so there is more cut than boost.
@@ -73,6 +84,30 @@ constexpr double kOnsetHoldSeconds = 0.07;
 // chord's own decay doesn't retrigger on its way down, short enough that the
 // next note in a phrase has something to stand above.
 constexpr double kOnsetFloorSeconds = 0.15;
+juce::String infinitySymbol()
+{
+    return juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e"));
+}
+
+juce::String freqToText (float hz)
+{
+    if (hz >= 1000.0f)
+        return juce::String (hz / 1000.0f, 1) + " kHz";
+    return juce::String (juce::roundToInt (hz)) + " Hz";
+}
+
+// Both read as "nothing is being cut" at the resting end of their travel - the
+// same two strings Peak EQ's corner knobs print, because these are the same
+// pair of filters and should say the same thing about themselves.
+juce::String loCutToText (float hz, int)
+{
+    return hz <= PeakDelayProcessor::kLoCutMinHz + 0.5f ? "0 Hz" : freqToText (hz);
+}
+
+juce::String hiCutToText (float hz, int)
+{
+    return hz >= PeakDelayProcessor::kHiCutMaxHz - 0.5f ? infinitySymbol() : freqToText (hz);
+}
 } // namespace
 
 PeakDelayProcessor::PeakDelayProcessor()
@@ -91,6 +126,8 @@ PeakDelayProcessor::PeakDelayProcessor()
     phaserParam = apvts.getRawParameterValue (kPhaserID);
     wearParam = apvts.getRawParameterValue (kWearID);
     flutterParam = apvts.getRawParameterValue (kFlutterID);
+    loCutParam = apvts.getRawParameterValue (kLoCutID);
+    hiCutParam = apvts.getRawParameterValue (kHiCutID);
     tapePreParam = apvts.getRawParameterValue (kTapePreID);
     inGainParam = apvts.getRawParameterValue (kInGainID);
     outGainParam = apvts.getRawParameterValue (kOutGainID);
@@ -167,6 +204,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kPhaserID, 1 }, "Phaser", percentRange,
                                                              0.0f, percentAttributes));
+
+    // The Filter section. Ranges, skews and defaults are Peak EQ's, down to the
+    // skew centres: the same two cuts, so the same knob position should mean
+    // the same frequency on either pedal.
+    auto loCutRange = juce::NormalisableRange<float> (kLoCutMinHz, kLoCutMaxHz);
+    loCutRange.setSkewForCentre (120.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kLoCutID, 1 }, "Low Cut", loCutRange, kLoCutMinHz,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (loCutToText)));
+
+    auto hiCutRange = juce::NormalisableRange<float> (kHiCutMinHz, kHiCutMaxHz);
+    hiCutRange.setSkewForCentre (4000.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kHiCutID, 1 }, "High Cut", hiCutRange, kHiCutMaxHz,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (hiCutToText)));
 
     // A boolean rather than a choice: two states, and the face's router just
     // flips the flag. Named for the side it defaults to; the host text reads
@@ -269,10 +321,24 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
 
     sr = sampleRate;
 
-    flutterStage.prepare (sampleRate);
-    tape.prepare (sampleRate);
+    tapeIn.prepare (sampleRate);
+    tapeOut.prepare (sampleRate);
     phaser.prepare (sampleRate);
     delay.prepare (sampleRate);
+
+    // One channel per filter object, so each keeps its own state - the same
+    // shape Peak EQ prepares its cuts in.
+    const juce::dsp::ProcessSpec filterSpec { sampleRate, static_cast<juce::uint32> (maxBlock), 1 };
+
+    for (int ch = 0; ch < kMaxChannels; ++ch)
+    {
+        hiPass[static_cast<size_t> (ch)].prepare (filterSpec);
+        hiPass[static_cast<size_t> (ch)].reset();
+        loPass[static_cast<size_t> (ch)].prepare (filterSpec);
+        loPass[static_cast<size_t> (ch)].reset();
+    }
+
+    updateFilters (true);
 
     // The phaser runs on Peak Phase's own default voicing - one knob here, so
     // everything but the amount is fixed once and never touched again.
@@ -283,18 +349,15 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     // block on either side of the delay, so what the host has to compensate
     // never moves. Drift is inside the delay line and the phaser is a wet/dry
     // blend, so neither adds any.
-    const int tapeLatency = flutterStage.getLatencySamples() + tape.getLatencySamples();
-    setLatencySamples (tapeLatency);
+    // The dry path's, which is the one a host compensates against: it runs
+    // through the pre section and nothing else, whatever the router says.
+    setLatencySamples (tapeIn.latencySamples());
 
-    // ...which the dry path only gets from the stages themselves when the
-    // router says Pre. See alignDry().
-    dryAlignSamples = static_cast<float> (tapeLatency);
-
-    for (auto& line : dryAlign)
-    {
-        line.prepare (sampleRate, (dryAlignSamples + 8.0f) / static_cast<float> (sampleRate));
-        line.reset();
-    }
+    // The post section sits between the delay and the output, so its latency
+    // lands on the repeats and would push the first one late by that much.
+    // Taken off the delay's own time instead, so the gap the Time knob names is
+    // the gap you hear - in either placement, since both are always in circuit.
+    postLatencySeconds = static_cast<float> (tapeOut.latencySamples() / sampleRate);
 
     peakLevelSmoothed = 0.0f;
     onsetFloor = 0.0f;
@@ -317,19 +380,22 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     const float mix = juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f);
     const bool engaged = onParam->load() > 0.5f;
 
-    flutterStage.setFlutter01 (flutterParam->load() * 0.01f);
-    flutterStage.snapSmoothing();
-    tape.setAmount (wearParam->load() * 0.01f);
+    tapePlacement.reset (sampleRate, kPlacementSeconds);
+    tapePlacement.setCurrentAndTargetValue (tapeIsPost() ? 1.0f : 0.0f);
+    updateTapeAmounts (tapePlacement.getCurrentValue());
+    tapeIn.transport.snapSmoothing();
+    tapeOut.transport.snapSmoothing();
+
     phaserBlend = juce::jlimit (0.0f, 1.0f, phaserParam->load() * 0.01f);
-    tapePost = tapeIsPost();
     delay.setFeedback (feedbackParam->load() * 0.01f);
     delay.setModulation (driftParam->load() * 0.01f);
     // prepareToPlay is one of the callbacks where the playhead is valid, so
     // the cache starts out holding the host's real tempo rather than 120.
     const double startupBpm = readPlayHeadBpm();
     const bool startupSynced = isSynced();
-    delay.setDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), startupSynced, startupBpm),
-                           ee::peakdelay::timeSeconds (rightTimeParam->load(), startupSynced, startupBpm));
+    delay.setDelaySeconds (
+        trimmedDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), startupSynced, startupBpm)),
+        trimmedDelaySeconds (ee::peakdelay::timeSeconds (rightTimeParam->load(), startupSynced, startupBpm)));
     delay.snapDelays();
 
     dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
@@ -341,13 +407,16 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
 
 void PeakDelayProcessor::releaseResources()
 {
-    flutterStage.reset();
-    tape.reset();
+    tapeIn.reset();
+    tapeOut.reset();
     phaser.reset();
     delay.reset();
 
-    for (auto& line : dryAlign)
-        line.reset();
+    for (int ch = 0; ch < kMaxChannels; ++ch)
+    {
+        hiPass[static_cast<size_t> (ch)].reset();
+        loPass[static_cast<size_t> (ch)].reset();
+    }
 }
 
 double PeakDelayProcessor::getTailLengthSeconds() const
@@ -372,39 +441,25 @@ bool PeakDelayProcessor::isBusesLayoutSupported (const BusesLayout& layouts) con
     return inOk && outOk;
 }
 
-void PeakDelayProcessor::runTape (float* left, float* right, int numSamples) noexcept
+void PeakDelayProcessor::updateTapeAmounts (float placement) noexcept
 {
-    // Transport first, then the tape, the order a machine has them - and the
-    // order Peak Tape runs the very same two stages in.
-    flutterStage.process (left, right, numSamples);
-    tape.process (left, right, numSamples);
+    const float wear = juce::jlimit (0.0f, 1.0f, wearParam->load() * 0.01f);
+    const float flutter = juce::jlimit (0.0f, 1.0f, flutterParam->load() * 0.01f);
+
+    // The router is a fader between the two placements, not a switch. A
+    // straight linear split rather than equal power: at the halfway point the
+    // section really is half as driven in each place, which is what keeps the
+    // total colour roughly constant across the move - the two are the same
+    // stage in series, not two takes of one signal being summed.
+    tapeIn.setAmounts (wear * (1.0f - placement), flutter * (1.0f - placement));
+    tapeOut.setAmounts (wear * placement, flutter * placement);
 }
 
-void PeakDelayProcessor::alignDry (float* left, float* right, int numSamples, bool apply) noexcept
+float PeakDelayProcessor::trimmedDelaySeconds (float seconds) const noexcept
 {
-    for (int i = 0; i < numSamples; ++i)
-    {
-        dryAlign[0].write (left[i]);
-        dryAlign[1].write (right[i]);
-
-        // Read after write, unlike the delay line inside a feedback loop:
-        // this is a plain feedforward hold, and dryAlignSamples is a whole
-        // number of samples, so the interpolator returns the stored sample
-        // exactly rather than a blend of two.
-        const float l = dryAlign[0].read (dryAlignSamples);
-        const float r = dryAlign[1].read (dryAlignSamples);
-
-        dryAlign[0].advance();
-        dryAlign[1].advance();
-
-        // Kept fed either way - see the header. Only the router decides
-        // whether what came out is used.
-        if (apply)
-        {
-            left[i] = l;
-            right[i] = r;
-        }
-    }
+    // Never below the delay line's own floor, which at the shortest time the
+    // knob reaches is nowhere near - 62 ms against 6 ms of trim.
+    return juce::jmax (0.001f, seconds - postLatencySeconds);
 }
 
 void PeakDelayProcessor::meterInput (const float* left, const float* right, int numSamples) noexcept
@@ -457,6 +512,59 @@ void PeakDelayProcessor::meterInput (const float* left, const float* right, int 
     onsetFloor = blockPeak > onsetFloor ? blockPeak : onsetFloor * floorCoeff;
 }
 
+void PeakDelayProcessor::updateFilters (bool force)
+{
+    const float lo = loCutParam->load();
+
+    if (force || std::abs (lo - loCutHz) > 1.0e-3f)
+    {
+        loCutHz = lo;
+        hiPassActive = lo > kLoCutMinHz + 0.5f;
+
+        if (hiPassActive)
+        {
+            auto c = juce::dsp::IIR::Coefficients<float>::makeHighPass (sr, lo);
+            for (int ch = 0; ch < kMaxChannels; ++ch)
+                hiPass[static_cast<size_t> (ch)].coefficients = c;
+        }
+    }
+
+    const float hi = hiCutParam->load();
+
+    if (force || std::abs (hi - hiCutHz) > 1.0e-3f)
+    {
+        hiCutHz = hi;
+        loPassActive = hi < kHiCutMaxHz - 0.5f;
+
+        if (loPassActive)
+        {
+            auto c = juce::dsp::IIR::Coefficients<float>::makeLowPass (sr, hi);
+            for (int ch = 0; ch < kMaxChannels; ++ch)
+                loPass[static_cast<size_t> (ch)].coefficients = c;
+        }
+    }
+}
+
+void PeakDelayProcessor::runFilter (float* left, float* right, int numSamples) noexcept
+{
+    if (! hiPassActive && ! loPassActive)
+        return;
+
+    float* io[kMaxChannels] = { left, right };
+
+    for (int ch = 0; ch < kMaxChannels; ++ch)
+    {
+        juce::dsp::AudioBlock<float> block (&io[ch], 1, static_cast<size_t> (numSamples));
+        juce::dsp::ProcessContextReplacing<float> context (block);
+
+        if (hiPassActive)
+            hiPass[static_cast<size_t> (ch)].process (context);
+
+        if (loPassActive)
+            loPass[static_cast<size_t> (ch)].process (context);
+    }
+}
+
 void PeakDelayProcessor::runPhaser (float* left, float* right, int numSamples) noexcept
 {
     if (phaserBlend <= 0.0f)
@@ -496,14 +604,20 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const double bpm = readPlayHeadBpm();
     const bool synced = isSynced();
 
-    delay.setDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), synced, bpm),
-                           ee::peakdelay::timeSeconds (rightTimeParam->load(), synced, bpm));
+    delay.setDelaySeconds (
+        trimmedDelaySeconds (ee::peakdelay::timeSeconds (leftTimeParam->load(), synced, bpm)),
+        trimmedDelaySeconds (ee::peakdelay::timeSeconds (rightTimeParam->load(), synced, bpm)));
     delay.setFeedback (feedbackParam->load() * 0.01f);
 
-    flutterStage.setFlutter01 (flutterParam->load() * 0.01f);
-    tape.setAmount (wearParam->load() * 0.01f);
+    // Where the tape is, this block. Per block rather than per sample because
+    // what it feeds is the two sections' Wear and Flutter, and those are
+    // knob-rate settings with their own smoothing behind them - the same path a
+    // hand on the Wear knob takes.
+    tapePlacement.setTargetValue (tapeIsPost() ? 1.0f : 0.0f);
+    updateTapeAmounts (tapePlacement.skip (numSamples));
+
     phaserBlend = juce::jlimit (0.0f, 1.0f, phaserParam->load() * 0.01f);
-    tapePost = tapeIsPost();
+    updateFilters (false);
 
     // Drift is the delay line's own modulation: a slow wow on the tap plus a
     // rolloff, both inside the feedback path, so they compound with every
@@ -559,19 +673,13 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             preR[i] = inR[i] * ig;
         }
 
-        // The tape section, when its router puts it in front of the delay. It
-        // colours the dry signal as well as what goes on to be repeated - a
-        // pedal in front of a delay is in front of all of it.
-        //
-        // Post is the other half of that sentence and is why alignDry runs
-        // here: with the tape on the repeats, the dry signal has no stage to
-        // pass through, so it is held back by hand instead. Called on either
-        // setting, because its line has to stay fed to be usable the moment
-        // the router flips.
-        alignDry (preL, preR, chunk, tapePost);
-
-        if (! tapePost)
-            runTape (preL, preR, chunk);
+        // The tape section in front of the delay. Always run, whatever the
+        // router says: on Post its Wear and Flutter are at zero, where both
+        // stages are bit-exact pass-through, so what it does then is supply the
+        // dry path's 6 ms and nothing else. In front it colours the dry signal
+        // as well as what goes on to be repeated - a pedal in front of a delay
+        // is in front of all of it.
+        tapeIn.process (preL, preR, chunk);
 
         for (int i = 0; i < chunk; ++i)
         {
@@ -592,14 +700,16 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         float* wetR = wetBuffer.getWritePointer (1);
         delay.process (feedL, feedR, wetL, wetR, chunk);
 
-        // Post: the tape is on the repeats and nothing else. It used to run on
-        // the finished mix, dry included, which made a Post setting audible on
-        // a signal that had never been near the delay - wear and flutter on
-        // the note you are playing, at any Mix, even at zero. Pre is the
-        // setting that colours the dry, and it does so by being in front of
-        // the whole pedal.
-        if (tapePost)
-            runTape (wetL, wetR, chunk);
+        // ...and the one on the repeats, on the same terms: always in circuit,
+        // silent until the router turns it up. Post puts the tape on the
+        // delay's output and nothing else, so the wear and the flutter are on
+        // the repeats and the note being played stays clean. It used to run on
+        // the finished mix, dry included, which made Post audible on a signal
+        // that had never been near the delay, at any Mix, even at zero.
+        tapeOut.process (wetL, wetR, chunk);
+
+        // The Filter section, on the repeats and nothing else - see runFilter.
+        runFilter (wetL, wetR, chunk);
 
         float* mixL = mixBuffer.getWritePointer (0);
         float* mixR = mixBuffer.getWritePointer (1);

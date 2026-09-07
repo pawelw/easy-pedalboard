@@ -141,18 +141,31 @@ const TICK_THICKNESS_SMALL = 1.4;
     above them (see Knob's own comment on this below). Below `diameter` 60,
     the dashes themselves also shrink - full-size ones looked oversized next
     to a 42px knob. */
-function TickScale({ diameter, value, gap = SWEEP_GAP }) {
+function TickScale({ diameter, value, gap = SWEEP_GAP, from = "min" }) {
   const small = diameter < 60;
   const tickLength = small ? TICK_LENGTH_SMALL : TICK_LENGTH;
   const tickThickness = small ? TICK_THICKNESS_SMALL : TICK_THICKNESS;
   const rInner = diameter / 2 + gap;
   const rOuter = rInner + tickLength;
   const box = rOuter + tickThickness;
-  // -1 (nothing lit) below the same threshold Sweep uses for its own arc,
-  // so a knob at rest shows no lit tick at all rather than always lighting
-  // index 0 (Math.round(0 * anything) is still 0, which would otherwise
-  // read as "the first tick has been passed" even at the very bottom).
-  const litCount = value > 0.004 ? Math.round(value * (TICK_COUNT - 1)) : -1;
+
+  // Which ticks are lit, and from which end. `from: "min"` is the ordinary
+  // reading - the scale fills from the bottom of the travel as the knob comes
+  // up. `from: "max"` reverses it, for a control whose *resting* position is
+  // the top of its range and whose travel is a subtraction: a high cut sits at
+  // the top doing nothing, and what the lit ticks then show is how much of the
+  // band is being taken away.
+  const fromMax = from === "max";
+
+  // -1 / TICK_COUNT (nothing lit) below the same threshold Sweep uses for its
+  // own arc, so a knob at its resting end shows no lit tick at all rather than
+  // always lighting the end one (Math.round(0 * anything) is still 0, which
+  // would otherwise read as "the first tick has been passed").
+  const rest = fromMax ? value < 0.996 : value > 0.004;
+  const edge = Math.round(value * (TICK_COUNT - 1));
+  const litFrom = fromMax && rest ? edge : TICK_COUNT;
+  const litCount = ! fromMax && rest ? edge : -1;
+  const isLit = (i) => (fromMax ? i >= litFrom : i <= litCount);
 
   const ticks = useMemo(() => {
     const toRad = (d) => ((d - 90) * Math.PI) / 180;
@@ -180,7 +193,7 @@ function TickScale({ diameter, value, gap = SWEEP_GAP }) {
             y1={t.y1}
             x2={t.x2}
             y2={t.y2}
-            style={{ stroke: i <= litCount ? "var(--pui-tick-lit)" : "var(--pui-tick)" }}
+            style={{ stroke: isLit(i) ? "var(--pui-tick-lit)" : "var(--pui-tick)" }}
           />
         ))}
       </g>
@@ -235,6 +248,17 @@ function EndMarker({ label, radius, lit }) {
  * knob still centres on it; in a row that puts its labels *beside* the knob
  * instead (StageControl), that padding reads as ~14px of dead space either
  * side, silently widening whatever gap the row asked for.
+ *
+ * `scaleFrom`: which end of `variant="scale"`'s tick ring fills - "min"
+ * (default) or "max", for a knob that rests at the top of its range and counts
+ * downwards. Peak EQ draws the same distinction as an inverted arc on its High
+ * Cut; this is that idea on a tick scale.
+ *
+ * `centreValue`: where a double-click puts the knob, the middle of its travel
+ * by default. Not the parameter's own default, which for several of these is
+ * the bottom of the range - "back to twelve o'clock" is a position on the
+ * hardware, and it is the same gesture on every knob whatever that knob
+ * happens to open at.
  */
 export default function Knob({
   value,
@@ -251,7 +275,9 @@ export default function Knob({
   step = 0.01,
   variant = "collar",
   sweepGap,
+  scaleFrom = "min",
   bare = false,
+  centreValue = 0.5,
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
@@ -325,6 +351,16 @@ export default function Knob({
     }
   };
 
+  // Bracketed by the drag callbacks even though nothing is being dragged: to
+  // the host this has to look like one gesture, or it lands in the undo
+  // history as a value that changed with no move around it.
+  const onDoubleClick = (event) => {
+    event.preventDefault();
+    onDragStart?.();
+    onChange(centreValue);
+    onDragEnd?.();
+  };
+
   const angle = angleFor(value);
   const radius = size / 2;
 
@@ -348,6 +384,7 @@ export default function Knob({
             // with its Time knobs) pass sweepGap explicitly instead of
             // relying on the size default.
             gap={sweepGap ?? (size >= 60 ? 9 : 6)}
+            from={scaleFrom}
           />
         ) : (
           <Sweep diameter={size} value={value} />
@@ -369,6 +406,7 @@ export default function Knob({
           style={{ width: size, height: size }}
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
+          onDoubleClick={onDoubleClick}
           role="slider"
           tabIndex={0}
           aria-label={caption}

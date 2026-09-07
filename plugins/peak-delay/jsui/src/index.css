@@ -146,9 +146,12 @@
   margin-left: calc(var(--pd-link-col) + 6px);
 }
 
-/* One row split in half: Tape (pre-stage, in front of the delay) on a green
-   band, Mod (post-stage, inside the feedback loop) on the plain panel.
-   COMPONENTS.md's face layout. */
+/* One row of three sections: Tape (which says where it is) on a green band,
+   then Mod (inside the feedback loop) and Filter (on the repeats) on the plain
+   panel. COMPONENTS.md's face layout, widened from two sections to three - what
+   paid for the third was moving each knob's name under it and dropping its
+   permanent value line (see StageControl), which took roughly a third of the
+   footer's width back. */
 /* The negative margins take the whole footer - divider included - out to the
    card's edge, so the tape band reads as part of the enclosure rather than as
    a panel drawn on it, and the divider runs the band's full width instead of
@@ -165,24 +168,33 @@
   border-top: 1px solid var(--pui-divider);
 }
 
-/* Each half puts the content back where it belongs: 20px on the inside edge
-   where the two meet, the full bleed distance on the outside.
-
-   `flex: 1 1 50%` rather than `flex: 1`: a true half. On `flex: 1` the two
-   halves are sized from their content, and the green side's longer knob names
-   (WEAR + FLUTTER against CHORUS + PHASER) would push the divide off centre. */
-.pd-footer__half {
-  flex: 1 1 50%;
+/* `flex: 1 1 0` rather than `flex: 1`: true thirds. On `flex: 1` the sections
+   are sized from their content, and the green one's longer knob names would
+   push the divisions off the even spacing the band's edge is drawn against. */
+.pd-footer__section {
+  flex: 1 1 0;
   min-width: 0;
   display: flex;
   align-items: center;
-  /* The bottom pads against the knobs' tick rings, which overflow their dial
-     boxes - see --pui-knob-reach-small. Without it the ticks sit ~7px off the
-     card's bottom edge and read as clipped. */
-  padding: 14px 36px calc(12px + var(--pui-knob-reach-small)) 20px;
+  /* The bottom pads against the knob captions, which sit below the tick rings
+     - see --pui-knob-reach-small. */
+  padding: 12px 14px;
 }
 
-.pd-footer__half--tape {
+/* The green band still reaches the card's own left and bottom edge, but its
+   padding is even rather than carrying the whole bleed distance on the left:
+   its contents are centred now (see StageHeader and StageGroup), and centred
+   content inside a lopsided box lands off the middle of the thing it is drawn
+   on. 24 either side is the same 48px the 36/12 split spent, so the section
+   comes out exactly as wide as before and the other two do not move. */
+.pd-footer__section--tape {
   background: var(--pui-tape-band);
-  padding: 14px 20px calc(12px + var(--pui-knob-reach-small)) 36px;
+}
+
+/* A hairline wherever two plain sections meet, so Mod and Filter read as two
+   sections rather than as one wide row of four knobs. Not drawn against the
+   tape band, which separates itself by colour - hence the pair of :not()s
+   rather than a blanket rule on every section after the first. */
+.pd-footer__section:not(.pd-footer__section--tape) + .pd-footer__section:not(.pd-footer__section--tape) {
+  border-left: 1px solid var(--pui-divider);
 }

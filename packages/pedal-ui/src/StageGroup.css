@@ -11,8 +11,12 @@
 .pui-stage-group__knobs {
   display: flex;
   align-items: center;
-  /* 14px from one pair's label to the next pair's ticks. */
-  gap: calc(14px + var(--pui-knob-reach-small));
+  /* Spread across the section rather than packed against its left edge, so a
+     pair of knobs sits under a centred header instead of beside it. The gap is
+     a floor, not the spacing: it keeps two tick rings from touching if the
+     section is ever narrow enough for space-evenly to close them up. */
+  justify-content: space-evenly;
+  gap: var(--pui-knob-reach-small);
 }
 
 /* The two tones. Each sets its own text colours *and* re-points the knob

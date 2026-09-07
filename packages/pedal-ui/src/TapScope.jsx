@@ -2,6 +2,13 @@ import { useEffect, useRef } from "react";
 import "./TapScope.css";
 
 const MAX_TAP_HEIGHT = 30;
+
+// A floor on the *decay*, so the quietest repeat in a long run is still a mark
+// rather than a hairline. Deliberately not a floor on the finished height: it
+// is applied before the wet level scales the run, so Mix at zero takes every
+// tap to nothing instead of leaving a row of stubs behind on a face that is
+// passing no delay at all. Same for the dry mark at the other end of the
+// crossfade - at Mix 100 % there is no dry signal and nothing to draw.
 const MIN_TAP_HEIGHT = 2;
 
 // The dry line's own full height, taller than a repeat's because it is not one
@@ -130,7 +137,7 @@ function taps(timeMs, windowMs, gain, wet) {
     out.push({
       at,
       atMs: n * timeMs,
-      height: Math.max(MIN_TAP_HEIGHT, MAX_TAP_HEIGHT * wet * amplitude),
+      height: wet * Math.max(MIN_TAP_HEIGHT, MAX_TAP_HEIGHT * amplitude),
     });
   }
 
@@ -237,7 +244,7 @@ export default function TapScope({
   const gapsNeeded = audibleRepeats(gain) + 1;
   const lane = windowMs ?? Math.max(windowFor(slowest), gapsNeeded * slowest);
 
-  const dryHeight = Math.max(MIN_TAP_HEIGHT, MAX_DRY_HEIGHT * dry);
+  const dryHeight = MAX_DRY_HEIGHT * dry;
   const flashFor = (timeMs) => Math.min(FLASH_MAX_MS, Math.max(FLASH_MIN_MS, timeMs * FLASH_OF_SPACING));
 
   const rootRef = useRef(null);

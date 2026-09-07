@@ -9,9 +9,18 @@
    which is what let the input and its right-hand section (the chevron) stack
    as normal flow siblings instead of the section overlaying the input's
    right edge - the wrapper grew to fit both, taller than the input alone,
-   and everything centred against that taller box read as misaligned. */
+   and everything centred against that taller box read as misaligned.
+
+   `display: flex` for the same class of reason, one level down: a block
+   wrapper around an inline <input> is as tall as the *line box*, not as the
+   input, so it came out ~1.5px taller than the control inside it. Beside
+   equal-height buttons in a joined group (PresetBar) that surplus sits under
+   the input and drops the visible box a pixel below its neighbours - which
+   reads as the dropdown being misaligned, though nothing about the input
+   itself was. Flex sizes the wrapper to the input exactly. */
 .pui-dropdown__wrapper {
   position: relative;
+  display: flex;
 }
 
 .pui-dropdown__input {

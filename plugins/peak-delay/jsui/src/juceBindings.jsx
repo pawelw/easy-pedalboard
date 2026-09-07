@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
-import { Knob, MiniSlider, Pill, StageControl, StageRouter } from "@synthpeak/pedal-ui";
+import { Knob, Pill, Slider, StageControl, StageRouter } from "@synthpeak/pedal-ui";
 
 // A native function, not the parameter's own C++ stringFromValue - JUCE's
 // web-view relays only carry start/end/skew/interval, not the format string.
@@ -195,19 +195,43 @@ export function useDelayMeter() {
 }
 
 /** One of the header's two level faders, bound to a WebSliderRelay by
-    parameter id. Same optimistic-state pattern as JuceKnob - the value is set
-    locally on drag rather than waiting for a relay echo that only a real host
-    sends. */
-export function JuceMiniSlider({ parameterId, label }) {
+    parameter id - the shared `Slider`, the control Peak EQ's bands are, laid on
+    its side at header size and dragged like a knob. Same optimistic-state
+    pattern as JuceKnob: the value is set locally on drag rather than waiting
+    for a relay echo that only a real host sends.
+
+    `resetTo` is a scaled value (dB here, not 0..1). Where it sits on the knob's
+    travel is worked out from the relay's own start/end/skew rather than from a
+    number written down twice - the range lives in the processor, and the two
+    would drift the moment anyone widened it. */
+export function JuceFader({ parameterId, label, resetTo = 0 }) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const valueLabel = useFormattedText(parameterId, value);
 
+  // Read at click time, not at render: the backend pushes the range in a
+  // propertiesChanged event after the page loads, and nothing here re-renders
+  // when it lands. Outside a host it never lands at all, and the JUCE shim's
+  // own 0..1 defaults make this the identity - which is the right answer for a
+  // fader with no parameter behind it.
+  const reset = () => {
+    const { start = 0, end = 1, skew = 1 } = sliderState.properties ?? {};
+    const span = end - start;
+    const normalised = span === 0 ? 0 : Math.pow((resetTo - start) / span, skew);
+
+    setValue(Math.min(1, Math.max(0, normalised)));
+  };
+
   return (
-    <MiniSlider
+    <Slider
+      compact
+      fine
+      orientation="horizontal"
+      length={74}
       label={label}
       value={value}
       valueLabel={valueLabel}
       onChange={setValue}
+      onReset={reset}
       onDragStart={() => sliderState.sliderDragStarted()}
       onDragEnd={() => sliderState.sliderDragEnded()}
     />
@@ -262,8 +286,10 @@ export function JucePill({ parameterId, icon, label, invert = false }) {
 }
 
 /** One knob in a footer stage, bound to a WebSliderRelay by parameter id -
-    Wear/Flutter on the tape half, Chorus/Phaser on the mod half. */
-export function JuceStageKnob({ parameterId, name }) {
+    Wear/Flutter on the tape section, Drift/Phaser on the mod one, Low/High on
+    the filter. `scaleFrom="max"` is for a cut that rests wide open at the top
+    of its travel; see Knob's own note on it. */
+export function JuceStageKnob({ parameterId, name, scaleFrom }) {
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const valueLabel = useFormattedText(parameterId, value);
 
@@ -272,6 +298,7 @@ export function JuceStageKnob({ parameterId, name }) {
       name={name}
       value={value}
       valueLabel={valueLabel}
+      scaleFrom={scaleFrom}
       onChange={setValue}
       onDragStart={() => sliderState.sliderDragStarted()}
       onDragEnd={() => sliderState.sliderDragEnded()}

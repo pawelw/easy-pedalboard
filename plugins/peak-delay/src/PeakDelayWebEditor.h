@@ -63,6 +63,10 @@ private:
     juce::WebSliderRelay driftRelay { "mod" };
     juce::WebSliderRelay phaserRelay { "phaser" };
 
+    // The footer's Filter section: the two cuts on the repeats.
+    juce::WebSliderRelay loCutRelay { "locut" };
+    juce::WebSliderRelay hiCutRelay { "hicut" };
+
     // The header's two faders, either end of the pedal.
     juce::WebSliderRelay inGainRelay { "ingain" };
     juce::WebSliderRelay outGainRelay { "outgain" };
@@ -97,6 +101,8 @@ private:
     juce::WebSliderParameterAttachment flutterAttachment;
     juce::WebSliderParameterAttachment driftAttachment;
     juce::WebSliderParameterAttachment phaserAttachment;
+    juce::WebSliderParameterAttachment loCutAttachment;
+    juce::WebSliderParameterAttachment hiCutAttachment;
     juce::WebSliderParameterAttachment inGainAttachment;
     juce::WebSliderParameterAttachment outGainAttachment;
 

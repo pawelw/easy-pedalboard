@@ -1,32 +1,24 @@
 .pui-stage {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  /* 8px from the knob's tick ring to the label, not from its dial - the ring
-     overflows the dial's box. See --pui-knob-reach-small in tokens.css. */
-  gap: calc(8px + var(--pui-knob-reach-small, 0px));
   min-width: 0;
 }
 
-.pui-stage__text {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.pui-stage__name {
-  font-family: var(--pui-font-label);
-  font-weight: 700;
+/* Knob's own caption line, re-inked for the stage it sits in - the tape band
+   carries its own light-on-dark ink, the other sections the panel's. The value
+   that replaces it mid-drag is the same element, so it lands in exactly the
+   same place rather than shifting the row, and it is deliberately drawn in the
+   same ink: --pui-stage-value stays defined for a stage that wants to set a
+   value apart, but a label that changes colour as well as text mid-drag reads
+   as two different things flickering in one spot. */
+.pui-stage .pui-knob__caption {
   font-size: 10px;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--pui-stage-name);
   white-space: nowrap;
-}
-
-.pui-stage__value {
-  font-family: var(--pui-font-label);
-  font-weight: 500;
-  font-size: 10px;
-  color: var(--pui-stage-value);
-  white-space: nowrap;
+  /* Clears the tick ring, which overflows the dial's own box - see
+     --pui-knob-reach-small in tokens.css. Without it the caption sits under
+     the ticks rather than under the knob. */
+  margin-top: calc(var(--pui-knob-reach-small, 0px) - 7px);
 }

@@ -4,7 +4,7 @@ peak_add_plugin(PeakDelay
     BUNDLE     com.synthpeak.peakdelay
     CATEGORIES "Fx Delay"
     SOURCES    src/PeakDelayWebEditor.cpp
-    LIBS       juce::juce_gui_extra
+    LIBS       juce::juce_dsp juce::juce_gui_extra
     WEBVIEW
 )
 
