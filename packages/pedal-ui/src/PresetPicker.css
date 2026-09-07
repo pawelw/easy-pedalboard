@@ -20,8 +20,11 @@
 /* The divider between columns is the second column's left border, not a
    separate element - so a picker showing one column (nothing expanded yet)
    draws no stray line. */
-/* Capped at both ends. The floor keeps a column of short names from coming out
-   as a sliver; the ceiling matters more, because preset names are typed by the
+/* Capped at both ends. The floor is the closed bar's own width less the panel's
+   border and the column's padding, so a single column of short names comes out
+   exactly as wide as the prev/next/name group it hangs off (see PANEL_OFFSET in
+   PresetPicker.jsx, which is what puts its left edge there). The ceiling matters
+   more, because preset names are typed by the
    user and the face's card is `overflow: hidden` - two columns of unbounded
    width would eventually run under the card's edge and be cropped there, with
    no scrollbar and no clue why. 190 leaves both columns inside the narrowest
@@ -34,9 +37,8 @@
    shared variable is what keeps the two numbers from drifting apart. */
 .pui-presetpicker__column {
   --pui-preset-column: 190px;
-
-  padding: 4px;
-  min-width: 132px;
+  padding: 2px;
+  min-width: 167px;
   max-width: var(--pui-preset-column);
   max-height: 220px;
   overflow-y: auto;

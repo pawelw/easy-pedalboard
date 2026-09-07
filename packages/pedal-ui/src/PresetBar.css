@@ -1,7 +1,7 @@
 .pui-presetbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
 }
 
 /* The three square glyph buttons the bar itself owns - the two arrows inside

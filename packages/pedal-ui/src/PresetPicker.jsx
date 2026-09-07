@@ -13,6 +13,13 @@ const idFor = (kind, name) => `${kind}/${name}`;
 // preset called "User Presets" that does nothing when you pick it.
 const EMPTY_USER = { value: "user/", label: "No user presets yet", disabled: true };
 
+// The panel hangs off the joined prev/next/name group, not off the name box
+// alone - so it has to reach back across the two arrow buttons to its left.
+// 26px each, less the 1px border each shares with its neighbour (PresetBar.css).
+// mainAxis is Mantine's own default, restated because passing the object form
+// of `offset` drops it.
+const PANEL_OFFSET = { mainAxis: 8, crossAxis: -50 };
+
 /**
  * The preset list, as a Mantine Cascader: **User Presets** is a column that
  * opens sideways into whatever you have saved, and the factory presets sit
@@ -75,7 +82,7 @@ export default function PresetPicker({ factory = [], user = [], value, onChange,
         // inherited from it - a panel portalled outside that wrapper resolves
         // its colours off the bare :root instead and comes out in the light
         // theme on a dark face.
-        comboboxProps={{ position: "bottom-start", withinPortal: false }}
+        comboboxProps={{ position: "bottom-start", withinPortal: false, offset: PANEL_OFFSET }}
         classNames={{
           wrapper: "pui-dropdown__wrapper",
           input: "pui-dropdown__input",
