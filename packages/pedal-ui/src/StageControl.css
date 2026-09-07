@@ -17,8 +17,8 @@
   letter-spacing: 0.1em;
   color: var(--pui-stage-name);
   white-space: nowrap;
-  /* Clears the tick ring, which overflows the dial's own box - see
+  /* Clears the value arc, which overflows the dial's own box - see
      --pui-knob-reach-small in tokens.css. Without it the caption sits under
-     the ticks rather than under the knob. */
-  margin-top: calc(var(--pui-knob-reach-small, 0px) - 7px);
+     the arc rather than under the knob. */
+  margin-top: calc(var(--pui-knob-reach-small, 0px) - 3px);
 }

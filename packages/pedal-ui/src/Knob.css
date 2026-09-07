@@ -219,10 +219,10 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
    two variants above are untouched.
    ========================================================================== */
 
-/* Same reasoning as .pui-knob--scale's: the arc sits closer to the dial here,
-   so the caption needs the room the collar variant takes from its own gap. */
+/* The arc hugs the rim here rather than standing off it, so the caption sits
+   nearer the dial than either of the variants above puts its own. */
 .pui-knob--soft .pui-knob__caption {
-  margin-top: 6px;
+  margin-top: 2px;
 }
 
 /* The cap draws its own shadow (--pui-soft-shadow), so the collar variant's

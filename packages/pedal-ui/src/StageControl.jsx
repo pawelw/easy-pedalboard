@@ -2,8 +2,8 @@ import Knob from "./Knob.jsx";
 import "./StageControl.css";
 
 /**
- * One knob in a footer stage (COMPONENTS.md #5): a 42px `variant="scale"` knob
- * - the same knob as the time controls - with its name printed underneath.
+ * One knob in a footer stage (COMPONENTS.md #5): a 42px `variant="soft"` knob
+ * with its name printed underneath.
  *
  * The name sits below rather than beside, and the value is not shown at all
  * until the knob is being turned, when it takes the name's place for the length
@@ -32,9 +32,8 @@ export default function StageControl({
   return (
     <div className="pui-reset pui-stage">
       <Knob
-        variant="scale"
-        size={42}
-        sweepGap={6}
+        variant="soft"
+        size={38}
         caption={name}
         valueLabel={valueLabel}
         scaleFrom={scaleFrom}

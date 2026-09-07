@@ -51,19 +51,18 @@
   --pui-radius-panel: 14px;
   --pui-radius-pill: 999px;
 
-  /* How far a small (<60px) variant="scale" Knob's tick ring reaches past the
-     dial's own box. TickScale draws its dashes from radius size/2 + gap out to
-     + tickLength, on an SVG box one stroke wider again, and the ring is
-     absolutely positioned - so it overflows the dial without taking part in
-     layout:
+  /* How far a small (<60px) `variant="soft"` Knob's value arc reaches past the
+     dial's own box. Sweep centres a stroke on radius size/2 + gap, on an SVG
+     box one stroke wider again, and the arc is absolutely positioned - so it
+     overflows the dial without taking part in layout:
 
-       gap 6  +  TICK_LENGTH_SMALL 4  +  TICK_THICKNESS_SMALL 1.4  =  11.4px
+       SOFT_SWEEP_GAP 3.5  +  SOFT_SWEEP_WIDTH_SMALL 3  =  6.5px
 
-     Layout measures gaps from the dial; the eye reads them from the ticks. Any
+     Layout measures gaps from the dial; the eye reads them from the arc. Any
      gap next to one of these knobs adds this back, or it renders that much
-     tighter than it was drawn - at the design's 8px knob-to-label gap, tight
-     enough to overlap. Recompute it if a caller stops passing sweepGap 6. */
-  --pui-knob-reach-small: 11.4px;
+     tighter than it was drawn. Recompute it if StageControl changes variant
+     or starts passing sweepGap again. */
+  --pui-knob-reach-small: 6.5px;
 
   --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
   --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;

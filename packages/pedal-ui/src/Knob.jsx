@@ -79,7 +79,9 @@ function Collar({ radius, angle }) {
     line on the dark ring reads as part of the knob, not as its value.
     `gap`/`width`/the two colours default to the collar variant's own look
     (unchanged); `variant="scale"` passes its own smaller gap and the
-    grayscale tick tokens instead - same arc, different geometry/palette. */
+    grayscale tick tokens instead - same arc, different geometry/palette.
+    `from` is TickScale's, on an arc: "max" lights the span between the value
+    and the top of travel, for a cut that rests wide open. */
 function Sweep({
   diameter,
   value,
@@ -87,9 +89,12 @@ function Sweep({
   width = SWEEP_WIDTH,
   trackColor = "var(--pui-knob-sweep)",
   litColor = "var(--pui-knob-sweep-lit)",
+  from = "min",
 }) {
   const r = diameter / 2 + gap;
   const box = r + width;
+  const fromMax = from === "max";
+  const lit = fromMax ? value < 0.996 : value > 0.004;
 
   return (
     <svg
@@ -100,7 +105,12 @@ function Sweep({
     >
       <g fill="none" strokeWidth={width} strokeLinecap="round">
         <path d={arcPath(r, MIN_ANGLE, MAX_ANGLE)} stroke={trackColor} />
-        {value > 0.004 && <path d={arcPath(r, MIN_ANGLE, angleFor(value))} stroke={litColor} />}
+        {lit && (
+          <path
+            d={fromMax ? arcPath(r, angleFor(value), MAX_ANGLE) : arcPath(r, MIN_ANGLE, angleFor(value))}
+            stroke={litColor}
+          />
+        )}
       </g>
     </svg>
   );
@@ -405,6 +415,7 @@ export default function Knob({
             width={size >= 60 ? SOFT_SWEEP_WIDTH : SOFT_SWEEP_WIDTH_SMALL}
             trackColor="var(--pui-soft-track)"
             litColor="var(--pui-soft-lit)"
+            from={scaleFrom}
           />
         ) : isScale ? (
           <TickScale

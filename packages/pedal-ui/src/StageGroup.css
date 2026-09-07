@@ -33,6 +33,13 @@
   --pui-stage-value: var(--pui-ink-soft);
   --pui-stage-well: var(--pui-recess);
   --pui-stage-arrow: var(--pui-ink-soft);
+
+  /* The arc reads as a value line, not an accent: the same grayscale pair the
+     Time/Mix/Feedback tick rings above the footer use, so a stage knob and a
+     scale knob show their value in one colour. The tape tone below keeps its
+     green - there the accent is the section. */
+  --pui-soft-track: var(--pui-tick);
+  --pui-soft-lit: var(--pui-tick-lit);
 }
 
 .pui-stage-group--tape {
@@ -49,4 +56,11 @@
   --pui-cap-grad-bottom: var(--pui-tape-cap-bot);
   --pui-cap-ring: var(--pui-tape-cap-rim);
   --pui-pointer: var(--pui-tape-lit);
+
+  /* Only the arc and the needle take the band's green - the cap itself is left
+     on the theme's black, so all six footer knobs are one control that happens
+     to sit on two grounds. */
+  --pui-soft-needle: var(--pui-tape-lit);
+  --pui-soft-track: var(--pui-tape-track);
+  --pui-soft-lit: var(--pui-tape-lit);
 }
