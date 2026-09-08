@@ -180,7 +180,7 @@ no caption, and seven accent bars (4px, `opacity .8`) at heights
 | Engine | Row 1 | Row 2 | Footer |
 | --- | --- | --- | --- |
 | Space | Decay, Shimmer | Low Cut, Reso | Mix |
-| Spring | Decay, Tension | Low Cut, Reso | Mix |
+| Spring | Decay, Tension | Low Cut | Mix |
 
 ## Knobs
 

@@ -50,7 +50,8 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress      # tape knob sweep, non-finite hunt
 ./build/tests/ee_reverb_stress_artefacts/Release/ee_reverb_stress  # reverb tail stability
 ./build/tests/ee_trempan_stress_artefacts/Release/ee_trempan_stress
-./build/tests/ee_trempan_match_artefacts/Release/ee_trempan_match [outDir]  # A/B renderer
+./build/tests/ee_trempan_regress_artefacts/Release/ee_trempan_regress [outDir]
+./build/tests/ee_delay_regress_artefacts/Release/ee_delay_regress [outDir]
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
@@ -87,15 +88,30 @@ install one: `EE_INSTALL_PLUGINS` is on outside the `fast` preset, so a full
 build of a dev-server tree overwrites `~/Library/Audio/Plug-Ins` with a face
 that is blank whenever Vite is not running.
 
-`ee_trempan_match` is the A/B for a change to Peak Trem & Pan that is meant to
-change nothing: it renders thirteen fixed settings - every LFO shape anchor, the
-bias stage in and out, the panning law, a synced pass with a transport jump, and
-the bypass crossfade - through the whole processor over ragged block sizes, and
-prints an FNV-1a checksum of the finished audio per pass. Run it before the
-change, keep the output, run it after, diff. Sample-exact is the bar. It
-generates its own input and needs no file; pass a directory to also get one wav
-per pass. `ee_delay_match` and `ee_spring_match` are the same idea for their
-pedals, driven by a real input file instead.
+**`*_regress` and `*_match` are two different families**, and the distinction
+matters when you add one. A `*_match` tool (`ee_delay_match`, `ee_spring_match`,
+`ee_tape_render`) renders a real input file so a voicing can be A/B'd by ear
+against a reference recording - it answers "is this the sound we want". A
+`*_regress` tool answers "is this the *same* sound as before": it renders a
+fixed battery of settings through the whole processor over ragged block sizes
+and prints an FNV-1a checksum of the finished audio per pass. Run it before a
+change that is meant to change nothing, keep the output, run it after, diff.
+**Sample-exact is the bar** - "sounds the same" is not, because a move that
+alters one sample has altered the code path.
+
+They generate their own input and need no file, so the comparison re-runs from a
+clean checkout with nothing to fetch; pass a directory to also get one wav per
+pass. Their shared parts - the deterministic test signal, the checksum, the
+ragged block sizes and a `FakePlayHead` that plays and relocates - are in
+`tests/RegressHarness.h`. The playhead is not optional decoration: without one,
+an offline render never reaches a tempo- or phase-locked engine's alignment
+code at all, which is the code a refactor is most likely to break.
+
+`ee_trempan_regress` covers every LFO shape anchor, the bias stage in and out,
+the panning law, a synced pass with a transport jump, and the bypass crossfade.
+`ee_delay_regress` covers the three routings, both tape placements, the filter
+pair off its resting points, the in-loop drift and the on-the-repeats phaser,
+free-running and synced times, uneven L/R, and both ends of the Mix law.
 
 The last two binaries above are diagnostic tools rather than pass/fail suites,
 for the class of bug that only appears in a host. `ee_grain_host` instantiates
@@ -146,6 +162,9 @@ shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knob
 shared/src/dsp/           FdnReverb, SpringReverb + TapeDelay implementations
 shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knob…)
 shared/src/ui/            its implementation
+shared/include/ee/fx/     compositions of engines with an opinion about their
+                          order - DelayModule is Peak Delay's whole chain, which
+                          Peak Alpine's Delay module is a second instance of
 shared/include/ee/plugin/ the bypass crossfade, shared parameter formatters,
                           and the preset store + its WebView bridge
 plugins/peak-*/presets/   that pedal's factory presets - see below

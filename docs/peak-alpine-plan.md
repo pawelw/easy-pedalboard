@@ -9,10 +9,11 @@ Design handover: `design_handoff_peak_alpine/README.md`, prototype at
 needs its sibling `support.js`, so a `file://` open renders raw `{{ }}`
 templates; `.claude/launch.json`'s `design-handoff` entry puts it on port 3200).
 
-Status: **stages 1-4 built** (see §6). The face is complete and renders in the
+Status: **stages 1-5 built** (see §6). The face is complete and renders in the
 gallery at `#peak-alpine`, bound through `ParamScope` to the namespaced
-parameters the processor will carry; `ee::dsp::Tremolo` is extracted and Peak
-Trem & Pan runs on it. Stages 5-10 not started.
+parameters the processor will carry. `ee::dsp::Tremolo` and `ee::fx::DelayModule`
+are both extracted, with Peak Trem & Pan and Peak Delay running on them and
+rendering sample-exact. Stages 6-10 not started.
 
 None of the eleven existing pedals is replaced. Peak Delay in particular keeps
 shipping exactly as it does today; Peak Alpine holds a second instance of the
@@ -139,8 +140,8 @@ self-heal. All of it, unchanged.
 
 `PeakTremPanProcessor` then becomes a parameter → engine adapter.
 
-- Guarded by `ee_trempan_stress` (existing) **plus** a new `tests/TremPanMatch.cpp`
-  → `ee_trempan_match`, modelled on `DelayMatch.cpp`: renders a WAV through the
+- Guarded by `ee_trempan_stress` (existing) **plus** a new `tests/TremPanRegress.cpp`
+  → `ee_trempan_regress`, modelled on `DelayMatch.cpp`: renders a WAV through the
   real processor. Render before the refactor, render after, diff. Sample-exact
   is the bar — this is a move, not a rewrite.
 
@@ -174,23 +175,25 @@ global bypass.
 - `ee_preset_tests` must stay green — it runs against `PeakDelayProcessor` and
   is the check that no parameter went missing.
 
-### 3.3 `ee::dsp::SpringReverb` — three new controls
+### 3.3 `ee::dsp::SpringReverb` — two new controls
 
-Spring's face needs **Tension**, **Low Cut** and **Reso**; the tank exposes only
-decay and stereo today. Adding, per §3 of the answers:
+Spring's face needs **Tension** and **Low Cut**; the tank exposes only decay and
+stereo today. (Reso was on this list and has been dropped - see §4.1.) Adding,
+per §3 of the answers:
 
 | Control | What it drives |
 |---|---|
 | `setTension01` | the dispersion chirp coefficient — already a `SpringConfig.h` constant, promoted to a runtime range around its current value |
 | `setLowCut (hz)` | the tank's existing `outputLowCutCoeff`, currently pinned by config |
-| `setResonance01` | `LoopDamper` amount — how much top the wire loses per pass |
 
-All three default to today's fixed values, so `SpringReverb` with nothing set is
+Both default to today's fixed values, so `SpringReverb` with nothing set is
 bit-identical to the current one and **Peak Spring is untouched**. Only Peak
-Machine drives them.
+Alpine drives them.
 
-- Guarded by `ee_spring_match` (existing A/B renderer) at the defaults, and by
-  `ee_reverb_stress` for tail stability across the new ranges.
+- Guarded by a new `ee_spring_regress` at the defaults, and by
+  `ee_reverb_stress` for tail stability across the new ranges. (`ee_spring_match`
+  is the voicing renderer and stays as it is - see the `*_regress` / `*_match`
+  note in CLAUDE.md.)
 
 ### 3.4 `ee::fx::ModulationModule` and `ee::fx::ReverbModule` — new
 
@@ -242,10 +245,13 @@ Delay's own `prefix=""` are then the same component (§5.2). No `dly.level` and
 no module Mix knob — the design's Delay header ends at the spacer and Delay has
 its own 76px Mix.
 
-**Reverb (12):**
+**Reverb (11):**
 `rev.on`, `rev.engine` (Space/Spring), `rev.level`, `rev.mix`
 - Space: `rev.space.decay`, `.shimmer`, `.locut`, `.reso`
-- Spring: `rev.spring.decay`, `.tension`, `.locut`, `.reso`
+- Spring: `rev.spring.decay`, `.tension`, `.locut` — three, not four. A spring
+  tank has no resonance to expose: what Space calls Reso is how hard its FDN is
+  allowed to ring, and a tank's equivalent is its decay, so a fourth knob would
+  have been a second name for the first.
 
 Ranges, skews, defaults and text formatters come from each source pedal
 unchanged, so a Machine knob at 50 % sounds like that pedal's knob at 50 %.
@@ -370,9 +376,9 @@ Each stage is independently verifiable and independently shippable.
 | 1 | ✅ `packages/pedal-ui`: new components, icons, `PresetBar` variant, `Card` prop, `Components.jsx` entries | gallery `#components`, three theme columns; every module-shell measurement and colour read back off the live DOM and diffed against the prototype's |
 | 2 | ✅ `packages/delay-face`; Peak Delay's App.jsx reduced to a wrapper; the generic JUCE bindings to `@synthpeak/pedal-ui/juce` | fingerprint identical on **both** faces — Delay `324 / 626x481 / 733c7d76 / 42296266`, Wah `374 / 566x469 / cf04e593 / d93913e7` (Wah moved too: one `installAutoResize`) |
 | 3 | ✅ `plugins/peak-alpine/jsui`: the whole face | gallery `#peak-alpine` vs the prototype at :3200; card 1046 wide and tracks 186/598/186 exact, every module-shell measurement matches, and the shim's "unknown to the backend" warnings confirm the full namespaced id set |
-| 4 | ✅ `ee::dsp::Tremolo` extracted; Peak Trem-Pan delegates | `ee_trempan_match`: 13 passes, all checksums identical either side of the change. `ee_trempan_stress`: 7776 cases, 0 flagged |
-| 5 | `ee::fx::DelayModule` extracted; Peak Delay delegates | `ee_delay_match` WAV diff (sample-exact) + `ee_preset_tests` |
-| 6 | `SpringReverb`'s three new setters | `ee_spring_match` at defaults (sample-exact) + `ee_reverb_stress` |
+| 4 | ✅ `ee::dsp::Tremolo` extracted; Peak Trem-Pan delegates | `ee_trempan_regress`: 13 passes, all checksums identical either side of the change. `ee_trempan_stress`: 7776 cases, 0 flagged |
+| 5 | ✅ `ee::fx::DelayModule` extracted; Peak Delay delegates | `ee_delay_regress`: 14 passes, all checksums identical either side. `ee_preset_tests`: identical. `ee_trempan_regress` unaffected |
+| 6 | `SpringReverb`'s two new setters (Tension, Low Cut) | `ee_spring_regress` at defaults (sample-exact) + `ee_reverb_stress` across the new ranges |
 | 7 | `ee::fx::ModulationModule` + `ReverbModule` | `ee_dsp_tests` additions; a `ee_machine_host` driving the real processor with ragged blocks, like `ee_grain_host` |
 | 8 | `plugins/peak-alpine`: processor, parameter layout, CMake | `cmake --preset fast -DEE_PLUGINS="peak-alpine"`, Standalone launches and makes sound |
 | 9 | `PeakAlpineWebEditor` + `RelaySet`; face bound to real parameters | full `dev` build, `auval -v aufx Palp Peak`, then **Ableton Live** — per the standing rule, DSP work isn't done until the AU/VST3 is rebuilt and Live is relaunched |
@@ -506,6 +512,69 @@ read and the bypass crossfade, and is otherwise an adapter.
   `ee/dsp` reaches up into `ee/plugin`, and an engine that did would stop being
   usable without the plugin layer. The processor sees both and `static_assert`s
   they are equal, so they cannot drift in silence.
+
+### 5.10 Notes from stage 5
+
+`PeakDelayProcessor` went 883 lines to 554 and its header 373 to 224. What left
+is `shared/include/ee/fx/DelayModule.h` (+ its config header): the delay line,
+both tape placements and the router between them, the filter pair, the phaser,
+the dry/wet law, the trims and the engage crossfade. What stayed is the
+parameters, the Time map, `installState` and the L/R mirror, the playhead cache,
+and the scope's meter feed.
+
+- **`ee/fx/` is a new layer**, above `ee/dsp/` and below the plugins: a
+  composition of engines with an opinion about their order, which is a
+  different kind of thing from an engine. `ee/dsp` stays a box of parts.
+- **The module takes real units only** - seconds, hertz, linear gain. Parameter
+  ranges, skews, tempo maps and anything that reads a playhead stay with
+  whoever owns the parameters, which is what lets Peak Alpine bind the same
+  chain to differently-named parameters without the chain knowing.
+- **One `pushSettings` rather than two copies.** `prepareToPlay` and
+  `processBlock` both need the whole set, and the original had them written out
+  separately - a control added to one and not the other would have been wrong
+  until the next block.
+- **The filters' resting points are handed in**, not assumed. Each cut is
+  skipped entirely at the end of its travel, and where that end *is* comes from
+  the owner's parameter range - so `setFilterRestingPoints` is called once at
+  prepare rather than the module guessing 20 Hz / 20 kHz.
+- **The harness split happened first.** `ee_trempan_match` became
+  `ee_trempan_regress`, `ee_delay_regress` was added, and their shared parts
+  moved to `tests/RegressHarness.h`. The rename was verified by running the
+  refactored harness against the checksums recorded before it - so the tool
+  proving the refactor was itself proven not to have moved.
+
+### 5.9 Where stage 5 started (kept - it is the shape of stages 7 and 8 too)
+
+Nothing of stage 5 was written when this was noted. The reading is done, so this is the shape of
+it:
+
+`PeakDelayProcessor::processBlock` is one chunk loop doing, in order: the
+engage ramp, the Input trim, `tapeIn`, the engage crossfade back to the
+untouched input, the delay feed, `delay.process`, `tapeOut`, `runFilter`,
+`runPhaser`, the dry/wet mix, the Output trim, and a final engage crossfade to
+the unprocessed buffer. `prepareToPlay` seeds all of it. Everything in that
+list belongs to `ee::fx::DelayModule`; what stays is the parameters, the Rate/
+Time maps, `installState` and the L/R mirror, the playhead cache, and the
+meter feed.
+
+**A naming decision, made and not yet applied.** `*_match` in this repo means
+"render a file so it can be A/B'd against a reference recording" - a voicing
+tool (`ee_delay_match`, `ee_spring_match`, `ee_tape_render`). What stage 4 added
+is a different job: a checksum battery proving a change altered nothing. Naming
+it `ee_trempan_regress` blurred the two families. Before stage 5 adds a second one:
+
+- rename `ee_trempan_regress` -> `ee_trempan_regress` (new this session, so free)
+- add `ee_delay_regress` alongside the existing, untouched `ee_delay_match`
+- factor their shared parts - the deterministic test signal, the FNV-1a
+  checksum, the ragged block sizes and the `FakePlayHead` - into
+  `tests/RegressHarness.h`, since there will be two users and a third when the
+  reverb work lands
+
+**Stage 5's gates**, once it is written: `ee_delay_regress` identical either
+side, and `ee_preset_tests` still green. The preset bank is worth keeping for
+exactly this - it walks every parameter in every preset and exercises
+`installState` and the L/R mirror, which is the part of this refactor most
+likely to break quietly.
 
 ## 7. Risks, and what is done about them
 

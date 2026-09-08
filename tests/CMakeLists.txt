@@ -114,6 +114,28 @@ if(TARGET PeakDelay)
 endif()
 
 if(TARGET PeakDelay)
+    # The A/B for a change to Peak Delay that is meant to change nothing: a
+    # battery of settings through the whole processor, one checksum per pass.
+    # ee_delay_match above is the other thing - a voicing renderer for a real
+    # file. See RegressHarness.h.
+    juce_add_console_app(ee_delay_regress PRODUCT_NAME "ee_delay_regress")
+
+    target_sources(ee_delay_regress PRIVATE DelayRegress.cpp)
+
+    target_compile_definitions(ee_delay_regress PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_delay_regress
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
+
+    target_link_libraries(ee_delay_regress
+        PRIVATE PeakDelay ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+if(TARGET PeakDelay)
     # ee::plugin::PresetStore against a real pedal - the factory bank compiled
     # in from plugins/peak-delay/presets, and a user bank in a folder of its
     # own. Shared machinery every pedal is meant to adopt, so it is worth a
@@ -159,20 +181,21 @@ if(TARGET PeakTremPan)
     # Renders a fixed battery of settings through the whole Trem & Pan processor
     # and prints a checksum per pass. Not a pass/fail suite: it is the A/B for a
     # change that is meant to change nothing, so its output is compared against
-    # itself from before the change.
-    juce_add_console_app(ee_trempan_match PRODUCT_NAME "ee_trempan_match")
+    # itself from before the change. See RegressHarness.h for why *_regress and
+    # *_match are two different families.
+    juce_add_console_app(ee_trempan_regress PRODUCT_NAME "ee_trempan_regress")
 
-    target_sources(ee_trempan_match PRIVATE TremPanMatch.cpp)
+    target_sources(ee_trempan_regress PRIVATE TremPanRegress.cpp)
 
-    target_compile_definitions(ee_trempan_match PUBLIC
+    target_compile_definitions(ee_trempan_regress PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
         JUCE_STANDALONE_APPLICATION=1)
 
-    target_include_directories(ee_trempan_match
+    target_include_directories(ee_trempan_regress
         PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-trem-pan/src)
 
-    target_link_libraries(ee_trempan_match
+    target_link_libraries(ee_trempan_regress
         PRIVATE PeakTremPan ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()

@@ -94,11 +94,14 @@ export const REVERB_ENGINES = [
     prefix: "rev.spring.",
     display: "decay",
     decayId: "rev.spring.decay",
+    // Three, not four: a spring tank has no resonance control to expose. What
+    // Space calls Reso is how hard its FDN is allowed to ring, and a tank's
+    // equivalent is its decay - so a fourth knob here would have been a second
+    // name for the first one.
     knobs: [
       ["decay", "Decay"],
       ["tension", "Tension"],
       ["locut", "Low Cut"],
-      ["reso", "Reso"],
     ],
   },
 ];
