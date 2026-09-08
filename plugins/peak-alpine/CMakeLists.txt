@@ -3,6 +3,7 @@ peak_add_plugin(PeakAlpine
     PRODUCT    "Peak Alpine"
     BUNDLE     com.synthpeak.peakalpine
     CATEGORIES "Fx Delay Modulation Reverb"
+    SOURCES    src/PeakAlpineWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra
     WEBVIEW
 )

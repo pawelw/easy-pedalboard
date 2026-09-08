@@ -9,15 +9,16 @@ Design handover: `design_handoff_peak_alpine/README.md`, prototype at
 needs its sibling `support.js`, so a `file://` open renders raw `{{ }}`
 templates; `.claude/launch.json`'s `design-handoff` entry puts it on port 3200).
 
-Status: **stages 1-8 built** (see §6). The face is complete and renders in the
+Status: **stages 1-9 built** (see §6). The face is complete and renders in the
 gallery at `#peak-alpine`, bound through `ParamScope` to the namespaced
 parameters the processor will carry. `ee::dsp::Tremolo` and `ee::fx::DelayModule`
 are both extracted, with Peak Trem & Pan and Peak Delay running on them and
 rendering sample-exact, and `SpringReverb` has its two new controls with Peak
 Spring untouched, and both side modules exist with their engine crossfade
 proven click-free. **`plugins/peak-alpine` builds and makes sound** - 46
-parameters, all three modules in the chain, driven by `ee_alpine_host`. Stages
-9-10 (the WebView editor, and the factory presets) not started.
+parameters, all three modules in the chain, driven by `ee_alpine_host`, and the
+real face is bound to them through `PeakAlpineWebEditor`. Stage 10 (the factory
+preset bank) not started.
 
 None of the eleven existing pedals is replaced. Peak Delay in particular keeps
 shipping exactly as it does today; Peak Alpine holds a second instance of the
@@ -388,7 +389,7 @@ Each stage is independently verifiable and independently shippable.
 | 6 | ✅ `SpringReverb`'s two new setters (Tension, Low Cut) | `ee_spring_regress`: Peak Spring identical, and the engine section proves the defaults inert, the controls live, and both extremes stable. `ee_reverb_stress` 1512 cases 0 flagged; `ee_dsp_tests` at its known baseline |
 | 7 | `ee::fx::ModulationModule` + `ReverbModule` | `ee_dsp_tests` additions; a `ee_machine_host` driving the real processor with ragged blocks, like `ee_grain_host` |
 | 8 | ✅ `plugins/peak-alpine`: processor, 46-parameter layout, CMake | `ee_alpine_host`: makes sound, all three power toggles reach the audio, bypass bit-exact, all 8 engine pairs finite and audible |
-| 9 | `PeakAlpineWebEditor` + `RelaySet`; face bound to real parameters | full `dev` build, `auval -v aufx Palp Peak`, then **Ableton Live** — per the standing rule, DSP work isn't done until the AU/VST3 is rebuilt and Live is relaunched |
+| 9 | ✅ `PeakAlpineWebEditor` + `ee::plugin::RelaySet`; face bound to real parameters | Standalone launches, editor constructs, WebView loads, `ee_alpine_host` still green. **Not yet done: the `dev` build, `auval -v aufx Palp Peak`, and Ableton Live** — see §7 |
 | 10 | Factory preset bank | `ee_preset_tests` extended to Peak Alpine's bank (every parameter in every file) |
 
 Stages 1–3 need no C++ build at all. Stages 4–6 are refactors of shipping code
@@ -686,6 +687,35 @@ checksum per case, so it is also the baseline for the next refactor of it.
 
 **Still outstanding from §8:** the CPU measurement. The plugin builds and runs
 offline comfortably, but nothing has been measured in a host yet.
+
+### 5.14 Notes from stage 9
+
+`PeakAlpineWebEditor` contains no list of parameters at all. Forty-six relays
+plus forty-six attachments would have been ninety-two declarations that must be
+kept in step with the layout by eye - the same silent drift CLAUDE.md warns
+about for `tests/UiSnapshot.cpp`, and at that size a certainty rather than a
+risk.
+
+**`ee::plugin::RelaySet`** walks the processor's own parameters and makes the
+right relay for each, deciding from the parameter's type: a bool gets a toggle
+relay, a choice a combo relay, everything else a slider. Add a parameter to the
+layout and the face can bind it with no editor change. The ordering it depends
+on - relays before the browser, attachments after it - is documented on the
+class, because the compiler will not check it.
+
+Any future WebView pedal gets its relays from this too, and Peak Delay is now
+the odd one out with its seventeen hand-written pairs. Worth folding in next
+time that pedal is opened; not worth opening it for.
+
+**The meter event keeps Peak Delay's name** (`"delayMeter"`). The face inside
+the Delay module *is* Peak Delay's face and listens for exactly that - one feed
+per editor rather than one per module, so a host embedding the component emits
+it under the same name instead of the component learning a second one.
+
+**The synthetic "Ms" ids arrive already scoped.** The face builds them by
+appending `Ms` to the id it resolved through its `ParamScope`, so what reaches
+`formatKnobValue` is `dly.ltimeMs` rather than `ltimeMs`. The editor matches on
+that rather than on a bare name.
 
 ## 7. Risks, and what is done about them
 

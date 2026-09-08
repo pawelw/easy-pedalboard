@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include "Params.h"
+#include "PeakAlpineWebEditor.h"
 
 #include "ee/dsp/ChorusConfig.h"
 #include "ee/dsp/PhaserConfig.h"
@@ -456,9 +457,7 @@ void PeakAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
 juce::AudioProcessorEditor* PeakAlpineProcessor::createEditor()
 {
-    // The real face is stage 9. Until then the host's own generic editor is
-    // enough to turn every knob and hear it, which is what stage 8 is for.
-    return new juce::GenericAudioProcessorEditor (*this);
+    return new PeakAlpineWebEditor (*this);
 }
 
 void PeakAlpineProcessor::getStateInformation (juce::MemoryBlock& destData)
