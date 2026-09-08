@@ -184,8 +184,9 @@ inset cap at 8%.
 
 Knob sizes: 24px in module headers, 38px in footers and Delay stage cells, 40px in
 side-module parameter rows, 42px for Delay time, 76px for Mix/Feedback. Labels sit
-3.5px under the knob at 10px/700 uppercase `letter-spacing .1em` `#b9d3d9`; the
-Delay hero knobs use 11px labels plus a 10px/500 `#8ba3a9` value line.
+7.5px under the knob at 10px/700 uppercase `letter-spacing .1em` `#b9d3d9`; the
+Delay hero knobs use 11px labels 6px under the cap, plus a 10px/500 `#8ba3a9`
+value line.
 
 ## Interactions & behaviour
 
