@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="ltime" value="0.64285714"/>
+  <PARAM id="rtime" value="0.64285714"/>
+  <PARAM id="sync" value="1"/>
+  <PARAM id="timeunit" value="0"/>
+  <PARAM id="dtype" value="1"/>
+  <PARAM id="fb" value="74"/>
+  <PARAM id="mix" value="50"/>
+  <PARAM id="tape" value="45"/>
+  <PARAM id="flutter" value="18"/>
+  <PARAM id="mod" value="10"/>
+  <PARAM id="phaser" value="0"/>
+  <PARAM id="locut" value="220"/>
+  <PARAM id="hicut" value="2200"/>
+  <PARAM id="tapepre" value="0"/>
+  <PARAM id="ingain" value="0"/>
+  <PARAM id="outgain" value="-1.5"/>
+  <PARAM id="on" value="1"/>
+</PARAMETERS>

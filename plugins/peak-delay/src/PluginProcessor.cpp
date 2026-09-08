@@ -140,6 +140,10 @@ PeakDelayProcessor::PeakDelayProcessor()
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    // Loading a preset is a whole tree arriving at once, which the L/R mirror
+    // has to stand down for - see installState.
+    presets.installState = [this] (const juce::ValueTree& tree) { installState (tree); };
+
     leftTimeParam = apvts.getRawParameterValue (kLeftTimeID);
     rightTimeParam = apvts.getRawParameterValue (kRightTimeID);
     syncParam = apvts.getRawParameterValue (kSyncID);
@@ -338,8 +342,38 @@ void PeakDelayProcessor::mirrorTime (const juce::String& from, const juce::Strin
         destination->setValueNotifyingHost (value);
 }
 
+/** Installs a whole APVTS tree - a host restoring a session, a preset load -
+    with the Sync L/R mirror held off for the length of it.
+
+    The mirror below exists to follow a *person* turning one of the two Time
+    knobs, and a wholesale install is not that. An install writes the button
+    and both times, one parameter at a time and in the file's own order, so the
+    mirror is called for the first of the three while the button's own value is
+    still the one being replaced: a preset that wants its two sides apart,
+    loaded on top of anything that had the button on, was collapsed onto one
+    time before its "off" ever arrived. Peak Delay ships three presets like
+    that, and a session saved with the button off was restored the same way.
+
+    Reading the button out of the ValueTree instead - which by then does hold
+    the new state - is not the fix it looks like: APVTS pushes a parameter's
+    value back into the tree on a timer, so during an ordinary knob drag the
+    tree is the half that lags, and the knobs would stop tracking each other
+    for a moment after every Sync press.
+
+    A tree arriving in one piece is self-consistent by construction, so there
+    is nothing for the mirror to do during one anyway. */
+void PeakDelayProcessor::installState (const juce::ValueTree& tree)
+{
+    installingState = true;
+    apvts.replaceState (tree);
+    installingState = false;
+}
+
 void PeakDelayProcessor::parameterChanged (const juce::String& parameterID, float newValue)
 {
+    if (installingState.load())
+        return;
+
     // Read the button from the callback argument rather than the cached value:
     // the two are not guaranteed to be in step at this point.
     const bool synced = parameterID == kSyncID ? newValue > 0.5f : (syncParam != nullptr && syncParam->load() > 0.5f);
@@ -840,7 +874,7 @@ void PeakDelayProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
         if (xml->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xml));
+            installState (juce::ValueTree::fromXml (*xml));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

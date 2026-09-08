@@ -192,6 +192,11 @@ private:
     void parameterChanged (const juce::String& parameterID, float newValue) override;
     void mirrorTime (const juce::String& from, const juce::String& to);
 
+    /** Every route a whole APVTS tree can arrive by goes through this rather
+        than calling apvts.replaceState directly - a host restoring a session,
+        and the preset store, which is handed this as its install hook. */
+    void installState (const juce::ValueTree& tree);
+
     /** Reads the host's tempo off the playhead and caches it. ONLY safe from
         processBlock/prepareToPlay: JUCE documents getPlayHead() as callable
         only from the audio callback, and Ableton's playhead really is invalid
@@ -314,6 +319,10 @@ private:
 
     /** Stops the two time parameters echoing each other forever. */
     std::atomic<bool> mirroring { false };
+
+    /** Held while installState is putting a whole tree in place, so the L/R
+        mirror stands down for the length of it. See installState. */
+    std::atomic<bool> installingState { false };
 
     /** Written on the audio thread, read from the editor - see currentBpm(). */
     std::atomic<double> lastKnownBpm { 120.0 };

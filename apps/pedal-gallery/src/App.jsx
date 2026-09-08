@@ -58,7 +58,7 @@ function Home() {
 function PedalView({ pedal }) {
   const Face = pedal.face;
   return (
-    <div>
+    <div className="gallery__pedal">
       <a href="#" className="gallery__back">
         ← All pedals
       </a>

@@ -7,7 +7,21 @@ import "./PresetBar.css";
 // What the bar shows with nothing behind it: a plain browser tab, the
 // component gallery, a pedal whose processor has no store wired up yet. The
 // picker still opens and still reads correctly - it just cannot load anything.
-const DEMO_FACTORY = ["Init", "Slapback", "Dotted Eighth", "Tape Wash", "Long Trails"];
+// Categorised entries among them on purpose: the picker files a factory
+// preset by the prefix in its name (PresetPicker's CATEGORY_SEPARATOR), and a
+// demo list of leaves alone would show a column arrangement the real faces
+// have and the gallery doesn't.
+const DEMO_FACTORY = [
+  "Init",
+  "Slapback",
+  "Dotted Eighth",
+  "Tape Wash",
+  "Long Trails",
+  "Modulated - Deep Wow",
+  "Modulated - Phase Trails",
+  "Digital - Clean Quarters",
+  "Digital - Glass Halves",
+];
 
 function ChevronLeftIcon() {
   return (

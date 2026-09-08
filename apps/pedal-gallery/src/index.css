@@ -4,6 +4,23 @@ body {
   font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
 }
 
+/* A pedal page is the only place the gallery's own ground is wrong: body's
+   background above is `light`'s --pui-page to the byte, so it disappears
+   under a light-themed face and shows as a seam under any other theme where
+   the provider's box ends. The provider paints --pui-page on a wrapper div of
+   its own that nothing outside can class, so it is stretched to the viewport
+   from here - `> div` is that wrapper (PedalView's only other child is the
+   back link). */
+.gallery__pedal {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.gallery__pedal > div {
+  flex: 1;
+}
+
 .gallery {
   max-width: 760px;
   margin: 0 auto;

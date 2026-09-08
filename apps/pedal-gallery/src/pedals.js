@@ -6,14 +6,16 @@ import PeakDelayFace from "peak-delay-jsui/src/App.jsx";
 // pedal's UI, so there's nothing to keep in sync by hand. Add a pedal here
 // once its jsui exists; leave `face: null` for one that doesn't yet.
 //
-// `theme` mirrors whatever that pedal's own main.jsx passes to
-// PedalUIProvider - App.jsx is imported directly here, bypassing main.jsx
-// entirely, so this is the one piece of per-pedal metadata the gallery has
-// to duplicate rather than reuse. Omit it (as every pedal but Delay does)
-// for the default light theme.
+// `theme` picks the palette this page renders that face in - App.jsx is
+// imported directly here, bypassing the pedal's own main.jsx entirely, so
+// this is the one piece of per-pedal metadata the gallery has to carry
+// rather than reuse. Omit it for the default light theme. It normally
+// mirrors what the pedal's main.jsx passes to PedalUIProvider; Delay is
+// deliberately off that at the moment, shown in grey here while the plugin
+// itself still ships onyx.
 export const pedals = [
   { slug: "peak-chorus", name: "Peak Chorus", face: null },
-  { slug: "peak-delay", name: "Peak Delay", face: PeakDelayFace, theme: "onyx" },
+  { slug: "peak-delay", name: "Peak Delay", face: PeakDelayFace, theme: "grey" },
   { slug: "peak-eq", name: "Peak EQ", face: null },
   { slug: "peak-grain", name: "Peak Grain", face: null },
   { slug: "peak-overdrive", name: "Peak Overdrive", face: null },

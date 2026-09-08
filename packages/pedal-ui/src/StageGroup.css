@@ -55,12 +55,25 @@
   --pui-cap-grad-top: var(--pui-tape-cap-top);
   --pui-cap-grad-bottom: var(--pui-tape-cap-bot);
   --pui-cap-ring: var(--pui-tape-cap-rim);
-  --pui-pointer: var(--pui-tape-lit);
 
-  /* Only the arc and the needle take the band's green - the cap itself is left
-     on the theme's black, so all six footer knobs are one control that happens
-     to sit on two grounds. */
-  --pui-soft-needle: var(--pui-tape-lit);
+  /* Only the arc takes the band's green here - the cap itself is left on the
+     theme's black, so all six footer knobs are one control that happens to sit
+     on two grounds. The needle is themed; see below. */
   --pui-soft-track: var(--pui-tape-track);
   --pui-soft-lit: var(--pui-tape-lit);
+}
+
+/* The needle is the one part of the tape tone that cannot be a fixed accent.
+   It is drawn on the knob cap, not on the band, and the cap is the theme's
+   (variant="soft" reads --pui-soft-face-*, which the tape group deliberately
+   leaves alone): near-black under onyx, pale under light and grey. A green
+   needle reads on the dark cap and washes out on the pale ones, so on the
+   light themes these two tokens are simply left at their theme values and the
+   band's knobs point in the same charcoal as every other knob on the face.
+   Scoped to onyx rather than given a --pui-tape-needle token so every other
+   theme tracks --pui-pointer/--pui-soft-needle automatically - including any
+   added later - instead of restating their literals. */
+[data-pui-theme="onyx"] .pui-stage-group--tape {
+  --pui-pointer: var(--pui-tape-lit);
+  --pui-soft-needle: var(--pui-tape-lit);
 }

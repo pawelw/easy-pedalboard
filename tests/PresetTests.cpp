@@ -79,6 +79,68 @@ int main()
 
     check (presets.currentName() == "Dotted Wide", "...and leaves the selection where it was");
 
+    // The three above are named because they assert particular things about
+    // what is in them. This sweeps the rest, and it is the check that actually
+    // guards the contract as the bank grows: a preset missing a parameter is
+    // filled in from whatever that parameter currently holds, so load it from
+    // two opposite starting points and the omitted one is the only thing that
+    // comes out different. Nothing here has to know what any preset contains.
+    std::printf ("\n...and every one of the %d, from either end of the ranges:\n", factory.size());
+
+    const auto& parameters = processor.getParameters();
+
+    auto poison = [&parameters] (float normalised)
+    {
+        for (auto* p : parameters)
+            p->setValueNotifyingHost (normalised);
+    };
+
+    auto loadedValues = [&] (const juce::String& name, float from)
+    {
+        poison (from);
+        const bool ok = presets.load (ee::plugin::PresetStore::Kind::factory, name);
+
+        juce::Array<float> values;
+        for (auto* p : parameters)
+            values.add (ok ? p->getValue() : std::numeric_limits<float>::quiet_NaN());
+
+        return values;
+    };
+
+    for (const auto& name : factory)
+    {
+        const auto fromBottom = loadedValues (name, 0.0f);
+        const auto fromTop = loadedValues (name, 1.0f);
+
+        int differing = 0;
+        for (int i = 0; i < fromBottom.size(); ++i)
+            if (! (std::abs (fromBottom[i] - fromTop[i]) < 1.0e-5f))
+                ++differing;
+
+        check (differing == 0, "\"" + name + "\" lands in the same place either way");
+    }
+
+    // The mirror the sweep above walked into. Peak Delay links its two Time
+    // knobs while Sync L/R is on, and that listener has to tell a person
+    // turning a knob apart from a whole tree arriving at once - otherwise a
+    // preset that wants its two sides apart is flattened on the way in, which
+    // is what the three unlinked presets caught. Both halves are checked here
+    // because fixing either one by breaking the other would look like a pass.
+    std::printf ("\nSync L/R still links the knobs when a person turns one:\n");
+
+    presets.load (ee::plugin::PresetStore::Kind::factory, "Init");
+
+    setValue (processor.apvts, "sync", 1.0f);
+    setValue (processor.apvts, "ltime", 0.75f);
+    check (std::abs (valueOf (processor.apvts, "rtime") - 0.75f) < 1.0e-4f, "the left knob pulls the right one");
+
+    setValue (processor.apvts, "rtime", 0.25f);
+    check (std::abs (valueOf (processor.apvts, "ltime") - 0.25f) < 1.0e-4f, "...and the right one pulls the left");
+
+    setValue (processor.apvts, "sync", 0.0f);
+    setValue (processor.apvts, "ltime", 0.9f);
+    check (std::abs (valueOf (processor.apvts, "rtime") - 0.25f) < 1.0e-4f, "with Sync off they move alone");
+
     // The user bank. A second store on the same processor, under a product name
     // no installed pedal uses, so the folder this creates is this test's own.
     std::printf ("\nUser bank round trip:\n");

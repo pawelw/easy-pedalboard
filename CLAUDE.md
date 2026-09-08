@@ -206,12 +206,34 @@ preset store, and it is meant to be adopted by every pedal. Two banks:
 - **User** - one XML file per preset under
   `~/Library/Application Support/Peak/<Product>/Presets`.
 
+**A factory preset's category is the prefix in its filename.** `Modulated -
+Deep Wow.xml` is filed under a "Modulated" column in the picker and shown there
+as "Deep Wow"; a file with no ` - ` in its name is a top-level entry, which is
+what Peak Delay's six headline presets are. The split happens in
+`PresetPicker.jsx` and nowhere else - the store, the bridge and `presetLoad` all
+keep speaking in whole names. It lives in the name because that is all a factory
+preset has: the glob is flat and `juce_add_binary_data` keeps only each file's
+basename, so a subfolder would not survive into the binary. Categories sort
+alphabetically; the uncategorised ones follow them.
+
 A preset is `apvts.copyState()` and nothing else, so state a processor keeps
 outside the tree is not in one. **Every parameter must appear in every preset
 file**: `APVTS::replaceState` re-appends a parameter the tree is missing and
 fills it from whatever that parameter currently holds, so a partial preset
 silently inherits from whichever preset was loaded before it. `ee_preset_tests`
-guards this.
+guards this for every preset in the bank, by loading each one twice from
+opposite ends of every range and checking it lands in the same place both times.
+
+**A whole tree arriving at once is not a knob being turned.** Peak Delay links
+its two Time knobs while Sync L/R is on, off an APVTS parameter listener - and
+that listener fired for each of the three parameters a preset load writes while
+the button still held the *previous* state, collapsing any preset whose two
+sides are deliberately apart onto one of them. `PresetStore::installState` is
+the hook that fixes it: a processor that has to hold something off for the
+length of an install hands its own bracket in, rather than the store calling
+`replaceState` itself. `PeakDelayProcessor::installState` is the one
+implementation so far, and every route a tree arrives by - `setStateInformation`
+included - goes through it.
 
 Wiring a WebView pedal up is three things and nothing else:
 

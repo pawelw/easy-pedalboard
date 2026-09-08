@@ -65,6 +65,18 @@ public:
         rescan();
     }
 
+    /** How a loaded preset is put into the processor. Left unset it is
+        `APVTS::replaceState`, which is what loading a preset *is* and what
+        every pedal on this store wants.
+
+        It is a hook because "the tree arrived all at once" is a thing a
+        processor may need to know, and only the processor can know what to do
+        about it: Peak Delay holds its Sync L/R mirror off for the length of
+        the install, or a preset whose two Time knobs are deliberately apart is
+        collapsed onto one of them on the way in. Set it once, before anything
+        is loaded; message thread only, like the rest of this. */
+    std::function<void (const juce::ValueTree&)> installState;
+
     //==============================================================================
     juce::StringArray factoryNames() const { return factoryList; }
     juce::StringArray userNames() const { return userList; }
@@ -87,7 +99,12 @@ public:
         if (xml == nullptr || ! xml->hasTagName (state.state.getType()))
             return false;
 
-        state.replaceState (juce::ValueTree::fromXml (*xml));
+        const auto tree = juce::ValueTree::fromXml (*xml);
+
+        if (installState)
+            installState (tree);
+        else
+            state.replaceState (tree);
 
         selectedKind = kind;
         selectedName = name;

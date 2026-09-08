@@ -29,9 +29,9 @@ function useDemoStrikes(everyMs = 2000) {
 }
 
 // Every component new in the onyx handoff (design_handoff_peak_delay_onyx/),
-// rendered once per theme so a token change in tokens.css shows up on both
-// columns immediately. Onyx looks identical to light until Phase 2 adds the
-// `[data-pui-theme="onyx"]` block - that's expected, not a bug in this page.
+// rendered once per theme so a token change in tokens.css shows up on every
+// column immediately. A theme whose block does not override a given token
+// shows the :root value there - that's the point of the page, not a bug.
 function Showcase() {
   const [knob, setKnob] = useState(0.4);
   const [soft, setSoft] = useState(0.5);
@@ -41,6 +41,11 @@ function Showcase() {
   const [outLevel, setOutLevel] = useState(0.66);
   const [linked, setLinked] = useState(true);
   const [ms, setMs] = useState(false);
+  // Held here so the bar is controlled: with no selection to show, the picker
+  // cannot demonstrate the thing worth looking at - that picking a preset out
+  // of a category column puts its short name in the box and re-opens on the
+  // right column next time.
+  const [preset, setPreset] = useState(null);
   const strikes = useDemoStrikes();
 
   return (
@@ -51,7 +56,7 @@ function Showcase() {
       // fit on one header line - the centre slot is centred on the card, so a
       // left half wider than half the card runs into it.
       width={640}
-      headerCenter={<PresetBar />}
+      headerCenter={<PresetBar value={preset} onLoad={setPreset} />}
       headerRight={
         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
           <Slider compact fine orientation="horizontal" length={74} label="In" value={inLevel} onChange={setInLevel} centreValue={2 / 3} valueLabel={`${Math.round(inLevel * 36 - 24)}.0 dB`} />
@@ -160,6 +165,15 @@ export default function Components() {
         <div>
           <h2 className="components-columns__label">Onyx</h2>
           <PedalUIProvider theme="onyx">
+            <div className="components-columns__pane">
+              <Showcase />
+            </div>
+          </PedalUIProvider>
+        </div>
+
+        <div>
+          <h2 className="components-columns__label">Grey</h2>
+          <PedalUIProvider theme="grey">
             <div className="components-columns__pane">
               <Showcase />
             </div>

@@ -67,9 +67,9 @@
   --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
   --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
 
-  /* Below: the light half of the two-theme token set (see PedalUIProvider's
-     `theme` prop and the `[data-pui-theme="onyx"]` block that overrides
-     these). Values here are either brand new (the `variant="scale"` Knob,
+  /* Below: the default half of the token set (see PedalUIProvider's `theme`
+     prop and the `[data-pui-theme="onyx"]` / `[data-pui-theme="grey"]` blocks
+     that override these). Values here are either brand new (the `variant="scale"` Knob,
      Readout, TapScope, Pill...) or a token wrapping something Card already
      hardcoded - in both cases the number is identical to what was already
      on screen, so nothing about today's rendering moves. */
@@ -137,9 +137,9 @@
 /* Phase 2 of the onyx handoff (design_handoff_peak_delay_onyx/TOKENS.md) -
    these values are the repo's own PedalTheme::onyx() (shared/src/ui/
    PedalTheme.cpp), kept equal on purpose so the JUCE face and the web face
-   never drift apart. Applied via <PedalUIProvider theme="onyx">, which is
-   the only thing that ever sets data-pui-theme - Wah never passes `theme`,
-   so none of this reaches it. */
+   never drift apart. Applied via <PedalUIProvider theme="onyx"> - the
+   provider is the only thing that ever sets data-pui-theme, and Wah never
+   passes `theme`, so none of this reaches it. */
 [data-pui-theme="onyx"] {
   --pui-page: #0f1315;
   --pui-panel: #171d20;
@@ -197,6 +197,93 @@
   --pui-radius-panel: 20px;
   --pui-panel-grain: none;
   --pui-panel-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
+}
+
+/* The third theme: a cool, low-contrast grey in the soft-UI idiom - white
+   modules on a neutral grey ground, charcoal ink rather than black, and every
+   edge carried by a shadow instead of a line. Where `light` is warm paper
+   (cream panel, black ink, printed grain) this is moulded plastic, so the
+   differences that matter are not just hue: the grain comes off, the panel
+   goes near-white, and the ink stops at a soft charcoal so nothing on the
+   face is pure black except by shadow.
+
+   Unlike onyx this has no PedalTheme counterpart in shared/src/ui - the
+   native `silver()` there is an unrelated dark-ground analog palette, which
+   is why this one is "grey". Nothing has to be kept in sync with C++.
+
+   Grey inherits far more from :root than onyx does: it is a light theme, so
+   the LED, the amber dry mark, the collar-knob group and the scope fills all
+   still read correctly and are deliberately left alone. What is listed here
+   is what actually moves. */
+[data-pui-theme="grey"] {
+  --pui-page: #d7d9da;
+  --pui-panel: #f4f5f6;
+  --pui-panel-edge: #e9eaec;
+  --pui-outline: rgba(20, 24, 28, 0.09);
+  /* Charcoal, not #1c1c1a: on a near-white panel this style reads as moulded
+     and evenly lit, and true black on it reads as printed. Every ink below
+     steps down from here at the same ratios the cream theme uses. */
+  --pui-ink: #3c4043;
+  --pui-ink-soft: #70757a;
+  --pui-ink-dim: #9ba0a5;
+  --pui-line: #dfe1e3;
+  --pui-divider: #e6e8ea;
+
+  /* Kept equal, the way :root's pair is - one "recessed display" colour under
+     two names. */
+  --pui-recess: #ebedee;
+  --pui-scope-bg: #ebedee;
+  --pui-recess-ink: #8d9297;
+  --pui-scope-grid: #dcdfe1;
+
+  --pui-tick: #d0d3d6;
+  --pui-tick-lit: #3c4043; /* grayscale on purpose - see the :root comment */
+
+  --pui-knob-body: #2f3235; /* the ring */
+  --pui-cap-grad-top: #ffffff;
+  --pui-cap-grad-bottom: #e8eaec;
+  --pui-cap-ring: #d6d9dc;
+  --pui-pointer: #34383b;
+
+  --pui-pill-on-bg: #3c4043;
+  --pui-pill-on-ink: #f4f5f6;
+  --pui-pill-off-border: #c2c6c9;
+  --pui-pill-off-ink: #70757a;
+
+  /* Cool and diffuse. The shadows are this theme's only edges, so they are
+     softer and wider than the cream theme's but no darker - a tight dark
+     shadow on a near-white panel reads as a cut-out rather than a raised cap. */
+  --pui-knob-shadow: 0 2px 6px rgba(20, 24, 28, 0.14);
+  --pui-well-shadow: inset 0 1px 4px rgba(20, 24, 28, 0.12);
+
+  /* variant="soft", grey. The cap is the face: white at the top edge falling
+     to the panel's own value, so it lifts off a ground it nearly matches on
+     shading alone. The arc is the one hue on the whole theme - a steel blue
+     rather than the cream theme's green, which belongs to the tape band's
+     family and would read as a stray piece of that band over here. */
+  --pui-soft-face-top: #ffffff;
+  --pui-soft-face-bottom: #e9ebed;
+  --pui-soft-face-hi: rgba(255, 255, 255, 0.95);
+  --pui-soft-rim: rgba(40, 44, 48, 0.1);
+  --pui-soft-rim-hi: rgba(255, 255, 255, 0.98);
+  --pui-soft-rim-lo: rgba(40, 44, 48, 0.2);
+  --pui-soft-needle: #34383b;
+  --pui-soft-track: #dfe1e4;
+  --pui-soft-lit: #6e8ea8;
+  --pui-soft-shadow: 0 3px 7px rgba(20, 24, 28, 0.1), 0 9px 18px rgba(20, 24, 28, 0.07);
+
+  /* Charcoal rather than the cream theme's flat black - brightness(0) crushes
+     the mark to black, invert() then lifts it to --pui-ink's value. */
+  --pui-logo-filter: brightness(0) invert(24%);
+
+  /* No grain: the cream panel's is paper fibre under a printed face, and this
+     panel is not paper. Radius and shadow sit between light's and onyx's. */
+  --pui-radius-panel: 16px;
+  --pui-panel-grain: none;
+  --pui-panel-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
+    0 2px 8px rgba(20, 24, 28, 0.07),
+    0 16px 32px rgba(20, 24, 28, 0.1);
 }
 
 /* StageGroup's "tape" tone (design_handoff_peak_delay_onyx/TOKENS.md's

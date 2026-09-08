@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#0f1315;font-family:"Space Grotesk",-apple-system,"Helvetica Neue",sans-serif}*{box-sizing:border-box;user-select:none;-webkit-user-select:none}a{color:#b9d3d9}a:hover{color:#d6e8ec}</style></helmet>
+
+<div style="min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:28px 20px 48px">
+
+<div style="flex:none;width:1046px;background:#171d20;border:1px solid #2b2b2b;border-radius:20px;box-shadow:0 20px 44px rgba(0,0,0,.4);padding:20px 24px 22px;overflow:hidden">
+
+  <div style="display:flex;align-items:center;gap:14px;padding:0 2px 18px">
+    <div style="flex:1 1 0;display:flex;align-items:center;gap:11px">
+      <img src="assets/peak-logo.png" alt="Peak" style="width:32px;height:32px;object-fit:contain;filter:brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg)">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <h1 style="margin:0;font-size:19px;font-weight:700;letter-spacing:.01em;color:#b9d3d9;white-space:nowrap">Peak Machine</h1>
+        <span style="font-size:9px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:#6c8288;white-space:nowrap">Modulation / Delay / Reverb machine</span>
+      </div>
+    </div>
+
+    <div style="flex:none;display:flex;align-items:center;gap:10px">
+      <div style="display:flex;align-items:center;gap:6px">
+        <button type="button" style="width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid #2a3336;border-radius:8px;background:#1b2225;color:#9fb8bd;cursor:pointer" style-hover="background:#232c30;color:#d6e8ec"><svg width="8" height="12" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 1.2 L1.6 5 L5.2 8.8"></path></svg></button>
+        <button type="button" style="width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid #2a3336;border-radius:8px;background:#1b2225;color:#9fb8bd;cursor:pointer" style-hover="background:#232c30;color:#d6e8ec"><svg width="8" height="12" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 1.2 L5.4 5 L1.8 8.8"></path></svg></button>
+        <div style="position:relative">
+          <div style="width:190px;height:28px;line-height:26px;padding:0 30px 0 13px;font-size:12px;font-weight:500;letter-spacing:.01em;border:1px solid #2a3336;border-radius:8px;background:#1b2225;color:#cfe2e6;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">Halo Tape Room</div>
+          <svg width="10" height="13" viewBox="0 0 9 12" fill="none" stroke="#9fb8bd" stroke-width="1.5" stroke-linecap="round" style="position:absolute;right:11px;top:8px"><path d="M1.5 4.6 L4.5 1.6 L7.5 4.6"></path><path d="M1.5 7.4 L4.5 10.4 L7.5 7.4"></path></svg>
+        </div>
+      </div>
+      <button type="button" style="width:28px;height:28px;padding:0;display:flex;align-items:center;justify-content:center;border:1px solid #2a3336;border-radius:8px;background:#1b2225;color:#9fb8bd;cursor:pointer" style-hover="background:#232c30;color:#d6e8ec"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 2.5h8.5l2.5 2.5v8.5h-11z"></path><path d="M5.5 2.5h5v3.5h-5z"></path><path d="M5.5 9.5h5v4h-5z"></path></svg></button>
+    </div>
+
+    <div style="flex:1 1 0;display:flex;align-items:center;justify-content:flex-end;gap:32px">
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="width:20px;flex:none;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8ba3a9">In</span>
+          <div style="position:relative;width:104px;height:18px;display:flex;flex-direction:column;justify-content:center;cursor:grab">
+            <div style="width:100%;height:4px;border-radius:999px;background:#39474b;position:relative;overflow:hidden"><div style="position:absolute;left:0;top:0;bottom:0;width:62%;background:#8ba3a9;border-radius:inherit"></div></div>
+            <div style="position:absolute;left:62%;top:50%;width:13px;height:13px;margin-left:-6.5px;transform:translateY(-50%);border-radius:50%;background:#b9d3d9;box-shadow:0 8px 18px rgba(0,0,0,.55)"></div>
+          </div>
+          <span style="width:46px;text-align:right;font-size:9px;font-weight:500;letter-spacing:.04em;color:#6c8288;font-variant-numeric:tabular-nums">0.0 dB</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:7px">
+          <span style="width:20px;flex:none;font-size:8px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8ba3a9">Out</span>
+          <div style="position:relative;width:104px;height:18px;display:flex;flex-direction:column;justify-content:center;cursor:grab">
+            <div style="width:100%;height:4px;border-radius:999px;background:#39474b;position:relative;overflow:hidden"><div style="position:absolute;left:0;top:0;bottom:0;width:58%;background:#8ba3a9;border-radius:inherit"></div></div>
+            <div style="position:absolute;left:58%;top:50%;width:13px;height:13px;margin-left:-6.5px;transform:translateY(-50%);border-radius:50%;background:#b9d3d9;box-shadow:0 8px 18px rgba(0,0,0,.55)"></div>
+          </div>
+          <span style="width:46px;text-align:right;font-size:9px;font-weight:500;letter-spacing:.04em;color:#6c8288;font-variant-numeric:tabular-nums">-1.5 dB</span>
+        </div>
+      </div>
+
+      <button type="button" onClick="{{ toggleBypass }}" style="display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:999px;border:1px solid #2a3336;background:transparent;color:#8ba3a9;font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 1.6 V7"></path><path d="M12.1 3.6 A6 6 0 1 1 3.9 3.6"></path></svg>
+        <span>{{ bypassLabel }}</span>
+      </button>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:stretch;gap:14px">
+
+    <div style="flex:none;width:186px;display:flex;flex-direction:column;background:#20292d;border:1px solid #161c1e;border-radius:8px;overflow:hidden;box-shadow:1px 3px 3px -1px rgba(0,0,0,.54);--pui-soft-lit:#e0b23c">
+      <div style="display:flex;align-items:center;gap:10px;padding:13px 12px 12px;min-height:56px;border-bottom:1px solid #0a0b0c">
+        <button type="button" style="flex:none;width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(224,178,60,.4);background:transparent;color:#e0b23c;cursor:pointer" style-hover="background:rgba(224,178,60,.12)"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 1.6 V7"></path><path d="M12.1 3.6 A6 6 0 1 1 3.9 3.6"></path></svg></button>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#b9d3d9">Modulation</span>
+        <span style="flex:1"></span>
+        <div style="flex:none;display:flex;align-items:center">
+          <div style="position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center">
+            <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ modHead.box }}" height="{{ modHead.box }}" viewBox="{{ modHead.vb }}" fill="none" stroke-width="2.2" stroke-linecap="round">
+              <path d="{{ modHead.dTrack }}" style="stroke:#2b3639"></path>
+              <path d="{{ modHead.dLit }}" style="stroke:#e0b23c"></path>
+            </svg>
+            <div style="position:absolute;inset:1.5px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 .5px 1px rgba(185,211,217,.3),0 4px 10px rgba(0,0,0,.5)">
+              <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ modHead.rot }}"><div style="position:absolute;top:12%;left:50%;height:28%;width:2px;margin-left:-1px;border-radius:999px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1;display:flex;flex-direction:column;padding:14px 12px 0">
+        <div style="display:flex;align-items:center;gap:2px;padding:5px 6px;border-radius:9px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)">
+          <button type="button" onClick="{{ modPrev }}" style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:#e0b23c;cursor:pointer" style-hover="background:rgba(255,255,255,.08)"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 1.2 L1.6 5 L5.2 8.8"></path></svg></button>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:9px;min-width:0">
+            <span style="flex:none;display:flex;color:#e0b23c">
+              <sc-if value="{{ modIsTape }}" hint-placeholder-val="{{ false }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="16.5" width="37" height="14" rx="2"></rect><rect x="6.5" y="30.5" width="4.5" height="2.4" rx="1"></rect><rect x="33" y="30.5" width="4.5" height="2.4" rx="1"></rect><rect x="15" y="21.5" width="14" height="7.2" rx="1.6"></rect><circle cx="18.2" cy="24" r="0.85" fill="currentColor" stroke="none"></circle><circle cx="25.8" cy="24" r="0.85" fill="currentColor" stroke="none"></circle><circle cx="11" cy="11" r="10" style="fill:#101416"></circle><circle cx="33" cy="11" r="10" style="fill:#101416"></circle><g fill="currentColor" stroke="none"><path d="M9.69 6.7 L8.37 2.4 L13.63 2.4 L12.31 6.7 Z"></path><path d="M15.38 12.01 L19.77 13.03 L17.14 17.58 L14.07 14.29 Z"></path><path d="M7.93 14.29 L4.86 17.58 L2.23 13.03 L6.62 12.01 Z"></path><path d="M31.69 6.7 L30.37 2.4 L35.63 2.4 L34.31 6.7 Z"></path><path d="M37.38 12.01 L41.77 13.03 L39.14 17.58 L36.07 14.29 Z"></path><path d="M29.93 14.29 L26.86 17.58 L24.23 13.03 L28.62 12.01 Z"></path></g><circle cx="11" cy="11" r="3.2"></circle><circle cx="33" cy="11" r="3.2"></circle></svg></sc-if>
+              <sc-if value="{{ modIsTrem }}" hint-placeholder-val="{{ true }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"><path d="M2 18 C5 12, 8 24, 11 18 C14.5 8, 18 28, 22 18 C26 6, 30 30, 34 18 C37 11, 40 25, 42 18"></path></svg></sc-if>
+              <sc-if value="{{ modIsChorus }}" hint-placeholder-val="{{ false }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M11 24 C16 6, 24 6, 29 18 C34 30, 42 30, 47 12" opacity=".3"></path><path d="M6 24 C11 6, 19 6, 24 18 C29 30, 37 30, 42 12" opacity=".55"></path><path d="M1 24 C6 6, 14 6, 19 18 C24 30, 32 30, 37 12"></path></svg></sc-if>
+              <sc-if value="{{ modIsPhaser }}" hint-placeholder-val="{{ false }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 11 C9 11, 11 29, 17 29 C23 29, 25 11, 31 11 L42 11"></path></svg></sc-if>
+            </span>
+            <span style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ modEngineName }}</span>
+          </div>
+          <button type="button" onClick="{{ modNext }}" style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:#e0b23c;cursor:pointer" style-hover="background:rgba(255,255,255,.08)"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 1.2 L5.4 5 L1.8 8.8"></path></svg></button>
+        </div>
+
+        <sc-if value="{{ modIsTrem }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:16px;height:63px;border-radius:12px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;padding:0 14px">
+            <span style="position:absolute;left:0;right:0;top:50%;height:1px;background:#233034"></span>
+            <sc-for list="{{ tremBars }}" as="bar" hint-placeholder-count="26">
+              <i style="display:block;width:3px;border-radius:2px;background:#e0b23c;opacity:.85;height:{{ bar.h }}"></i>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <div style="margin-top:22px;display:flex;flex-direction:column;gap:18px">
+          <sc-for list="{{ modRows }}" as="row" hint-placeholder-count="2">
+            <div style="display:flex;align-items:flex-start;justify-content:space-evenly;gap:8px">
+          <sc-for list="{{ row.knobs }}" as="k" hint-placeholder-count="2">
+            <div style="display:flex;flex-direction:column;align-items:center;width:76px">
+              <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
+                <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                  <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
+                  <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+                </svg>
+                <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                  <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+                </div>
+              </div>
+              <div style="margin-top:3.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap;text-align:center">{{ k.name }}</div>
+            </div>
+          </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;border-top:1px solid #0a0b0c;padding:14px 12px 12px;display:flex;align-items:center;justify-content:center">
+        <sc-for list="{{ modFooter }}" as="k" hint-placeholder-count="2">
+          <div style="display:flex;flex-direction:column;align-items:center;width:76px">
+            <div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
+                <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+              </svg>
+              <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:3.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ k.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div style="flex:none;width:598px;display:flex;flex-direction:column;background:#131819;border:1px solid #303a3e;border-radius:8px;overflow:hidden;box-shadow:1px 3px 3px -1px rgba(0,0,0,.54);--pui-soft-lit:#a3ce7a">
+      <div style="display:flex;align-items:center;gap:10px;padding:13px 18px 12px;min-height:56px;border-bottom:1px solid #222b2e">
+        <button type="button" style="flex:none;width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(163,206,122,.4);background:transparent;color:#a3ce7a;cursor:pointer" style-hover="background:rgba(163,206,122,.12)"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 1.6 V7"></path><path d="M12.1 3.6 A6 6 0 1 1 3.9 3.6"></path></svg></button>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#b9d3d9">Delay</span>
+        <span style="flex:1"></span>
+      </div>
+
+      <div style="flex:1;display:flex;flex-direction:column;padding:16px 18px 0">
+        <div style="height:78px;border-radius:12px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);position:relative;overflow:hidden">
+          <span style="position:absolute;left:0;right:0;top:50%;height:1px;background:#233034"></span>
+          <span style="position:absolute;left:10px;top:8px;font-size:8px;font-weight:700;letter-spacing:.14em;color:#8ba3a9">L</span>
+          <span style="position:absolute;left:10px;bottom:8px;font-size:8px;font-weight:700;letter-spacing:.14em;color:#8ba3a9">R</span>
+          <span style="position:absolute;left:38px;top:50%;width:4px;height:56px;margin-top:-28px;border-radius:2px;background:#e0b23c"></span>
+          <div style="position:absolute;left:58px;right:20px;top:0;bottom:0;display:flex;align-items:center;justify-content:space-between">
+            <sc-for list="{{ taps }}" as="tap" hint-placeholder-count="8">
+              <i style="display:block;width:4px;border-radius:2px;background:#b9d3d9;align-self:center;height:{{ tap.h }};transform:{{ tap.tf }};opacity:{{ tap.o }}"></i>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:flex-start;justify-content:center;gap:32px;margin-top:32px">
+          <div style="width:104px;display:flex;flex-direction:column;align-items:center">
+            <div style="position:relative;width:76px;height:76px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ mixK.box }}" height="{{ mixK.box }}" viewBox="{{ mixK.vb }}">
+                <g stroke-width="2" stroke-linecap="round">
+                  <sc-for list="{{ mixK.dim }}" as="t" hint-placeholder-count="13"><line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" style="stroke:#39474b"></line></sc-for>
+                  <sc-for list="{{ mixK.lit }}" as="t" hint-placeholder-count="7"><line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" style="stroke:#b4b4b4"></line></sc-for>
+                </g>
+              </svg>
+              <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)"></div>
+              <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ mixK.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:3px;margin-left:-1.5px;border-radius:999px;background:#b9d3d9"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#b9d3d9">Mix</div>
+            <div style="margin-top:4px;font-size:10px;font-weight:500;color:#8ba3a9">35 %</div>
+          </div>
+
+          <div style="width:104px;display:flex;flex-direction:column;align-items:center">
+            <div style="position:relative;width:76px;height:76px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ fbK.box }}" height="{{ fbK.box }}" viewBox="{{ fbK.vb }}">
+                <g stroke-width="2" stroke-linecap="round">
+                  <sc-for list="{{ fbK.dim }}" as="t" hint-placeholder-count="13"><line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" style="stroke:#39474b"></line></sc-for>
+                  <sc-for list="{{ fbK.lit }}" as="t" hint-placeholder-count="7"><line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" style="stroke:#b4b4b4"></line></sc-for>
+                </g>
+              </svg>
+              <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)"></div>
+              <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ fbK.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:3px;margin-left:-1.5px;border-radius:999px;background:#b9d3d9"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:6px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#b9d3d9">Feedback</div>
+            <div style="margin-top:4px;font-size:10px;font-weight:500;color:#8ba3a9">35 %</div>
+          </div>
+
+          <div style="width:274px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;align-items:stretch">
+              <div style="position:relative;flex:none;width:38px">
+                <span style="position:absolute;left:14.5px;right:10px;top:21px;bottom:calc(50% + 18px);border-left:1px solid #2a3336;border-top:1px solid #2a3336;border-top-left-radius:4px;pointer-events:none"></span>
+                <span style="position:absolute;left:14.5px;right:10px;top:calc(50% + 18px);bottom:21px;border-left:1px solid #2a3336;border-bottom:1px solid #2a3336;border-bottom-left-radius:4px;pointer-events:none"></span>
+                <div style="position:absolute;left:5%;top:50%;transform:translateY(-50%);width:29px;height:29px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:#b9d3d9;color:#171d20;box-shadow:0 2px 6px rgba(0,0,0,.45)">
+                  <svg width="15" height="15" viewBox="0 0 20 20" fill="none"><g stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" transform="rotate(45 10 10)"><rect x="6.6" y="2.4" width="6.8" height="10.4" rx="3.4"></rect><rect x="6.6" y="7.2" width="6.8" height="10.4" rx="3.4"></rect></g></svg>
+                </div>
+              </div>
+
+              <div style="flex:1;min-width:0;margin-left:9px;display:flex;flex-direction:column;gap:24px">
+                <sc-for list="{{ timeRows }}" as="row" hint-placeholder-count="2">
+                  <div style="display:flex;align-items:center;gap:11px">
+                    <div style="position:relative;width:42px;height:42px;flex:none;display:flex;align-items:center;justify-content:center">
+                      <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ row.k.box }}" height="{{ row.k.box }}" viewBox="{{ row.k.vb }}">
+                        <g stroke-width="1.4" stroke-linecap="round">
+                          <sc-for list="{{ row.k.dim }}" as="t" hint-placeholder-count="10"><line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" style="stroke:#39474b"></line></sc-for>
+                          <sc-for list="{{ row.k.lit }}" as="t" hint-placeholder-count="10"><line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" style="stroke:#b4b4b4"></line></sc-for>
+                        </g>
+                      </svg>
+                      <div style="position:absolute;inset:0;border-radius:50%;background:#0b0e10;box-shadow:0 8px 18px rgba(0,0,0,.55)"></div>
+                      <div style="position:absolute;inset:8%;border-radius:50%;background:linear-gradient(180deg,#364347,#191f22);box-shadow:inset 0 1px 0 rgba(185,211,217,.25)">
+                        <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ row.k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+                      </div>
+                    </div>
+                    <div style="flex:1;min-width:0;margin-left:16px;display:flex;align-items:center;gap:6px;padding:8px 11px;border-radius:10px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)">
+                      <span style="flex:0 0 34px;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8ba3a9">{{ row.side }}</span>
+                      <span style="flex:1;min-width:0;font-size:19px;font-weight:700;color:#b9d3d9;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ row.value }}</span>
+                      <span style="font-size:9.5px;font-weight:500;color:#6c8288;white-space:nowrap">{{ row.unit }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:7px;margin-left:44px">
+              <button type="button" style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid transparent;background:#b9d3d9;color:#171d20;font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Sync</button>
+              <button type="button" style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid #2a3336;background:transparent;color:#8ba3a9;font-family:inherit;font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Normal</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:20px;display:flex;border-top:1px solid #222b2e">
+        <div style="flex:1 1 0;min-width:0;display:flex;align-items:center;padding:12px 14px;background:#375916">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:17.5px;--pui-soft-lit:#d8f088">
+            <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+              <span style="flex:none;display:flex;color:#d8f088"><svg width="30" height="24" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><rect x="3.5" y="16.5" width="37" height="14" rx="2"></rect><rect x="6.5" y="30.5" width="4.5" height="2.4" rx="1"></rect><rect x="33" y="30.5" width="4.5" height="2.4" rx="1"></rect><rect x="15" y="21.5" width="14" height="7.2" rx="1.6"></rect><circle cx="18.2" cy="24" r="0.85" fill="currentColor" stroke="none"></circle><circle cx="25.8" cy="24" r="0.85" fill="currentColor" stroke="none"></circle><circle cx="11" cy="11" r="10" style="fill:#375916"></circle><circle cx="33" cy="11" r="10" style="fill:#375916"></circle><g fill="currentColor" stroke="none"><path d="M9.69 6.7 L8.37 2.4 L13.63 2.4 L12.31 6.7 Z"></path><path d="M15.38 12.01 L19.77 13.03 L17.14 17.58 L14.07 14.29 Z"></path><path d="M7.93 14.29 L4.86 17.58 L2.23 13.03 L6.62 12.01 Z"></path><path d="M31.69 6.7 L30.37 2.4 L35.63 2.4 L34.31 6.7 Z"></path><path d="M37.38 12.01 L41.77 13.03 L39.14 17.58 L36.07 14.29 Z"></path><path d="M29.93 14.29 L26.86 17.58 L24.23 13.03 L28.62 12.01 Z"></path></g><circle cx="11" cy="11" r="3.2"></circle><circle cx="33" cy="11" r="3.2"></circle></svg></span>
+              <span style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;color:#f2f7e6">Tape</span>
+              <div style="display:flex;align-items:center;gap:2px;padding:3px 4px;border-radius:7px;background:#2b4410;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)">
+                <button type="button" style="width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:#d8f088;cursor:pointer"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 1.2 L1.6 5 L5.2 8.8"></path></svg></button>
+                <span style="min-width:28px;text-align:center;font-size:9px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;white-space:nowrap;color:#f2f7e6">Pre</span>
+                <button type="button" style="width:16px;height:16px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:#d8f088;cursor:pointer"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 1.2 L5.4 5 L1.8 8.8"></path></svg></button>
+              </div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-evenly;gap:6.5px">
+              <sc-for list="{{ tapeStage }}" as="k" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:column;align-items:center">
+                  <div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
+                    <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                      <path d="{{ k.dTrack }}" style="stroke:#5a7f2a"></path>
+                      <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+                    </svg>
+                    <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                      <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#d8f088"></div></div>
+                    </div>
+                  </div>
+                  <div style="margin-top:3.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#f2f7e6;white-space:nowrap">{{ k.name }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1 1 0;min-width:0;display:flex;align-items:center;padding:12px 14px">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:17.5px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+              <span style="flex:none;display:flex;color:#b9d3d9"><svg width="30" height="24" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M11 24 C16 6, 24 6, 29 18 C34 30, 42 30, 47 12" opacity=".3"></path><path d="M6 24 C11 6, 19 6, 24 18 C29 30, 37 30, 42 12" opacity=".55"></path><path d="M1 24 C6 6, 14 6, 19 18 C24 30, 32 30, 37 12"></path></svg></span>
+              <span style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;color:#b9d3d9">Mod</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-evenly;gap:6.5px">
+              <sc-for list="{{ modStage }}" as="k" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:column;align-items:center">
+                  <div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
+                    <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                      <path d="{{ k.dTrack }}" style="stroke:#39474b"></path>
+                      <path d="{{ k.dLit }}" style="stroke:#b4b4b4"></path>
+                    </svg>
+                    <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                      <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+                    </div>
+                  </div>
+                  <div style="margin-top:3.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ k.name }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+
+        <div style="flex:1 1 0;min-width:0;display:flex;align-items:center;padding:12px 14px;border-left:1px solid #222b2e">
+          <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:17.5px">
+            <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+              <span style="flex:none;display:flex;color:#b9d3d9"><svg width="30" height="24" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 30 C9 30, 10 8, 17 8 L27 8 C34 8, 35 30, 42 30"></path></svg></span>
+              <span style="font-size:9px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;white-space:nowrap;color:#b9d3d9">Filter</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-evenly;gap:6.5px">
+              <sc-for list="{{ filterStage }}" as="k" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:column;align-items:center">
+                  <div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
+                    <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                      <path d="{{ k.dTrack }}" style="stroke:#39474b"></path>
+                      <path d="{{ k.dLit }}" style="stroke:#b4b4b4"></path>
+                    </svg>
+                    <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                      <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+                    </div>
+                  </div>
+                  <div style="margin-top:3.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ k.name }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex:none;width:186px;display:flex;flex-direction:column;background:#20292d;border:1px solid #161c1e;border-radius:8px;overflow:hidden;box-shadow:1px 3px 3px -1px rgba(0,0,0,.54);--pui-soft-lit:#7fd2d8">
+      <div style="display:flex;align-items:center;gap:10px;padding:13px 12px 12px;min-height:56px;border-bottom:1px solid #0a0b0c">
+        <button type="button" style="flex:none;width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(127,210,216,.4);background:transparent;color:#7fd2d8;cursor:pointer" style-hover="background:rgba(127,210,216,.12)"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 1.6 V7"></path><path d="M12.1 3.6 A6 6 0 1 1 3.9 3.6"></path></svg></button>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#b9d3d9">Reverb</span>
+        <span style="flex:1"></span>
+        <div style="flex:none;display:flex;align-items:center">
+          <div style="position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center">
+            <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ revHead.box }}" height="{{ revHead.box }}" viewBox="{{ revHead.vb }}" fill="none" stroke-width="2.2" stroke-linecap="round">
+              <path d="{{ revHead.dTrack }}" style="stroke:#2b3639"></path>
+              <path d="{{ revHead.dLit }}" style="stroke:#7fd2d8"></path>
+            </svg>
+            <div style="position:absolute;inset:1.5px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 .5px 1px rgba(185,211,217,.3),0 4px 10px rgba(0,0,0,.5)">
+              <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ revHead.rot }}"><div style="position:absolute;top:12%;left:50%;height:28%;width:2px;margin-left:-1px;border-radius:999px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1;display:flex;flex-direction:column;padding:14px 12px 0">
+        <div style="display:flex;align-items:center;gap:2px;padding:5px 6px;border-radius:9px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)">
+          <button type="button" onClick="{{ revPrev }}" style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:#7fd2d8;cursor:pointer" style-hover="background:rgba(255,255,255,.08)"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 1.2 L1.6 5 L5.2 8.8"></path></svg></button>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:9px;min-width:0">
+            <span style="flex:none;display:flex;color:#7fd2d8">
+              <sc-if value="{{ revIsSpace }}" hint-placeholder-val="{{ true }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="22" cy="18" r="2.6" fill="currentColor" stroke="none"></circle><circle cx="22" cy="18" r="7"></circle><circle cx="22" cy="18" r="12" opacity=".55"></circle><circle cx="22" cy="18" r="16.5" opacity=".3"></circle></svg></sc-if>
+              <sc-if value="{{ revIsSpring }}" hint-placeholder-val="{{ false }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18 L8 6 L14 30 L20 6 L26 30 L32 6 L38 30 L42 18"></path></svg></sc-if>
+            </span>
+            <span style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ revEngineName }}</span>
+          </div>
+          <button type="button" onClick="{{ revNext }}" style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:#7fd2d8;cursor:pointer" style-hover="background:rgba(255,255,255,.08)"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 1.2 L5.4 5 L1.8 8.8"></path></svg></button>
+        </div>
+
+        <div style="margin-top:16px;height:63px;border-radius:12px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);position:relative;overflow:hidden;display:flex;align-items:flex-end;justify-content:center;gap:6px;padding:0 14px 16px">
+          <sc-for list="{{ decayBars }}" as="bar" hint-placeholder-count="7">
+            <i style="display:block;width:4px;border-radius:2px;background:#7fd2d8;opacity:.8;height:{{ bar.h }}"></i>
+          </sc-for>
+        </div>
+
+        <div style="margin-top:22px;display:flex;flex-direction:column;gap:20px">
+          <sc-for list="{{ revRows }}" as="row" hint-placeholder-count="3">
+            <div style="display:flex;align-items:flex-start;justify-content:space-evenly;gap:8px">
+              <sc-for list="{{ row.knobs }}" as="k" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:column;align-items:center;width:76px">
+                  <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
+                    <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                      <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
+                      <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+                    </svg>
+                    <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                      <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+                    </div>
+                  </div>
+                  <div style="margin-top:3.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap;text-align:center">{{ k.name }}</div>
+                </div>
+              </sc-for>
+            </div>
+          </sc-for>
+        </div>
+      </div>
+
+      <div style="margin-top:18px;border-top:1px solid #0a0b0c;padding:14px 12px 12px;display:flex;align-items:center;justify-content:center">
+        <sc-for list="{{ revFooter }}" as="k" hint-placeholder-count="1">
+          <div style="display:flex;flex-direction:column;align-items:center;width:76px">
+            <div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
+                <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+              </svg>
+              <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:3.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ k.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;modEngine&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Tape&quot;,&quot;Tremolo&quot;,&quot;Chorus&quot;,&quot;Phaser&quot;],&quot;default&quot;:&quot;Tremolo&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Engines&quot;},&quot;reverbEngine&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Space&quot;,&quot;Spring&quot;],&quot;default&quot;:&quot;Space&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Engines&quot;}}">
+const A0 = -135, A1 = 135;
+
+const pt = (r, d) => {
+  const rad = ((d - 90) * Math.PI) / 180;
+  return [Math.cos(rad) * r, Math.sin(rad) * r];
+};
+
+const arc = (r, from, to) => {
+  const [x1, y1] = pt(r, from);
+  const [x2, y2] = pt(r, to);
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${to - from > 180 ? 1 : 0} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+};
+
+/** variant="soft": one continuous arc hugging the rim (Knob.jsx's Sweep with
+    SOFT_SWEEP_GAP / SOFT_SWEEP_WIDTH_SMALL). */
+function soft(name, v, size = 40, from = "min") {
+  const gap = 3.5;
+  const width = size >= 60 ? 4 : 3;
+  const r = size / 2 + gap;
+  const box = r + width;
+  // from="max": a cut that rests wide open at the top of its travel, so what
+  // lights is the span between the value and the maximum (Knob.jsx's Sweep).
+  const fromMax = from === "max";
+  const lit = fromMax ? v < 0.996 : v > 0.004;
+  return {
+    name,
+    box: box * 2,
+    vb: `${-box} ${-box} ${box * 2} ${box * 2}`,
+    dTrack: arc(r, A0, A1),
+    dLit: lit ? (fromMax ? arc(r, A0 + v * 270, A1) : arc(r, A0, A0 + v * 270)) : "",
+    rot: `rotate(${(A0 + v * 270).toFixed(2)}deg)`,
+  };
+}
+
+/** variant="scale": the 20-dash tick ring, split into lit and unlit lists so
+    each keeps a literal colour instead of a per-tick style hole. */
+function scale(v, size, gap) {
+  const small = size < 60;
+  const len = small ? 4 : 6;
+  const th = small ? 1.4 : 2;
+  const rInner = size / 2 + gap;
+  const rOuter = rInner + len;
+  const box = rOuter + th;
+  const edge = Math.round(v * 19);
+  const lit = [], dim = [];
+  for (let i = 0; i < 20; i++) {
+    const a = A0 + (i * 270) / 19;
+    const [x1, y1] = pt(rInner, a);
+    const [x2, y2] = pt(rOuter, a);
+    const seg = { x1: x1.toFixed(2), y1: y1.toFixed(2), x2: x2.toFixed(2), y2: y2.toFixed(2) };
+    (v > 0.004 && i <= edge ? lit : dim).push(seg);
+  }
+  return {
+    box: box * 2,
+    vb: `${-box} ${-box} ${box * 2} ${box * 2}`,
+    lit,
+    dim,
+    rot: `rotate(${(A0 + v * 270).toFixed(2)}deg)`,
+  };
+}
+
+const MOD_ENGINES = ["Tape", "Tremolo", "Chorus", "Phaser"];
+
+const MOD_PARAMS = {
+  Tape: [["Saturation", 0.42], ["Flutter", 0.44], ["Wear", 0.22], ["Noise", 0.16]],
+  Tremolo: [["Amount", 0.58], ["Rate", 0.36], ["Shape", 0.5], ["Tube", 0.3]],
+  Chorus: [["Rate", 0.3], ["Depth", 0.46], ["Phase", 0.62]],
+  Phaser: [["Rate", 0.34], ["Depth", 0.52]],
+};
+
+const REV_ENGINES = ["Space", "Spring"];
+
+const REV_PARAMS = {
+  Space: [[["Decay", 0.62], ["Shimmer", 0.2]], [["Low Cut", 0.28], ["Reso", 0.5]]],
+  Spring: [[["Decay", 0.48], ["Tension", 0.56]], [["Low Cut", 0.22], ["Reso", 0.5]]],
+};
+
+/** Two knobs per row, so neither side module ever runs past two rows. */
+const pairs = (list) => {
+  const rows = [];
+  for (let i = 0; i < list.length; i += 2) rows.push(list.slice(i, i + 2));
+  return rows;
+};
+
+class Component extends DCLogic {
+  state = { mod: null, rev: null, bypassed: false };
+
+  componentDidUpdate(prev) {
+    if (prev.modEngine !== this.props.modEngine) this.setState({ mod: null });
+    if (prev.reverbEngine !== this.props.reverbEngine) this.setState({ rev: null });
+  }
+
+  step(key, list, current, delta) {
+    const i = (list.indexOf(current) + delta + list.length) % list.length;
+    this.setState({ [key]: list[i] });
+  }
+
+  renderVals() {
+    const modEngine = this.state.mod ?? this.props.modEngine ?? "Tremolo";
+    const revEngine = this.state.rev ?? this.props.reverbEngine ?? "Space";
+
+    const tremBars = [];
+    for (let i = 0; i < 26; i++) {
+      const env = Math.abs(Math.sin((i / 25) * Math.PI * 2));
+      tremBars.push({ h: `${(8 + env * 46).toFixed(1)}px` });
+    }
+
+    const tapHeights = [30, 24, 22, 17, 15, 11, 9, 7];
+    const taps = tapHeights.map((h, i) => ({
+      h: `${h}px`,
+      // Left-channel taps stand on the centre line and rise from it, right-
+      // channel ones hang below it - so both read off the same baseline.
+      tf: i % 2 === 0 ? `translateY(-${h / 2}px)` : `translateY(${h / 2}px)`,
+      o: (0.95 - i * 0.09).toFixed(2),
+    }));
+
+    const decayBars = [34, 29, 24, 19, 15, 11, 8].map((h) => ({ h: `${h}px` }));
+
+    return {
+      bypassLabel: this.state.bypassed ? "Bypassed" : "Active",
+      toggleBypass: () => this.setState((s) => ({ bypassed: !s.bypassed })),
+
+      modEngineName: modEngine,
+      modIsTape: modEngine === "Tape",
+      modIsTrem: modEngine === "Tremolo",
+      modIsChorus: modEngine === "Chorus",
+      modIsPhaser: modEngine === "Phaser",
+      modPrev: () => this.step("mod", MOD_ENGINES, modEngine, -1),
+      modNext: () => this.step("mod", MOD_ENGINES, modEngine, 1),
+      modRows: pairs(MOD_PARAMS[modEngine]).map((row) => ({ knobs: row.map(([n, v]) => soft(n, v, 40)) })),
+      modFooter: [soft("Mix", 0.4, 38)],
+      modHead: soft("Level", 0.55, 24),
+      tremBars,
+
+      taps,
+      mixK: scale(0.35, 76, 4),
+      fbK: scale(0.35, 76, 4),
+      timeRows: [
+        { side: "Left", value: "1/8", unit: "250ms", k: scale(0.5, 42, 6) },
+        { side: "Right", value: "1/8T", unit: "167ms", k: scale(0.42, 42, 6) },
+      ],
+      tapeStage: [soft("Wear", 0.22, 38), soft("Flutter", 0.44, 38)],
+      modStage: [soft("Drift", 0.3, 38), soft("Phaser", 0.18, 38)],
+      filterStage: [soft("Low Cut", 0.24, 38), soft("High Cut", 0.86, 38, "max")],
+
+      revEngineName: revEngine,
+      revIsSpace: revEngine === "Space",
+      revIsSpring: revEngine === "Spring",
+      revPrev: () => this.step("rev", REV_ENGINES, revEngine, -1),
+      revNext: () => this.step("rev", REV_ENGINES, revEngine, 1),
+      revRows: REV_PARAMS[revEngine].map((row) => ({ knobs: row.map(([n, v]) => soft(n, v, 40)) })),
+      revFooter: [soft("Mix", 0.34, 38)],
+      revHead: soft("Level", 0.5, 24),
+      decayBars,
+    };
+  }
+}
+
+</script>
+</body>
+</html>
