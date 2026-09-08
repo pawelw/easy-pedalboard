@@ -513,7 +513,7 @@ class Component extends DCLogic {
     const tremBars = [];
     for (let i = 0; i < 26; i++) {
       const env = Math.abs(Math.sin((i / 25) * Math.PI * 2));
-      tremBars.push({ h: `${(8 + env * 46).toFixed(1)}px` });
+      tremBars.push({ h: `${(8 + env * 26).toFixed(1)}px` });
     }
 
     const tapHeights = [30, 24, 22, 17, 15, 11, 9, 7];

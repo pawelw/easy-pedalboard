@@ -131,7 +131,8 @@ Engine parameters (knob rows of two, **never more than two rows**):
 Trem display (Tremolo only): 63px tall, `border-radius 12px`, `background #101416`,
 `box-shadow inset 0 2px 6px rgba(0,0,0,.6)`, a 1px `#233034` centre line, and 26
 accent bars (3px wide, radius 2px, `opacity .85`) whose heights trace
-`8 + 46·|sin(2π·i/25)|` px. No caption.
+`8 + 26·|sin(2π·i/25)|` px — an 8–34px range, matching the Reverb decay display.
+No caption.
 
 ### Delay module
 
