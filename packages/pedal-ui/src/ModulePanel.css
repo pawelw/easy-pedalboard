@@ -23,6 +23,14 @@
      with it so they occlude the deck body behind them - on a plain card that
      is --pui-panel, and here it is the module. See TapeIcon's own note. */
   --pui-stage-ground: var(--pui-module);
+
+  /* A whole pedal face dropped into a module draws its own internal dividers
+     off --pui-divider, which is picked to read against the *card's* panel -
+     on the module's lighter ground it all but disappears, and where it did
+     show it disagreed with the module's own header and footer strips. Both
+     problems are the same problem: inside a module, a line is a module line.
+     Set here rather than in the face, so the face never learns where it is. */
+  --pui-divider: var(--pui-module-divider);
 }
 
 .pui-module__header {

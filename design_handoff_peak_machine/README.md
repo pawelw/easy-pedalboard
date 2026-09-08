@@ -146,7 +146,12 @@ ring with `35 %` readouts, the linked Left/Right time knobs (42px, scale ring)
 joined by the brace and 29px link button feeding two readout fields
 (`LEFT 1/8 250ms`, `RIGHT 1/8T 167ms`), the `SYNC` / `NORMAL` pills, and the
 three-cell stage footer — **Tape** (with the `PRE` position stepper), **Mod**
-and **Filter**, divided by `1px solid #2a3336`.
+and **Filter**, divided by **two** `1px solid #0a0b0c` verticals — the same
+line colour as the module's own header and footer strips.
+
+There used to be one divider, not two: Tape was separated from Mod by the edge
+of its green band rather than by a line. With the band gone that separation
+went with it, so the row needs both.
 
 **The Tape section no longer sits on a green band.** All six footer knobs are
 now the same control on the same ground — neutral `#39474b` track, `#b4b4b4`

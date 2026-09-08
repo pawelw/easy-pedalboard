@@ -434,10 +434,20 @@ On the light and grey themes - which only the gallery renders - the lime in
 particular is low contrast. Same trade the module accents make, and worth a
 look if a light Peak Machine is ever a real face.
 
-Also noted for stage 3: `--pui-divider` is `#222b2e`, which was chosen against
-the Delay panel's old `#131819`. On the module's `#20292d` it is all but
-invisible, so the prototype's footer cell dividers are now `#2a3336`. The face
-will want `.pui-module { --pui-divider: var(--pui-outline); }` or similar.
+4. **Two footer dividers, not one.** The footer only ever drew one vertical
+   line: Tape was separated from Mod by the edge of its green band, so
+   `.pd-footer__section`'s rule skipped that pair. With the band gone the row
+   needs both, and the rule is now a plain `+` on every adjacent pair.
+
+   They also have to agree with the horizontals around them, which is two
+   problems in one. `--pui-divider` is `#222b2e`, picked against the *card's*
+   panel: inside a module's lighter `#20292d` it is both near-invisible and a
+   different line from the module's own `#0a0b0c` header and footer strips.
+   Fixed at the host rather than in the face — `.pui-module` re-points
+   `--pui-divider` to `--pui-module-divider`, so a whole pedal face dropped
+   into a module draws its internal lines in the module's line colour without
+   ever learning where it is. Verified: `--pui-divider` resolves to `#0a0b0c`
+   inside a `ModulePanel` and stays `#222b2e` outside one.
 
 ## 7. Risks, and what is done about them
 
