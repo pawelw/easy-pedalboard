@@ -9,13 +9,15 @@ Design handover: `design_handoff_peak_alpine/README.md`, prototype at
 needs its sibling `support.js`, so a `file://` open renders raw `{{ }}`
 templates; `.claude/launch.json`'s `design-handoff` entry puts it on port 3200).
 
-Status: **stages 1-7 built** (see §6). The face is complete and renders in the
+Status: **stages 1-8 built** (see §6). The face is complete and renders in the
 gallery at `#peak-alpine`, bound through `ParamScope` to the namespaced
 parameters the processor will carry. `ee::dsp::Tremolo` and `ee::fx::DelayModule`
 are both extracted, with Peak Trem & Pan and Peak Delay running on them and
 rendering sample-exact, and `SpringReverb` has its two new controls with Peak
 Spring untouched, and both side modules exist with their engine crossfade
-proven click-free. Stages 8-10 not started.
+proven click-free. **`plugins/peak-alpine` builds and makes sound** - 46
+parameters, all three modules in the chain, driven by `ee_alpine_host`. Stages
+9-10 (the WebView editor, and the factory presets) not started.
 
 None of the eleven existing pedals is replaced. Peak Delay in particular keeps
 shipping exactly as it does today; Peak Alpine holds a second instance of the
@@ -385,7 +387,7 @@ Each stage is independently verifiable and independently shippable.
 | 5 | ✅ `ee::fx::DelayModule` extracted; Peak Delay delegates | `ee_delay_regress`: 14 passes, all checksums identical either side. `ee_preset_tests`: identical. `ee_trempan_regress` unaffected |
 | 6 | ✅ `SpringReverb`'s two new setters (Tension, Low Cut) | `ee_spring_regress`: Peak Spring identical, and the engine section proves the defaults inert, the controls live, and both extremes stable. `ee_reverb_stress` 1512 cases 0 flagged; `ee_dsp_tests` at its known baseline |
 | 7 | `ee::fx::ModulationModule` + `ReverbModule` | `ee_dsp_tests` additions; a `ee_machine_host` driving the real processor with ragged blocks, like `ee_grain_host` |
-| 8 | `plugins/peak-alpine`: processor, parameter layout, CMake | `cmake --preset fast -DEE_PLUGINS="peak-alpine"`, Standalone launches and makes sound |
+| 8 | ✅ `plugins/peak-alpine`: processor, 46-parameter layout, CMake | `ee_alpine_host`: makes sound, all three power toggles reach the audio, bypass bit-exact, all 8 engine pairs finite and audible |
 | 9 | `PeakAlpineWebEditor` + `RelaySet`; face bound to real parameters | full `dev` build, `auval -v aufx Palp Peak`, then **Ableton Live** — per the standing rule, DSP work isn't done until the AU/VST3 is rebuilt and Live is relaunched |
 | 10 | Factory preset bank | `ee_preset_tests` extended to Peak Alpine's bank (every parameter in every file) |
 
@@ -645,6 +647,45 @@ Mix at 0 returns the input unchanged (the mix law is cos/sin, and cos(0) is
 exactly 1), and a bypassed module returns the input whatever Mix and Level say -
 the engage crossfade goes back to the *input*, not to the dry side of the mix,
 so a module turned off cannot be left loud.
+
+### 5.13 Notes from stage 8
+
+`plugins/peak-alpine` exists: 46 parameters, the three modules in a fixed
+chain, the two trims and the global bypass. The processor owns no DSP - it
+reads knobs, converts them to the real units the modules take, and wraps the
+lot in one crossfade. `createEditor` returns JUCE's generic editor for now; the
+real face is stage 9.
+
+Three things moved to shared headers on the way, each because a second user
+appeared and each verified by the existing suites coming back identical:
+
+- **`ee::plugin::InputMeter`** - the level follower and note-onset detector the
+  TapScope feeds on. Its constants are fiddly and block-size-independent by
+  design, so two copies would have drifted. Peak Delay now uses it too.
+- **`ee/fx/DelayTimeMap.h`** (was `peak-delay/src/TimeMap.h`) - both plugins run
+  the same delay chain, so the same knob position has to mean the same time.
+- **The tremolo Rate sweep** - three numbers, now in `TremoloConfig.h`, so Peak
+  Trem & Pan and the Modulation module cannot disagree about what the knob does.
+
+**Parameter ids are dotted and module-scoped** (`mod.tape.wear`, `dly.mix`,
+`rev.spring.tension`). Two reasons: three modules carry a Mix, a Level and a Low
+Cut between them, and the face resolves ids through a prefix - so the Delay
+leaf names are Peak Delay's own *exactly*, which is the mechanism that lets one
+`DelayFace` component drive both plugins. Dots are safe in an APVTS id: it is a
+value in the state tree, not a property name.
+
+**Every range, skew and default is its source pedal's**, down to the skew
+centres, so a knob at 50 % sounds like that pedal's knob at 50 %.
+
+`ee_alpine_host` is the driver, in the spirit of `ee_grain_host`: it asserts the
+things that would make the plugin broken rather than merely different - it makes
+sound, each of the three power toggles reaches the audio (a module wired to the
+wrong parameter would pass every other check), a bypassed plugin is the input
+bit for bit, and all eight engine pairs are finite and audible. It prints a
+checksum per case, so it is also the baseline for the next refactor of it.
+
+**Still outstanding from §8:** the CPU measurement. The plugin builds and runs
+offline comfortably, but nothing has been measured in a host yet.
 
 ## 7. Risks, and what is done about them
 

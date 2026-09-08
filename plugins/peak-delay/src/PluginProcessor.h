@@ -7,6 +7,7 @@
 
 #include "ee/dsp/TapeDelay.h"
 #include "ee/fx/DelayModule.h"
+#include "ee/plugin/InputMeter.h"
 #include "ee/plugin/PresetStore.h"
 
 #if EE_HAS_FACTORY_PRESETS
@@ -111,8 +112,7 @@ public:
         in the web view because the level feed the editor pushes is a 45 Hz
         sample of something that happens in milliseconds. Written from the
         audio thread. */
-    std::atomic<float> inputLevelUi { 0.0f };
-    std::atomic<int> strikeCountUi { 0 };
+    ee::plugin::InputMeter inputMeter;
 
     /** The tape machine's current/default voicing, for the EE_TAPE_TUNER dev
         panel - same reason as above, the web editor needs a way to reach the
@@ -141,11 +141,6 @@ private:
     /** Every setting the chain takes, read off the parameters in real units.
         Shared by prepareToPlay and processBlock, which both need the whole set. */
     void pushSettings (double bpm, bool synced) noexcept;
-
-    /** Fast-attack/slow-release peak follower on the pedal input, plus the
-        onset test that drives strikeCountUi. Per block rather than per sample:
-        the face redraws at 45 Hz and a block is a quarter of that. */
-    void meterInput (const float* left, const float* right, int numSamples) noexcept;
 
     void parameterChanged (const juce::String& parameterID, float newValue) override;
     void mirrorTime (const juce::String& from, const juce::String& to);
@@ -206,17 +201,8 @@ private:
     /** Written on the audio thread, read from the editor - see currentBpm(). */
     std::atomic<double> lastKnownBpm { 120.0 };
 
-    /** The prepared sample rate. meterInput()'s follower is specified in
-        seconds, so it needs this to turn a block length into a time. */
+    /** The prepared sample rate, for the readouts' own use. */
     double sr = 44100.0;
-
-    /** meterInput()'s audio-thread state: the smoothed peak inputLevelUi is
-        mapped from, a slower average an onset has to stand out against, and
-        how many samples are left of the refractory period that stops one note
-        being counted as several. */
-    float peakLevelSmoothed = 0.0f;
-    float onsetFloor = 0.0f;
-    int onsetHoldSamples = 0;
 
     int maxBlock = 512;
 

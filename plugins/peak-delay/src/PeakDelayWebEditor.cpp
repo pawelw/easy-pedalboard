@@ -189,8 +189,8 @@ PeakDelayWebEditor::~PeakDelayWebEditor()
 void PeakDelayWebEditor::timerCallback()
 {
     auto* payload = new juce::DynamicObject();
-    payload->setProperty ("level", processorRef.inputLevelUi.load (std::memory_order_relaxed));
-    payload->setProperty ("strikes", processorRef.strikeCountUi.load (std::memory_order_relaxed));
+    payload->setProperty ("level", processorRef.inputMeter.getLevel());
+    payload->setProperty ("strikes", processorRef.inputMeter.getStrikes());
     payload->setProperty ("bpm", processorRef.hostBpm());
     webView.emitEventIfBrowserIsVisible ("delayMeter", juce::var (payload));
 }

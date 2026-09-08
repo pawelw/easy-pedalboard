@@ -47,6 +47,20 @@ constexpr float kTrim     = 5.0f;  // output trim that tracks the drive, leaving
 constexpr float kDcHz     = 20.0f; // DC-blocker corner: below the lowest note, above the LFO's pump
 
 // ============================================================================
+// RATE
+// ============================================================================
+// The Rate knob's free-running sweep: one LFO cycle from 2 s with the knob
+// down to 10 ms with it up, with the middle of the travel at 300 ms.
+//
+// Here rather than in a pedal because two faces carry this knob now - Peak
+// Trem & Pan's and Peak Alpine's Modulation module - and the same knob position
+// has to mean the same rate on both. Only the free sweep is per-effect; the
+// synced side is the shared tempo-division table (ee::dsp::RateMap).
+constexpr float kRateMinPeriodMs  = 10.0f;
+constexpr float kRateMaxPeriodMs  = 2000.0f;
+constexpr float kRateSkewCentreMs = 300.0f;
+
+// ============================================================================
 // SMOOTHING
 // ============================================================================
 // One-pole slew on the modulation signal, so a phase snap or a division/mode

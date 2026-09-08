@@ -1,7 +1,7 @@
 #include "PluginProcessor.h"
 
 #include "PeakDelayWebEditor.h"
-#include "TimeMap.h"
+#include "ee/fx/DelayTimeMap.h"
 #include "ee/plugin/Bypass.h"
 #include "ee/plugin/ParamText.h"
 
@@ -68,24 +68,7 @@ juce::String gainDbToText (float value, int)
     return sign + juce::String (value, 1) + " dB";
 }
 
-// What counts as a note, for the scope's playheads. A block has to clear
-// kOnsetThreshold outright - -46 dBFS, below anything played on purpose and
-// above a quiet room - and stand kOnsetOverFloor above whatever is still
-// ringing, and no second note can start for kOnsetHoldSeconds afterwards.
-//
-// Tuned against synthetic plucks at several tempos and block sizes, which is
-// the only way to pick numbers like these: 1.5 rather than a safer 1.8 because
-// 1.8 misses more than half the notes in a run at 150 ms, and 70 ms rather than
-// 120 because the refractory is meant to be a backstop against one note's own
-// attack, not a speed limit on playing. A held chord still counts once.
-constexpr float kOnsetThreshold = 0.005f;
-constexpr float kOnsetOverFloor = 1.5f;
-constexpr double kOnsetHoldSeconds = 0.07;
-
-// How fast the "still ringing" floor forgets the last note. Long enough that a
-// chord's own decay doesn't retrigger on its way down, short enough that the
-// next note in a phrase has something to stand above.
-constexpr double kOnsetFloorSeconds = 0.15;
+// The onset detector's own constants moved with it to ee/plugin/InputMeter.h.
 juce::String infinitySymbol()
 {
     return juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e"));
@@ -395,10 +378,7 @@ void PeakDelayProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     // never moves.
     setLatencySamples (chain.latencySamples());
 
-    peakLevelSmoothed = 0.0f;
-    onsetFloor = 0.0f;
-    onsetHoldSamples = 0;
-    inputLevelUi.store (0.0f, std::memory_order_relaxed);
+    inputMeter.prepare (sampleRate);
 }
 
 void PeakDelayProcessor::releaseResources()
@@ -449,56 +429,6 @@ void PeakDelayProcessor::pushSettings (double bpm, bool synced) noexcept
                     juce::Decibels::decibelsToGain (outGainParam->load()));
 }
 
-void PeakDelayProcessor::meterInput (const float* left, const float* right, int numSamples) noexcept
-{
-    float blockPeak = 0.0f;
-
-    for (int i = 0; i < numSamples; ++i)
-        blockPeak = juce::jmax (blockPeak, std::abs (left[i]), std::abs (right[i]));
-
-    // In seconds rather than a per-block factor, so the follower doesn't chase
-    // faster or slower depending on the host's block size - the same shape
-    // Peak Wah's signal glow uses.
-    const double blockSeconds = numSamples / sr;
-    const float attackCoeff = static_cast<float> (std::exp (-blockSeconds / 0.005));
-    const float releaseCoeff = static_cast<float> (std::exp (-blockSeconds / 0.30));
-    const float coeff = blockPeak > peakLevelSmoothed ? attackCoeff : releaseCoeff;
-
-    peakLevelSmoothed = coeff * peakLevelSmoothed + (1.0f - coeff) * blockPeak;
-
-    const float db = juce::Decibels::gainToDecibels (peakLevelSmoothed, -60.0f);
-    inputLevelUi.store (juce::jlimit (0.0f, 1.0f, (db + 40.0f) / 40.0f), std::memory_order_relaxed);
-
-    // The onset test runs off the raw block peak, not the smoothed level: the
-    // follower's own attack would smear the very edge this is trying to find.
-    // A note counts when it is both audible and clearly louder than whatever is
-    // still ringing, which is what stops one long chord counting itself over
-    // and over.
-    onsetHoldSamples = juce::jmax (0, onsetHoldSamples - numSamples);
-
-    // ...or when sound arrives at all after silence. Without this second way
-    // in, a volume swell never counts: it grows by a fraction of a percent per
-    // block, the floor tracks every step of the rise, and nothing ever stands
-    // above it - so the scope would sit dark through a whole phrase that is
-    // audibly being played.
-    const bool fromSilence = onsetFloor < kOnsetThreshold;
-
-    if (onsetHoldSamples == 0 && blockPeak > kOnsetThreshold &&
-        (fromSilence || blockPeak > onsetFloor * kOnsetOverFloor))
-    {
-        strikeCountUi.fetch_add (1, std::memory_order_relaxed);
-        onsetHoldSamples = static_cast<int> (kOnsetHoldSeconds * sr);
-    }
-
-    // The floor jumps to whatever just arrived and falls away over kOnsetFloor-
-    // Seconds. In seconds, like the follower above and for the same reason: on
-    // a per-block factor a host running 64-sample buffers would drop the floor
-    // eight times faster than one running 512, and the same phrase would count
-    // a different number of notes on each.
-    const float floorCoeff = static_cast<float> (std::exp (-blockSeconds / kOnsetFloorSeconds));
-    onsetFloor = blockPeak > onsetFloor ? blockPeak : onsetFloor * floorCoeff;
-}
-
 void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::MidiBuffer&)
 {
     juce::ScopedNoDenormals noDenormals;
@@ -525,8 +455,7 @@ void PeakDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     // played, not what the pedal is doing with it. The Input fader is
     // deliberately not in front of this - trimming the input should not make
     // the display think you stopped playing.
-    meterInput (buffer.getReadPointer (0), numIn > 1 ? buffer.getReadPointer (1) : buffer.getReadPointer (0),
-                numSamples);
+    inputMeter.process (buffer.getReadPointer (0), numIn > 1 ? buffer.getReadPointer (1) : nullptr, numSamples);
 
     chain.process (buffer, numIn, numOut, numSamples);
 }

@@ -1,0 +1,84 @@
+#pragma once
+
+namespace ee::alpine::id
+{
+
+/** Peak Alpine's parameter ids, namespaced by module.
+ *
+ * Dotted rather than run together, and prefixed rather than flat, for two
+ * reasons. Three modules carry a Mix, a Level and a Low Cut between them, so a
+ * flat set would need names like `revspringlocut` that nobody can read. And the
+ * face resolves ids through a prefix (`ParamScope` in
+ * `@synthpeak/pedal-ui/juce`), which is what lets one `DelayFace` component
+ * drive Peak Delay's bare `mix` and this plugin's `dly.mix` without knowing
+ * which host it is in.
+ *
+ * Dots are safe: an APVTS id is a *value* in the state tree, not a property
+ * name, and VST3 hashes it while AU addresses by index.
+ *
+ * **The Delay leaf names are Peak Delay's own, exactly.** That is not tidiness,
+ * it is the mechanism - drop the `dly.` and you have that pedal's parameter
+ * list, which is what makes one prefix enough to bind one face to two plugins.
+ */
+
+// ------------------------------------------------------------------- global
+inline constexpr const char* inGain = "ingain";
+inline constexpr const char* outGain = "outgain";
+inline constexpr const char* on = "on";
+
+// --------------------------------------------------------------- modulation
+inline constexpr const char* modOn = "mod.on";
+inline constexpr const char* modEngine = "mod.engine";
+inline constexpr const char* modLevel = "mod.level";
+inline constexpr const char* modMix = "mod.mix";
+
+inline constexpr const char* modTapeSat = "mod.tape.sat";
+inline constexpr const char* modTapeFlutter = "mod.tape.flutter";
+inline constexpr const char* modTapeWear = "mod.tape.wear";
+inline constexpr const char* modTapeNoise = "mod.tape.noise";
+
+inline constexpr const char* modTremAmount = "mod.trem.amount";
+inline constexpr const char* modTremRate = "mod.trem.rate";
+inline constexpr const char* modTremShape = "mod.trem.shape";
+inline constexpr const char* modTremTube = "mod.trem.tube";
+
+inline constexpr const char* modChorusRate = "mod.chorus.rate";
+inline constexpr const char* modChorusDepth = "mod.chorus.depth";
+inline constexpr const char* modChorusPhase = "mod.chorus.phase";
+
+inline constexpr const char* modPhaseRate = "mod.phase.rate";
+inline constexpr const char* modPhaseDepth = "mod.phase.depth";
+
+// -------------------------------------------------------------------- delay
+inline constexpr const char* dlyOn = "dly.on";
+inline constexpr const char* dlyLeftTime = "dly.ltime";
+inline constexpr const char* dlyRightTime = "dly.rtime";
+inline constexpr const char* dlySync = "dly.sync";
+inline constexpr const char* dlyTimeUnit = "dly.timeunit";
+inline constexpr const char* dlyType = "dly.dtype";
+inline constexpr const char* dlyFeedback = "dly.fb";
+inline constexpr const char* dlyMix = "dly.mix";
+inline constexpr const char* dlyWear = "dly.tape";
+inline constexpr const char* dlyFlutter = "dly.flutter";
+inline constexpr const char* dlyDrift = "dly.mod";
+inline constexpr const char* dlyPhaser = "dly.phaser";
+inline constexpr const char* dlyLoCut = "dly.locut";
+inline constexpr const char* dlyHiCut = "dly.hicut";
+inline constexpr const char* dlyTapePre = "dly.tapepre";
+
+// ------------------------------------------------------------------- reverb
+inline constexpr const char* revOn = "rev.on";
+inline constexpr const char* revEngine = "rev.engine";
+inline constexpr const char* revLevel = "rev.level";
+inline constexpr const char* revMix = "rev.mix";
+
+inline constexpr const char* revSpaceDecay = "rev.space.decay";
+inline constexpr const char* revSpaceShimmer = "rev.space.shimmer";
+inline constexpr const char* revSpaceLoCut = "rev.space.locut";
+inline constexpr const char* revSpaceReso = "rev.space.reso";
+
+inline constexpr const char* revSpringDecay = "rev.spring.decay";
+inline constexpr const char* revSpringTension = "rev.spring.tension";
+inline constexpr const char* revSpringLoCut = "rev.spring.locut";
+
+} // namespace ee::alpine::id

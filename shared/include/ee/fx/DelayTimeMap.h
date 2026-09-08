@@ -5,7 +5,9 @@
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/TempoDivision.h"
 
-/** Peak Delay's Left/Right Time knobs: one normalised 0..1 parameter whose
+/** The Left/Right Time knobs of Peak Delay - and of Peak Alpine's Delay
+    module, which is the same chain, so the same knob position has to mean the
+    same time on both: one normalised 0..1 parameter whose
     meaning the Sync pill decides - a note division when synced, a continuous
     millisecond time when free. `ee::dsp::GrainSyncMap` already is exactly this
     control (its own comment names "delay Time" as the duration-like case), so

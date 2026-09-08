@@ -375,3 +375,25 @@ target_compile_definitions(ee_module_stress PUBLIC
 target_link_libraries(ee_module_stress
     PRIVATE ee_dsp juce::juce_audio_processors juce::juce_dsp
     PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakAlpine)
+    # Drives the real Peak Alpine processor like a host: does it make sound, do
+    # the three power toggles reach the audio, is a bypassed plugin unity, and
+    # is every engine pair finite. Prints a checksum per case, so it is also the
+    # baseline for the next refactor of it.
+    juce_add_console_app(ee_alpine_host PRODUCT_NAME "ee_alpine_host")
+
+    target_sources(ee_alpine_host PRIVATE AlpineHost.cpp)
+
+    target_compile_definitions(ee_alpine_host PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_alpine_host
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-alpine/src)
+
+    target_link_libraries(ee_alpine_host
+        PRIVATE PeakAlpine ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()

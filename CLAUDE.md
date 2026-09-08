@@ -1,6 +1,6 @@
 # Synth Peak — working notes
 
-Eleven JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
+Twelve JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
 framework. `README.md` is the user-facing manual (what each pedal does, how to
 install it); this file is the map for working on the code.
 
@@ -54,6 +54,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_delay_regress_artefacts/Release/ee_delay_regress [outDir]
 ./build/tests/ee_spring_regress_artefacts/Release/ee_spring_regress [outDir]
 ./build/tests/ee_module_stress_artefacts/Release/ee_module_stress    # Peak Alpine's switchable modules
+./build/tests/ee_alpine_host_artefacts/Release/ee_alpine_host        # drives the real Peak Alpine processor
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
