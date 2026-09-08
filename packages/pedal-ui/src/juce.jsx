@@ -154,8 +154,12 @@ export function JuceKnob({
     `resetTo` is a scaled value (dB here, not 0..1). Where it sits on the knob's
     travel is worked out from the relay's own start/end/skew rather than from a
     number written down twice - the range lives in the processor, and the two
-    would drift the moment anyone widened it. */
-export function JuceFader({ parameterId, label, resetTo = 0 }) {
+    would drift the moment anyone widened it.
+
+    `length` is the track's own length. It is a property of the header the
+    fader sits in, not of the fader: a 626px pedal card has room for 64px of
+    travel beside its preset bar, and a 1046px host panel has room for 104. */
+export function JuceFader({ parameterId, label, resetTo = 0, length = 64 }) {
   const id = useParamId(parameterId);
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const valueLabel = useFormattedText(id, value);
@@ -178,7 +182,7 @@ export function JuceFader({ parameterId, label, resetTo = 0 }) {
       compact
       fine
       orientation="horizontal"
-      length={64}
+      length={length}
       label={label}
       value={value}
       valueLabel={valueLabel}
@@ -190,17 +194,38 @@ export function JuceFader({ parameterId, label, resetTo = 0 }) {
   );
 }
 
+/** Whether the backend has actually told the page about a toggle. The JUCE
+    shim answers `false` for an id it has never heard of - which is the right
+    answer for a missing parameter and the wrong one for a parameter that
+    simply has no backend, as in the gallery or a plain browser tab. */
+function backendKnowsToggle(id) {
+  const toggles = window.__JUCE__?.initialisationData?.__juce__toggles;
+  return Array.isArray(toggles) && toggles.includes(id);
+}
+
 /** A boolean parameter's live value, kept in sync with its
     WebToggleButtonRelay - the toggle counterpart of useJuceSliderValue, and
     shared by every control built on one (the pills and the stage routers).
 
     `setValue` updates local state as well as the relay for the same reason
     useJuceSliderValue does: outside a real host nothing echoes the change
-    back, and without it the gallery's toggles would never move. */
-export function useJuceToggleValue(parameterId) {
+    back, and without it the gallery's toggles would never move.
+
+    `defaultValue` is what to show when there is no backend at all. It is not a
+    default *for the parameter* - the processor owns that - only for the
+    picture, and it is consulted solely for an id the backend has never
+    mentioned. In a host the relay's own value is in the page's initialisation
+    data before the first render, so this is never reached there.
+
+    It exists because "off" is a bad guess for a power switch: a face whose
+    every module reads bypassed the moment it is opened outside a host is not
+    showing anyone the design. */
+export function useJuceToggleValue(parameterId, defaultValue = false) {
   const id = useParamId(parameterId);
   const toggleState = useRef(Juce.getToggleState(id)).current;
-  const [checked, setChecked] = useState(toggleState.getValue());
+  const [checked, setChecked] = useState(() =>
+    backendKnowsToggle(id) ? toggleState.getValue() : defaultValue,
+  );
 
   useEffect(() => {
     const listenerId = toggleState.valueChangedEvent.addListener(() => setChecked(toggleState.getValue()));

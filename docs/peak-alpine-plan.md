@@ -9,11 +9,9 @@ Design handover: `design_handoff_peak_alpine/README.md`, prototype at
 needs its sibling `support.js`, so a `file://` open renders raw `{{ }}`
 templates; `.claude/launch.json`'s `design-handoff` entry puts it on port 3200).
 
-Status: **stages 1 and 2 built** (see §6). `packages/pedal-ui` carries the host
-shell and its JUCE bindings; `packages/delay-face` carries the Delay face, which
-Peak Delay now renders inside a Card and Peak Alpine will render inside a
-`ModulePanel`. Both existing faces come back byte-identical. Stages 3-10 not
-started.
+Status: **stages 1-3 built** (see §6). The face is complete and renders in the
+gallery at `#peak-alpine`, bound through `ParamScope` to the namespaced
+parameters the processor will carry. No C++ yet: stages 4-10 not started.
 
 None of the eleven existing pedals is replaced. Peak Delay in particular keeps
 shipping exactly as it does today; Peak Alpine holds a second instance of the
@@ -370,7 +368,7 @@ Each stage is independently verifiable and independently shippable.
 |---|---|---|
 | 1 | ✅ `packages/pedal-ui`: new components, icons, `PresetBar` variant, `Card` prop, `Components.jsx` entries | gallery `#components`, three theme columns; every module-shell measurement and colour read back off the live DOM and diffed against the prototype's |
 | 2 | ✅ `packages/delay-face`; Peak Delay's App.jsx reduced to a wrapper; the generic JUCE bindings to `@synthpeak/pedal-ui/juce` | fingerprint identical on **both** faces — Delay `324 / 626x481 / 733c7d76 / 42296266`, Wah `374 / 566x469 / cf04e593 / d93913e7` (Wah moved too: one `installAutoResize`) |
-| 3 | `plugins/peak-alpine/jsui`: the whole face, off local state, no JUCE | gallery `#peak-alpine` vs the prototype at :3200, side by side |
+| 3 | ✅ `plugins/peak-alpine/jsui`: the whole face | gallery `#peak-alpine` vs the prototype at :3200; card 1046 wide and tracks 186/598/186 exact, every module-shell measurement matches, and the shim's "unknown to the backend" warnings confirm the full namespaced id set |
 | 4 | `ee::dsp::Tremolo` extracted; Peak Trem-Pan delegates | new `ee_trempan_match` WAV diff (sample-exact) + `ee_trempan_stress` |
 | 5 | `ee::fx::DelayModule` extracted; Peak Delay delegates | `ee_delay_match` WAV diff (sample-exact) + `ee_preset_tests` |
 | 6 | `SpringReverb`'s three new setters | `ee_spring_match` at defaults (sample-exact) + `ee_reverb_stress` |
@@ -450,6 +448,36 @@ look if a light Peak Alpine is ever a real face.
    into a module draws its internal lines in the module's line colour without
    ever learning where it is. Verified: `--pui-divider` resolves to `#0a0b0c`
    inside a `ModulePanel` and stays `#222b2e` outside one.
+
+### 5.7 Notes from stage 3
+
+- **The face is built on the real JUCE bindings, not local state.** The plan
+  said local state first; that would have been a rewrite. `juce-framework-
+  frontend` is vendored and degrades cleanly with no backend - which is how
+  Peak Delay has always rendered in the gallery - so the face is the real one
+  from the start.
+- **`useJuceToggleValue` gained a `defaultValue`.** The shim answers `false`
+  for an id it has never heard of, which is right for a missing parameter and
+  wrong for one that merely has no backend: every power switch opened
+  bypassed and the whole row rendered dimmed. It is consulted *only* for an id
+  the backend has not mentioned, so in a host it is never reached. Knobs
+  deliberately did **not** get the same treatment - 0 is not misleading the way
+  "off" is, and duplicating every parameter default in JS is two places to
+  drift.
+- **`JuceFader` gained `length`.** 64px of travel fits a 626px pedal card; the
+  host header has room for the handoff's 104.
+- **The global bypass is lifted into `App`** and handed down. Two components
+  each calling `useJuceToggleValue("on")` hold two independent copies, and with
+  no relay echo outside a host the pill would have said BYPASSED over an
+  undimmed row.
+- **The prototype's Delay module is ~9px taller than the real face.** Its row
+  measures 150 and its footer 125; Peak Delay's own face measures 138 and 128,
+  and Peak Alpine renders exactly those. The handoff says to embed the real
+  face rather than rebuild it, so the real face wins and the prototype is the
+  approximation. The side modules differ by 2px per knob row for the same
+  reason - the real `Knob`'s caption metrics against a hand-drawn one.
+- **Every knob reads 0 in the gallery**, because the shim has no defaults to
+  give. That is not worth faking; it resolves when the processor exists.
 
 ## 7. Risks, and what is done about them
 

@@ -1,5 +1,6 @@
 import PeakWahFace from "peak-wah-jsui/src/App.jsx";
 import PeakDelayFace from "peak-delay-jsui/src/App.jsx";
+import PeakAlpineFace from "peak-alpine-jsui/src/App.jsx";
 
 // One entry per pedal in plugins/. `face` is the pedal's own real App.jsx,
 // imported straight from its jsui project - nothing here re-implements a
@@ -15,10 +16,8 @@ import PeakDelayFace from "peak-delay-jsui/src/App.jsx";
 // in grey while its onyx face was still being worked out.
 export const pedals = [
   // The multi-effect host, not a pedal - listed first because it is the one
-  // that contains the others rather than sitting beside them. Its face is
-  // stage 3 of docs/peak-alpine-plan.md; until then this is a disabled tile,
-  // which is what `face: null` is for.
-  { slug: "peak-alpine", name: "Peak Alpine", face: null, theme: "onyx" },
+  // that contains the others rather than sitting beside them.
+  { slug: "peak-alpine", name: "Peak Alpine", face: PeakAlpineFace, theme: "onyx" },
 
   { slug: "peak-chorus", name: "Peak Chorus", face: null },
   { slug: "peak-delay", name: "Peak Delay", face: PeakDelayFace, theme: "onyx" },
