@@ -140,10 +140,16 @@ export default function App() {
           </div>
         </div>
 
-        {/* The footer's three sections. The tape one full-bleeds its green
-            band out to the card's left and bottom edge - see .pd-footer in
-            index.css for how, and why the bleed lives here rather than inside
-            StageGroup.
+        {/* The footer's three sections. They bleed out to the card's left,
+            right and bottom edge - see .pd-footer in index.css for how, and
+            why the bleed lives here rather than inside StageGroup.
+
+            Each names itself with a coloured glyph and is otherwise identical
+            to its neighbours: one ground, one set of knobs. Tape used to sit
+            on a green band with green knobs of its own, which said Tape was
+            the odd one out and left Mod and Filter with nothing separating
+            them; three marks distinguish three sections, which is what the
+            footer actually needs.
 
             Only Tape carries a router, because it is the only section with a
             choice to make. Mod's Drift is the delay line's own modulation,
@@ -155,11 +161,10 @@ export default function App() {
             would only have blurred the first. "tape"/"mod" are the parameter
             ids Wear and Drift kept from the single-knob face. */}
         <div className="pd-footer">
-          <div className="pd-footer__section pd-footer__section--tape">
+          <div className="pd-footer__section">
             <StageGroup
-              tone="tape"
               header={
-                <StageHeader icon={<TapeIcon size={30} />} name="Tape">
+                <StageHeader icon={<TapeIcon size={30} />} name="Tape" accent="var(--pui-stage-tape)">
                   <JuceStageRouter parameterId="tapepre" label="Tape" labels={["Post", "Pre"]} />
                 </StageHeader>
               }
@@ -170,7 +175,9 @@ export default function App() {
           </div>
 
           <div className="pd-footer__section">
-            <StageGroup header={<StageHeader icon={<ModIcon size={30} />} name="Mod" />}>
+            <StageGroup
+              header={<StageHeader icon={<ModIcon size={30} />} name="Mod" accent="var(--pui-stage-mod)" />}
+            >
               <JuceStageKnob parameterId="mod" name="Drift" />
               <JuceStageKnob parameterId="phaser" name="Phaser" />
             </StageGroup>
@@ -181,7 +188,9 @@ export default function App() {
               distinction Peak EQ draws with an inverted arc on its High Cut.
               Low is an ordinary knob: it rests at 0 Hz and fills as it opens. */}
           <div className="pd-footer__section">
-            <StageGroup header={<StageHeader icon={<FilterIcon size={30} />} name="Filter" />}>
+            <StageGroup
+              header={<StageHeader icon={<FilterIcon size={30} />} name="Filter" accent="var(--pui-stage-filter)" />}
+            >
               <JuceStageKnob parameterId="locut" name="Low Cut" />
               <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" />
             </StageGroup>

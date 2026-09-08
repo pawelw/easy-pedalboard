@@ -9,7 +9,9 @@ Design handover: `design_handoff_peak_machine/README.md`, prototype at
 needs its sibling `support.js`, so a `file://` open renders raw `{{ }}`
 templates; `.claude/launch.json`'s `design-handoff` entry puts it on port 3200).
 
-Status: **planned, not started.**
+Status: **stage 1 built** (see §6). `packages/pedal-ui` carries the host shell;
+the gallery's `#components` page renders it in all three themes and every
+measurement below matches the prototype exactly. Stages 2-10 not started.
 
 None of the eleven existing pedals is replaced. Peak Delay in particular keeps
 shipping exactly as it does today; Peak Machine holds a second instance of the
@@ -295,7 +297,7 @@ per the handover.
 | `EngineStepper` | recessed 9px-radius well: chevron · icon · name · chevron. Wraps in both directions. |
 | `BarDisplay` | the 63px recessed well with a bar set. `align="centre"` + a centre line is Tremolo's 26 bars; `align="bottom"` is Reverb's 7. One component, two callers, no caption. |
 | `Chevron` | factored out of `StageRouter`, shared with `EngineStepper` and `PresetBar`. |
-| Icons | `TremoloIcon`, `ChorusIcon`, `PhaserIcon`, `SpaceIcon`, `SpringIcon`, `PowerIcon`; `SaveIcon` factored out of `PresetBar.jsx`. Drawn to match `TapeIcon`/`ModIcon`/`FilterIcon`. |
+| Icons | `TremoloIcon`, `PhaserIcon`, `SpaceIcon`, `SpringIcon`, `PowerIcon`; `SaveIcon` factored out of `PresetBar.jsx` (`variant="chrome"` is the flatter 16-unit drawing the host header wants). Drawn to match `TapeIcon`/`ModIcon`/`FilterIcon`. **No `ChorusIcon`:** the mark the prototype draws for the Chorus engine is `ModIcon`, path for path. |
 | `installAutoResize` | moved out of the two duplicate `jsui/src/autoSize.js` copies. |
 | `@synthpeak/pedal-ui/juce` | a subpath export holding the generic JUCE bindings currently in `peak-delay/jsui/src/juceBindings.jsx`: `useJuceSliderValue`, `useJuceToggleValue`, `useJuceChoiceValue`, `JuceKnob`, `JuceFader`, `JucePill`, `JuceChoicePill`, `JuceStageKnob`, `JuceStageRouter`. A subpath, so `pedal-ui`'s main entry stays JUCE-free for the gallery. Takes an optional parameter-id prefix from context. |
 
@@ -319,9 +321,23 @@ delay-specific hooks (`useDelayTimesMs`, `useTimeReadoutText`, `useDelayMeter`,
   a wrapper of about fifteen lines. **Its rendered output must not change.**
 - `plugins/peak-machine/jsui` renders `<DelayFace prefix="dly." />` inside a
   `ModulePanel`.
-- Verified by rendering the Peak Delay face in the gallery before and after and
-  diffing screenshots — CLAUDE.md is explicit that the snapshot renderer has no
-  baselines, so this is by-hand comparison, done once and deliberately.
+- Verified by a **geometry fingerprint** rather than by eye: with the gallery on
+  `#peak-delay`, walk every rendered descendant of `.pui-card` and hash
+  `tag.class|left,top,width,height` relative to the card. The extraction is a
+  move, so the hash must come back identical.
+
+  Baseline, at a 700x620 viewport, `theme="grey"` as `pedals.js` sets it:
+  **324 elements, card 626x481, full hash `733c7d76`, geometry-only
+  `42296266`.**
+
+  Taken *after* the footer restyle (§5.6), not before. The restyle moved one
+  class name - `pd-footer__section--tape` is gone - so the pre-restyle hash
+  `c69406fa` no longer applies; the element count and card box were unchanged
+  either side of it, which is how we know that restyle was colour-only.
+
+  (CLAUDE.md is explicit that the UI snapshot renderer has no baselines and that
+  faces have to be diffed by hand. This is that, made checkable - a screenshot
+  comparison would not have caught a 1px shift.)
 
 ### 5.3 `plugins/peak-machine/jsui`
 
@@ -350,7 +366,7 @@ Each stage is independently verifiable and independently shippable.
 
 | # | Stage | Verified by |
 |---|---|---|
-| 1 | `packages/pedal-ui`: new components, icons, `PresetBar` variant, `Card` prop, `Components.jsx` entries | gallery `#components`, three theme columns |
+| 1 | ✅ `packages/pedal-ui`: new components, icons, `PresetBar` variant, `Card` prop, `Components.jsx` entries | gallery `#components`, three theme columns; every module-shell measurement and colour read back off the live DOM and diffed against the prototype's |
 | 2 | `packages/delay-face`; Peak Delay's App.jsx reduced to a wrapper | gallery `#peak-delay` before/after screenshot diff — must be identical |
 | 3 | `plugins/peak-machine/jsui`: the whole face, off local state, no JUCE | gallery `#peak-machine` vs the prototype at :3200, side by side |
 | 4 | `ee::dsp::Tremolo` extracted; Peak Trem-Pan delegates | new `ee_trempan_match` WAV diff (sample-exact) + `ee_trempan_stress` |
@@ -365,6 +381,63 @@ Stages 1–3 need no C++ build at all. Stages 4–6 are refactors of shipping co
 and each ends green before the next starts.
 
 ---
+
+### 5.5 Notes from stage 1, for stage 3
+
+- **A `--pui-accent` fallback token cannot live in `:root`.** Writing
+  `--pui-accent: var(--pui-ink)` there resolves against `:root`'s own ink at
+  computed-value time and inherits down as that literal, so a theme's override
+  is never consulted - a near-black toggle on the onyx face. The fallback has
+  to be at the point of use: `var(--pui-accent, var(--pui-ink))`. Any further
+  accent-aware component must do the same.
+- **The module header overflows its right padding by 4px**, in the prototype as
+  well as here: "MODULATION" measures 88px against an 84px budget, so the Level
+  knob sits 8px from the module's inner edge rather than 12. Matched
+  deliberately - it is what the design does, and the arc still clears the
+  panel edge by 2px. A longer module name would clip.
+- **The gap between a module's last knob row and its footer divider is 18px**,
+  and in the prototype it is a `margin-top` on the footer rather than padding
+  on the body. `ModulePanel`'s body is `flex: 1`, so in the real three-module
+  row (which stretches to the Delay module's height) the body absorbs it and
+  the margin never applies - the face only needs it if a module is ever laid
+  out on its own.
+
+### 5.6 Design revisions after the handoff
+
+Three changes made against the prototype and ported to both sides. The handoff
+README and `Peak Multi Host.dc.html` carry them, so the bundle stays the record.
+
+1. **One panel for all three modules.** The Delay module's darker fill inside a
+   lighter border is gone; every module is `#20292d` / `#161c1e` / `#0a0b0c`.
+   `ModulePanel`'s `tone` survives as the wider padding a 598px module needs,
+   and the `--pui-module-wide*` tokens were deleted rather than aliased.
+2. **The Tape section's green band is gone**, and with it the whole
+   `--pui-tape-*` group and `StageGroup`'s `tone` prop. All six footer knobs are
+   now one control on one ground; the `PRE` stepper is an ordinary recessed
+   switcher.
+3. **Each footer section names itself with a coloured glyph** —
+   `--pui-stage-tape` `#d8f088`, `--pui-stage-mod` `#7fb4e0`,
+   `--pui-stage-filter` `#e08fc0` — via a new `accent` prop on `StageHeader`.
+
+2 and 3 land on Peak Delay as well as Peak Machine: one Delay face, no variant,
+which is what the handoff asks for. That is a visible change to a shipping
+pedal, so its README shots are now out of date.
+
+`TapeIcon`'s `bandColour` became `ground`: its reels have to be filled with
+whatever panel is behind them, which was the band and is now the card on Peak
+Delay and the module on Peak Machine. It reads `var(--pui-stage-ground,
+var(--pui-panel))`, with `ModulePanel` setting the former - the point-of-use
+fallback again, for the reason §5.5 gives.
+
+**Open:** the three glyph hues were picked against the onyx panel they ship on.
+On the light and grey themes - which only the gallery renders - the lime in
+particular is low contrast. Same trade the module accents make, and worth a
+look if a light Peak Machine is ever a real face.
+
+Also noted for stage 3: `--pui-divider` is `#222b2e`, which was chosen against
+the Delay panel's old `#131819`. On the module's `#20292d` it is all but
+invisible, so the prototype's footer cell dividers are now `#2a3336`. The face
+will want `.pui-module { --pui-divider: var(--pui-outline); }` or similar.
 
 ## 7. Risks, and what is done about them
 

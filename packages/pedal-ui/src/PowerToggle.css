@@ -1,0 +1,98 @@
+.pui-power {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  /* Same WebKit-native-chrome trap Button.css documents: a <button> left alone
+     draws its own bevel under everything we paint. */
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+/* The ring and the hover wash are both drawn from `currentColor` rather than
+   from the accent token directly, so the two states below only have to set one
+   colour and everything follows it. Pseudo-elements rather than a translucent
+   border/background: an alpha on an arbitrary caller-supplied colour would
+   need `color-mix`, which nothing else here relies on and which a WKWebView on
+   an older macOS does not have. An opacity on a solid colour is exact and is
+   supported everywhere. */
+.pui-power::before,
+.pui-power::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.pui-power::before {
+  border: 1px solid currentColor;
+  opacity: 0.4;
+}
+
+.pui-power::after {
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.pui-power:hover::after,
+.pui-power:focus-visible::after {
+  opacity: 0.12;
+}
+
+/* ::after is a later sibling than the real children, so without this the wash
+   paints over the glyph rather than behind it. */
+.pui-power > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* A module's own toggle: the accent its ModulePanel set, at 22px, no label -
+   the module's name sits immediately after it and is the label. */
+.pui-power--round {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--pui-radius-pill);
+  color: var(--pui-accent, var(--pui-ink));
+}
+
+/* Off: the accent stops meaning "this module" and the ring drops to the
+   panel's dim ink, so a bypassed module reads as off at a glance rather than
+   only through whatever the host dims around it. The ring, the wash and the
+   glyph all follow currentColor, so this is the whole of the state. */
+.pui-power--round:not([data-on]) {
+  color: var(--pui-ink-dim);
+}
+
+/* The host's global bypass. A capsule with the word in it, because at plugin
+   scope which state you are in has to be readable without decoding a colour -
+   so unlike the round one this does not change ink between states. What moves
+   is the label, and (in the face) the dimming of the module row behind it. */
+.pui-power--pill {
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: var(--pui-radius-pill);
+  color: var(--pui-ink-soft);
+}
+
+/* No ring-dimming here: the pill's outline is the chrome's, not an accent's,
+   and it stays put while the label does the talking. */
+.pui-power--pill::before {
+  border-color: var(--pui-outline);
+  opacity: 1;
+}
+
+.pui-power__label {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}

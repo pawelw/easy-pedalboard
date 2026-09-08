@@ -125,6 +125,33 @@
   --pui-soft-lit: #7ba85f;
   --pui-soft-shadow: 0 3px 6px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
 
+  /* Peak Machine's host chrome (design_handoff_peak_machine/README.md's token
+     table). Two things the pedal faces never needed: a panel *inside* a panel
+     (the module shell), and a small square button that is neither a Pill nor a
+     Knob (the host header's chevrons, name field and save).
+
+     The defaults here derive from the panel tokens rather than restating a
+     palette, so the gallery's light and grey columns render something coherent
+     without anyone having designed a light Peak Machine. Onyx carries the
+     handoff's own numbers, which is the face that ships.
+
+     One group, not two. An earlier draft gave the wide (Delay) module a darker
+     fill inside a lighter border, to mark it as the module with the content -
+     but three modules on three grounds read as three unrelated panels rather
+     than one row, and the Delay module is already announced by being three
+     times as wide. Every module is now the same panel; `tone="wide"` survives
+     as the wider padding that width needs, and nothing else. */
+  --pui-module: var(--pui-panel-edge);
+  --pui-module-edge: var(--pui-outline);
+  --pui-module-divider: var(--pui-divider);
+  --pui-module-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+
+  --pui-chrome: var(--pui-panel-edge);
+  --pui-chrome-hover: var(--pui-panel);
+  --pui-chrome-ink: var(--pui-ink-soft);
+  --pui-chrome-ink-hover: var(--pui-ink);
+  --pui-chrome-field-ink: var(--pui-ink);
+
   /* What Card's background/shadow already were, just named - the SVG grain
      is the same data URI it always painted under `var(--pui-panel)`. */
   --pui-panel-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
@@ -190,6 +217,18 @@
   --pui-soft-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
   --pui-scope-dry: #e0b23c;
   --pui-logo-filter: brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg);
+
+  /* Peak Machine's host chrome, onyx - the handoff's own numbers. */
+  --pui-module: #20292d;
+  --pui-module-edge: #161c1e;
+  --pui-module-divider: #0a0b0c;
+  --pui-module-shadow: 1px 3px 3px -1px rgba(0, 0, 0, 0.54);
+
+  --pui-chrome: #1b2225;
+  --pui-chrome-hover: #232c30;
+  --pui-chrome-ink: #9fb8bd;
+  --pui-chrome-ink-hover: #d6e8ec;
+  --pui-chrome-field-ink: #cfe2e6;
 
   /* Card, per COMPONENTS.md's panel table: no grain, a bigger radius, a
      softer/deeper shadow with no inset highlight (there's no panel-edge
@@ -286,27 +325,56 @@
     0 16px 32px rgba(20, 24, 28, 0.1);
 }
 
-/* StageGroup's "tape" tone (design_handoff_peak_delay_onyx/TOKENS.md's
-   --pui-tape-* group). Deliberately outside the two theme blocks: this is a
-   fixed accent, a dark green band carrying its own light-on-dark ink, so it
-   reads the same whichever theme surrounds it - there is no light variant to
-   switch to. The knob half of the group shadows the plain --pui-* knob tokens
-   (StageGroup re-points those on its own wrapper), so the same
-   variant="scale" Knob renders green inside the band and untouched outside
-   it, with no `tone` prop reaching Knob or StageRouter itself. */
+/* The Delay footer's three section marks.
+
+   This replaces the whole `--pui-tape-*` group, which put the Tape section on
+   a dark green band with green knobs, a green well and its own light-on-dark
+   ink. Two things were wrong with it. One section shouting while its two
+   neighbours whispered made the footer read as a green panel with an
+   afterthought bolted on, rather than as three sections; and the band was
+   doing the work of telling them apart, which meant Mod and Filter had nothing
+   telling them apart from each other at all.
+
+   So all six knobs are now the same control on one ground, and each section
+   says what it is with its own coloured glyph. Three marks instead of one
+   band: it distinguishes three things rather than one, and it costs the face
+   no colour it was not already spending.
+
+   Fixed hues rather than per-theme values, for the same reason the module
+   accents are: what a mark means must not change with the ground under it.
+   Tape keeps the band's own lime, which is the one part of it worth keeping. */
 :root {
-  --pui-tape-band: #375916;
-  --pui-tape-edge: #46701c;
-  --pui-tape-ink: #f2f7e6; /* name */
-  --pui-tape-ink-soft: #c9dbb0; /* stage label */
-  --pui-tape-lit: #d8f088; /* value, icon, lit ticks, pointer */
-  --pui-tape-track: #5a7f2a; /* unlit ticks */
-  --pui-tape-well: #2b4410; /* the router's recessed switcher, on the band */
-  --pui-tape-knob-body: #1d2f08;
-  --pui-tape-cap-top: #5c7f2c;
-  --pui-tape-cap-bot: #2b4410;
-  --pui-tape-cap-rim: rgba(216, 240, 136, 0.3);
+  --pui-stage-tape: #d8f088;
+  --pui-stage-mod: #7fb4e0;
+  --pui-stage-filter: #e08fc0;
 }
+
+/* Peak Machine's three module accents, outside the theme blocks for exactly
+   the reason the tape band is: an accent whose job is to say "this is the
+   Modulation module" has to say it on every ground, so there is no light
+   variant to switch to.
+
+   A module wears its accent in three places only - its header power toggle,
+   its engine stepper, and the value arcs of its own knobs - which is one
+   `--pui-soft-lit` override on the module wrapper plus a `--pui-accent` the
+   toggle and the stepper read. ModulePanel does both from its `accent` prop;
+   nothing below it learns which module it is in. */
+:root {
+  --pui-accent-mod: #e0b23c;
+  --pui-accent-delay: #a3ce7a;
+  --pui-accent-reverb: #7fd2d8;
+}
+
+/* There is deliberately no `--pui-accent` token here. An accent-wearing
+   control resolves it as `var(--pui-accent, var(--pui-ink))` at the point of
+   use instead, so that with no ModulePanel above it the control lands on
+   whatever ink its own theme has.
+   Declaring the fallback here as `--pui-accent: var(--pui-ink)` does not do
+   that and is the trap: a custom property's value is substituted at computed-
+   value time on the element the *declaration* sits on, so it would resolve
+   against :root's own light-theme ink and inherit down as that literal - a
+   near-black toggle on the onyx face, with the theme's override never
+   consulted. */
 
 .pui-reset,
 .pui-reset * {

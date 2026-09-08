@@ -68,12 +68,16 @@ function groupFactory(factory) {
 // preset called "User Presets" that does nothing when you pick it.
 const EMPTY_USER = { value: "user/", label: "No user presets yet", disabled: true };
 
-// The panel hangs off the joined prev/next/name group, not off the name box
+// The panel hangs off the whole prev/next/name group, not off the name box
 // alone - so it has to reach back across the two arrow buttons to its left.
-// 26px each, less the 1px border each shares with its neighbour (PresetBar.css).
+// How far back depends on how that group is drawn: 50px joined (26px buttons
+// less the 1px border each shares with its neighbour), 68px separated (28px
+// buttons and two 6px gaps). PresetBar knows which it asked for and passes the
+// distance; see `reachBack`.
+//
 // mainAxis is Mantine's own default, restated because passing the object form
 // of `offset` drops it.
-const PANEL_OFFSET = { mainAxis: 8, crossAxis: -50 };
+const DEFAULT_REACH_BACK = 50;
 
 /**
  * The preset list, as a Mantine Cascader. The first column is a list of
@@ -90,8 +94,25 @@ const PANEL_OFFSET = { mainAxis: 8, crossAxis: -50 };
  *
  * `value` is `{ kind, name }`, not a Cascader path - callers deal in the same
  * pair the native side does and this translates at the edges.
+ *
+ * `chevron` replaces the mark in the closed box's right-hand slot. Omit it for
+ * Mantine's own single down-arrow, which is what a select box carries and what
+ * every pedal face uses; Peak Machine's host header passes a double one,
+ * because there the field sits beside two chevron *buttons* and a third
+ * single arrow would read as a third button.
+ *
+ * `reachBack` is how far left of this box the open panel's edge should land -
+ * see DEFAULT_REACH_BACK.
  */
-export default function PresetPicker({ factory = [], user = [], value, onChange, placeholder = "Presets" }) {
+export default function PresetPicker({
+  factory = [],
+  user = [],
+  value,
+  onChange,
+  placeholder = "Presets",
+  chevron,
+  reachBack = DEFAULT_REACH_BACK,
+}) {
   const data = [
     {
       value: USER_GROUP,
@@ -140,13 +161,21 @@ export default function PresetPicker({ factory = [], user = [], value, onChange,
         // there is not part of the preset's name and the closed control is
         // only 118px wide.
         formatValue={({ options }) => options[options.length - 1]?.label ?? ""}
+        // Left undefined for Mantine's own chevron - passing `undefined` here
+        // is not the same as passing null, which would blank the slot.
+        rightSection={chevron}
+        rightSectionPointerEvents="none"
         // Rendered in place rather than portalled to <body>. The pedal's
         // palette is a `data-pui-theme` attribute on a wrapper div that
         // PedalUIProvider stamps (see tokens.css), and every token here is
         // inherited from it - a panel portalled outside that wrapper resolves
         // its colours off the bare :root instead and comes out in the light
         // theme on a dark face.
-        comboboxProps={{ position: "bottom-start", withinPortal: false, offset: PANEL_OFFSET }}
+        comboboxProps={{
+          position: "bottom-start",
+          withinPortal: false,
+          offset: { mainAxis: 8, crossAxis: -reachBack },
+        }}
         classNames={{
           wrapper: "pui-dropdown__wrapper",
           input: "pui-dropdown__input",

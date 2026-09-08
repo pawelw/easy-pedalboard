@@ -1,0 +1,88 @@
+.pui-module {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  border-radius: 8px;
+  /* The header strip's own divider runs edge to edge, and the module's corners
+     are rounded - so the strip has to be clipped back to them. */
+  overflow: hidden;
+  box-shadow: var(--pui-module-shadow);
+}
+
+/* No accent bar along the top. An earlier draft had one; the module already
+   wears its hue on the toggle, the stepper and its knobs, and a fourth place
+   turned three quiet panels into three coloured ones. The card starts straight
+   in on the header strip.
+
+   Every tone is the same panel. `tone` is a padding difference, not a colour
+   one - see tokens.css's note on why the wide module lost its darker fill. */
+.pui-module {
+  background: var(--pui-module);
+  border: 1px solid var(--pui-module-edge);
+  /* What an icon inside this module is sitting on. TapeIcon fills its reels
+     with it so they occlude the deck body behind them - on a plain card that
+     is --pui-panel, and here it is the module. See TapeIcon's own note. */
+  --pui-stage-ground: var(--pui-module);
+}
+
+.pui-module__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 13px 12px 12px;
+  border-bottom: 1px solid var(--pui-module-divider);
+}
+
+/* The wide module's own header is padded to match the body below it. */
+.pui-module--wide .pui-module__header {
+  padding: 13px 18px 12px;
+}
+
+.pui-module__name {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pui-ink);
+  white-space: nowrap;
+}
+
+.pui-module__spacer {
+  flex: 1;
+}
+
+.pui-module__header-right {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+/* `flex: 1` so a short module stretches to its neighbours' height rather than
+   ending where its own content does - the three panels are laid out
+   `align-items: stretch` and their footers have to line up. No bottom padding:
+   what follows is either the footer's own top border or the module's edge, and
+   the knob captions inside carry their own room already. */
+.pui-module__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px 0;
+}
+
+.pui-module--wide .pui-module__body {
+  padding: 16px 18px 0;
+}
+
+.pui-module__footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 12px 12px;
+  border-top: 1px solid var(--pui-module-divider);
+}
+
+.pui-module--wide .pui-module__footer {
+  padding: 14px 18px 12px;
+}

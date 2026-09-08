@@ -6,23 +6,22 @@ import "./StageGroup.css";
  * FLUTTER on the tape side, CHORUS + PHASER on the mod side - and the 50/50
  * balance of the footer depends on keeping them paired.
  *
- * `tone="tape"` re-points the plain `--pui-*` knob tokens to the `--pui-tape-*`
- * group on this wrapper (see StageGroup.css) and fills in the `--pui-stage-*`
- * ink the header and the knob captions read. Everything inside inherits them,
- * so the very same Knob renders green here and unchanged everywhere else -
- * Knob and StageRouter never learn what a tone is.
+ * It fills in the `--pui-stage-*` ink its header and knob captions read, and
+ * everything inside inherits them - so neither Knob nor StageRouter ever
+ * learns it is in a stage.
+ *
+ * There is no longer a `tone`. The Tape section used to take one, which
+ * re-pointed the knob tokens to a green group so the same Knob rendered green
+ * inside its band and plain outside it; the band is gone and every footer knob
+ * is now the same control (see tokens.css). A section says what it is with the
+ * coloured glyph in its `StageHeader` instead.
  *
  * `header` is a node rather than the router's own props: the router is bound to
  * a parameter, and no JUCE reaches inside `pedal-ui`.
- *
- * The band background, and the negative margins that bleed it to the card's
- * edge, are deliberately NOT here: how far a footer half reaches is a property
- * of the face it sits in (its card padding and corner radius), not of the
- * control. The face styles `.pd-footer__half--tape` for that.
  */
-export default function StageGroup({ header, tone = "default", children }) {
+export default function StageGroup({ header, children }) {
   return (
-    <div className={`pui-reset pui-stage-group pui-stage-group--${tone}`}>
+    <div className="pui-reset pui-stage-group">
       {header}
       <div className="pui-stage-group__knobs">{children}</div>
     </div>

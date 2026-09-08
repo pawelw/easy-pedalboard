@@ -17,13 +17,13 @@
    rather than changing Card.css itself. */
 .pd-card.pui-card {
   padding: 22px 26px 24px;
-  /* Clips the footer's green band back to the card's own 20px corner radius.
-     The band reaches the card edge by escaping this padding with negative
-     margins (see .pd-footer__half--tape), which without this would leave a
-     green square poking out past the rounded bottom-left corner. The handoff
-     gets there by moving the padding onto an inner div instead; the negative
-     margins the reference face itself uses do the same thing without
-     restructuring Card, which Wah and the gallery also render. */
+  /* Clips the footer back to the card's own 20px corner radius. The footer
+     reaches the card edge by escaping this padding with negative margins (see
+     .pd-footer), which without this would leave its divider lines running
+     past the rounded bottom corners. The handoff gets there by moving the
+     padding onto an inner div instead; the negative margins the reference
+     face itself uses do the same thing without restructuring Card, which Wah
+     and the gallery also render. */
   overflow: hidden;
 }
 /* The header's three slots - title, preset bar, level faders - have to fit on
@@ -146,22 +146,22 @@
   margin-left: calc(var(--pd-link-col) + 6px);
 }
 
-/* One row of three sections: Tape (which says where it is) on a green band,
-   then Mod (inside the feedback loop) and Filter (on the repeats) on the plain
-   panel. COMPONENTS.md's face layout, widened from two sections to three - what
-   paid for the third was moving each knob's name under it and dropping its
-   permanent value line (see StageControl), which took roughly a third of the
-   footer's width back. */
+/* One row of three sections: Tape (which says where it is), Mod (inside the
+   feedback loop) and Filter (on the repeats), each on the same panel and told
+   apart by the colour of its glyph. COMPONENTS.md's face layout, widened from
+   two sections to three - what paid for the third was moving each knob's name
+   under it and dropping its permanent value line (see StageControl), which
+   took roughly a third of the footer's width back. */
 /* The negative margins take the whole footer - divider included - out to the
-   card's edge, so the tape band reads as part of the enclosure rather than as
-   a panel drawn on it, and the divider runs the band's full width instead of
-   stopping 10px short at each end.
+   card's edge, so it reads as part of the enclosure rather than as a panel
+   drawn on it, and the divider runs the card's full width instead of stopping
+   10px short at each end.
    Escaping the edge means clearing TWO nested paddings, which is why these
    don't match the 26/24 in .pd-card: the card's own 26px sides and 24px
    bottom, plus .pui-card__body's 10px sides (Card's, shared with Wah). The
-   1px border is deliberately left showing - the band stops just inside it,
+   1px border is deliberately left showing - the footer stops just inside it,
    as in the handoff's reference face. Card's overflow:hidden (see .pd-card)
-   rounds off the escaped bottom-left corner. */
+   rounds off the escaped bottom corners. */
 .pd-footer {
   display: flex;
   margin: 20px -36px -24px;
@@ -169,8 +169,8 @@
 }
 
 /* `flex: 1 1 0` rather than `flex: 1`: true thirds. On `flex: 1` the sections
-   are sized from their content, and the green one's longer knob names would
-   push the divisions off the even spacing the band's edge is drawn against. */
+   are sized from their content, so Filter's longer knob names would push the
+   two dividers off the even spacing the row is drawn against. */
 .pd-footer__section {
   flex: 1 1 0;
   min-width: 0;
@@ -181,20 +181,10 @@
   padding: 12px 14px;
 }
 
-/* The green band still reaches the card's own left and bottom edge, but its
-   padding is even rather than carrying the whole bleed distance on the left:
-   its contents are centred now (see StageHeader and StageGroup), and centred
-   content inside a lopsided box lands off the middle of the thing it is drawn
-   on. 24 either side is the same 48px the 36/12 split spent, so the section
-   comes out exactly as wide as before and the other two do not move. */
-.pd-footer__section--tape {
-  background: var(--pui-tape-band);
-}
-
-/* A hairline wherever two plain sections meet, so Mod and Filter read as two
-   sections rather than as one wide row of four knobs. Not drawn against the
-   tape band, which separates itself by colour - hence the pair of :not()s
-   rather than a blanket rule on every section after the first. */
-.pd-footer__section:not(.pd-footer__section--tape) + .pd-footer__section:not(.pd-footer__section--tape) {
+/* A hairline wherever two sections meet, so the footer reads as three sections
+   rather than one wide row of six knobs. It used to skip the Tape section,
+   which separated itself by sitting on a green band; with the band gone (see
+   tokens.css) every division is drawn the same way. */
+.pd-footer__section + .pd-footer__section {
   border-left: 1px solid var(--pui-divider);
 }

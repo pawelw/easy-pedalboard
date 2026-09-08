@@ -91,14 +91,15 @@ transparent fill, `#8ba3a9`, 9px/700 uppercase `letter-spacing .1em`, power glyp
 
 ### Module shell (all three)
 
-- `background`: side modules `#20292d`; Delay `#131819`
-- `border 1px solid #161c1e` (side) / `#303a3e` (Delay), `border-radius 8px`,
-  `overflow hidden`
+- `background #20292d`, `border 1px solid #161c1e`, `border-radius 8px`,
+  `overflow hidden` — **all three modules alike.** The Delay module used to
+  carry a darker fill inside a lighter border to mark it as the one with the
+  content; three panels on two grounds read as unrelated objects rather than
+  as one row, and being three times as wide already says which one it is.
 - `box-shadow 1px 3px 3px -1px rgba(0,0,0,.54)`
 - **No accent bar.** The card starts straight in on the header strip.
-- Header strip: `min-height 56px`, `border-bottom 1px solid #0a0b0c` (side) /
-  `#222b2e` (Delay), padding `13px 12px 12px` (side modules) /
-  `13px 18px 12px` (Delay), `gap 10px`.
+- Header strip: `min-height 56px`, `border-bottom 1px solid #0a0b0c`, padding
+  `13px 12px 12px` (side modules) / `13px 18px 12px` (Delay), `gap 10px`.
   Contents: a 22px **module power toggle** — a round `border-radius 999px` button,
   transparent fill, `border 1px solid <accent 40%>`, 12px power glyph in the
   accent, hover `background <accent 12%>`, **no label** — then the module name
@@ -136,14 +137,34 @@ No caption.
 
 ### Delay module
 
-Unchanged from `peak-delay`. For reference the prototype reproduces: the 78px tap
+The same face `peak-delay` ships — the footer restyle below applies to that
+pedal too, so there is still one Delay face and no variant. For reference the
+prototype reproduces: the 78px tap
 scope (L/R rows, amber input marker, taps alternating above/below the centre line
 with decaying opacity), 76px **Mix** and **Feedback** knobs on the 20-tick scale
 ring with `35 %` readouts, the linked Left/Right time knobs (42px, scale ring)
 joined by the brace and 29px link button feeding two readout fields
 (`LEFT 1/8 250ms`, `RIGHT 1/8T 167ms`), the `SYNC` / `NORMAL` pills, and the
-three-cell stage footer — **Tape** (lit, `background #375916`, arc track `#5a7f2a`,
-arcs and pointers `#d8f088`, `PRE` position stepper), **Mod** and **Filter**.
+three-cell stage footer — **Tape** (with the `PRE` position stepper), **Mod**
+and **Filter**, divided by `1px solid #2a3336`.
+
+**The Tape section no longer sits on a green band.** All six footer knobs are
+now the same control on the same ground — neutral `#39474b` track, `#b4b4b4`
+lit — and the `PRE` stepper is an ordinary recessed switcher (`#101416` well,
+`#8ba3a9` arrows, `#b9d3d9` value). What tells the three sections apart is the
+colour of each one's glyph, and nothing else:
+
+| Section | Glyph colour |
+| --- | --- |
+| Tape | `#d8f088` |
+| Mod | `#7fb4e0` |
+| Filter | `#e08fc0` |
+
+One section on a band shouted while its two neighbours whispered, and the band
+was doing the work of separating Tape from the other two while leaving Mod and
+Filter with nothing separating them from each other. Three marks distinguish
+three sections. The Tape glyph's reels are filled with whatever panel it sits
+on (`#20292d` here) so they occlude the deck body behind them.
 
 ### Reverb module
 
@@ -179,8 +200,9 @@ stroke 1.4 (2 on ≥60px); unlit `#39474b`, lit `#b4b4b4` up to `round(value·19
 Large knobs also sit on a `#0b0e10` disc with `0 8px 18px rgba(0,0,0,.55)` and an
 inset cap at 8%.
 
-**Indicator colours.** Modulation `#e0b23c`; Reverb `#7fd2d8`; Delay's Tape stage
-`#d8f088`; **every other Delay knob — Mod, Filter, Mix, Feedback, time — `#b4b4b4`.**
+**Indicator colours.** Modulation `#e0b23c`; Reverb `#7fd2d8`; **every Delay
+knob — the whole footer included — `#b4b4b4` on a `#39474b` track.** The Tape
+stage used to light `#d8f088` on a `#5a7f2a` track; it does not any more.
 
 Knob sizes: 24px in module headers, 38px in footers and Delay stage cells, 40px in
 side-module parameter rows, 42px for Delay time, 76px for Mix/Feedback. Labels sit
@@ -217,17 +239,18 @@ back should restore the Chorus settings.
 
 ## Design tokens
 
-Greys: `#0f1315` page · `#171d20` host · `#2b2b2b` host border · `#131819` Delay
-panel · `#303a3e` Delay panel border · `#20292d` side panel · `#161c1e` side panel
-border · `#101416` recessed wells · `#0b0e10` knob disc · `#1b2225` chrome button
-fill · `#232c30` chrome button hover · `#0a0b0c` side-module divider · `#222b2e`
-Delay internal divider · `#2a3336` chrome border · `#233034` display centre line ·
+Greys: `#0f1315` page · `#171d20` host · `#2b2b2b` host border · `#20292d`
+module panel (all three) · `#161c1e` module panel border · `#101416` recessed
+wells · `#0b0e10` knob disc · `#1b2225` chrome button fill · `#232c30` chrome
+button hover · `#0a0b0c` module divider · `#222b2e`
+Delay footer cell divider · `#2a3336` chrome border · `#233034` display centre line ·
 `#39474b` / `#2b3639` unlit arc · `#4d5f65` · `#6c8288` muted text · `#8ba3a9`
 secondary text · `#9fb8bd` chrome glyph · `#b9d3d9` primary text · `#cfe2e6` preset
 name · `#d6e8ec` chrome glyph hover · `#b4b4b4` neutral indicator.
 
-Accents: `#e0b23c` Modulation · `#a3ce7a` Delay · `#7fd2d8` Reverb ·
-`#375916` / `#2b4410` / `#5a7f2a` / `#d8f088` / `#f2f7e6` Tape stage.
+Accents: `#e0b23c` Modulation · `#a3ce7a` Delay · `#7fd2d8` Reverb.
+
+Delay footer glyphs: `#d8f088` Tape · `#7fb4e0` Mod · `#e08fc0` Filter.
 
 Radii: 20 host · 12 displays · 9 stepper · 10 readout · 8 panel and chrome button ·
 999 pill and power toggle.
@@ -253,8 +276,11 @@ between knob rows.
 - All icons (tape reels, tremolo, chorus, phaser, space, spring, filter, link,
   power, save, chevrons) are inline SVG in the prototype. Tape/Mod/Filter come from
   `TapeIcon.jsx` / `ModIcon.jsx` / `FilterIcon.jsx` in pedal-ui and should be used
-  from there. The tremolo, chorus, phaser, space and spring glyphs are **new** and
-  drawn to match that family — replace them if the team has final artwork.
+  from there, each with its own glyph colour (see the Delay module above).
+  The tremolo, phaser, space and spring glyphs are **new** and drawn to match
+  that family — replace them if the team has final artwork. There is no
+  separate chorus glyph: the mark drawn for the Chorus engine is `ModIcon`,
+  path for path.
 
 ## Files
 

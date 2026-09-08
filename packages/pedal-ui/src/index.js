@@ -33,3 +33,23 @@ export { default as StageRouter } from "./StageRouter.jsx";
 export { default as TapeIcon } from "./TapeIcon.jsx";
 export { default as ModIcon } from "./ModIcon.jsx";
 export { default as FilterIcon } from "./FilterIcon.jsx";
+
+// The multi-effect host shell (design_handoff_peak_machine/). ModulePanel is
+// the compartment a whole pedal's worth of controls goes into; the four below
+// it are what a module's own chrome is made of.
+export { default as ModulePanel } from "./ModulePanel.jsx";
+export { default as PowerToggle } from "./PowerToggle.jsx";
+export { default as EngineStepper } from "./EngineStepper.jsx";
+export { default as BarDisplay } from "./BarDisplay.jsx";
+export { default as Chevron } from "./Chevron.jsx";
+
+// Engine glyphs, in the same 44x36 family as TapeIcon/ModIcon/FilterIcon.
+// There is deliberately no ChorusIcon: the mark the design draws for the
+// Chorus engine is ModIcon, path for path - it is the same smeared sine, and
+// a second copy under a second name is how the two would drift apart.
+export { default as TremoloIcon } from "./TremoloIcon.jsx";
+export { default as PhaserIcon } from "./PhaserIcon.jsx";
+export { default as SpaceIcon } from "./SpaceIcon.jsx";
+export { default as SpringIcon } from "./SpringIcon.jsx";
+export { default as PowerIcon } from "./PowerIcon.jsx";
+export { default as SaveIcon } from "./SaveIcon.jsx";

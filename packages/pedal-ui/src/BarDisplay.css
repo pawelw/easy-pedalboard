@@ -1,0 +1,46 @@
+.pui-bars {
+  position: relative;
+  display: flex;
+  border-radius: 12px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  /* A bar taller than the well is clipped rather than allowed to escape it -
+     the heights are computed by the face from live knob positions, and a
+     rounding error there should cost a flat-topped bar, not a stripe running
+     across the module below. */
+  overflow: hidden;
+  padding: 0 14px;
+}
+
+.pui-bars__bar {
+  display: block;
+  flex: none;
+  border-radius: 2px;
+  background: var(--pui-accent, var(--pui-ink));
+}
+
+/* An envelope: hung off a centre line and spread the full width, so the shape
+   reads as a modulation about a resting level rather than as a bar chart. */
+.pui-bars--centre {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pui-bars__centre-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--pui-scope-grid);
+}
+
+/* A decay: standing on the floor, packed and centred. The bottom padding is
+   what lifts the row off the well's own edge - the shortest bar is 8px and
+   would otherwise sit in the corner radius. */
+.pui-bars--bottom {
+  align-items: flex-end;
+  justify-content: center;
+  gap: 6px;
+  padding-bottom: 16px;
+}

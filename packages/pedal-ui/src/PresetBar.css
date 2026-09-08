@@ -1,7 +1,6 @@
 .pui-presetbar {
   display: flex;
   align-items: center;
-  gap: 4px;
 }
 
 /* The three square glyph buttons the bar itself owns - the two arrows inside
@@ -13,25 +12,14 @@
    dialog. */
 .pui-presetbar > .pui-button,
 .pui-presetbar__group > .pui-button {
-  height: 26px;
-  width: 26px;
   padding: 0;
-  border-radius: 5px;
   border: 1px solid var(--pui-outline);
-  background: var(--pui-panel-edge);
-  color: var(--pui-ink-soft);
 }
 
 /* Same specificity as the shared component's own :hover/:active (one class
    plus one pseudo-class each), so without these the background above would
    win the tie by cascade order and the shared hover/press feedback would
    silently never show. */
-.pui-presetbar > .pui-button:hover,
-.pui-presetbar__group > .pui-button:hover {
-  background: var(--pui-panel);
-  color: var(--pui-ink);
-}
-
 .pui-presetbar > .pui-button:active,
 .pui-presetbar__group > .pui-button:active {
   background: var(--pui-recess);
@@ -44,44 +32,131 @@
 .pui-presetbar .pui-dropdown__input {
   /* a plain <input> defaults to an intrinsic ~20-character width when nothing
      sets an explicit width - min-width alone never overrode it */
-  width: 118px;
-  height: 26px;
-  line-height: 26px;
-  padding: 0 26px 0 10px; /* right side clears the overlaid chevron */
-  font-size: 10px;
   border: 1px solid var(--pui-outline);
-  background: var(--pui-panel-edge);
-  color: var(--pui-ink);
 }
 
-.pui-presetbar .pui-dropdown__input:hover {
-  background: var(--pui-panel);
-}
-
-.pui-presetbar .pui-dropdown__input:active {
-  background: var(--pui-recess);
-}
-
-/* The prev/next/name trio reads as one joined control, not three separate
-   ones: every internal edge is square, adjacent borders overlap by their own
-   width so the shared line doesn't come out double-thick, and only the
-   group's own outer corners keep the panel's usual rounding. Comes after the
-   .pui-button rules above on purpose: same specificity, and this has to win. */
 .pui-presetbar__group {
   display: flex;
   align-items: center;
 }
 
-.pui-presetbar__group > .pui-button:first-child {
+/* ---------------------------------------------------------------- joined --
+   Every pedal face. The prev/next/name trio reads as one joined control, not
+   three separate ones: every internal edge is square, adjacent borders overlap
+   by their own width so the shared line doesn't come out double-thick, and
+   only the group's own outer corners keep the panel's usual rounding. */
+
+.pui-presetbar--joined {
+  gap: 4px;
+}
+
+.pui-presetbar--joined > .pui-button,
+.pui-presetbar--joined .pui-presetbar__group > .pui-button {
+  height: 26px;
+  width: 26px;
+  border-radius: 5px;
+  background: var(--pui-panel-edge);
+  color: var(--pui-ink-soft);
+}
+
+.pui-presetbar--joined > .pui-button:hover,
+.pui-presetbar--joined .pui-presetbar__group > .pui-button:hover {
+  background: var(--pui-panel);
+  color: var(--pui-ink);
+}
+
+.pui-presetbar--joined .pui-dropdown__input {
+  width: 118px;
+  height: 26px;
+  line-height: 26px;
+  padding: 0 26px 0 10px; /* right side clears the overlaid chevron */
+  font-size: 10px;
+  background: var(--pui-panel-edge);
+  color: var(--pui-ink);
+}
+
+.pui-presetbar--joined .pui-dropdown__input:hover {
+  background: var(--pui-panel);
+}
+
+.pui-presetbar--joined .pui-dropdown__input:active {
+  background: var(--pui-recess);
+}
+
+/* Comes after the .pui-button rules above on purpose: same specificity, and
+   this has to win. */
+.pui-presetbar--joined .pui-presetbar__group > .pui-button:first-child {
   border-radius: 5px 0 0 5px;
 }
 
-.pui-presetbar__group > .pui-button:nth-child(2) {
+.pui-presetbar--joined .pui-presetbar__group > .pui-button:nth-child(2) {
   border-radius: 0;
   margin-left: -1px;
 }
 
-.pui-presetbar__group .pui-dropdown__input {
+.pui-presetbar--joined .pui-presetbar__group .pui-dropdown__input {
   border-radius: 0 5px 5px 0;
   margin-left: -1px;
+}
+
+/* ------------------------------------------------------------- separated --
+   Peak Machine's host header: four discrete controls rather than a segmented
+   group, on the chrome palette. The 10px gap before Save is deliberately wider
+   than the 6px inside the group - browsing and saving are two different jobs,
+   and the space is what says so. */
+
+.pui-presetbar--separated {
+  gap: 10px;
+}
+
+.pui-presetbar--separated .pui-presetbar__group {
+  gap: 6px;
+}
+
+.pui-presetbar--separated > .pui-button,
+.pui-presetbar--separated .pui-presetbar__group > .pui-button {
+  height: 28px;
+  width: 28px;
+  border-radius: 8px;
+  background: var(--pui-chrome);
+  color: var(--pui-chrome-ink);
+}
+
+.pui-presetbar--separated > .pui-button:hover,
+.pui-presetbar--separated .pui-presetbar__group > .pui-button:hover {
+  background: var(--pui-chrome-hover);
+  color: var(--pui-chrome-ink-hover);
+}
+
+.pui-presetbar--separated .pui-dropdown__input {
+  width: 190px;
+  height: 28px;
+  line-height: 26px; /* the box less its two 1px borders */
+  border-radius: 8px;
+  padding: 0 30px 0 13px; /* right side clears the overlaid chevron */
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  background: var(--pui-chrome);
+  color: var(--pui-chrome-field-ink);
+}
+
+.pui-presetbar--separated .pui-dropdown__input:hover {
+  background: var(--pui-chrome-hover);
+}
+
+/* The field's mark is a double chevron, not the single down-arrow a select
+   box carries: it sits between two chevron *buttons* here, and a third single
+   arrow would read as a third button. Right-aligned rather than centred in
+   Dropdown's 28px slot, so its own right edge lands where the design puts it. */
+.pui-presetbar--separated .pui-dropdown__section {
+  width: auto;
+  justify-content: flex-end;
+  padding-right: 11px;
+  color: var(--pui-chrome-ink);
+}
+
+.pui-presetbar--separated .pui-dropdown__section svg {
+  width: 10px;
+  height: 13px;
 }
