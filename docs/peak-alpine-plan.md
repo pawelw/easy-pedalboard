@@ -9,11 +9,13 @@ Design handover: `design_handoff_peak_alpine/README.md`, prototype at
 needs its sibling `support.js`, so a `file://` open renders raw `{{ }}`
 templates; `.claude/launch.json`'s `design-handoff` entry puts it on port 3200).
 
-Status: **stages 1-5 built** (see §6). The face is complete and renders in the
+Status: **stages 1-7 built** (see §6). The face is complete and renders in the
 gallery at `#peak-alpine`, bound through `ParamScope` to the namespaced
 parameters the processor will carry. `ee::dsp::Tremolo` and `ee::fx::DelayModule`
 are both extracted, with Peak Trem & Pan and Peak Delay running on them and
-rendering sample-exact. Stages 6-10 not started.
+rendering sample-exact, and `SpringReverb` has its two new controls with Peak
+Spring untouched, and both side modules exist with their engine crossfade
+proven click-free. Stages 8-10 not started.
 
 None of the eleven existing pedals is replaced. Peak Delay in particular keeps
 shipping exactly as it does today; Peak Alpine holds a second instance of the
@@ -122,9 +124,12 @@ double tailSeconds() const noexcept;
 ```
 
 **Engine switching.** A module holds *every* one of its engines, all prepared,
-but runs only the selected one. On a switch it runs both for an equal-power
-crossfade of `ee::plugin::kRampSeconds * 2`, then `reset()`s the outgoing one so
-its tail cannot reappear later. Parameter values are per-engine and live in the
+and by default keeps every one of them *running* - only the selected engine's
+output is used. On a switch the two are crossed with an equal-power fade over
+40 ms.
+
+Running the unselected engines is not belt-and-braces; it is the fix for a click
+`ee_module_stress` caught on its first run. See §5.12. Parameter values are per-engine and live in the
 APVTS (§4), so Chorus → Phaser → Chorus restores the Chorus settings for free —
 the handover requires this and it falls out of the parameter layout rather than
 needing a store in the module.
@@ -378,7 +383,7 @@ Each stage is independently verifiable and independently shippable.
 | 3 | ✅ `plugins/peak-alpine/jsui`: the whole face | gallery `#peak-alpine` vs the prototype at :3200; card 1046 wide and tracks 186/598/186 exact, every module-shell measurement matches, and the shim's "unknown to the backend" warnings confirm the full namespaced id set |
 | 4 | ✅ `ee::dsp::Tremolo` extracted; Peak Trem-Pan delegates | `ee_trempan_regress`: 13 passes, all checksums identical either side of the change. `ee_trempan_stress`: 7776 cases, 0 flagged |
 | 5 | ✅ `ee::fx::DelayModule` extracted; Peak Delay delegates | `ee_delay_regress`: 14 passes, all checksums identical either side. `ee_preset_tests`: identical. `ee_trempan_regress` unaffected |
-| 6 | `SpringReverb`'s two new setters (Tension, Low Cut) | `ee_spring_regress` at defaults (sample-exact) + `ee_reverb_stress` across the new ranges |
+| 6 | ✅ `SpringReverb`'s two new setters (Tension, Low Cut) | `ee_spring_regress`: Peak Spring identical, and the engine section proves the defaults inert, the controls live, and both extremes stable. `ee_reverb_stress` 1512 cases 0 flagged; `ee_dsp_tests` at its known baseline |
 | 7 | `ee::fx::ModulationModule` + `ReverbModule` | `ee_dsp_tests` additions; a `ee_machine_host` driving the real processor with ragged blocks, like `ee_grain_host` |
 | 8 | `plugins/peak-alpine`: processor, parameter layout, CMake | `cmake --preset fast -DEE_PLUGINS="peak-alpine"`, Standalone launches and makes sound |
 | 9 | `PeakAlpineWebEditor` + `RelaySet`; face bound to real parameters | full `dev` build, `auval -v aufx Palp Peak`, then **Ableton Live** — per the standing rule, DSP work isn't done until the AU/VST3 is rebuilt and Live is relaunched |
@@ -575,6 +580,71 @@ side, and `ee_preset_tests` still green. The preset bank is worth keeping for
 exactly this - it walks every parameter in every preset and exercises
 `installState` and the L/R mirror, which is the part of this refactor most
 likely to break quietly.
+
+### 5.11 Notes from stage 6
+
+Both controls expose something the tank already had, so the work was mapping
+and plumbing rather than new DSP.
+
+- **Tension moves `kChirpCoefficient`**, the all-pass coefficient in each
+  spring's dispersion chain - which is what a spring's tension physically
+  changes. Mapped symmetrically about the voicing's own value so **0.5 is
+  exactly `-0.62f`**, bit for bit: an untouched tank is the tank that was there
+  before the control existed, by construction rather than by hoping the
+  arithmetic lands. `ChirpChain::setCoefficient` sets it without rebuilding the
+  stage buffers, so it is safe from the audio thread and does not disturb what
+  is already ringing.
+- **Low Cut moves `kOutputLowCutHz`**, the pickup's high-pass on the wet output.
+  Outside every feedback path, so it thins the tail without changing how fast it
+  dies. Given `FdnReverb`'s own 20-800 Hz range deliberately: Peak Alpine puts a
+  Low Cut knob on both reverb engines, and a knob meaning one thing on Space and
+  another on Spring is two knobs wearing one label.
+- **The harness had to grow a second kind of section.** For a *move*, rendering
+  the pedal is enough. For an *addition*, it proves nothing: the pedal never
+  calls the new controls, so "unchanged" is true by accident. `ee_spring_regress`
+  therefore drives `ee::dsp::SpringReverb` directly as well, and asserts that
+  setting both controls to their documented defaults checksums identically to
+  never setting them - which is the claim "Peak Spring is untouched" actually
+  rests on.
+
+### 5.12 Notes from stage 7 — the cold-engine click
+
+The two side modules share `ee::fx::MultiEngineModule`, which owns everything
+that is not an engine: the selector and its crossfade, the equal-power Mix (the
+same law the delay uses, so a Mix knob means one thing across the plugin), the
+output Level, and the power toggle. Writing it once is also what guarantees both
+modules crossfade *identically* rather than nearly.
+
+**`ee_module_stress` failed on its first run, and the failure was real.**
+Switching *into* Chorus stepped by 0.115 - about seven times anything in the
+signal - while switching out of it was clean, and every other engine passed both
+ways.
+
+The cause: Chorus is the one engine with a long dry delay line. Left unfed, its
+line goes stale; select it again and its output is silence until the write
+catches the read, then the signal arrives all at once. That step happens *inside*
+the incoming signal, so the crossfade cannot smooth it - a crossfade can only
+control how loudly a discontinuity arrives, not whether it is there. Lengthening
+the fade would have hidden it, not fixed it.
+
+The fix is that unselected engines **keep running**, their output discarded. A
+switch is then a crossfade between two signals that are both already real, and an
+entire class of stale-state bug goes with it. `enginesRunWarm()` is the opt-out,
+and `ReverbModule` takes it: an FDN and a spring tank running at once is the
+heaviest thing in the plugin, and neither clicks cold, because a reverb's output
+*is* a gradual build from silence - there is no dry path in it to arrive
+abruptly. That second claim is measured by the two Reverb switch cases rather
+than assumed.
+
+**CPU** is the cost, and it is now a known quantity rather than a guess: four
+modulation engines always, one reverb at a time. Still worth the measurement
+stage 8 was always going to want.
+
+Two other things the suite pins down, both bit-exact rather than approximate:
+Mix at 0 returns the input unchanged (the mix law is cos/sin, and cos(0) is
+exactly 1), and a bypassed module returns the input whatever Mix and Level say -
+the engage crossfade goes back to the *input*, not to the dry side of the mix,
+so a module turned off cannot be left loud.
 
 ## 7. Risks, and what is done about them
 

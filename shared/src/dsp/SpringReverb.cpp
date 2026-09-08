@@ -23,7 +23,7 @@ void SpringReverb::prepare (double sampleRate)
     inputHighCutCoeff = onePoleCoeff (spring::kInputHighCutHz, sr);
     inputLowCutCoeff = onePoleCoeff (spring::kInputLowCutHz, sr);
     outputHighCutCoeff = onePoleCoeff (spring::kOutputHighCutHz, sr);
-    outputLowCutCoeff = onePoleCoeff (spring::kOutputLowCutHz, sr);
+    outputLowCutCoeff = onePoleCoeff (lowCutHz, sr);
     wetShelfCoeff = onePoleCoeff (spring::kWetLowShelfHz, sr);
 
     const float chirpNominal = spring::kChirpDelayMs * 0.001f * static_cast<float> (sr);
@@ -36,7 +36,7 @@ void SpringReverb::prepare (double sampleRate)
         {
             auto& s = tanks[static_cast<size_t> (t)][static_cast<size_t> (i)];
 
-            s.chirp.prepare (chirpNominal, spring::kChirpSpread, spring::kChirpCoefficient);
+            s.chirp.prepare (chirpNominal, spring::kChirpSpread, chirpCoefficient);
             s.damper.prepare (sr, spring::kLowCornerHz, spring::kHighCornerHz);
 
             // The voicing quotes the whole round trip, so the delay line only
@@ -92,6 +92,37 @@ void SpringReverb::setDecayTime (float seconds) noexcept
 
     decaySeconds = clamped;
     updateFeedback();
+}
+
+void SpringReverb::setTension01 (float tension01) noexcept
+{
+    // Symmetric about the voicing's own coefficient, so 0.5 is exactly it -
+    // see spring::kTensionSpan. Up is more negative: further from a plain
+    // delay, further into the sweep.
+    const float wanted = spring::kChirpCoefficient
+                         - (std::clamp (tension01, 0.0f, 1.0f) - 0.5f) * 2.0f * spring::kTensionSpan;
+
+    if (wanted == chirpCoefficient)
+        return;
+
+    chirpCoefficient = wanted;
+
+    // Only the coefficient moves; the stage buffers are sized from the delay
+    // and are untouched, so this is safe from the audio thread and does not
+    // disturb whatever is already ringing in them.
+    for (auto& tank : tanks)
+        for (auto& s : tank)
+            s.chirp.setCoefficient (chirpCoefficient);
+}
+
+void SpringReverb::setLowCut (float hz) noexcept
+{
+    const float clamped = std::clamp (hz, spring::kMinLowCutHz, spring::kMaxLowCutHz);
+    if (clamped == lowCutHz)
+        return;
+
+    lowCutHz = clamped;
+    outputLowCutCoeff = onePoleCoeff (lowCutHz, sr);
 }
 
 void SpringReverb::updateFeedback() noexcept

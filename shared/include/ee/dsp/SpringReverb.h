@@ -54,6 +54,11 @@ public:
         }
     }
 
+    /** The all-pass coefficient alone, without touching the stage buffers -
+        so the Tension control can move it from the audio thread. Only the
+        section sizes need allocation, and those do not depend on it. */
+    void setCoefficient (float coefficient) noexcept { coeff = coefficient; }
+
     void reset()
     {
         for (auto& stage : stages)
@@ -127,6 +132,21 @@ public:
         spring reverb is the mono case; the stereo one is a studio conceit. */
     void setStereo (bool shouldBeStereo) noexcept { stereo = shouldBeStereo; }
 
+    /** How taut the springs are, 0..1: the dispersion inside each spring's
+        feedback loop. A slack spring boings low and soft, a taut one chirps
+        hard and sweeps.
+
+        Rests at spring::kDefaultTension01, which maps exactly onto the voicing's
+        own kChirpCoefficient - so a tank nobody has set this on is bit-identical
+        to one from before the control existed. Peak Spring never calls it. */
+    void setTension01 (float tension01) noexcept;
+
+    /** The pickup's high-pass, on the wet output only. Outside every feedback
+        path, so it thins the tail without touching how fast it dies - which is
+        the one thing a filter inside the loop could not do. Clamped to
+        spring::kMinLowCutHz..kMaxLowCutHz, and rests at kOutputLowCutHz. */
+    void setLowCut (float hz) noexcept;
+
     /** @param monoIn  the tank's drive signal
         @param outL    wet only - the caller owns the dry/wet mix */
     void process (const float* monoIn, float* outL, float* outR, int numSamples) noexcept;
@@ -160,6 +180,11 @@ private:
     double sr = 44100.0;
     float decaySeconds = spring::kDefaultDecaySeconds;
     bool stereo = true;
+
+    /** Both rest exactly where the fixed voicing used to put them, so an
+        untouched tank is the tank that was here before these were exposed. */
+    float chirpCoefficient = spring::kChirpCoefficient;
+    float lowCutHz = spring::kOutputLowCutHz;
 
     std::array<std::array<Spring, spring::kSprings>, kTanks> tanks;
 

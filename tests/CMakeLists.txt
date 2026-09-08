@@ -337,3 +337,41 @@ target_compile_definitions(ee_au_host PUBLIC
 target_link_libraries(ee_au_host
     PRIVATE juce::juce_audio_processors juce::juce_audio_utils
     PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakSpring)
+    # The A/B for a change to the spring tank that is meant to leave Peak Spring
+    # exactly as it is - Tension and Low Cut are additive, and this is what says
+    # so. See RegressHarness.h.
+    juce_add_console_app(ee_spring_regress PRODUCT_NAME "ee_spring_regress")
+
+    target_sources(ee_spring_regress PRIVATE SpringRegress.cpp)
+
+    target_compile_definitions(ee_spring_regress PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_spring_regress
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-spring/src)
+
+    target_link_libraries(ee_spring_regress
+        PRIVATE PeakSpring ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+# Peak Alpine's two switchable modules. Not a *_regress tool - this is new code,
+# so there is nothing to diff against; it asserts the contract MultiEngineModule
+# promises, and hunts the thing a module built out of six other people's engines
+# is most likely to get wrong: a click on the engine switch.
+juce_add_console_app(ee_module_stress PRODUCT_NAME "ee_module_stress")
+
+target_sources(ee_module_stress PRIVATE ModuleStress.cpp)
+
+target_compile_definitions(ee_module_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_module_stress
+    PRIVATE ee_dsp juce::juce_audio_processors juce::juce_dsp
+    PUBLIC juce::juce_recommended_config_flags)

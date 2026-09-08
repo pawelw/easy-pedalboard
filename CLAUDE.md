@@ -52,6 +52,8 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_trempan_stress_artefacts/Release/ee_trempan_stress
 ./build/tests/ee_trempan_regress_artefacts/Release/ee_trempan_regress [outDir]
 ./build/tests/ee_delay_regress_artefacts/Release/ee_delay_regress [outDir]
+./build/tests/ee_spring_regress_artefacts/Release/ee_spring_regress [outDir]
+./build/tests/ee_module_stress_artefacts/Release/ee_module_stress    # Peak Alpine's switchable modules
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
@@ -112,6 +114,13 @@ the panning law, a synced pass with a transport jump, and the bypass crossfade.
 `ee_delay_regress` covers the three routings, both tape placements, the filter
 pair off its resting points, the in-loop drift and the on-the-repeats phaser,
 free-running and synced times, uneven L/R, and both ends of the Mix law.
+`ee_spring_regress` covers the Decay knob end to end plus the mono tank, and
+then does something the other two do not: a second section drives
+`ee::dsp::SpringReverb` **directly**, at controls Peak Spring does not expose.
+That is what an *additive* change needs - the pedal battery can only show the
+pedal did not move, which for a control it never calls is true by accident. The
+engine section asserts the harder thing: that setting the new controls to their
+documented defaults is bit-identical to never setting them at all.
 
 The last two binaries above are diagnostic tools rather than pass/fail suites,
 for the class of bug that only appears in a host. `ee_grain_host` instantiates
