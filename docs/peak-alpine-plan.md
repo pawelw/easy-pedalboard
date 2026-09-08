@@ -9,9 +9,10 @@ Design handover: `design_handoff_peak_alpine/README.md`, prototype at
 needs its sibling `support.js`, so a `file://` open renders raw `{{ }}`
 templates; `.claude/launch.json`'s `design-handoff` entry puts it on port 3200).
 
-Status: **stages 1-3 built** (see §6). The face is complete and renders in the
+Status: **stages 1-4 built** (see §6). The face is complete and renders in the
 gallery at `#peak-alpine`, bound through `ParamScope` to the namespaced
-parameters the processor will carry. No C++ yet: stages 4-10 not started.
+parameters the processor will carry; `ee::dsp::Tremolo` is extracted and Peak
+Trem & Pan runs on it. Stages 5-10 not started.
 
 None of the eleven existing pedals is replaced. Peak Delay in particular keeps
 shipping exactly as it does today; Peak Alpine holds a second instance of the
@@ -369,7 +370,7 @@ Each stage is independently verifiable and independently shippable.
 | 1 | ✅ `packages/pedal-ui`: new components, icons, `PresetBar` variant, `Card` prop, `Components.jsx` entries | gallery `#components`, three theme columns; every module-shell measurement and colour read back off the live DOM and diffed against the prototype's |
 | 2 | ✅ `packages/delay-face`; Peak Delay's App.jsx reduced to a wrapper; the generic JUCE bindings to `@synthpeak/pedal-ui/juce` | fingerprint identical on **both** faces — Delay `324 / 626x481 / 733c7d76 / 42296266`, Wah `374 / 566x469 / cf04e593 / d93913e7` (Wah moved too: one `installAutoResize`) |
 | 3 | ✅ `plugins/peak-alpine/jsui`: the whole face | gallery `#peak-alpine` vs the prototype at :3200; card 1046 wide and tracks 186/598/186 exact, every module-shell measurement matches, and the shim's "unknown to the backend" warnings confirm the full namespaced id set |
-| 4 | `ee::dsp::Tremolo` extracted; Peak Trem-Pan delegates | new `ee_trempan_match` WAV diff (sample-exact) + `ee_trempan_stress` |
+| 4 | ✅ `ee::dsp::Tremolo` extracted; Peak Trem-Pan delegates | `ee_trempan_match`: 13 passes, all checksums identical either side of the change. `ee_trempan_stress`: 7776 cases, 0 flagged |
 | 5 | `ee::fx::DelayModule` extracted; Peak Delay delegates | `ee_delay_match` WAV diff (sample-exact) + `ee_preset_tests` |
 | 6 | `SpringReverb`'s three new setters | `ee_spring_match` at defaults (sample-exact) + `ee_reverb_stress` |
 | 7 | `ee::fx::ModulationModule` + `ReverbModule` | `ee_dsp_tests` additions; a `ee_machine_host` driving the real processor with ragged blocks, like `ee_grain_host` |
@@ -478,6 +479,33 @@ look if a light Peak Alpine is ever a real face.
   reason - the real `Knob`'s caption metrics against a hand-drawn one.
 - **Every knob reads 0 in the gallery**, because the shim has no defaults to
   give. That is not worth faking; it resolves when the processor exists.
+
+### 5.8 Notes from stage 4
+
+The processor went 522 lines to 331 and its header 91 to 78; what left is now
+`shared/include/ee/dsp/Tremolo.h` (+ `TremoloConfig.h` for the voicing, per the
+house rule). Peak Trem & Pan keeps its parameters, its Rate map, the playhead
+read and the bypass crossfade, and is otherwise an adapter.
+
+- **The A/B harness is new and generates its own input.** `ee_delay_match`
+  takes a wav; this one does not, so the comparison can be re-run from a clean
+  checkout with nothing to fetch. It prints an FNV-1a checksum over the raw
+  sample bits per pass, which is a stricter bar than a peak/RMS pair and a
+  diffable one. It installs a **fake playhead** that plays at 128 bpm and
+  relocates a third of the way through: without one, an offline render never
+  reaches the phase-lock at all, which is the code an extraction is most likely
+  to break.
+- **One real behavioural difference, caught before it shipped.** The original
+  sets `wasPlaying = isPlaying` - the transport alone - not the combined
+  "synced and playing" test that guards the alignment block. Collapsing the two
+  would have made switching Sync on mid-take hard-snap the LFO phase instead of
+  easing onto the grid. `Tremolo::Transport` therefore carries `synced` and
+  `playing` as separate fields, and says why.
+- **`kSmoothingSeconds` is restated in `TremoloConfig.h`** rather than the
+  engine including `ee/plugin/Bypass.h` for `kRampSeconds`. Nothing else under
+  `ee/dsp` reaches up into `ee/plugin`, and an engine that did would stop being
+  usable without the plugin layer. The processor sees both and `static_assert`s
+  they are equal, so they cannot drift in silence.
 
 ## 7. Risks, and what is done about them
 

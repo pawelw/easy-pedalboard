@@ -2,6 +2,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "ee/dsp/Tremolo.h"
+
 class PeakTremPanProcessor : public juce::AudioProcessor
 {
 public:
@@ -59,31 +61,16 @@ private:
     std::atomic<float> storedSyncRate01 { 0.5f };
     std::atomic<float> storedFreeRate01 { 0.5f };
 
-    juce::SmoothedValue<float> depth;  // 0..1 LFO amount
-    juce::SmoothedValue<float> makeup; // gain that offsets the tremolo's level drop
-    juce::SmoothedValue<float> bias;   // 0..1 - crossfade from opto to bias-tube tremolo
+    /** The whole of what this pedal does. The LFO, its phase-lock to the host
+        grid, the ducking law, the bias-tube stage and the panning law all live
+        there; this processor is its parameters, its Rate map, and the bypass
+        crossfade. Peak Alpine's Modulation module runs a second instance of the
+        same engine, which is why it is not written out here any more. */
+    ee::dsp::Tremolo tremolo;
+
     juce::SmoothedValue<float> wetMix; // 1 = processed, 0 = clean dry
 
     juce::AudioBuffer<float> dryBuffer;
-    std::vector<float> modBuffer; // shaped, slew-limited LFO, per sample
-
-    // The LFO free-runs on this phase accumulator; when synced it is nudged
-    // (or, on a transport jump, snapped) towards the host timeline so the same
-    // bar always plays the same phase.
-    double lfoPhase = 0.0; // [0, 1)
-    double expectedPpq = 0.0;
-    bool haveExpectedPpq = false;
-    bool wasPlaying = false;
-
-    // One-pole slew on the modulation signal - a few ms - so a phase snap or a
-    // division/mode switch can never step the gain in a single sample.
-    float modZ1 = 0.0f;
-    float modSlewCoeff = 1.0f;
-
-    // Per-channel DC blocker for the bias-tube stage: the LFO-driven operating
-    // point leaves a wandering offset that would otherwise pump the output.
-    float biasDcState[kMaxChannels] = {};
-    float biasDcCoeff = 1.0f;
 
     double sampleRate = 44100.0;
 

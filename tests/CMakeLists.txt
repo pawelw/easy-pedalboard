@@ -155,6 +155,28 @@ if(TARGET PeakTremPan)
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
+if(TARGET PeakTremPan)
+    # Renders a fixed battery of settings through the whole Trem & Pan processor
+    # and prints a checksum per pass. Not a pass/fail suite: it is the A/B for a
+    # change that is meant to change nothing, so its output is compared against
+    # itself from before the change.
+    juce_add_console_app(ee_trempan_match PRODUCT_NAME "ee_trempan_match")
+
+    target_sources(ee_trempan_match PRIVATE TremPanMatch.cpp)
+
+    target_compile_definitions(ee_trempan_match PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_trempan_match
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-trem-pan/src)
+
+    target_link_libraries(ee_trempan_match
+        PRIVATE PeakTremPan ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
 # Sweeps the FDN reverb over extreme settings and adverse input, watching for a
 # non-finite or runaway tail.
 juce_add_console_app(ee_reverb_stress PRODUCT_NAME "ee_reverb_stress")

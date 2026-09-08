@@ -2,7 +2,6 @@
 
 #include "RateMap.h"
 
-#include "ee/dsp/Lfo.h"
 #include "ee/plugin/Bypass.h"
 #include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
@@ -11,6 +10,12 @@ namespace
 {
 using ee::plugin::kRampSeconds;
 using ee::plugin::percentToText;
+
+// The engine restates this rather than including ee/plugin - see
+// TremoloConfig.h. This is the one place both are visible, so it is the one
+// place the tie can be checked.
+static_assert (ee::dsp::tremolo::kSmoothingSeconds == kRampSeconds,
+               "ee::dsp::tremolo::kSmoothingSeconds must track ee::plugin::kRampSeconds");
 
 constexpr const char* kAmountID = "amount";
 constexpr const char* kRateID = "rate";
@@ -26,42 +31,6 @@ constexpr const char* kStoredFreeRateProp = "storedFreeRate01";
 
 // Where the Rate knob lands the first time it is switched to free mode.
 constexpr float kDefaultFreePeriodMs = 124.0f;
-
-// Bias-tube tremolo. An opto/photocell tremolo just fades the level with a
-// smooth LFO; a brownface-style bias tremolo modulates a power tube's bias,
-// which does two audible things the clean fade does not:
-//
-//   1. the ducking envelope stops being a mirror of the LFO - the tube snaps
-//      toward cutoff and lingers there, so the throb reads as a harder,
-//      flatter-bottomed pulse (kBiasDuckSkew bends the duck curve for this);
-//   2. as the operating point nears cutoff the signal grinds - an asymmetric,
-//      level-dependent distortion that swells and clears in time with the
-//      throb, clean on the loud peaks and dirtiest at the bottom of the dip.
-//
-// Modelled the same way as ee::dsp::TapeCharacter's stage: a hand-rolled tanh
-// with a one-sided bias, no oversampling (the drive is program-dependent and
-// mostly gentle), and a one-pole DC blocker to mop up the offset the moving
-// bias leaves. The Bias knob crossfades the whole thing in; at 0 the clean
-// opto law is untouched.
-constexpr float kBiasDuckSkew = 0.6f; // how far the duck curve bends toward a hard pulse
-constexpr float kBiasDrive = 10.0f;   // peak extra drive into the tanh at the bottom of the dip
-constexpr float kBiasAsym = 0.7f;     // one-sided bias offset - the pulsing even harmonics
-constexpr float kBiasTrim = 5.0f;     // output trim that tracks the drive, leaving a little sag
-constexpr float kBiasDcHz = 20.0f;    // DC-blocker corner: below the lowest note, above the LFO's pump
-
-// Gain that keeps the perceived level roughly constant as the tremolo depth
-// comes up. The tremolo law pins its peak at unity and only ever ducks, so the
-// pedal always sounds quieter when engaged. For a symmetric LFO the applied gain
-// sweeps linearly over [1 - d, 1], whose mean-square is (1 - d + d^2/3); the
-// reciprocal square root of that restores the RMS level. Bounded: ~+2.3 dB at
-// 50 %, ~+4.8 dB at full depth. Non-symmetric shapes (exp decay, ramp) lose a
-// touch more, so this slightly under-compensates them - deliberately, to keep
-// the wet path from ever out-running the dry transients.
-float tremoloMakeupGain (float depth01)
-{
-    const float d = juce::jlimit (0.0f, 1.0f, depth01);
-    return 1.0f / std::sqrt (1.0f - d + d * d / 3.0f);
-}
 
 /** A plain "ms" wordmark for the tempo-sync button, the same glyph Peak Delay
     carries on its unit toggle. The Rate knob reads a note division when synced
@@ -164,34 +133,17 @@ void PeakTremPanProcessor::prepareToPlay (double newSampleRate, int maximumExpec
 
     const int maxBlock = juce::jmax (1, maximumExpectedSamplesPerBlock);
 
-    lfoPhase = 0.0;
-    expectedPpq = 0.0;
-    haveExpectedPpq = false;
-    wasPlaying = false;
-
-    modZ1 = 0.0f;
-    // ~2.5 ms one-pole.
-    modSlewCoeff = 1.0f - std::exp (-1.0f / (0.0025f * static_cast<float> (newSampleRate)));
-
-    for (auto& s : biasDcState)
-        s = 0.0f;
-    biasDcCoeff = juce::jlimit (
-        0.0f, 1.0f,
-        1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi * kBiasDcHz / static_cast<float> (newSampleRate)));
+    // Set before prepare: the engine seeds its own smoothers from these, so a
+    // pedal opened at a non-default depth does not ramp up to it from silence.
+    tremolo.setAmount01 (amountParam->load() * 0.01f);
+    tremolo.setShape01 (shapeParam->load() * 0.01f);
+    tremolo.setBias01 (biasParam->load() * 0.01f);
+    tremolo.setPanning (modeParam->load() > 0.5f);
+    tremolo.prepare (newSampleRate, maxBlock);
 
     dryBuffer.setSize (kMaxChannels, maxBlock, false, false, true);
-    modBuffer.assign (static_cast<size_t> (maxBlock), 0.0f);
 
     const bool engaged = onParam->load() > 0.5f;
-
-    depth.reset (newSampleRate, kRampSeconds);
-    depth.setCurrentAndTargetValue (amountParam->load() * 0.01f);
-
-    makeup.reset (newSampleRate, kRampSeconds);
-    makeup.setCurrentAndTargetValue (tremoloMakeupGain (amountParam->load() * 0.01f));
-
-    bias.reset (newSampleRate, kRampSeconds);
-    bias.setCurrentAndTargetValue (juce::jlimit (0.0f, 1.0f, biasParam->load() * 0.01f));
 
     wetMix.reset (newSampleRate, kRampSeconds);
     wetMix.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
@@ -266,181 +218,38 @@ void PeakTremPanProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         bpm = 120.0;
     bpm = juce::jlimit (20.0, 300.0, bpm);
 
-    const float amount01 = juce::jlimit (0.0f, 1.0f, amountParam->load() * 0.01f);
-    const float shape01 = juce::jlimit (0.0f, 1.0f, shapeParam->load() * 0.01f);
-    const float bias01 = juce::jlimit (0.0f, 1.0f, biasParam->load() * 0.01f);
     const float rate01 = rateParam->load();
     const bool panning = modeParam->load() > 0.5f;
     const bool synced = syncParam->load() > 0.5f;
     const bool engaged = onParam->load() > 0.5f;
 
-    const float periodSeconds = juce::jmax (1.0e-4f, ee::trempan::rateToPeriodSeconds (rate01, synced, bpm));
-    double phaseInc = 1.0 / (static_cast<double> (periodSeconds) * sampleRate);
-    // A non-finite or negative increment would spin the wrap below forever and
-    // wedge the audio thread - the roar you cannot turn down. Anything past a
-    // full cycle per sample is already meaningless, so clamp hard.
-    if (! std::isfinite (phaseInc) || phaseInc < 0.0)
-        phaseInc = 0.0;
-    phaseInc = juce::jmin (phaseInc, 1.0);
+    tremolo.setAmount01 (amountParam->load() * 0.01f);
+    tremolo.setShape01 (shapeParam->load() * 0.01f);
+    tremolo.setBias01 (biasParam->load() * 0.01f);
+    tremolo.setPanning (panning);
+    tremolo.setPeriodSeconds (ee::trempan::rateToPeriodSeconds (rate01, synced, bpm));
 
-    // The LFO always free-runs on lfoPhase, so a rate or division change never
-    // steps the phase - it just carries on at a new speed. When synced to a
-    // running transport we also align it to the host grid: a hard snap only on the
-    // first playing block or a transport jump (loop / relocate); otherwise a
-    // gentle per-block pull, capped small, so host ppq jitter and division changes
-    // stay click-free and just re-settle over a fraction of a second.
-    if (synced && havePpq && isPlaying)
-    {
-        const double cyclesPerQuarter =
-            1.0 / juce::jmax (1.0e-4, static_cast<double> (ee::trempan::syncedDivisionBeats (rate01)));
-        const double ppqPerSample = bpm / (60.0 * sampleRate);
+    // The Rate knob's division is this pedal's own mapping, so the engine is
+    // told how many LFO cycles fit in a quarter note rather than being handed
+    // the knob. `synced` for the engine means all three conditions at once -
+    // the switch, a finite ppq, and a running transport; `playing` is the
+    // transport alone, and the two are not the same test. See Tremolo::Transport.
+    ee::dsp::Tremolo::Transport transport;
+    transport.synced = synced && havePpq && isPlaying;
+    transport.playing = isPlaying;
+    transport.ppqStart = ppqStart;
+    transport.cyclesPerQuarter =
+        1.0 / juce::jmax (1.0e-4, static_cast<double> (ee::trempan::syncedDivisionBeats (rate01)));
+    transport.ppqPerSample = bpm / (60.0 * sampleRate);
 
-        double target = ppqStart * cyclesPerQuarter;
-        target -= std::floor (target);
-
-        const bool jumped = ! wasPlaying || (haveExpectedPpq && std::abs (ppqStart - expectedPpq) > 0.25);
-
-        if (jumped)
-        {
-            lfoPhase = target;
-        }
-        else
-        {
-            double err = target - lfoPhase;
-            err -= std::round (err); // wrap to [-0.5, 0.5]
-            lfoPhase += juce::jlimit (-0.006, 0.006, 0.15 * err);
-        }
-
-        expectedPpq = ppqStart + numSamples * ppqPerSample;
-        haveExpectedPpq = true;
-    }
-    else
-    {
-        haveExpectedPpq = false; // next playing block re-aligns from scratch
-    }
-    wasPlaying = isPlaying;
-
-    // Self-heal if a bad host value ever slipped a non-finite into the state -
-    // otherwise a single NaN here would stick and roar. Every running state
-    // variable that feeds the next block has to be covered: the bias-tube DC
-    // blocker latches just as hard as the LFO phase does.
-    if (! std::isfinite (lfoPhase))
-        lfoPhase = 0.0;
-    if (! std::isfinite (modZ1))
-        modZ1 = 0.0f;
-    for (auto& s : biasDcState)
-        if (! std::isfinite (s))
-            s = 0.0f;
-
-    depth.setTargetValue (amount01);
-    // Only the tremolo law ducks; the panning branch is already equal-power, so
-    // it needs no make-up and its target stays at unity.
-    makeup.setTargetValue (panning ? 1.0f : tremoloMakeupGain (amount01));
-    // Bias is a tremolo-only colour; in panning mode it stays parked at 0.
-    bias.setTargetValue (panning ? 0.0f : bias01);
     wetMix.setTargetValue (engaged ? 1.0f : 0.0f);
-
-    if (numSamples > static_cast<int> (modBuffer.size()))
-        modBuffer.assign (static_cast<size_t> (numSamples), 0.0f);
-
-    // One shaped LFO value per sample, slew-limited so nothing steps the gain in a
-    // single sample. Same helper the UI preview uses, so the drawing still tracks.
-    for (int i = 0; i < numSamples; ++i)
-    {
-        const float raw = ee::dsp::lfoValue (static_cast<float> (lfoPhase), shape01);
-        modZ1 += modSlewCoeff * (raw - modZ1);
-        modBuffer[static_cast<size_t> (i)] = modZ1;
-
-        lfoPhase += phaseInc;
-        // Branchless wrap to [0, 1). The old `while (lfoPhase >= 1.0)` spun forever
-        // if lfoPhase ever went non-finite; std::floor is O(1) whatever it holds,
-        // and a non-finite result is caught by the self-heal at the next block.
-        lfoPhase -= std::floor (lfoPhase);
-    }
 
     if (numSamples > dryBuffer.getNumSamples())
         dryBuffer.setSize (kMaxChannels, numSamples, false, false, true);
     for (int ch = 0; ch < numCh; ++ch)
         dryBuffer.copyFrom (ch, 0, buffer, ch, 0, numSamples);
 
-    if (panning && numCh >= 2)
-    {
-        // Equal-power auto-pan, sample accurate so it tracks the LFO exactly.
-        // juce::dsp::Panner is the obvious reuse here, but it bakes in a fixed 50 ms
-        // gain ramp that swallows anything moving at an LFO rate, so the pan law is
-        // applied directly - unity in the centre, +3 dB / silence at the extremes.
-        constexpr float kCentreComp = juce::MathConstants<float>::sqrt2;
-        float* left = buffer.getWritePointer (0);
-        float* right = buffer.getWritePointer (1);
-
-        for (int i = 0; i < numSamples; ++i)
-        {
-            const float d = depth.getNextValue();
-            const float pan = juce::jlimit (-1.0f, 1.0f, d * modBuffer[static_cast<size_t> (i)]);
-            const float angle = (pan * 0.5f + 0.5f) * juce::MathConstants<float>::halfPi;
-
-            left[i] *= std::cos (angle) * kCentreComp;
-            right[i] *= std::sin (angle) * kCentreComp;
-        }
-        makeup.skip (numSamples);
-        bias.skip (numSamples);
-    }
-    else if (! panning)
-    {
-        // Tremolo: LFO at +1 is unity, at -1 is (1 - depth). JUCE has no tremolo
-        // primitive, so the gain law is written out here. The make-up factor lifts
-        // the whole envelope so bringing the depth up doesn't just make it quieter.
-        // Bias (0 = clean opto, 1 = full bias-tube) reshapes the ducking envelope
-        // and folds in a throb-synced asymmetric drive; see the constants above.
-        for (int i = 0; i < numSamples; ++i)
-        {
-            const float d = depth.getNextValue();
-            const float mk = makeup.getNextValue();
-            const float b01 = bias.getNextValue();
-            const float rawDuck = 0.5f - 0.5f * modBuffer[static_cast<size_t> (i)]; // 0 loud .. 1 quiet
-
-            // Bend the duck toward a harder, flatter-bottomed pulse as Bias comes up.
-            // Exponent 1 (b01 = 0) leaves the LFO shape exactly as the opto law had it.
-            const float duck =
-                b01 > 0.0f ? std::pow (juce::jlimit (0.0f, 1.0f, rawDuck), 1.0f - kBiasDuckSkew * b01) : rawDuck;
-
-            const float g = mk * (1.0f - d * duck);
-
-            if (b01 <= 0.0f)
-            {
-                for (int ch = 0; ch < numCh; ++ch)
-                    buffer.getWritePointer (ch)[i] *= g;
-                continue;
-            }
-
-            // Drive rises with the (shaped) dip, so the grind swells and clears in
-            // time with the throb. One-sided offset -> pulsing even harmonics; the
-            // trim tracks the drive so the level only sags a little.
-            const float driveAmt = b01 * d * duck;
-            const float k = 1.0f + kBiasDrive * driveAmt;
-            const float trim = 1.0f / (1.0f + kBiasTrim * driveAmt);
-            const float tanhAsym = std::tanh (kBiasAsym * driveAmt);
-
-            for (int ch = 0; ch < numCh; ++ch)
-            {
-                float* s = buffer.getWritePointer (ch) + i;
-                const float clean = *s * g;
-
-                float coloured = (std::tanh (clean * k + kBiasAsym * driveAmt) - tanhAsym) * trim;
-                biasDcState[ch] += biasDcCoeff * (coloured - biasDcState[ch]);
-                coloured -= biasDcState[ch];
-
-                *s = clean + b01 * (coloured - clean);
-            }
-        }
-    }
-    else
-    {
-        // Panning asked for on a mono output: nothing sensible to sweep, leave dry.
-        depth.skip (numSamples);
-        makeup.skip (numSamples);
-        bias.skip (numSamples);
-    }
+    tremolo.process (buffer, numCh, numSamples, transport);
 
     // Crossfade to the untouched dry copy when bypassed, so the host on/off never
     // clicks.

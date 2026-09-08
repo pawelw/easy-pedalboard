@@ -50,6 +50,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress      # tape knob sweep, non-finite hunt
 ./build/tests/ee_reverb_stress_artefacts/Release/ee_reverb_stress  # reverb tail stability
 ./build/tests/ee_trempan_stress_artefacts/Release/ee_trempan_stress
+./build/tests/ee_trempan_match_artefacts/Release/ee_trempan_match [outDir]  # A/B renderer
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
@@ -85,6 +86,16 @@ npm run build --prefix plugins/peak-delay/jsui
 install one: `EE_INSTALL_PLUGINS` is on outside the `fast` preset, so a full
 build of a dev-server tree overwrites `~/Library/Audio/Plug-Ins` with a face
 that is blank whenever Vite is not running.
+
+`ee_trempan_match` is the A/B for a change to Peak Trem & Pan that is meant to
+change nothing: it renders thirteen fixed settings - every LFO shape anchor, the
+bias stage in and out, the panning law, a synced pass with a transport jump, and
+the bypass crossfade - through the whole processor over ragged block sizes, and
+prints an FNV-1a checksum of the finished audio per pass. Run it before the
+change, keep the output, run it after, diff. Sample-exact is the bar. It
+generates its own input and needs no file; pass a directory to also get one wav
+per pass. `ee_delay_match` and `ee_spring_match` are the same idea for their
+pedals, driven by a real input file instead.
 
 The last two binaries above are diagnostic tools rather than pass/fail suites,
 for the class of bug that only appears in a host. `ee_grain_host` instantiates
@@ -127,7 +138,10 @@ Never reformat a file you are not otherwise changing.
 ## Layout
 
 ```
-shared/include/ee/dsp/    DSP primitives and engines (mostly header-only)
+shared/include/ee/dsp/    DSP primitives and engines (mostly header-only) -
+                          Chorus, Phaser, Tremolo, TapeMachine, FdnReverb,
+                          SpringReverb, TapeDelay. A pedal is one of these plus
+                          its parameters; nothing owns its own copy of the maths.
 shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knobs
 shared/src/dsp/           FdnReverb, SpringReverb + TapeDelay implementations
 shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knob…)
