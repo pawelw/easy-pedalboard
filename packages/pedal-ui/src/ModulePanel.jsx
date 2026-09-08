@@ -3,7 +3,7 @@ import "./ModulePanel.css";
 
 /**
  * One effect module inside a multi-effect host: a header strip with its own
- * power toggle and name, a body, and an optional footer. Peak Machine puts
+ * power toggle and name, a body, and an optional footer. Peak Alpine puts
  * three of these side by side.
  *
  * A panel inside a panel, not a second `Card`. Card is the enclosure - it has
@@ -18,7 +18,7 @@ import "./ModulePanel.css";
  * `BarDisplay` and `Knob` all just inherit. Pass one of tokens.css's
  * `--pui-accent-*`, not a literal, so the palette stays in one file.
  *
- * `tone="wide"` is the module carrying the content (Peak Machine's Delay). It
+ * `tone="wide"` is the module carrying the content (Peak Alpine's Delay). It
  * is a padding difference and nothing else - 18px sides rather than 12px,
  * which is what a 598px panel's contents need to sit in. Every module is the
  * same panel colour; see tokens.css's note on why the wide one stopped having

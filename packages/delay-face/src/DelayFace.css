@@ -1,0 +1,156 @@
+/* The Delay face's own layout. Everything here was `plugins/peak-delay/jsui/
+   src/index.css` and moved with the component; what stayed behind is the
+   pedal's enclosure - its `.page` padding and the Card overrides for its
+   title, header and padding - because that is the part the two hosts differ
+   on. */
+
+.pd-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 32px;
+  margin-top: 32px;
+
+  /* The link bracket's column, and the geometry the arms are pinned to. Named
+     rather than inlined because the host's content width is 568 + this, and
+     the arms have to meet the Time knobs' dial centres exactly.
+
+     Declared here rather than on the host's own card, which is where they used
+     to sit: nothing outside this row reads any of them, and a face that
+     carries its own geometry is one less thing for a second host to remember
+     to set. */
+  --pd-link-col: 38px; /* button + arm + the gap to the knob */
+  --pd-link-btn: 29px; /* the square button, icon 15 + 7px padding either side */
+  --pd-knob-dia: 42px; /* the Time knobs' dial: half of it is the arm's height */
+  --pd-arm-gap: 10px; /* "space between lines and knobs" */
+  --pd-arm-clear: 18px; /* how far the arms stop short of the button */
+}
+
+.pd-time-col {
+  display: flex;
+  flex-direction: column;
+  width: calc(236px + var(--pd-link-col));
+  gap: 16px;
+}
+
+.pd-link-group {
+  display: flex;
+  align-items: stretch;
+}
+
+.pd-time-rows {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 24px;
+  margin-left: 9px;
+}
+
+.pd-link {
+  position: relative;
+  flex: none;
+  width: var(--pd-link-col);
+}
+
+/* Two mirrored corner pieces: each runs vertically out from the button and
+   turns into its knob. Drawn as borders on an empty box rather than as an
+   SVG, so the 4px corner is just a border-radius and the whole thing tracks
+   the row geometry in CSS with nothing to keep in sync. */
+.pd-link__arm {
+  position: absolute;
+  left: calc(var(--pd-link-btn) / 2);
+  right: var(--pd-arm-gap);
+  border-left: 1px solid var(--pui-line);
+  pointer-events: none;
+}
+
+.pd-link__arm--top {
+  /* The horizontal run sits on the top knob's dial centre - which is half a
+     dial down only because TimeControl's knob is `bare`. */
+  top: calc(var(--pd-knob-dia) / 2);
+  bottom: calc(50% + var(--pd-arm-clear));
+  border-top: 1px solid var(--pui-line);
+  border-top-left-radius: 4px;
+}
+
+.pd-link__arm--bottom {
+  top: calc(50% + var(--pd-arm-clear));
+  bottom: calc(var(--pd-knob-dia) / 2);
+  border-bottom: 1px solid var(--pui-line);
+  border-bottom-left-radius: 4px;
+}
+
+.pd-link__button {
+  position: absolute;
+  left: 5%;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+/* Icon-only and square-ish, not the full-width capsule the Sync pill is -
+   scoped here rather than in Pill.css, which the Sync pill still wants. */
+.pd-link__button .pui-button.pui-pill {
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.pd-time-control {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+
+.pd-pills {
+  display: flex;
+  gap: 7px;
+  /* Lines up under the Time rows rather than under the link bracket. */
+  margin-left: calc(var(--pd-link-col) + 6px);
+}
+
+/* One row of three sections: Tape (which says where it is), Mod (inside the
+   feedback loop) and Filter (on the repeats), each on the same panel and told
+   apart by the colour of its glyph. COMPONENTS.md's face layout, widened from
+   two sections to three - what paid for the third was moving each knob's name
+   under it and dropping its permanent value line (see StageControl), which
+   took roughly a third of the footer's width back. */
+/* The negative margins take the whole footer - divider included - out to the
+   host's edge, so it reads as part of the enclosure rather than as a panel
+   drawn on it, and the divider runs the full width instead of stopping short
+   at each end.
+
+   How far it has to reach is the *host's* business, not the face's: escaping
+   the edge means clearing whatever paddings that host nests the face in, and
+   they differ (a Card's own sides plus .pui-card__body's, versus a
+   ModulePanel's body). So the host declares the two distances and this only
+   spends them. Both default to 0 - a host that says nothing gets a footer that
+   sits inside its padding, which is wrong-looking but never broken. */
+.pd-footer {
+  display: flex;
+  margin: 20px calc(-1 * var(--pd-bleed-x, 0px)) calc(-1 * var(--pd-bleed-bottom, 0px));
+  border-top: 1px solid var(--pui-divider);
+}
+
+/* `flex: 1 1 0` rather than `flex: 1`: true thirds. On `flex: 1` the sections
+   are sized from their content, so Filter's longer knob names would push the
+   two dividers off the even spacing the row is drawn against. */
+.pd-footer__section {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  /* The bottom pads against the knob captions, which sit below the tick rings
+     - see --pui-knob-reach-small. */
+  padding: 12px 14px;
+}
+
+/* A hairline wherever two sections meet, so the footer reads as three sections
+   rather than one wide row of six knobs. It used to skip the Tape section,
+   which separated itself by sitting on a green band; with the band gone (see
+   tokens.css) every division is drawn the same way.
+
+   --pui-divider is the same token the border-top above uses, so the verticals
+   and the horizontal are always one line. Inside a ModulePanel that token is
+   re-pointed to the module's own line colour, and all three follow. */
+.pd-footer__section + .pd-footer__section {
+  border-left: 1px solid var(--pui-divider);
+}

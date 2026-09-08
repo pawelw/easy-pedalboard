@@ -139,7 +139,23 @@ cmake/AddPeakPlugin.cmake the juce_add_plugin boilerplate, once
 plugins/peak-*/src/       one PluginProcessor.{h,cpp} each: parameters + processBlock
 plugins/peak-*/CMakeLists.txt  a peak_add_plugin() call — six lines
 tests/                    offline DSP tests, stress sweeps, UI snapshot renderer
+
+packages/pedal-ui/        the WebView face component library (Knob, Card,
+                          ModulePanel…) — JUCE-free, so the gallery can render it
+packages/pedal-ui/src/juce.jsx   its JUCE half, a separate entry point
+                          (`@synthpeak/pedal-ui/juce`): JuceKnob, JucePill, the
+                          live-value hooks, ParamScope, installAutoResize
+packages/delay-face/      Peak Delay's face minus its enclosure — the component
+                          Peak Delay and Peak Alpine's Delay module both render
+plugins/peak-*/jsui/      a WebView pedal's own page: its enclosure and whatever
+                          is specific to it, and nothing else
+apps/pedal-gallery/       dev-only: every face plus the component showcase
 ```
+
+A face's parameter ids are resolved through the enclosing `ParamScope`, so the
+same component binds to `mix` in Peak Delay and `dly.mix` inside Peak Alpine.
+A pedal that wraps nothing in one is bound exactly as it was before that
+existed.
 
 The UI is data-driven: a pedal describes its face with an `ee::ui::PedalSpec` in
 `createEditor()` and writes no editor code. See "Adding another effect" in

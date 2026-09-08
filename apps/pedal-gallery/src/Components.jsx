@@ -29,7 +29,7 @@ import {
     with no signal reaching it stays still, which is the whole point of it. */
 // The engine name -> glyph map is the *face's*, not EngineStepper's: which
 // mark stands for which engine is a design decision per host, and the stepper
-// only ever renders the node it is handed. Peak Machine's own face will carry
+// only ever renders the node it is handed. Peak Alpine's own face will carry
 // its own copy of this. Chorus is ModIcon on purpose - see the note in
 // pedal-ui's index.js.
 const MOD_ENGINE_ICONS = {
@@ -194,7 +194,7 @@ function Showcase() {
         <SectionLabel>Pre-stage</SectionLabel>
 
         {/* ------------------------------------------------ multi-effect host
-            Everything below is new in design_handoff_peak_machine/. It is a
+            Everything below is new in design_handoff_peak_alpine/. It is a
             shell rather than a control: a module is a whole pedal's worth of
             face inside a host's, so the pieces are shown assembled as well as
             on their own - a PowerToggle in isolation says very little about
@@ -328,7 +328,7 @@ function Showcase() {
             cannot be shown without one. */}
         <SectionLabel>Card — subtitlePlacement="below"</SectionLabel>
         <Card
-          title="Peak Machine"
+          title="Peak Alpine"
           subtitle="Modulation / Delay / Reverb machine"
           subtitlePlacement="below"
           width={420}

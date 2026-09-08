@@ -1,20 +1,22 @@
-# Peak Machine — implementation plan
+# Peak Alpine — implementation plan
 
-A twelfth plugin, `plugins/peak-machine`: one host panel wrapping three effect
+A twelfth plugin, `plugins/peak-alpine`: one host panel wrapping three effect
 modules — **Modulation** (Tape / Tremolo / Chorus / Phaser), **Delay** (the
 existing Peak Delay face and chain, embedded), **Reverb** (Space / Spring).
 
-Design handover: `design_handoff_peak_machine/README.md`, prototype at
-`design_handoff_peak_machine/Peak Multi Host.dc.html` (serve it — the file
+Design handover: `design_handoff_peak_alpine/README.md`, prototype at
+`design_handoff_peak_alpine/Peak Alpine.dc.html` (serve it — the file
 needs its sibling `support.js`, so a `file://` open renders raw `{{ }}`
 templates; `.claude/launch.json`'s `design-handoff` entry puts it on port 3200).
 
-Status: **stage 1 built** (see §6). `packages/pedal-ui` carries the host shell;
-the gallery's `#components` page renders it in all three themes and every
-measurement below matches the prototype exactly. Stages 2-10 not started.
+Status: **stages 1 and 2 built** (see §6). `packages/pedal-ui` carries the host
+shell and its JUCE bindings; `packages/delay-face` carries the Delay face, which
+Peak Delay now renders inside a Card and Peak Alpine will render inside a
+`ModulePanel`. Both existing faces come back byte-identical. Stages 3-10 not
+started.
 
 None of the eleven existing pedals is replaced. Peak Delay in particular keeps
-shipping exactly as it does today; Peak Machine holds a second instance of the
+shipping exactly as it does today; Peak Alpine holds a second instance of the
 same chain and renders the same face component.
 
 ---
@@ -37,7 +39,7 @@ Three problems, and they are mostly independent:
    many relays.
 
 So: build a shared module layer in C++, a shared face component in JS, and let
-`peak-machine` be thin at both ends.
+`peak-alpine` be thin at both ends.
 
 ### Signal chain
 
@@ -203,14 +205,14 @@ flag, and do the crossfades described above.
 
 ---
 
-## 4. The plugin — `plugins/peak-machine`
+## 4. The plugin — `plugins/peak-alpine`
 
 ```
-plugins/peak-machine/
-  CMakeLists.txt              peak_add_plugin(PeakMachine CODE Pmch ... WEBVIEW)
+plugins/peak-alpine/
+  CMakeLists.txt              peak_add_plugin(PeakAlpine CODE Palp ... WEBVIEW)
   presets/                    factory bank, categorised by " - " prefix
   src/PluginProcessor.{h,cpp}
-  src/PeakMachineWebEditor.{h,cpp}
+  src/PeakAlpineWebEditor.{h,cpp}
   jsui/                       Vite + React face, dev server port 3002
 ```
 
@@ -254,7 +256,7 @@ applies.
 
 ### 4.2 Processor
 
-Holds three modules, one APVTS, one `PresetStore { apvts, "Peak Machine",
+Holds three modules, one APVTS, one `PresetStore { apvts, "Peak Alpine",
 EE_FACTORY_PRESETS }`, the two trims, the global engage crossfade, and the
 playhead BPM cache (`readPlayHeadBpm` lifted from Peak Delay — audio thread
 only, for the reason its comment gives about Live).
@@ -268,7 +270,7 @@ collapsing a deliberately-uneven pair. Same implementation as
 
 ### 4.3 Web editor
 
-`PeakMachineWebEditor` is `PeakDelayWebEditor` with more relays. Same
+`PeakAlpineWebEditor` is `PeakDelayWebEditor` with more relays. Same
 `SinglePageBrowser`, same `presetBridge` wrap, same `serveFromDist`, same
 `reportContentSize` / `formatKnobValue` / `getDelayTimesMs` native functions,
 same 45 Hz `machineMeter` event carrying `{ level, strikes, bpm }`.
@@ -319,7 +321,7 @@ delay-specific hooks (`useDelayTimesMs`, `useTimeReadoutText`, `useDelayMeter`,
 
 - `plugins/peak-delay/jsui/src/App.jsx` becomes `<Card …><DelayFace/></Card>` —
   a wrapper of about fifteen lines. **Its rendered output must not change.**
-- `plugins/peak-machine/jsui` renders `<DelayFace prefix="dly." />` inside a
+- `plugins/peak-alpine/jsui` renders `<DelayFace prefix="dly." />` inside a
   `ModulePanel`.
 - Verified by a **geometry fingerprint** rather than by eye: with the gallery on
   `#peak-delay`, walk every rendered descendant of `.pui-card` and hash
@@ -339,7 +341,7 @@ delay-specific hooks (`useDelayTimesMs`, `useTimeReadoutText`, `useDelayMeter`,
   faces have to be diffed by hand. This is that, made checkable - a screenshot
   comparison would not have caught a 1px shift.)
 
-### 5.3 `plugins/peak-machine/jsui`
+### 5.3 `plugins/peak-alpine/jsui`
 
 Thin. `App.jsx` composes `HostPanel` chrome + three `ModulePanel`s; a
 `ModulationModule.jsx` and a `ReverbModule.jsx` each own an engine table
@@ -352,8 +354,8 @@ notes but does not model.
 
 ### 5.4 Gallery
 
-- `apps/pedal-gallery/src/pedals.js` gains `{ slug: "peak-machine", face:
-  PeakMachineFace, theme: "onyx" }`.
+- `apps/pedal-gallery/src/pedals.js` gains `{ slug: "peak-alpine", face:
+  PeakAlpineFace, theme: "onyx" }`.
 - `Components.jsx` gains a section per new component and an updated `PresetBar`
   entry, rendered in all three theme columns as the page already does.
 - The gallery is where stage 2 below is verified — no JUCE, no build, hot reload.
@@ -367,15 +369,15 @@ Each stage is independently verifiable and independently shippable.
 | # | Stage | Verified by |
 |---|---|---|
 | 1 | ✅ `packages/pedal-ui`: new components, icons, `PresetBar` variant, `Card` prop, `Components.jsx` entries | gallery `#components`, three theme columns; every module-shell measurement and colour read back off the live DOM and diffed against the prototype's |
-| 2 | `packages/delay-face`; Peak Delay's App.jsx reduced to a wrapper | gallery `#peak-delay` before/after screenshot diff — must be identical |
-| 3 | `plugins/peak-machine/jsui`: the whole face, off local state, no JUCE | gallery `#peak-machine` vs the prototype at :3200, side by side |
+| 2 | ✅ `packages/delay-face`; Peak Delay's App.jsx reduced to a wrapper; the generic JUCE bindings to `@synthpeak/pedal-ui/juce` | fingerprint identical on **both** faces — Delay `324 / 626x481 / 733c7d76 / 42296266`, Wah `374 / 566x469 / cf04e593 / d93913e7` (Wah moved too: one `installAutoResize`) |
+| 3 | `plugins/peak-alpine/jsui`: the whole face, off local state, no JUCE | gallery `#peak-alpine` vs the prototype at :3200, side by side |
 | 4 | `ee::dsp::Tremolo` extracted; Peak Trem-Pan delegates | new `ee_trempan_match` WAV diff (sample-exact) + `ee_trempan_stress` |
 | 5 | `ee::fx::DelayModule` extracted; Peak Delay delegates | `ee_delay_match` WAV diff (sample-exact) + `ee_preset_tests` |
 | 6 | `SpringReverb`'s three new setters | `ee_spring_match` at defaults (sample-exact) + `ee_reverb_stress` |
 | 7 | `ee::fx::ModulationModule` + `ReverbModule` | `ee_dsp_tests` additions; a `ee_machine_host` driving the real processor with ragged blocks, like `ee_grain_host` |
-| 8 | `plugins/peak-machine`: processor, parameter layout, CMake | `cmake --preset fast -DEE_PLUGINS="peak-machine"`, Standalone launches and makes sound |
-| 9 | `PeakMachineWebEditor` + `RelaySet`; face bound to real parameters | full `dev` build, `auval -v aufx Pmch Peak`, then **Ableton Live** — per the standing rule, DSP work isn't done until the AU/VST3 is rebuilt and Live is relaunched |
-| 10 | Factory preset bank | `ee_preset_tests` extended to Peak Machine's bank (every parameter in every file) |
+| 8 | `plugins/peak-alpine`: processor, parameter layout, CMake | `cmake --preset fast -DEE_PLUGINS="peak-alpine"`, Standalone launches and makes sound |
+| 9 | `PeakAlpineWebEditor` + `RelaySet`; face bound to real parameters | full `dev` build, `auval -v aufx Palp Peak`, then **Ableton Live** — per the standing rule, DSP work isn't done until the AU/VST3 is rebuilt and Live is relaunched |
+| 10 | Factory preset bank | `ee_preset_tests` extended to Peak Alpine's bank (every parameter in every file) |
 
 Stages 1–3 need no C++ build at all. Stages 4–6 are refactors of shipping code
 and each ends green before the next starts.
@@ -405,7 +407,7 @@ and each ends green before the next starts.
 ### 5.6 Design revisions after the handoff
 
 Three changes made against the prototype and ported to both sides. The handoff
-README and `Peak Multi Host.dc.html` carry them, so the bundle stays the record.
+README and `Peak Alpine.dc.html` carry them, so the bundle stays the record.
 
 1. **One panel for all three modules.** The Delay module's darker fill inside a
    lighter border is gone; every module is `#20292d` / `#161c1e` / `#0a0b0c`.
@@ -419,20 +421,20 @@ README and `Peak Multi Host.dc.html` carry them, so the bundle stays the record.
    `--pui-stage-tape` `#d8f088`, `--pui-stage-mod` `#7fb4e0`,
    `--pui-stage-filter` `#e08fc0` — via a new `accent` prop on `StageHeader`.
 
-2 and 3 land on Peak Delay as well as Peak Machine: one Delay face, no variant,
+2 and 3 land on Peak Delay as well as Peak Alpine: one Delay face, no variant,
 which is what the handoff asks for. That is a visible change to a shipping
 pedal, so its README shots are now out of date.
 
 `TapeIcon`'s `bandColour` became `ground`: its reels have to be filled with
 whatever panel is behind them, which was the band and is now the card on Peak
-Delay and the module on Peak Machine. It reads `var(--pui-stage-ground,
+Delay and the module on Peak Alpine. It reads `var(--pui-stage-ground,
 var(--pui-panel))`, with `ModulePanel` setting the former - the point-of-use
 fallback again, for the reason §5.5 gives.
 
 **Open:** the three glyph hues were picked against the onyx panel they ship on.
 On the light and grey themes - which only the gallery renders - the lime in
 particular is low contrast. Same trade the module accents make, and worth a
-look if a light Peak Machine is ever a real face.
+look if a light Peak Alpine is ever a real face.
 
 4. **Two footer dividers, not one.** The footer only ever drew one vertical
    line: Tape was separated from Mod by the edge of its green band, so
@@ -462,17 +464,17 @@ filters both. A chorus change needs several runs, not one — and the Modulation
 module touches Chorus.
 
 **`tests/UiSnapshot.cpp` duplicates every pedal's parameter layout.** It covers
-the `ee::ui` faces, not the WebView ones, so Peak Machine adds nothing to it —
+the `ee::ui` faces, not the WebView ones, so Peak Alpine adds nothing to it —
 but stage 4's Trem-Pan work does touch a pedal that *is* in there, and the
 snapshot will drift silently if its parameter mirror is not updated.
 
-**CPU.** Peak Machine runs a tape machine or a tremolo, a full delay chain with
+**CPU.** Peak Alpine runs a tape machine or a tremolo, a full delay chain with
 two tape sections and a phaser, and a 16-line FDN — in series, in one plugin.
 Worth a measurement at stage 8 before the face work is finished, because the
 answer might be "prepare the unselected reverb lazily" rather than "hold both".
 
 **Every build tree installs into the same `~/Library/Audio/Plug-Ins`.** A
-`build-fast/` iteration on peak-machine does not install, but a `dev` build of
+`build-fast/` iteration on peak-alpine does not install, but a `dev` build of
 it will overwrite whatever `build-au/` last put there. Check `lipo -archs`
 before blaming the plugin.
 
@@ -494,5 +496,5 @@ Nothing blocking. Two things worth a decision before stage 3:
   signal against the untouched one, which is what it does on the other three.
   The plan assumes the latter — consistent, and the knob is on the face either
   way.
-- **Preset bank.** Peak Machine's factory presets are new content, not migrated.
+- **Preset bank.** Peak Alpine's factory presets are new content, not migrated.
   Six headline patches plus categorised ones, matching Peak Delay's shape.

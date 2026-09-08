@@ -11,7 +11,7 @@
  * Its default is the one place in the set that has to ask where it is. The
  * icon used to sit on the Tape section's green band and filled from that
  * token; with the band gone it sits on whatever panel is behind it, which is
- * the card on Peak Delay's face and the module on Peak Machine's. So the
+ * the card on Peak Delay's face and the module on Peak Alpine's. So the
  * default reads `--pui-stage-ground` - which `ModulePanel` sets and a plain
  * card does not - and falls back to the panel.
  *

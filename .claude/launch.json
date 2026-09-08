@@ -31,7 +31,7 @@
         "http.server",
         "3200",
         "--directory",
-        "design_handoff_peak_machine"
+        "design_handoff_peak_alpine"
       ],
       "port": 3200
     }

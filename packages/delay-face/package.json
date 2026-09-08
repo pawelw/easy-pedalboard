@@ -1,0 +1,16 @@
+{
+  "name": "@synthpeak/delay-face",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Peak Delay's face, minus its enclosure - the component Peak Delay and Peak Alpine's Delay module both render. See src/DelayFace.jsx.",
+  "main": "src/index.js",
+  "dependencies": {
+    "@synthpeak/pedal-ui": "*"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "juce-framework-frontend": "*"
+  }
+}

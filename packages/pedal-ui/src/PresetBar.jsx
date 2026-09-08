@@ -65,7 +65,7 @@ function ChevronRightIcon() {
  *  - `"joined"` (default) is the segmented control every pedal face carries:
  *    prev, next and the name box share their edges and read as one object,
  *    with Save beside it.
- *  - `"separated"` is Peak Machine's host header: four discrete rounded
+ *  - `"separated"` is Peak Alpine's host header: four discrete rounded
  *    controls at a wider size. Four rather than one because that header is a
  *    row of separate chrome objects - the level faders and the bypass pill are
  *    next to it - and a segmented group among them reads as the odd one out.

@@ -13,5 +13,10 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "juce-framework-frontend": "*"
+  },
+  "exports": {
+    ".": "./src/index.js",
+    "./juce": "./src/juce.jsx",
+    "./package.json": "./package.json"
   }
 }

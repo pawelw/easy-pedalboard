@@ -97,7 +97,7 @@ const DEFAULT_REACH_BACK = 50;
  *
  * `chevron` replaces the mark in the closed box's right-hand slot. Omit it for
  * Mantine's own single down-arrow, which is what a select box carries and what
- * every pedal face uses; Peak Machine's host header passes a double one,
+ * every pedal face uses; Peak Alpine's host header passes a double one,
  * because there the field sits beside two chevron *buttons* and a third
  * single arrow would read as a third button.
  *

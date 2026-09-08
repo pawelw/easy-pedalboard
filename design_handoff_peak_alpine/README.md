@@ -1,10 +1,10 @@
-# Handoff: Peak Machine — three-module host panel (Modulation · Delay · Reverb)
+# Handoff: Peak Alpine — three-module host panel (Modulation · Delay · Reverb)
 
 ## Overview
 
-Peak Machine is a **new plugin** — `plugins/peak-machine`, alongside the eleven
+Peak Alpine is a **new plugin** — `plugins/peak-alpine`, alongside the eleven
 existing pedals. It is **not** a replacement for Peak Delay: `peak-delay` stays
-exactly as it is and continues to ship as its own standalone plugin. Peak Machine
+exactly as it is and continues to ship as its own standalone plugin. Peak Alpine
 reuses it as one of its three modules.
 
 One common chrome (logo, preset bar, IN/OUT trims, global bypass) wraps three
@@ -33,7 +33,7 @@ the prototype inlines everything only because the design tool requires it.
 The Delay module in the prototype is a faithful re-draw of the current
 `plugins/peak-delay/jsui/src/App.jsx`. **Do not rebuild it and do not fork it** —
 factor the existing face into a component both plugins render, so a fix lands in
-both. Peak Delay keeps shipping on its own; Peak Machine embeds the same component
+both. Peak Delay keeps shipping on its own; Peak Alpine embeds the same component
 inside its module shell.
 
 Anything genuinely new here — the module shell, the header power toggle, the engine
@@ -66,7 +66,7 @@ Delay carries the wide content.
 
 | Track | Contents |
 | --- | --- |
-| left, `flex:1 1 0` | 32px logo mark (tinted to `#b9d3d9`), gap 11px, then a title column (`gap:2px`): `Peak Machine` 19px/700 `#b9d3d9` over the tagline `MODULATION / DELAY / REVERB MACHINE`, 9px/500 uppercase `letter-spacing .12em` `#6c8288` |
+| left, `flex:1 1 0` | 32px logo mark (tinted to `#b9d3d9`), gap 11px, then a title column (`gap:2px`): `Peak Alpine` 19px/700 `#b9d3d9` over the tagline `MODULATION / DELAY / REVERB MACHINE`, 9px/500 uppercase `letter-spacing .12em` `#6c8288` |
 | center, `flex:none` | preset stepper + name field + save button |
 | right, `flex:1 1 0`, `justify-content:flex-end`, `gap:32px` | IN/OUT fader stack, then the bypass pill |
 
@@ -289,11 +289,16 @@ between knob rows.
 
 ## Files
 
-- `Peak Multi Host.dc.html` — the design prototype (open directly in a browser).
+- `Peak Alpine.dc.html` — the design prototype (open directly in a browser).
 - `support.js` — runtime required by the prototype. Not part of the design.
 - `assets/peak-logo.png`
 
-Upstream source for the Delay module: `plugins/peak-delay/jsui/src/App.jsx`,
-`index.css`, `TimeControl.jsx`; shared components in `packages/pedal-ui/src`
+Upstream source for the Delay module: **`packages/delay-face`** —
+`DelayFace.jsx`, `DelayFace.css`, `TimeControl.jsx`, `juceBindings.jsx`. That
+package is the face itself, with no enclosure; `plugins/peak-delay/jsui/src/
+App.jsx` is now only the Card around it, and Peak Alpine puts the same
+component in a `ModulePanel`. The generic JUCE-bound controls
+(`JuceKnob`, `JucePill`, the live-value hooks) are
+`@synthpeak/pedal-ui/juce`. Shared components in `packages/pedal-ui/src`
 (`Knob.jsx`, `tokens.css`, `Card.css`, `StageGroup.css`, `StageHeader.css`,
 `StageControl.css`, `Readout.css`, `Pill.css`, `PresetBar.css`, `Slider.css`).

@@ -34,7 +34,7 @@ export { default as TapeIcon } from "./TapeIcon.jsx";
 export { default as ModIcon } from "./ModIcon.jsx";
 export { default as FilterIcon } from "./FilterIcon.jsx";
 
-// The multi-effect host shell (design_handoff_peak_machine/). ModulePanel is
+// The multi-effect host shell (design_handoff_peak_alpine/). ModulePanel is
 // the compartment a whole pedal's worth of controls goes into; the four below
 // it are what a module's own chrome is made of.
 export { default as ModulePanel } from "./ModulePanel.jsx";

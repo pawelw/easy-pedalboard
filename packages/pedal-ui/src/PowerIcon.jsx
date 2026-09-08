@@ -1,6 +1,6 @@
 /**
  * The standby mark: a broken ring with a stem through the gap. Used at 12px by
- * both power controls Peak Machine has - the round accent toggle in a module
+ * both power controls Peak Alpine has - the round accent toggle in a module
  * header and the host header's ACTIVE/BYPASSED pill - which is deliberate:
  * they do the same thing at two scopes, so they should be the same glyph.
  *

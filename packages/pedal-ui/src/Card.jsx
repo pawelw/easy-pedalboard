@@ -17,7 +17,7 @@ import "./Card.css";
  * `subtitlePlacement`: "beside" (default) sits the subtitle on the title's own
  * baseline, which is how every pedal reads it - a short qualifier after a
  * short name. "below" stacks the two in a column, for a face whose subtitle is
- * a tagline rather than a qualifier (Peak Machine's "MODULATION / DELAY /
+ * a tagline rather than a qualifier (Peak Alpine's "MODULATION / DELAY /
  * REVERB MACHINE" is longer than its title and would push the header's centre
  * slot off the card if laid out beside it). Structure only: the type sizes,
  * padding and logo size those faces also change are theirs to scope, the way

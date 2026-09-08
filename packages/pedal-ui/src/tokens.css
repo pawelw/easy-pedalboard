@@ -125,14 +125,14 @@
   --pui-soft-lit: #7ba85f;
   --pui-soft-shadow: 0 3px 6px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
 
-  /* Peak Machine's host chrome (design_handoff_peak_machine/README.md's token
+  /* Peak Alpine's host chrome (design_handoff_peak_alpine/README.md's token
      table). Two things the pedal faces never needed: a panel *inside* a panel
      (the module shell), and a small square button that is neither a Pill nor a
      Knob (the host header's chevrons, name field and save).
 
      The defaults here derive from the panel tokens rather than restating a
      palette, so the gallery's light and grey columns render something coherent
-     without anyone having designed a light Peak Machine. Onyx carries the
+     without anyone having designed a light Peak Alpine. Onyx carries the
      handoff's own numbers, which is the face that ships.
 
      One group, not two. An earlier draft gave the wide (Delay) module a darker
@@ -218,7 +218,7 @@
   --pui-scope-dry: #e0b23c;
   --pui-logo-filter: brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg);
 
-  /* Peak Machine's host chrome, onyx - the handoff's own numbers. */
+  /* Peak Alpine's host chrome, onyx - the handoff's own numbers. */
   --pui-module: #20292d;
   --pui-module-edge: #161c1e;
   --pui-module-divider: #0a0b0c;
@@ -349,7 +349,7 @@
   --pui-stage-filter: #e08fc0;
 }
 
-/* Peak Machine's three module accents, outside the theme blocks for exactly
+/* Peak Alpine's three module accents, outside the theme blocks for exactly
    the reason the tape band is: an accent whose job is to say "this is the
    Modulation module" has to say it on every ground, so there is no light
    variant to switch to.

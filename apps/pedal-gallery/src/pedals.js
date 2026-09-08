@@ -9,13 +9,19 @@ import PeakDelayFace from "peak-delay-jsui/src/App.jsx";
 // `theme` picks the palette this page renders that face in - App.jsx is
 // imported directly here, bypassing the pedal's own main.jsx entirely, so
 // this is the one piece of per-pedal metadata the gallery has to carry
-// rather than reuse. Omit it for the default light theme. It normally
-// mirrors what the pedal's main.jsx passes to PedalUIProvider; Delay is
-// deliberately off that at the moment, shown in grey here while the plugin
-// itself still ships onyx.
+// rather than reuse. Omit it for the default light theme. It mirrors what the
+// pedal's main.jsx passes to PedalUIProvider, so what the gallery shows is
+// what the plugin ships - Delay was deliberately off that for a while, drawn
+// in grey while its onyx face was still being worked out.
 export const pedals = [
+  // The multi-effect host, not a pedal - listed first because it is the one
+  // that contains the others rather than sitting beside them. Its face is
+  // stage 3 of docs/peak-alpine-plan.md; until then this is a disabled tile,
+  // which is what `face: null` is for.
+  { slug: "peak-alpine", name: "Peak Alpine", face: null, theme: "onyx" },
+
   { slug: "peak-chorus", name: "Peak Chorus", face: null },
-  { slug: "peak-delay", name: "Peak Delay", face: PeakDelayFace, theme: "grey" },
+  { slug: "peak-delay", name: "Peak Delay", face: PeakDelayFace, theme: "onyx" },
   { slug: "peak-eq", name: "Peak EQ", face: null },
   { slug: "peak-grain", name: "Peak Grain", face: null },
   { slug: "peak-overdrive", name: "Peak Overdrive", face: null },
