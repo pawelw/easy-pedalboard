@@ -359,10 +359,11 @@ if(TARGET PeakSpring)
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-# Peak Alpine's two switchable modules. Not a *_regress tool - this is new code,
-# so there is nothing to diff against; it asserts the contract MultiEngineModule
-# promises, and hunts the thing a module built out of six other people's engines
-# is most likely to get wrong: a click on the engine switch.
+# Peak Alpine's switchable modules (Modulation, Reverb, Artifact). Not a
+# *_regress tool - this is new code, so there is nothing to diff against; it
+# asserts the contract MultiEngineModule promises, and hunts the thing a module
+# built out of other people's engines is most likely to get wrong: a click on
+# the engine switch.
 juce_add_console_app(ee_module_stress PRODUCT_NAME "ee_module_stress")
 
 target_sources(ee_module_stress PRIVATE ModuleStress.cpp)

@@ -5,6 +5,7 @@
 
 #include <vector>
 
+#include "ee/fx/ArtifactModule.h"
 #include "ee/fx/DelayModule.h"
 #include "ee/fx/ModulationModule.h"
 #include "ee/fx/ReverbModule.h"
@@ -16,13 +17,14 @@
 #endif
 
 /**
- * Peak Alpine: three effect modules under one chrome.
+ * Peak Alpine: four effect modules under one chrome.
  *
- * Modulation (Tape / Tremolo / Chorus / Phaser), then Delay - which is Peak
- * Delay's entire chain, the same `ee::fx::DelayModule` that pedal runs - then
- * Reverb (Space / Spring). Every engine in here is the engine its own pedal
- * uses, so nothing can drift from the pedal it came from and a fix lands in
- * both.
+ * Artifact (Ring Mod / Bit Crush / Filter - `ee::fx::ArtifactModule`, which is
+ * what Peak Artifact runs), then Modulation (Tape / Tremolo / Chorus / Phaser),
+ * then Delay - which is Peak Delay's entire chain, the same `ee::fx::DelayModule`
+ * that pedal runs - then Reverb (Space / Spring). Every engine in here is the
+ * engine its own pedal uses, so nothing can drift from the pedal it came from
+ * and a fix lands in both.
  *
  * The order is fixed. Nothing in the design offers to reorder it, and a router
  * would be a second and larger feature.
@@ -86,6 +88,18 @@ public:
     juce::String timeMsReadout (const char* parameterId) const;
     float timeMs (const char* parameterId) const;
 
+    /** The Artifact module's Filter Time knob: the LFO period in ms when free,
+        the note value when synced. The web view has no Sync pill or host tempo,
+        so the processor answers this - the same reason Peak Artifact does. */
+    juce::String artifactTimeReadout() const;
+
+    /** The Artifact module's Filter engine live cutoff-sweep exponent per
+        channel (Range * gate * lfo), for the face's response scope. Written
+        from the audio thread, read by the editor's Timer as one "filterMod"
+        event - the same feed Peak Wah and Peak Artifact push. */
+    std::atomic<float> artifactModL { 0.0f };
+    std::atomic<float> artifactModR { 0.0f };
+
     double hostBpm() const { return currentBpm(); }
 
 private:
@@ -137,9 +151,17 @@ private:
     std::vector<const float*> tapeNoiseChannels;
     double tapeNoiseSampleRate = 44100.0;
 
+    ee::fx::ArtifactModule artifact;
     ee::fx::ModulationModule modulation;
     ee::fx::DelayModule delay;
     ee::fx::ReverbModule reverb;
+
+    // The Artifact Filter LFO free-runs; when its Sync pill is on and the
+    // transport is running it is also aligned to the host grid, exactly as Peak
+    // Artifact and Peak Wah do it. These are that alignment's state.
+    double artExpectedPpq = 0.0;
+    bool artHaveExpectedPpq = false;
+    bool artWasPlaying = false;
 
     /** Stops the two Delay-module time parameters echoing each other forever. */
     std::atomic<bool> mirroring { false };

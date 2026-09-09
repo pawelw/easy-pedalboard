@@ -62,7 +62,7 @@ function DelayFaceBody() {
   return (
     <>
       <TapScope
-        height={78}
+        height={110}
         leftMs={leftMs}
         rightMs={rightMs}
         feedback01={feedback01}

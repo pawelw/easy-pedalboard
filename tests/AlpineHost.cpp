@@ -82,6 +82,7 @@ struct Case
 void defaults (juce::AudioProcessorValueTreeState&) {}
 
 void bypassed (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::on, false); }
+void artifactOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::artOn, false); }
 void modOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::modOn, false); }
 void delayOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::dlyOn, false); }
 void reverbOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::revOn, false); }
@@ -104,6 +105,7 @@ void reverbOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine:
 void everything (juce::AudioProcessorValueTreeState& s)
 {
     using namespace ee::alpine::id;
+    setPercent (s, artMix, 60.0f);
     setPercent (s, modMix, 70.0f);
     setPercent (s, dlyMix, 55.0f);
     setPercent (s, dlyFeedback, 65.0f);
@@ -174,6 +176,7 @@ void checkLatencyLedger()
     auto silent = [] (juce::AudioProcessorValueTreeState& s)
     {
         using namespace ee::alpine::id;
+        setPercent (s, artMix, 0.0f);
         setPercent (s, modMix, 0.0f);
         setPercent (s, dlyMix, 0.0f);
         setPercent (s, revMix, 0.0f);
@@ -196,7 +199,8 @@ void checkLatencyLedger()
     // Which module owns which half - and, on the Delay row, what a bypassed
     // one does to a figure the host is still compensating.
     struct Off { const char* name; const char* id; };
-    for (const auto& off : { Off { "Modulation bypassed", ee::alpine::id::modOn },
+    for (const auto& off : { Off { "Artifact bypassed", ee::alpine::id::artOn },
+                             Off { "Modulation bypassed", ee::alpine::id::modOn },
                              Off { "Delay bypassed", ee::alpine::id::dlyOn },
                              Off { "Reverb bypassed", ee::alpine::id::revOn } })
         std::printf ("  %-30s %4d samples\n", off.name,
@@ -274,8 +278,8 @@ int main (int argc, char* argv[])
 
     // Each module's own power toggle has to reach the audio. A module wired to
     // the wrong parameter, or to none, would pass every other check here.
-    for (const auto& c : { Case { "Modulation off", modOff }, Case { "Delay off", delayOff },
-                           Case { "Reverb off", reverbOff } })
+    for (const auto& c : { Case { "Artifact off", artifactOff }, Case { "Modulation off", modOff },
+                           Case { "Delay off", delayOff }, Case { "Reverb off", reverbOff } })
     {
         juce::AudioBuffer<float> out (2, kLength);
         out.makeCopyOf (input);

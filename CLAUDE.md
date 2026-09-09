@@ -189,7 +189,9 @@ shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knobâ€
 shared/src/ui/            its implementation
 shared/include/ee/fx/     compositions of engines with an opinion about their
                           order - DelayModule is Peak Delay's whole chain, which
-                          Peak Alpine's Delay module is a second instance of
+                          Peak Alpine's Delay module is a second instance of;
+                          ArtifactModule is Peak Artifact's, likewise Alpine's
+                          first module
 shared/include/ee/plugin/ the bypass crossfade, shared parameter formatters,
                           and the preset store + its WebView bridge
 plugins/peak-*/presets/   that pedal's factory presets - see below
@@ -205,6 +207,9 @@ packages/pedal-ui/src/juce.jsx   its JUCE half, a separate entry point
                           live-value hooks, ParamScope, installAutoResize
 packages/delay-face/      Peak Delay's face minus its enclosure â€” the component
                           Peak Delay and Peak Alpine's Delay module both render
+packages/artifact-face/   the same idea for Peak Artifact: the ArtifactFace
+                          component Peak Artifact and Peak Alpine's first module
+                          both render, bound through an `art.` prefix in Alpine
 plugins/peak-*/jsui/      a WebView pedal's own page: its enclosure and whatever
                           is specific to it, and nothing else
 apps/pedal-gallery/       dev-only: every face plus the component showcase

@@ -85,6 +85,8 @@ PeakAlpineWebEditor::PeakAlpineWebEditor (PeakAlpineProcessor& p)
                                                text = processorRef.timeMsReadout (id::dlyLeftTime);
                                            else if (queried == kRightTimeMs)
                                                text = processorRef.timeMsReadout (id::dlyRightTime);
+                                           else if (queried == id::artFltTime)
+                                               text = processorRef.artifactTimeReadout();
                                            else if (auto* param = processorRef.apvts.getParameter (queried))
                                                text = param->getCurrentValueAsText();
 
@@ -118,11 +120,12 @@ PeakAlpineWebEditor::PeakAlpineWebEditor (PeakAlpineProcessor& p)
     webView.goToURL (kUseDevServer ? devServerAddress : juce::WebBrowserComponent::getResourceProviderRoot());
 
     // A starting size for the moment before the page reports its own. The width
-    // is exact - the host panel measures 966 (a 14px frame and a 1px border
-    // either side of a row of 180 + 8 + 560 + 8 + 180) plus the page's 4px
-    // either side - and the height is a close guess, so the host sees at most a
-    // small vertical correction rather than a window that visibly jumps.
-    setSize (974, 590);
+    // is exact - the host panel measures 1154 (a 14px frame and a 1px border
+    // either side of a row of 180 + 8 + 180 + 8 + 560 + 8 + 180) plus the
+    // page's 4px either side - and the height is a close guess, so the host
+    // sees at most a small vertical correction rather than a window that
+    // visibly jumps.
+    setSize (1162, 590);
     setResizable (false, false);
 
     startTimerHz (45); // the rate every other face's live feed runs at
@@ -140,6 +143,14 @@ void PeakAlpineWebEditor::timerCallback()
     payload->setProperty ("strikes", processorRef.inputMeter.getStrikes());
     payload->setProperty ("bpm", processorRef.hostBpm());
     webView.emitEventIfBrowserIsVisible ("delayMeter", juce::var (payload));
+
+    // The Artifact module's Filter response scope rides on this, exactly as
+    // Peak Artifact's own editor feeds it - one feed per editor, same name, so
+    // the embedded ArtifactFace listens for it unchanged.
+    auto* filterPayload = new juce::DynamicObject();
+    filterPayload->setProperty ("modL", processorRef.artifactModL.load (std::memory_order_relaxed));
+    filterPayload->setProperty ("modR", processorRef.artifactModR.load (std::memory_order_relaxed));
+    webView.emitEventIfBrowserIsVisible ("filterMod", juce::var (filterPayload));
 }
 
 void PeakAlpineWebEditor::resized()

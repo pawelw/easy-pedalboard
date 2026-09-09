@@ -26,6 +26,21 @@ inline constexpr const char* inGain = "ingain";
 inline constexpr const char* outGain = "outgain";
 inline constexpr const char* on = "on";
 
+// ----------------------------------------------------------------- artifact
+// The first module: ee::fx::ArtifactModule, which is what Peak Artifact runs.
+// The leaf names are that pedal's own, exactly - drop the `art.` and you have
+// its parameter list, which is what lets one `ArtifactFace` bind to both.
+inline constexpr const char* artOn = "art.on";
+inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Filter
+inline constexpr const char* artMix = "art.mix";
+inline constexpr const char* artFltFreq = "art.flt.freq";
+inline constexpr const char* artFltQ = "art.flt.q";
+inline constexpr const char* artFltRange = "art.flt.range";
+inline constexpr const char* artFltTime = "art.flt.time"; // meaning set by artFltSync
+inline constexpr const char* artFltSync = "art.flt.sync"; // false = ms, true = tempo
+inline constexpr const char* artFltWave = "art.flt.wave"; // Triangle / Ramp / Square
+inline constexpr const char* artFltStereo = "art.flt.stereo";
+
 // --------------------------------------------------------------- modulation
 inline constexpr const char* modOn = "mod.on";
 inline constexpr const char* modEngine = "mod.engine";

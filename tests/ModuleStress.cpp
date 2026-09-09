@@ -1,5 +1,5 @@
-// ee::fx::ModulationModule and ee::fx::ReverbModule: the two switchable modules
-// Peak Alpine's side panels run.
+// ee::fx::ModulationModule, ee::fx::ReverbModule and ee::fx::ArtifactModule: the
+// switchable modules Peak Alpine's row runs.
 //
 // Not a *_regress tool - there is no "before" to diff against, because this is
 // new code rather than moved code. What it checks instead is the contract the
@@ -9,6 +9,7 @@
 // non-finite sample or runs away.
 #include <cstdio>
 
+#include "ee/fx/ArtifactModule.h"
 #include "ee/fx/ModulationModule.h"
 #include "ee/fx/ReverbModule.h"
 
@@ -82,6 +83,12 @@ void setReverbDefaults (ee::fx::ReverbModule& m)
 {
     m.setSpace (2.0f, 0.2f, 100.0f, 0.5f);
     m.setSpring (2.0f, 0.5f, 60.0f);
+}
+
+void setArtifactDefaults (ee::fx::ArtifactModule& m)
+{
+    // freq01, q01, range01, waveShape01, one LFO cycle in seconds, stereo
+    m.setFilter (0.5f, 0.5f, 0.6f, 0.5f, 0.4f, false);
 }
 
 
@@ -349,6 +356,46 @@ void sweepReverb()
     check (clean, "every Reverb case finite");
     check (worstPeak < 8.0f, "nothing ran away");
 }
+
+/** ee::fx::ArtifactModule - Peak Alpine's first module and Peak Artifact's
+    whole processor. Only Filter is voiced; Ring Mod and Bit Crush pass audio
+    through untouched, so the interesting cases are the Filter engine's own
+    parameter space and that stepping to and from the two no-ops does not step
+    the signal. */
+void sweepArtifact()
+{
+    std::printf ("\nArtifact sweep:\n");
+
+    int cases = 0;
+    float worstPeak = 0.0f;
+    bool clean = true;
+
+    for (int engine = 0; engine < ee::fx::ArtifactModule::NumEngines; ++engine)
+        for (float a : { 0.0f, 0.5f, 1.0f })
+            for (float mix : { 0.0f, 0.5f, 1.0f })
+            {
+                ee::fx::ArtifactModule module;
+                module.prepare (kSampleRate, 512);
+                module.setEngine (engine);
+                module.setMix01 (mix);
+                module.setLevel (1.0f);
+                module.setEngaged (true);
+
+                module.setFilter (a, a, a, a, 0.03f + a * 1.5f, a > 0.5f);
+
+                juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
+                fillTestSignal (buffer, kSampleRate);
+                run (module, buffer);
+
+                ++cases;
+                worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+                clean = allFinite (buffer) && clean;
+            }
+
+    std::printf ("  %d cases, worst peak %.3f\n", cases, worstPeak);
+    check (clean, "every Artifact case finite");
+    check (worstPeak < 8.0f, "nothing ran away");
+}
 } // namespace
 
 int main()
@@ -385,6 +432,22 @@ int main()
         setReverbDefaults (module);
         checkBypassIsUnity (module, "Reverb");
     }
+    {
+        ee::fx::ArtifactModule module;
+        // Ring Mod (the default engine) opts out of Mix; the "Mix 0 is the dry
+        // input" contract is checked on Filter, which honours it. Set before
+        // prepare so there is no engine crossfade to ramp through.
+        module.setEngine (ee::fx::ArtifactModule::Filter);
+        module.prepare (kSampleRate, 512);
+        setArtifactDefaults (module);
+        checkMixZeroIsDry (module, "Artifact");
+    }
+    {
+        ee::fx::ArtifactModule module;
+        module.prepare (kSampleRate, 512);
+        setArtifactDefaults (module);
+        checkBypassIsUnity (module, "Artifact");
+    }
 
     std::printf ("\nEngine switches:\n");
 
@@ -414,8 +477,25 @@ int main()
         checkSwitchDoesNotClick (module, 1, 0, "Reverb Spring -> Space");
     }
 
+    // Every neighbouring Artifact pair plus the wrap - to and from the two
+    // pass-through engines as well as Filter, since a crossfade between a
+    // filtered signal and a bare copy of the input is exactly where a step
+    // would show.
+    const int artPairs[][2] = { { 0, 1 }, { 1, 2 }, { 2, 0 }, { 0, 2 } };
+    for (const auto& pair : artPairs)
+    {
+        ee::fx::ArtifactModule module;
+        module.prepare (kSampleRate, 512);
+        setArtifactDefaults (module);
+
+        char what[64];
+        std::snprintf (what, sizeof (what), "Artifact %d -> %d", pair[0], pair[1]);
+        checkSwitchDoesNotClick (module, pair[0], pair[1], what);
+    }
+
     sweepModulation();
     sweepReverb();
+    sweepArtifact();
 
     std::printf ("\n%s\n", failures == 0 ? "OK - all module checks passed"
                                          : "MODULE CHECKS FAILED");

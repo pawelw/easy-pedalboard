@@ -14,7 +14,7 @@
 }
 
 /* Card's own padding and type are the pedals' (18/22/22, a 22px title beside
-   its subtitle). A host panel spends its width on three modules rather than on
+   its subtitle). A host panel spends its width on four modules rather than on
    one pedal's controls, so it re-spends those here - an even 14px frame, wider
    than the 8px between the modules so the row reads as one object inside the
    card rather than as three sitting on its edges. Scoped here the same way

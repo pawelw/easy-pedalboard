@@ -131,6 +131,10 @@
    sits inside its padding, which is wrong-looking but never broken. */
 .pd-footer {
   display: flex;
+  /* A host taller than the face - a ModulePanel stretched to the tallest
+     module in its row - hands its slack to the footer, so the sections and
+     their dividers reach the bottom edge instead of stopping short of it. */
+  flex-grow: 1;
   margin: 20px calc(-1 * var(--pd-bleed-x, 0px)) calc(-1 * var(--pd-bleed-bottom, 0px));
   border-top: 1px solid var(--pui-divider);
 }

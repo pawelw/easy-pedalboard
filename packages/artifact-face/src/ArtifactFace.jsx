@@ -1,7 +1,42 @@
 import { useEffect, useState } from "react";
 import { EngineStepper, FilterScope, ModulePanel, Toggle, WaveIcon, freqHzFor01 } from "@synthpeak/pedal-ui";
-import { JuceKnob, JucePill, useJuceChoiceValue, useJuceSliderValue, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
+import {
+  JuceKnob,
+  JucePill,
+  ParamScope,
+  useJuceChoiceValue,
+  useJuceSliderValue,
+  useJuceToggleValue,
+} from "@synthpeak/pedal-ui/juce";
 import { ENGINES, WAVES } from "./engines.jsx";
+import "./ArtifactFace.css";
+
+/**
+ * Peak Artifact's face, minus its pedal enclosure: one switchable module drawn
+ * as a `ModulePanel` - a power toggle and name in the header, an engine
+ * stepper, and, for the Filter engine, a response scope, two rows of knobs, the
+ * wave picker and a Mono/Stereo switch, with Mix in the footer. Ring Mod and
+ * Bit Crush show a dash: they are selectable but do nothing yet.
+ *
+ * One component, two hosts. Peak Artifact wraps this in its own Card; Peak
+ * Alpine drops it into its module row as the first module. The whole reason
+ * this package exists is that the Artifact module in the multi-effect host is
+ * not a re-draw of Peak Artifact's face, it *is* that face - so a fix lands in
+ * both and neither can drift.
+ *
+ * `prefix` is the parameter-id prefix its controls bind through: "" for Peak
+ * Artifact, whose parameters are plain (`mix`, `flt.freq`), and "art." for Peak
+ * Alpine, whose are namespaced by module. Nothing below takes an id map; the
+ * `ParamScope` does the whole job, and the leaf names are identical in both
+ * plugins on purpose.
+ */
+export default function ArtifactFace({ prefix = "" }) {
+  return (
+    <ParamScope prefix={prefix}>
+      <ArtifactFaceBody />
+    </ParamScope>
+  );
+}
 
 // Peak Artifact's red. It reaches the power ring, the engine stepper and the
 // knob value arcs through the one `accent` prop on ModulePanel.
@@ -9,7 +44,7 @@ const ACCENT = "#c00001";
 
 // The response scope's ink, keeping Peak Wah's scope shapes but in this face's
 // red rather than its blue/grey. The well's own background and grid come from
-// the --pui-scope-* overrides on .pa-display (index.css).
+// the --pui-scope-* overrides on .af-display (ArtifactFace.css).
 const SCOPE = {
   baseColor: "#e5504e", // the resting curve - bright enough to read on the dark well
   sweepColor: "#c00001", // the swept L/R curves and the Range band
@@ -18,10 +53,13 @@ const SCOPE = {
 
 /**
  * The Filter engine's live cutoff-sweep exponent for both channels, pushed from
- * the processor as the one "filterMod" event (PeakArtifactWebEditor's Timer) -
- * the same feed Peak Wah's scope rides on. Outside a real host there is no
- * backend to send it, so it stays at 0 and the two swept curves rest on the
- * base curve.
+ * the processor as the one "filterMod" event (the editor's Timer) - the same
+ * feed Peak Wah's scope rides on. Outside a real host there is no backend to
+ * send it, so it stays at 0 and the two swept curves rest on the base curve.
+ *
+ * The event name is not scoped the way parameter ids are: it is one feed per
+ * editor, so a host embedding this face (Peak Alpine) emits it under the same
+ * name rather than the component learning a second one.
  */
 function useFilterMod() {
   const [mod, setMod] = useState({ modL: 0, modR: 0 });
@@ -37,13 +75,9 @@ function useFilterMod() {
   return mod;
 }
 
-/**
- * One switchable module: a power toggle and name in the header, an engine
- * stepper, and - for the Filter engine - a response scope, two rows of knobs,
- * the wave picker and a Mono/Stereo switch, with Mix in the footer. Ring Mod
- * and Bit Crush show a dash: they are selectable but do nothing yet.
- */
-export default function ArtifactModule() {
+/** Split out so its hooks resolve *inside* the ParamScope above - a hook in
+    ArtifactFace itself would read the enclosing scope, not the one it declares. */
+function ArtifactFaceBody() {
   // Default index 2 (Filter) with no backend - the processor opens on Filter
   // too, since it is the only voiced engine.
   const [engineIndex, setEngine] = useJuceChoiceValue("engine", ENGINES.length, 2);
@@ -57,6 +91,7 @@ export default function ArtifactModule() {
       width={180}
       on={on}
       onToggle={setOn}
+      className="af-module"
       footer={<JuceKnob parameterId="mix" caption="Mix" variant="soft" size={38} />}
     >
       <EngineStepper
@@ -88,7 +123,7 @@ function FilterBody() {
           rises and narrows with Q and slides with Freq, a translucent band
           showing how far Range lets it sweep, and two curves riding the live
           L/R sweep inside it. Only the ink changes here. */}
-      <div className="pa-display">
+      <div className="af-display">
         <FilterScope
           baseFreqHz={freqHzFor01(freq)}
           resonance01={q}
@@ -100,13 +135,13 @@ function FilterBody() {
           sweepColor={SCOPE.sweepColor}
           fillColor={SCOPE.fillColor}
         />
-        <span className="pa-inf" aria-label="Decay: always on">
+        <span className="af-inf" aria-label="Decay: always on">
           &#8734;
         </span>
       </div>
 
-      <div className="pa-knobs">
-        <div className="pa-knob-row">
+      <div className="af-knobs">
+        <div className="af-knob-row">
           <JuceKnob parameterId="flt.freq" caption="Freq" variant="soft" size={36} />
           <JuceKnob parameterId="flt.q" caption="Q" variant="soft" size={36} />
         </div>
@@ -114,10 +149,10 @@ function FilterBody() {
             wave <> picker (glyph only, no name - it is small enough to sit here
             rather than on a row of its own, which is what keeps the module
             short) and the SYNC pill, the same control Peak Delay uses. */}
-        <div className="pa-knob-row">
-          <div className="pa-subcol">
+        <div className="af-knob-row">
+          <div className="af-subcol">
             <JuceKnob parameterId="flt.range" caption="Range" variant="soft" size={36} />
-            <div className="pa-sub pa-sub--wave">
+            <div className="af-sub af-sub--wave">
               <EngineStepper
                 engines={WAVES.map((w) => w.name)}
                 value={wave.name}
@@ -128,9 +163,9 @@ function FilterBody() {
             </div>
           </div>
 
-          <div className="pa-subcol">
+          <div className="af-subcol">
             <JuceKnob parameterId="flt.time" caption="Time" variant="soft" size={36} />
-            <div className="pa-sub pa-sub--sync">
+            <div className="af-sub af-sub--sync">
               {/* flt.sync's own sense is already "synced to tempo", so it
                   lights when on with no invert. */}
               <JucePill parameterId="flt.sync" label="Sync" />
@@ -146,7 +181,7 @@ function FilterBody() {
 
 function BlankBody() {
   return (
-    <div className="pa-blank" aria-hidden="true">
+    <div className="af-blank" aria-hidden="true">
       &mdash;
     </div>
   );
@@ -157,12 +192,12 @@ function MonoStereoSwitch() {
   const [stereo, setStereo] = useJuceToggleValue("flt.stereo", false);
 
   return (
-    <div className="pa-inline-switch pa-ms-switch">
-      <span className="pa-switch-label" data-active={!stereo || undefined}>
+    <div className="af-inline-switch af-ms-switch">
+      <span className="af-switch-label" data-active={!stereo || undefined}>
         Mono
       </span>
       <Toggle checked={stereo} onChange={setStereo} ariaLabel="Mono / Stereo" />
-      <span className="pa-switch-label" data-active={stereo || undefined}>
+      <span className="af-switch-label" data-active={stereo || undefined}>
         Stereo
       </span>
     </div>

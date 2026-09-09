@@ -10,6 +10,7 @@
   "dependencies": {
     "@mantine/core": "^9.6.0",
     "@mantine/hooks": "^9.6.0",
+    "@synthpeak/artifact-face": "*",
     "@synthpeak/delay-face": "*",
     "@synthpeak/pedal-ui": "*",
     "juce-framework-frontend": "file:../../../vendor/juce-framework-frontend",

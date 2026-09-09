@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Card, JucePresetBar, ModulePanel, PowerToggle } from "@synthpeak/pedal-ui";
 import { JuceFader, installAutoResize, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
 import { DelayFace } from "@synthpeak/delay-face";
+import { ArtifactFace } from "@synthpeak/artifact-face";
 import SideModule from "./SideModule.jsx";
 import { MOD_ENGINES, REVERB_ENGINES } from "./engines.jsx";
 import "./index.css";
@@ -42,9 +43,13 @@ function HostControls({ on, onToggle }) {
  * both plugins, which is the whole reason it lives in a package of its own.
  *
  * The two side modules are one component too (`SideModule`), because
- * Modulation and Reverb are the same object with a different engine list.
+ * Modulation and Reverb are the same object with a different engine list. And
+ * the Artifact module, first in the row, is `ArtifactFace` from
+ * `@synthpeak/artifact-face` bound through an `art.` prefix - Peak Artifact's
+ * own face, the same way the Delay module is Peak Delay's.
+ *
  * What is actually written here is only what is unique: the enclosure, the
- * header, and which three modules sit in the row.
+ * header, and which four modules sit in the row.
  */
 export default function App() {
   useEffect(() => installAutoResize(), []);
@@ -57,7 +62,7 @@ export default function App() {
     <div className="page">
       <Card
         title="Peak Alpine"
-        subtitle="Modulation / Delay / Reverb machine"
+        subtitle="Artifact / Modulation / Delay / Reverb machine"
         subtitlePlacement="below"
         headerCenter={<JucePresetBar variant="separated" />}
         headerRight={<HostControls on={on} onToggle={setOn} />}
@@ -67,6 +72,12 @@ export default function App() {
             the modules keep saying what they individually are, and the row
             says none of it is running. */}
         <div className={`pa-modules${on ? "" : " pa-modules--bypassed"}`}>
+          {/* First in the chain: Peak Artifact's whole face, bound through an
+              "art." prefix. Same component the pedal renders - a fix lands in
+              both. Its own Mix sits in its footer, so it takes no Level knob
+              here, the way the Delay module doesn't either. */}
+          <ArtifactFace prefix="art." />
+
           {/* "Mod", not "Modulation": a 180px module's header has the toggle,
               the name and a Level knob in it, and the long word left the knob
               no room to breathe. The engine underneath says which modulation

@@ -36,14 +36,17 @@ public:
     int getControlParameterIndex (Component&) override { return relays.getControlParameterIndex(); }
 
 private:
-    /** Pushes the input level, the note-onset count and the host tempo to the
-        page as one "delayMeter" event - none of them is a parameter, so there
-        is no relay to carry them.
+    /** Pushes two per-frame feeds the pages listen for, neither a parameter so
+        neither has a relay:
 
-        The event keeps Peak Delay's name because the face inside the Delay
-        module is Peak Delay's face, listening for exactly that: one feed per
-        editor, not one per module, so a host embedding the component emits it
-        under the same name rather than the component learning a second one. */
+        - "delayMeter": the input level, note-onset count and host tempo, for the
+          Delay module's scope and the chrome's tempo readout.
+        - "filterMod": the Artifact module's Filter engine live modL / modR, for
+          its response scope.
+
+        Both keep the names their own pedals' editors emit - the faces inside
+        the modules are those pedals' faces, listening for exactly those: one
+        feed per editor, not one per module. */
     void timerCallback() override;
 
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
