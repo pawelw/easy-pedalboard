@@ -20,6 +20,7 @@ export { default as WaveIcon } from "./WaveIcon.jsx";
 export { default as FilterCurveIcon } from "./FilterCurveIcon.jsx";
 export { default as FilterScope } from "./FilterScope.jsx";
 export { default as CrushScope } from "./CrushScope.jsx";
+export { default as RingScope } from "./RingScope.jsx";
 export { freqHzFor01 } from "./autowah.js";
 // The shaped LFO the tremolo engine runs on, ported from ee/dsp/Lfo.h - so a
 // face drawing that engine's envelope draws the wave it actually produces.

@@ -6,7 +6,7 @@ namespace ee::artifact::id
 /** Peak Artifact's parameter ids.
  *
  * Each engine's controls are namespaced - `flt.` for Filter, `crush.` for Bit
- * Crush, and a future `ring.` for Ring Mod - so they never clash and so the face
+ * Crush, and `ring.` for Ring Mod - so they never clash and so the face
  * can bind one engine's controls through a `ParamScope` prefix the way Peak
  * Alpine's modules do. Dots are safe in an APVTS id - it is a value in the state
  * tree, not a property name.
@@ -28,5 +28,10 @@ inline constexpr const char* crushBits = "crush.bits";     // word length, 24..1
 inline constexpr const char* crushRate = "crush.rate";     // sample-and-hold rate
 inline constexpr const char* crushLp = "crush.lp";         // post low-pass, up = open
 inline constexpr const char* crushJitter = "crush.jitter"; // hold-clock jitter
+
+inline constexpr const char* ringFreq = "ring.freq";   // carrier frequency
+inline constexpr const char* ringTweak = "ring.tweak"; // meaning set by ringMode
+inline constexpr const char* ringLp = "ring.lp";       // post low-pass, up = open
+inline constexpr const char* ringMode = "ring.mode";   // Earworm / Green Lantern
 
 } // namespace ee::artifact::id

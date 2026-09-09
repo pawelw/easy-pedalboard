@@ -8,6 +8,7 @@
 #include "ee/dsp/ChorusConfig.h"
 #include "ee/dsp/PhaserConfig.h"
 #include "ee/dsp/RateMap.h"
+#include "ee/dsp/RingModulatorConfig.h"
 #include "ee/dsp/SpringConfig.h"
 #include "ee/dsp/TapeMachineConfig.h"
 #include "ee/dsp/TremoloConfig.h"
@@ -97,6 +98,23 @@ float artWaveShape01 (int waveIndex) noexcept
 {
     const int last = static_cast<int> (std::size (kArtWaveShape01)) - 1;
     return kArtWaveShape01[juce::jlimit (0, last, waveIndex)];
+}
+
+/** The Artifact Ring Mod's Freq and Filter readouts, off the ee::dsp::ringmod
+    maps ee::fx::ArtifactModule reads - bare rounded "Hz", this file's house
+    style (see artHzToText), with the low-pass showing "Off" past its bypass
+    point. Tweak stays a plain percent - its meaning is set by Mode. */
+juce::String artRingFreqToText (float pct, int)
+{
+    return artHzToText (ee::dsp::ringmod::freqHzFor (pct * 0.01f), 0);
+}
+
+juce::String artRingLpToText (float pct, int)
+{
+    const float hz = ee::dsp::ringmod::lpHzFor (pct * 0.01f);
+    if (hz >= ee::dsp::ringmod::kLpBypassHz)
+        return "Off";
+    return artHzToText (hz, 0);
 }
 
 // The Input/Output trims' range. Asymmetric on purpose, exactly as Peak
@@ -301,8 +319,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
 
     // --------------------------------------------------------------- artifact
     // Every id, range and default is Peak Artifact's, because the module is
-    // Peak Artifact's. Filter is the only voiced engine; Ring Mod and Bit Crush
-    // are selectable and pass audio through untouched (see ee::fx::ArtifactModule).
+    // Peak Artifact's. All three engines are voiced (see ee::fx::ArtifactModule).
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artOn, 1 }, "Artifact On", true));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
                                                               juce::StringArray { "Ring Mod", "Bit Crush", "Filter" },
@@ -339,6 +356,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     addPercent (layout, id::artCrushRate, "Artifact Rate", ee::dsp::bitcrush::kDefaultRatePct);
     addPercent (layout, id::artCrushLp, "Artifact Crush Filter", ee::dsp::bitcrush::kDefaultLpPct);
     addPercent (layout, id::artCrushJitter, "Artifact Jitter", ee::dsp::bitcrush::kDefaultJitterPct);
+
+    // Ring Mod. Freq and Filter spell out real Hz off the ee::dsp::ringmod maps
+    // (like the Filter's Freq); Tweak is a plain percent, its meaning set by
+    // Mode. Blend is Artifact Mix, not a knob of its own.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::artRingFreq, 1 }, "Artifact Ring Freq", percent, ee::dsp::ringmod::kDefaultFreqPct,
+        withText (artRingFreqToText)));
+    addPercent (layout, id::artRingTweak, "Artifact Tweak", ee::dsp::ringmod::kDefaultTweakPct);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::artRingLp, 1 }, "Artifact Ring Filter", percent, ee::dsp::ringmod::kDefaultLpPct,
+        withText (artRingLpToText)));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artRingMode, 1 }, "Artifact Mode",
+                                                              juce::StringArray { "Earworm", "Green Lantern" }, 0));
 
     // ------------------------------------------------------------- modulation
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modOn, 1 }, "Modulation On", true));
@@ -565,6 +595,9 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
     }
 
     artifact.setCrush (pct (id::artCrushBits), pct (id::artCrushRate), pct (id::artCrushLp), pct (id::artCrushJitter));
+
+    artifact.setRing (pct (id::artRingFreq), pct (id::artRingTweak), pct (id::artRingLp),
+                      static_cast<int> (raw (id::artRingMode)));
 
     // --------------------------------------------------------------- modulation
     modulation.setEngine (static_cast<int> (raw (id::modEngine)));

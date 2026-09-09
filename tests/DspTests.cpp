@@ -14,6 +14,7 @@
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/Phaser.h"
+#include "ee/dsp/RingModulator.h"
 #include "ee/dsp/SpringReverb.h"
 #include "ee/dsp/Overdrive.h"
 #include "ee/dsp/TapeCharacter.h"
@@ -2796,6 +2797,117 @@ double measureSpringRt60 (float decaySeconds)
     return rt60;
 }
 
+// --------------------------------------------------------------- ring modulator
+
+void fillRingSine (std::vector<float>& l, std::vector<float>& r, double& phase, double hz)
+{
+    const double inc = hz / kSampleRate;
+    for (int i = 0; i < kBlock; ++i)
+    {
+        const float s = 0.6f * std::sin (static_cast<float> (phase * 2.0 * juce::MathConstants<double>::pi));
+        l[static_cast<size_t> (i)] = s;
+        r[static_cast<size_t> (i)] = s;
+        phase += inc;
+        phase -= std::floor (phase);
+    }
+}
+
+void testRingModulator()
+{
+    std::printf ("Ring modulator: silence, bounds, and reproducibility\n");
+
+    // 1. Silence in -> silence out, both modes.
+    for (int mode : { 0, 1 })
+    {
+        ee::dsp::RingModulator ring;
+        ring.prepare (kSampleRate);
+        ring.setFrequency01 (0.5f);
+        ring.setTweak01 (1.0f);
+        ring.setMode (mode);
+        ring.setLowpass01 (0.4f);
+
+        std::vector<float> l (kBlock, 0.0f), r (kBlock, 0.0f);
+        float peak = 0.0f;
+        bool finite = true;
+        for (int b = 0; b < 200; ++b)
+        {
+            std::fill (l.begin(), l.end(), 0.0f);
+            std::fill (r.begin(), r.end(), 0.0f);
+            ring.process (l.data(), r.data(), kBlock);
+            for (int i = 0; i < kBlock; ++i)
+            {
+                finite = finite && std::isfinite (l[static_cast<size_t> (i)]);
+                peak = juce::jmax (peak, std::abs (l[static_cast<size_t> (i)]));
+            }
+        }
+        check (finite && peak < 1.0e-6f, "silent input stays silent");
+    }
+
+    // 2. A unit-ish sine in stays finite and bounded across a mode/knob sweep -
+    //    the carrier only multiplies, so nothing should grow past the input
+    //    (plus the octave make-up headroom in Green Lantern).
+    {
+        float worst = 0.0f;
+        bool finite = true;
+        for (int mode : { 0, 1 })
+            for (float f : { 0.0f, 0.3f, 0.6f, 1.0f })
+                for (float tw : { 0.0f, 0.5f, 1.0f })
+                    for (float lp : { 0.0f, 0.5f, 1.0f })
+                    {
+                        ee::dsp::RingModulator ring;
+                        ring.prepare (kSampleRate);
+                        ring.setMode (mode);
+                        ring.setFrequency01 (f);
+                        ring.setTweak01 (tw);
+                        ring.setLowpass01 (lp);
+
+                        std::vector<float> l (kBlock), r (kBlock);
+                        double phase = 0.0;
+                        for (int b = 0; b < 120; ++b)
+                        {
+                            fillRingSine (l, r, phase, 220.0);
+                            ring.process (l.data(), r.data(), kBlock);
+                            for (int i = 0; i < kBlock; ++i)
+                            {
+                                finite = finite && std::isfinite (l[static_cast<size_t> (i)]);
+                                worst = juce::jmax (worst, std::abs (l[static_cast<size_t> (i)]));
+                            }
+                        }
+                    }
+        check (finite, "output stays finite for a sine input");
+        check (worst < 2.0f, "output stays bounded (worst " + juce::String (worst, 3) + ")");
+    }
+
+    // 3. Two identical renders are bit-for-bit equal - the engine has no RNG,
+    //    so a render can be checksummed.
+    {
+        auto render = [] (std::vector<float>& out)
+        {
+            ee::dsp::RingModulator ring;
+            ring.prepare (kSampleRate);
+            ring.setMode (1);
+            ring.setFrequency01 (0.42f);
+            ring.setTweak01 (0.7f);
+            ring.setLowpass01 (0.55f);
+
+            std::vector<float> l (kBlock), r (kBlock);
+            double phase = 0.0;
+            out.clear();
+            for (int b = 0; b < 200; ++b)
+            {
+                fillRingSine (l, r, phase, 196.0);
+                ring.process (l.data(), r.data(), kBlock);
+                out.insert (out.end(), l.begin(), l.end());
+            }
+        };
+
+        std::vector<float> a, b;
+        render (a);
+        render (b);
+        check (a == b, "two identical renders match sample for sample");
+    }
+}
+
 void testSpringDecay()
 {
     std::printf ("Spring tank decay vs the knob:\n");
@@ -3983,6 +4095,8 @@ int main()
     testAutoWahHoldsLevel();
     std::printf ("\n");
     testAutoWahMixRampIsSmooth();
+    std::printf ("\n");
+    testRingModulator();
     std::printf ("\n");
     testSpringDecay();
     std::printf ("\n");

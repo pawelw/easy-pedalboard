@@ -123,24 +123,21 @@
   pointer-events: none;
 }
 
-/* Ring Mod: nothing to show yet. A single dash centred in the space the Filter
-   body would fill, so the module keeps its height as you step past it. */
-.af-blank {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 220px;
-  font-size: 22px;
-  color: var(--pui-ink-dim);
-}
-
-/* Bit Crush body: the stepped-wave display and two knob rows. Held to the same
-   height as the Filter body (and .af-blank) so stepping engines never resizes
-   the module. The display is a plain well - no infinity mark, no swept band. */
-.af-crush {
+/* Bit Crush and Ring Mod bodies: a display and their knob rows. Held to the
+   same height as the Filter body so stepping engines never resizes the module.
+   The display is a plain well - no infinity mark, no swept band. */
+.af-crush,
+.af-ring {
   display: flex;
   flex-direction: column;
   min-height: 220px;
+}
+
+/* Ring Mod's Earworm / Green Lantern switch drops to the foot of the body, the
+   same place Mono/Stereo sits under Filter. */
+.af-mode-switch {
+  margin-top: auto;
+  padding: 18px 0 6px;
 }
 
 /* --------------------------------------------------------------- the switches */

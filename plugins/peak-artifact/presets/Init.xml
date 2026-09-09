@@ -15,4 +15,8 @@
   <PARAM id="crush.rate" value="30"/>
   <PARAM id="crush.lp" value="45"/>
   <PARAM id="crush.jitter" value="0"/>
+  <PARAM id="ring.freq" value="40"/>
+  <PARAM id="ring.tweak" value="0"/>
+  <PARAM id="ring.lp" value="60"/>
+  <PARAM id="ring.mode" value="0"/>
 </PARAMETERS>

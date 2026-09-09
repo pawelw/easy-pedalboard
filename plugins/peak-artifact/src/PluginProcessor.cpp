@@ -6,6 +6,7 @@
 
 #include "ee/dsp/AutoWahConfig.h"
 #include "ee/dsp/BitCrusherConfig.h"
+#include "ee/dsp/RingModulatorConfig.h"
 #include "ee/plugin/ParamText.h"
 
 #include <cmath>
@@ -61,6 +62,22 @@ juce::String crushLpToText (float pct, int)
     return freqText (hz);
 }
 
+// Ring Mod readouts, off the same ee::dsp::ringmod maps ee::fx::ArtifactModule
+// reads. Freq folds to kHz like the Bit Crush text; Filter prints "Off" once
+// the knob is past the bypass point.
+juce::String ringFreqToText (float pct, int)
+{
+    return freqText (ee::dsp::ringmod::freqHzFor (pct * 0.01f));
+}
+
+juce::String ringLpToText (float pct, int)
+{
+    const float hz = ee::dsp::ringmod::lpHzFor (pct * 0.01f);
+    if (hz >= ee::dsp::ringmod::kLpBypassHz)
+        return "Off";
+    return freqText (hz);
+}
+
 float freqHzFor (float pct)
 {
     const float t = std::pow (juce::jlimit (0.0f, 1.0f, pct * 0.01f), ee::dsp::autowah::kFreqKnobSkew);
@@ -101,8 +118,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::on, 1 }, "On", true));
 
-    // Filter is the only voiced engine, so the pedal opens on it. Ring Mod and
-    // Bit Crush are selectable and pass audio through untouched for now.
+    // All three engines are voiced; the pedal opens on Filter.
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { id::engine, 1 }, "Engine", juce::StringArray { "Ring Mod", "Bit Crush", "Filter" }, 2));
 
@@ -147,6 +163,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::crushJitter, 1 }, "Jitter",
                                                              percent, ee::dsp::bitcrush::kDefaultJitterPct, pctAttr));
 
+    // Ring Mod. Freq and Filter print real units off the ee::dsp::ringmod maps;
+    // Tweak is a plain percent (its meaning - carrier wobble or octave blend -
+    // is set by Mode). Blend is the footer Mix, not a knob here.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ringFreq, 1 }, "Ring Freq",
+                                                             percent, ee::dsp::ringmod::kDefaultFreqPct,
+                                                             withText (ringFreqToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ringTweak, 1 }, "Tweak", percent,
+                                                             ee::dsp::ringmod::kDefaultTweakPct, pctAttr));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ringLp, 1 }, "Ring Filter",
+                                                             percent, ee::dsp::ringmod::kDefaultLpPct,
+                                                             withText (ringLpToText)));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::ringMode, 1 }, "Mode",
+                                                              juce::StringArray { "Earworm", "Green Lantern" }, 0));
+
     return layout;
 }
 
@@ -167,6 +197,8 @@ void PeakArtifactProcessor::pushSettings (double bpm) noexcept
                       waveShape01 (static_cast<int> (raw (id::fltWave))), period, flag (id::fltStereo));
 
     module.setCrush (pct (id::crushBits), pct (id::crushRate), pct (id::crushLp), pct (id::crushJitter));
+
+    module.setRing (pct (id::ringFreq), pct (id::ringTweak), pct (id::ringLp), static_cast<int> (raw (id::ringMode)));
 }
 
 juce::String PeakArtifactProcessor::timeReadout() const

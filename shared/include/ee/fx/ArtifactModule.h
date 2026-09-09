@@ -2,6 +2,7 @@
 
 #include "ee/dsp/AutoWah.h"
 #include "ee/dsp/BitCrusher.h"
+#include "ee/dsp/RingModulator.h"
 #include "ee/fx/MultiEngineModule.h"
 
 namespace ee::fx
@@ -9,12 +10,14 @@ namespace ee::fx
 
 /** Peak Artifact's module: three engines, one at a time.
  *
- * Bit Crush and Filter are voiced; Ring Mod is still a placeholder - selectable,
- * latency-free, and audibly nothing: it runs fully wet with its wet output a
- * straight copy of the dry, so the module hands the input back untouched. When
- * Ring Mod is selected `engineUsesMix` is false, so the footer Mix knob does not
- * fold a scaled dry back on top of a scaled copy of itself and give a level bump
- * at half travel - the no-op engine is exactly unity at every Mix.
+ * All three are voiced. Each takes the footer Mix as its dry/wet - none of them
+ * has a wet path that wanders in time (the trap `engineUsesMix` exists for), so
+ * a fixed dry alongside the wet combs harmlessly rather than sweeping.
+ *
+ * Ring Mod is `ee::dsp::RingModulator` - a sine-carrier ring modulator with a
+ * post low-pass and two voicings (Earworm's carrier wobble, Green Lantern's
+ * octave blend), voiced from the JHS 3 Series Ring Modulator. Its Blend is the
+ * footer Mix.
  *
  * Filter is `ee::dsp::AutoWah`, the Peak Wah engine, with its per-note envelope
  * taken out of the picture: Decay is pinned fully up (the engine latches on and
@@ -74,6 +77,18 @@ public:
         crusher.setJitter01 (jitter01);
     }
 
+    /** Every Ring Mod control in one call. `freq01`, `tweak01` and `lp01` are
+        raw 0..1 knob positions resolved through the `ee::dsp::ringmod` maps the
+        pedal's readouts share; `mode` is 0 = Earworm, 1 = Green Lantern. The
+        Blend is the module's footer Mix, not a control here. */
+    void setRing (float freq01, float tweak01, float lp01, int mode) noexcept
+    {
+        ring.setFrequencyHz (ee::dsp::ringmod::freqHzFor (freq01));
+        ring.setTweak01 (tweak01);
+        ring.setLowpassHz (ee::dsp::ringmod::lpHzFor (lp01));
+        ring.setMode (mode);
+    }
+
     /** The Filter engine's signed cutoff-sweep exponent per channel at the last
         processed sample (Range * gate * lfo) - what the face's response scope
         rides on, the same feed Peak Wah pushes. The engine stays warm even when
@@ -85,13 +100,9 @@ public:
 protected:
     int engineCount() const noexcept override { return NumEngines; }
 
-    /** Filter and Bit Crush are summed against the dry. Ring Mod runs fully wet
-        with its wet the dry unchanged, so the module is unity through it at
-        every Mix position rather than +3 dB at the middle. */
-    bool engineUsesMix (int index) const noexcept override
-    {
-        return index == Filter || index == BitCrush;
-    }
+    /** All three engines are summed against the dry - the footer Mix is their
+        Blend. None has a wet path that wanders in time, so none opts out. */
+    bool engineUsesMix (int) const noexcept override { return true; }
 
     void prepareEngines (double sampleRate, int) override
     {
@@ -104,6 +115,7 @@ protected:
         wah.setMix01 (1.0f);
 
         crusher.prepare (sampleRate);
+        ring.prepare (sampleRate);
     }
 
     void renderEngine (int index, const juce::AudioBuffer<float>& dry, juce::AudioBuffer<float>& wet,
@@ -114,11 +126,12 @@ protected:
 
         copyDry (inL, inR, wet, numSamples);
 
-        // Ring Mod stops here: wet is the dry, untouched.
         if (index == Filter)
             wah.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
         else if (index == BitCrush)
             crusher.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
+        else if (index == RingMod)
+            ring.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
     }
 
     void resetEngine (int index) noexcept override
@@ -127,6 +140,8 @@ protected:
             wah.reset();
         else if (index == BitCrush)
             crusher.reset();
+        else if (index == RingMod)
+            ring.reset();
     }
 
 private:
@@ -138,6 +153,7 @@ private:
 
     ee::dsp::AutoWah wah;
     ee::dsp::BitCrusher crusher;
+    ee::dsp::RingModulator ring;
 };
 
 } // namespace ee::fx

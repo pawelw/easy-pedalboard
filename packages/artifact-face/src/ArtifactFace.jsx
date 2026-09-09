@@ -4,6 +4,7 @@ import {
   EngineStepper,
   FilterScope,
   ModulePanel,
+  RingScope,
   Toggle,
   WaveIcon,
   freqHzFor01,
@@ -24,8 +25,9 @@ import "./ArtifactFace.css";
  * as a `ModulePanel` - a power toggle and name in the header, an engine
  * stepper, and then the selected engine's body, with Mix in the footer. Filter
  * has a response scope, two rows of knobs, the wave picker and a Mono/Stereo
- * switch; Bit Crush has a stepped-wave display and two rows of knobs. Ring Mod
- * shows a dash: it is selectable but does nothing yet.
+ * switch; Bit Crush has a stepped-wave display and two rows of knobs; Ring Mod
+ * has a lattice display, its three knobs and an Earworm / Green Lantern switch.
+ * The footer Mix doubles as the Ring Mod's Blend.
  *
  * One component, two hosts. Peak Artifact wraps this in its own Card; Peak
  * Alpine drops it into its module row as the first module. The whole reason
@@ -116,7 +118,7 @@ function ArtifactFaceBody() {
       ) : engine.body === "crush" ? (
         <CrushBody />
       ) : (
-        <BlankBody />
+        <RingBody />
       )}
     </ModulePanel>
   );
@@ -232,10 +234,64 @@ function CrushBody() {
   );
 }
 
-function BlankBody() {
+/* Its own component so the Ring-only hooks don't run for the other engines. */
+function RingBody() {
+  const [freq] = useJuceSliderValue("ring.freq");
+  const [tweak] = useJuceSliderValue("ring.tweak");
+  const [mode] = useJuceChoiceValue("ring.mode", 2, 0);
+
   return (
-    <div className="af-blank" aria-hidden="true">
-      &mdash;
+    // Matches the Filter / Crush body height so stepping between engines doesn't
+    // resize the module.
+    <div className="af-ring">
+      {/* The DSB-SC lattice: a slow program sine cut into the carrier. Freq
+          sets the lattice density, Tweak wobbles it (Earworm) or leans it
+          toward the rectified octave (Green Lantern). Picture only, no feed. */}
+      <div className="af-display af-display--ring">
+        <RingScope
+          freq01={freq}
+          tweak01={tweak}
+          mode={mode}
+          height={64}
+          baseColor={SCOPE.baseColor}
+          fillColor={SCOPE.fillColor}
+        />
+      </div>
+
+      <div className="af-knobs">
+        <div className="af-knob-row">
+          <JuceKnob parameterId="ring.freq" caption="Freq" variant="soft" size={36} />
+          <JuceKnob parameterId="ring.tweak" caption="Tweak" variant="soft" size={36} />
+        </div>
+        <div className="af-knob-row">
+          <JuceKnob parameterId="ring.lp" caption="Filter" variant="soft" size={36} />
+        </div>
+      </div>
+
+      <RingModeSwitch />
+    </div>
+  );
+}
+
+/* Pinned to the foot of the module body, like Mono/Stereo. Earworm is the
+   carrier-wobble voicing, Green Lantern the octave-up one. */
+function RingModeSwitch() {
+  const [mode, setMode] = useJuceChoiceValue("ring.mode", 2, 0);
+  const green = mode === 1;
+
+  return (
+    <div className="af-inline-switch af-mode-switch">
+      <span className="af-switch-label" data-active={!green || undefined}>
+        Earworm
+      </span>
+      <Toggle
+        checked={green}
+        onChange={(v) => setMode(v ? 1 : 0)}
+        ariaLabel="Earworm / Green Lantern"
+      />
+      <span className="af-switch-label" data-active={green || undefined}>
+        Green Lantern
+      </span>
     </div>
   );
 }

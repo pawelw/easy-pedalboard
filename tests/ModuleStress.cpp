@@ -89,6 +89,8 @@ void setArtifactDefaults (ee::fx::ArtifactModule& m)
 {
     // freq01, q01, range01, waveShape01, one LFO cycle in seconds, stereo
     m.setFilter (0.5f, 0.5f, 0.6f, 0.5f, 0.4f, false);
+    // freq01, tweak01, lp01, mode (0 = Earworm)
+    m.setRing (0.4f, 0.0f, 0.6f, 0);
 }
 
 
@@ -358,10 +360,9 @@ void sweepReverb()
 }
 
 /** ee::fx::ArtifactModule - Peak Alpine's first module and Peak Artifact's
-    whole processor. Filter and Bit Crush are voiced; Ring Mod passes audio
-    through untouched. The interesting cases are each voiced engine's own
-    parameter space and that stepping to and from the no-op does not step the
-    signal. */
+    whole processor. All three engines are voiced; the interesting cases are
+    each engine's own parameter space and that stepping between them does not
+    step the signal. */
 void sweepArtifact()
 {
     std::printf ("\nArtifact sweep:\n");
@@ -383,6 +384,7 @@ void sweepArtifact()
 
                 module.setFilter (a, a, a, a, 0.03f + a * 1.5f, a > 0.5f);
                 module.setCrush (a, a, 1.0f - a, a);
+                module.setRing (a, a, 1.0f - a, a > 0.5f ? 1 : 0);
 
                 juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
                 fillTestSignal (buffer, kSampleRate);
@@ -409,6 +411,32 @@ void sweepArtifact()
                         module.setEngaged (true);
 
                         module.setCrush (bits, rate, lp, jitter);
+
+                        juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
+                        fillTestSignal (buffer, kSampleRate);
+                        run (module, buffer);
+
+                        ++cases;
+                        worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+                        clean = allFinite (buffer) && clean;
+                    }
+
+    // Ring Mod's own knob space, on the engine that reads it - Freq / Tweak /
+    // Filter at each end and the middle, both modes, each Mix position.
+    for (float freq : { 0.0f, 0.5f, 1.0f })
+        for (float tweak : { 0.0f, 0.5f, 1.0f })
+            for (float lp : { 0.0f, 1.0f })
+                for (int mode : { 0, 1 })
+                    for (float mix : { 0.0f, 0.5f, 1.0f })
+                    {
+                        ee::fx::ArtifactModule module;
+                        module.prepare (kSampleRate, 512);
+                        module.setEngine (ee::fx::ArtifactModule::RingMod);
+                        module.setMix01 (mix);
+                        module.setLevel (1.0f);
+                        module.setEngaged (true);
+
+                        module.setRing (freq, tweak, lp, mode);
 
                         juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
                         fillTestSignal (buffer, kSampleRate);
@@ -461,9 +489,9 @@ int main()
     }
     {
         ee::fx::ArtifactModule module;
-        // Ring Mod (the default engine) opts out of Mix; the "Mix 0 is the dry
-        // input" contract is checked on Filter, which honours it. Set before
-        // prepare so there is no engine crossfade to ramp through.
+        // Filter honours the "Mix 0 is the dry input" contract cleanly (no LFO
+        // phase to worry about at rest). Set before prepare so there is no
+        // engine crossfade to ramp through.
         module.setEngine (ee::fx::ArtifactModule::Filter);
         module.prepare (kSampleRate, 512);
         setArtifactDefaults (module);
