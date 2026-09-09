@@ -88,7 +88,7 @@ function ArtifactFaceBody() {
     <ModulePanel
       name="Artifact"
       accent={ACCENT}
-      width={180}
+      width={168}
       on={on}
       onToggle={setOn}
       className="af-module"

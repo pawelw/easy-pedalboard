@@ -8,12 +8,17 @@
    already owns `.pa-knobs` / `.pa-knob-row` / `.pa-display` for its own side
    modules, at different values, and this face now renders inside it. */
 
-/* "BIT CRUSH" is a letter wider than any engine name Peak Alpine's steppers
-   carry, and truncates in a 180px module at the shared letter-spacing. Pull it
-   in just enough that the three engine names and the three wave names all fit
-   whole - scoped to this module so the host's own steppers keep their spacing. */
+/* "CRASHER" is a letter wider than any engine name Peak Alpine's steppers
+   carry, and truncates in a 168px module at the shared letter-spacing and
+   icon gap. Pull both in just enough that the three engine names and the three
+   wave names all fit whole - scoped to this module so the host's own steppers
+   keep their spacing. */
 .af-module .pui-stepper__name {
   letter-spacing: 0.1em;
+}
+
+.af-module .pui-stepper__value {
+  gap: 4px;
 }
 
 /* --------------------------------------------------------------- module body */

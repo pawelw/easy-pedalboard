@@ -31,7 +31,7 @@ import {
 export const MOD_ENGINES = [
   {
     name: "Tape",
-    icon: <TapeIcon size={26} />,
+    icon: <TapeIcon size={22} />,
     prefix: "mod.tape.",
     knobs: [
       ["sat", "Saturation"],
@@ -50,8 +50,8 @@ export const MOD_ENGINES = [
     hideMix: true,
   },
   {
-    name: "Tremolo",
-    icon: <TremoloIcon size={26} />,
+    name: "Trem",
+    icon: <TremoloIcon size={22} />,
     prefix: "mod.trem.",
     // The one engine with a display: a tremolo's shape is the whole of what it
     // does, and four knob captions do not show it.
@@ -65,7 +65,7 @@ export const MOD_ENGINES = [
   },
   {
     name: "Chorus",
-    icon: <ModIcon size={26} />,
+    icon: <ModIcon size={20} />,
     prefix: "mod.chorus.",
     knobs: [
       ["rate", "Rate"],
@@ -75,7 +75,7 @@ export const MOD_ENGINES = [
   },
   {
     name: "Phaser",
-    icon: <PhaserIcon size={26} />,
+    icon: <PhaserIcon size={22} />,
     prefix: "mod.phase.",
     knobs: [
       ["rate", "Rate"],
@@ -89,7 +89,7 @@ export const MOD_ENGINES = [
 export const REVERB_ENGINES = [
   {
     name: "Space",
-    icon: <SpaceIcon size={26} />,
+    icon: <SpaceIcon size={22} />,
     prefix: "rev.space.",
     display: "decay",
     decayId: "rev.space.decay",
@@ -102,7 +102,7 @@ export const REVERB_ENGINES = [
   },
   {
     name: "Spring",
-    icon: <SpringIcon size={26} />,
+    icon: <SpringIcon size={22} />,
     prefix: "rev.spring.",
     display: "decay",
     decayId: "rev.spring.decay",

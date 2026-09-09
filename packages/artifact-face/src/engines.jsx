@@ -9,9 +9,9 @@ import { FilterIcon, ModIcon, PhaserIcon } from "@synthpeak/pedal-ui";
  * The order is the order of the processor's `engine` choice parameter.
  */
 export const ENGINES = [
-  { name: "Ring Mod", icon: <ModIcon size={26} />, body: "blank" },
-  { name: "Bit Crush", icon: <PhaserIcon size={26} />, body: "blank" },
-  { name: "Filter", icon: <FilterIcon size={26} />, body: "filter" },
+  { name: "Ring", icon: <ModIcon size={22} />, body: "blank" },
+  { name: "Crasher", icon: <PhaserIcon size={22} />, body: "blank" },
+  { name: "Filter", icon: <FilterIcon size={22} />, body: "filter" },
 ];
 
 /**

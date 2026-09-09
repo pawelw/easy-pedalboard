@@ -62,7 +62,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
     <ModulePanel
       name={name}
       accent={accent}
-      width={180}
+      width={168}
       on={on}
       onToggle={setOn}
       /* Level is a trim, not a fader: it rests at unity in the middle of its
