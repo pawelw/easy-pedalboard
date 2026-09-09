@@ -39,7 +39,7 @@ export default function App() {
         headerCenter={<JucePresetBar />}
         headerRight={<HeaderLevels />}
         className="pd-card"
-        width={626}
+        width={528}
       >
         <DelayFace />
       </Card>

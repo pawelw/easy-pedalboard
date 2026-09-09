@@ -14,11 +14,13 @@
 }
 
 /* Card's own padding and type are the pedals' (18/22/22, a 22px title beside
-   its subtitle). A host panel is a bigger object with a two-line title block,
-   so it re-spends those here - the same way `.pd-card` scopes Peak Delay's,
-   rather than adding another variant to Card itself. */
+   its subtitle). A host panel spends its width on three modules rather than on
+   one pedal's controls, so it re-spends those here - an even 14px frame, the
+   same measure as the gap between the modules, so the row sits in the card the
+   way it sits in itself. Scoped here the same way `.pd-card` scopes Peak
+   Delay's, rather than adding another variant to Card itself. */
 .pa-card.pui-card {
-  padding: 20px 24px 22px;
+  padding: 14px 14px 14px;
   /* The module row's own panels are `overflow: hidden` and rounded; this does
      the same for the host, so nothing can escape its 20px corners. */
   overflow: hidden;
@@ -75,7 +77,7 @@
 .pa-modules {
   display: flex;
   align-items: stretch;
-  gap: 14px;
+  gap: 8px;
   transition: opacity 140ms ease;
 }
 

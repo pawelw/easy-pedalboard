@@ -203,13 +203,18 @@ function Showcase() {
         <SectionLabel>Preset bar — separated</SectionLabel>
         <PresetBar variant="separated" value={preset} onLoad={setPreset} />
 
-        <SectionLabel>Power toggle — round (per module) and pill (global)</SectionLabel>
+        {/* One control at every scope: two modules' accents, then the same ring
+            with no ModulePanel above it, which is the host header's own bypass
+            falling back to the face's ink. */}
+        <SectionLabel>Power toggle — accented, and on the bare face</SectionLabel>
         <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
-          <PowerToggle on={modOn} onToggle={setModOn} />
+          <span style={{ "--pui-accent": "var(--pui-accent-mod)" }}>
+            <PowerToggle on={modOn} onToggle={setModOn} />
+          </span>
           <span style={{ "--pui-accent": "var(--pui-accent-reverb)" }}>
             <PowerToggle on={reverbOn} onToggle={setReverbOn} />
           </span>
-          <PowerToggle variant="pill" on={!bypassed} onToggle={(next) => setBypassed(!next)} />
+          <PowerToggle on={!bypassed} onToggle={(next) => setBypassed(!next)} ariaLabel="Bypass" />
         </div>
 
         <SectionLabel>Engine stepper</SectionLabel>
@@ -242,17 +247,17 @@ function Showcase() {
           </div>
         </div>
 
-        {/* The shell assembled: a side module at its real 186px track width,
+        {/* The shell assembled: a side module at its real 180px track width,
             with the header Level knob, the stepper, a display, two rows of
-            two 40px knobs and the footer Mix. Switching its engine here is
+            two 36px knobs and the footer Mix. Switching its engine here is
             what shows the accent reaching all three places it belongs -
             toggle, stepper and every knob's arc - off one prop. */}
         <SectionLabel>Module panel</SectionLabel>
         <div style={{ display: "flex", gap: 14, alignItems: "stretch" }}>
           <ModulePanel
-            name="Modulation"
+            name="Mod"
             accent="var(--pui-accent-mod)"
-            width={186}
+            width={180}
             on={modOn}
             onToggle={setModOn}
             headerRight={<Knob variant="soft" size={24} bare value={modLevel} onChange={setModLevel} />}
@@ -292,7 +297,7 @@ function Showcase() {
                       <Knob
                         key={name}
                         variant="soft"
-                        size={40}
+                        size={36}
                         caption={name}
                         value={modKnobs[index]}
                         onChange={(v) => setModKnob(index, v)}
@@ -306,7 +311,7 @@ function Showcase() {
           </ModulePanel>
 
           {/* The wide tone, empty. Same panel as its neighbour - all `tone`
-              buys is the wider padding a 598px module's contents need - and
+              buys is the wider padding a 528px module's contents need - and
               there is nothing about that worth filling with borrowed
               controls. The Delay face itself is what goes in here. */}
           <ModulePanel
@@ -332,7 +337,7 @@ function Showcase() {
           subtitle="Modulation / Delay / Reverb machine"
           subtitlePlacement="below"
           width={420}
-          headerRight={<PowerToggle variant="pill" on={!bypassed} onToggle={(next) => setBypassed(!next)} />}
+          headerRight={<PowerToggle on={!bypassed} onToggle={(next) => setBypassed(!next)} ariaLabel="Bypass" />}
         />
       </div>
     </Card>

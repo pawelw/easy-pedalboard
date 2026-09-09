@@ -99,6 +99,100 @@ void everything (juce::AudioProcessorValueTreeState& s)
     setPercent (s, revMix, 60.0f);
     setPercent (s, revSpaceShimmer, 40.0f);
 }
+
+/** Where an impulse actually comes out, against what the plugin tells the host
+    to compensate.
+
+    Every Mix is set to 0, so what this measures is the *dry* path - what a host
+    lines the rest of the session up against - rather than any engine's own
+    delayed output. Two things are worth knowing from it and only one of them is
+    asserted.
+
+    The assertion is that the figure does not depend on which Modulation engine
+    is selected. Only the Tape engine has a delay line in it; the module pads
+    the other three and its own dry path out to match, and if that ever stopped
+    happening the Tape engine would comb against the dry at any partial Mix -
+    the "Flutter sounds like a chorus" bug, which is what this guards.
+
+    The other is printed and not asserted: switching the **Delay** module off
+    takes its 288 samples out of the real path while the plugin goes on
+    reporting them, because `ee::fx::DelayModule` crossfades back to the
+    caller's untouched buffer rather than to a copy delayed to match. So a host
+    compensating the reported figure pulls the signal 6 ms early the moment that
+    module is bypassed. It is a known gap, not an accident - see
+    docs/peak-alpine-plan.md §7. */
+void checkLatencyLedger()
+{
+    auto arrival = [] (auto&& configure)
+    {
+        PeakAlpineProcessor p;
+
+        configure (p.apvts);
+
+        p.setPlayConfigDetails (2, 2, kSampleRate, 1024);
+        p.prepareToPlay (kSampleRate, 1024);
+
+        constexpr int kImpulseAt = 64;
+        juce::AudioBuffer<float> buffer (2, 8192);
+        buffer.clear();
+        buffer.setSample (0, kImpulseAt, 1.0f);
+        buffer.setSample (1, kImpulseAt, 1.0f);
+
+        juce::MidiBuffer midi;
+        p.processBlock (buffer, midi);
+
+        int at = 0;
+        for (int i = 0; i < buffer.getNumSamples(); ++i)
+            if (std::abs (buffer.getSample (0, i)) > std::abs (buffer.getSample (0, at)))
+                at = i;
+
+        return at - kImpulseAt;
+    };
+
+    auto silent = [] (juce::AudioProcessorValueTreeState& s)
+    {
+        using namespace ee::alpine::id;
+        setPercent (s, modMix, 0.0f);
+        setPercent (s, dlyMix, 0.0f);
+        setPercent (s, revMix, 0.0f);
+    };
+
+    std::printf ("Latency ledger (dry path, every Mix at 0):\n");
+
+    int reported = 0;
+    {
+        PeakAlpineProcessor p;
+        p.setPlayConfigDetails (2, 2, kSampleRate, 1024);
+        p.prepareToPlay (kSampleRate, 1024);
+        reported = p.getLatencySamples();
+    }
+
+    const int whole = arrival (silent);
+    std::printf ("  %-30s %4d samples   (reported %d)\n", "everything engaged", whole, reported);
+    check (whole == reported, "the dry path arrives exactly where the host is told it will");
+
+    // Which module owns which half - and, on the Delay row, what a bypassed
+    // one does to a figure the host is still compensating.
+    struct Off { const char* name; const char* id; };
+    for (const auto& off : { Off { "Modulation bypassed", ee::alpine::id::modOn },
+                             Off { "Delay bypassed", ee::alpine::id::dlyOn },
+                             Off { "Reverb bypassed", ee::alpine::id::revOn } })
+        std::printf ("  %-30s %4d samples\n", off.name,
+                     arrival ([&silent, &off] (juce::AudioProcessorValueTreeState& s)
+                              { silent (s); setFlag (s, off.id, false); }));
+
+    // The contract: one figure, whichever engine is selected.
+    bool flat = true;
+    for (int engine = 0; engine < 4; ++engine)
+    {
+        const int at = arrival ([&silent, engine] (juce::AudioProcessorValueTreeState& s)
+                                { silent (s); setChoice (s, ee::alpine::id::modEngine, engine); });
+        std::printf ("  %-26s %-3d %4d samples\n", "Modulation engine", engine, at);
+        flat = flat && at == reported;
+    }
+
+    check (flat, "...and does not move with the Modulation engine");
+}
 } // namespace
 
 int main (int argc, char* argv[])
@@ -109,6 +203,25 @@ int main (int argc, char* argv[])
     fillTestSignal (input, kSampleRate);
 
     std::printf ("=== Peak Alpine host ===\n\n");
+
+    checkLatencyLedger();
+    std::printf ("\n");
+
+    // What the plugin tells a host to compensate, across the rates it runs at.
+    // Two tape transports plus two tape stages, in samples, so it moves with
+    // the sample rate - the ledger below checks the figure is honest at one of
+    // them, and this shows it lands at the same 12 ms at all of them.
+    std::printf ("Reported latency:\n");
+    for (const double rate : { 44100.0, 48000.0, 88200.0, 96000.0, 192000.0 })
+    {
+        PeakAlpineProcessor probe;
+        probe.setPlayConfigDetails (2, 2, rate, 512);
+        probe.prepareToPlay (rate, 512);
+
+        const int reported = probe.getLatencySamples();
+        std::printf ("  %6.0f Hz   %5d samples   %5.2f ms\n", rate, reported, 1000.0 * reported / rate);
+    }
+    std::printf ("\n");
 
     juce::AudioBuffer<float> plain (2, kLength);
     plain.makeCopyOf (input);

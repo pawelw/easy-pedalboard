@@ -84,11 +84,32 @@ void setReverbDefaults (ee::fx::ReverbModule& m)
     m.setSpring (2.0f, 0.5f, 60.0f);
 }
 
+
 // ---------------------------------------------------------------- the checks
+
+/** The module's own latency, as a lag to compare against: everything the module
+    emits is the input delayed by `latencySamples()`, because the dry path is
+    padded out to meet its longest engine. Zero for a module whose engines have
+    none, in which case this is the plain comparison it used to be. */
+template <typename Module>
+bool matchesDelayedInput (Module& module, const juce::AudioBuffer<float>& out,
+                          const juce::AudioBuffer<float>& input, int from)
+{
+    const int lag = module.latencySamples();
+
+    for (int ch = 0; ch < 2; ++ch)
+        for (int i = juce::jmax (from, lag); i < input.getNumSamples(); ++i)
+            if (out.getSample (ch, i) != input.getSample (ch, i - lag))
+                return false;
+
+    return true;
+}
 
 /** Mix at 0 with Level at 1 must return the input untouched, bit for bit. Not
     "close": the mix law is cos/sin, cos(0) is exactly 1 and sin(0) exactly 0,
-    so any drift here is a bug in the mix rather than a rounding cost. */
+    so any drift here is a bug in the mix rather than a rounding cost. Bit for
+    bit *at the module's own latency* - the alignment delay is a whole number of
+    samples copied through a buffer, which does not change a value. */
 template <typename Module>
 void checkMixZeroIsDry (Module& module, const char* name)
 {
@@ -103,17 +124,58 @@ void checkMixZeroIsDry (Module& module, const char* name)
     module.setEngaged (true);
     run (module, out);
 
-    bool exact = true;
-    for (int ch = 0; ch < 2 && exact; ++ch)
-        for (int i = 0; i < input.getNumSamples(); ++i)
-            if (out.getSample (ch, i) != input.getSample (ch, i))
-            {
-                exact = false;
-                break;
-            }
+    std::printf ("%s (latency %d):\n", name, module.latencySamples());
+    check (matchesDelayedInput (module, out, input, 0), "mix 0 returns the input bit for bit");
+}
 
-    std::printf ("%s:\n", name);
-    check (exact, "mix 0 returns the input bit for bit");
+/** The whole reason the alignment exists: at a *partial* Mix, an engine that
+    delays the signal is being summed with the module's own dry, and if the two
+    are not lined up that sum is a comb filter. Tape at rest is bypassed at every
+    knob and is a bit-exact pass-through with a fixed latency, so the sum has to
+    come back as the input and nothing else - one sample out and this fails,
+    which is the state the Modulation module's Flutter knob shipped in.
+
+    "The input and nothing else" is not "the input at the same level". The mix
+    law is equal-power, so at Mix 0.4 the two gains are cos and sin of the same
+    angle and they sum to 1.397 rather than to 1 - correct for the uncorrelated
+    pair it is written for, and a plain 2.9 dB lift for a wet side that happens
+    to *be* the dry. So what is checked is the shape: the output has to be that
+    one constant times the input, with no frequency-dependent term in it. A comb
+    would fail here however the level was scaled. */
+void checkTapeAtRestIsDry()
+{
+    ee::fx::ModulationModule module;
+    module.prepare (kSampleRate, 512);
+    module.setEngine (ee::fx::ModulationModule::Tape);
+    module.setTape (0.0f, 0.0f, 0.0f, 0.0f);
+    module.setMix01 (0.4f);
+    module.setLevel (1.0f);
+    module.setEngaged (true);
+
+    juce::AudioBuffer<float> input (2, 8192);
+    fillTestSignal (input, kSampleRate);
+
+    juce::AudioBuffer<float> out;
+    out.makeCopyOf (input);
+    run (module, out);
+
+    // Past the mix ramp, which starts at the module's resting Mix rather than
+    // at this one - the first 20 ms is that ramp, not the alignment.
+    const int settled = module.latencySamples() + static_cast<int> (kSampleRate * 0.05);
+
+    const float angle = 0.4f * juce::MathConstants<float>::halfPi;
+    const float gain = std::cos (angle) + std::sin (angle);
+
+    float worst = 0.0f;
+    for (int ch = 0; ch < 2; ++ch)
+        for (int i = settled; i < input.getNumSamples(); ++i)
+            worst = juce::jmax (worst, std::abs (out.getSample (ch, i)
+                                                 - gain * input.getSample (ch, i - module.latencySamples())));
+
+    std::printf ("  %s  Tape at rest is the input at Mix 40 %% (worst %.7f)\n", worst <= 1.0e-5f ? "ok  " : "FAIL",
+                 worst);
+    if (worst > 1.0e-5f)
+        ++failures;
 }
 
 /** Bypassed must also return the input untouched, and must do it whatever Mix
@@ -135,12 +197,9 @@ void checkBypassIsUnity (Module& module, const char* name)
     run (module, out);
 
     const int settled = static_cast<int> (kSampleRate * 0.1);
-    float worst = 0.0f;
-    for (int ch = 0; ch < 2; ++ch)
-        for (int i = settled; i < input.getNumSamples(); ++i)
-            worst = juce::jmax (worst, std::abs (out.getSample (ch, i) - input.getSample (ch, i)));
 
-    check (worst == 0.0f, "bypassed is the input, whatever Mix and Level say");
+    check (matchesDelayedInput (module, out, input, settled),
+           "bypassed is the input, whatever Mix and Level say");
     (void) name;
 }
 
@@ -279,6 +338,7 @@ int main()
         setModulationDefaults (module);
         checkBypassIsUnity (module, "Modulation");
     }
+    checkTapeAtRestIsDry();
     {
         ee::fx::ReverbModule module;
         module.prepare (kSampleRate, 512);

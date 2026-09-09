@@ -1,10 +1,10 @@
-# Handoff: Peak Alpine — three-module host panel (Modulation · Delay · Reverb)
+# Handoff: Peak Machine — three-module host panel (Modulation · Delay · Reverb)
 
 ## Overview
 
-Peak Alpine is a **new plugin** — `plugins/peak-alpine`, alongside the eleven
+Peak Machine is a **new plugin** — `plugins/peak-machine`, alongside the eleven
 existing pedals. It is **not** a replacement for Peak Delay: `peak-delay` stays
-exactly as it is and continues to ship as its own standalone plugin. Peak Alpine
+exactly as it is and continues to ship as its own standalone plugin. Peak Machine
 reuses it as one of its three modules.
 
 One common chrome (logo, preset bar, IN/OUT trims, global bypass) wraps three
@@ -33,7 +33,7 @@ the prototype inlines everything only because the design tool requires it.
 The Delay module in the prototype is a faithful re-draw of the current
 `plugins/peak-delay/jsui/src/App.jsx`. **Do not rebuild it and do not fork it** —
 factor the existing face into a component both plugins render, so a fix lands in
-both. Peak Delay keeps shipping on its own; Peak Alpine embeds the same component
+both. Peak Delay keeps shipping on its own; Peak Machine embeds the same component
 inside its module shell.
 
 Anything genuinely new here — the module shell, the header power toggle, the engine
@@ -54,21 +54,21 @@ only the engine steppers and the bypass button respond to clicks.
 
 Outer host panel:
 
-- Fixed width **944px**, `background #171d20`, `border 1px solid #2b2b2b`,
+- Fixed width **1046px**, `background #171d20`, `border 1px solid #2b2b2b`,
   `border-radius 20px`, `box-shadow 0 20px 44px rgba(0,0,0,.4)`,
-  `padding 14px`, page background `#0f1315`.
+  `padding 20px 24px 22px`, page background `#0f1315`.
 - Header row, then a `display:flex; gap:14px; align-items:stretch` module row.
 
-Module row track widths: **180 / 528 / 180**. The two side modules are fixed; only
+Module row track widths: **186 / 598 / 186**. The two side modules are fixed; only
 Delay carries the wide content.
 
 ### Host header (grid: three flex tracks)
 
 | Track | Contents |
 | --- | --- |
-| left, `flex:1 1 0` | 32px logo mark (tinted to `#b9d3d9`), gap 11px, then a title column (`gap:2px`): `Peak Alpine` 19px/700 `#b9d3d9` over the tagline `MODULATION / DELAY / REVERB MACHINE`, 9px/500 uppercase `letter-spacing .12em` `#6c8288` |
+| left, `flex:1 1 0` | 32px logo mark (tinted to `#b9d3d9`), gap 11px, then a title column (`gap:2px`): `Peak Machine` 19px/700 `#b9d3d9` over the tagline `MODULATION / DELAY / REVERB MACHINE`, 9px/500 uppercase `letter-spacing .12em` `#6c8288` |
 | center, `flex:none` | preset stepper + name field + save button |
-| right, `flex:1 1 0`, `justify-content:flex-end`, `gap:32px` | IN/OUT fader stack, then the bypass toggle |
+| right, `flex:1 1 0`, `justify-content:flex-end`, `gap:32px` | IN/OUT fader stack, then the bypass pill |
 
 Preset cluster: four **separate** rounded controls, not a segmented group — two
 28×28 chevron buttons and a 190×28 name field at `gap:6px`, then the 28×28 save
@@ -83,14 +83,11 @@ Fader rows (IN then OUT, `gap:5px`): 20px uppercase label 8px/700
 `#39474b`, fill `#8ba3a9`, 13px round handle `#b9d3d9` with
 `0 8px 18px rgba(0,0,0,.55)`); then a 46px right-aligned readout 9px/500 `#6c8288`,
 `font-variant-numeric: tabular-nums`. Demo values 62% / `0.0 dB` and 58% /
-`-1.5 dB`. The **32px gap** to the bypass toggle is deliberate — do not collapse it.
+`-1.5 dB`. The **32px gap** to the bypass pill is deliberate — do not collapse it.
 
-Bypass toggle: the **same 22px ring a module wears**, on the face's own ink rather
-than on an accent — `border-radius 999px`, `1px solid` currentColor at 40% opacity,
-transparent fill, power glyph at 12px, `#b9d3d9` engaged and `#6c8288` bypassed.
-An earlier draft made this a capsule with `ACTIVE` ⇄ `BYPASSED` written in it; the
-word is gone, because the module row dimming behind it already says the same thing
-and two shapes for one idea made the header read as two kinds of control.
+Bypass pill: `padding 6px 11px`, `border-radius 999px`, `border 1px solid #2a3336`,
+transparent fill, `#8ba3a9`, 9px/700 uppercase `letter-spacing .1em`, power glyph at
+12px. Label toggles `ACTIVE` ⇄ `BYPASSED`.
 
 ### Module shell (all three)
 
@@ -164,8 +161,8 @@ colour of each one's glyph, and nothing else:
 
 | Section | Glyph colour |
 | --- | --- |
-| Tape | `#309a10` — also the Modulation stepper's Tape engine glyph |
-| Mod | `#e0b23c` — the Modulation module's own accent |
+| Tape | `#d8f088` |
+| Mod | `#7fb4e0` |
 | Filter | `#e08fc0` |
 
 One section on a band shouted while its two neighbours whispered, and the band
@@ -183,26 +180,24 @@ no caption, and seven accent bars (4px, `opacity .8`) at heights
 | Engine | Row 1 | Row 2 | Footer |
 | --- | --- | --- | --- |
 | Space | Decay, Shimmer | Low Cut, Reso | Mix |
-| Spring | Decay, Tension | Low Cut | Mix |
+| Spring | Decay, Tension | Low Cut, Reso | Mix |
 
 ## Knobs
 
 Two variants, both centred on a rotating cap and an SVG indicator ring drawn from
 **−135° to +135°** (270° of travel).
 
-**Cap.** `border-radius 50%`, a flat `background #111416` — no gradient, so the
-disc reads as a flat top seen straight on rather than as a sphere — with
+**Cap.** `border-radius 50%`, `background linear-gradient(180deg,#333f43,#151a1d)`,
 `box-shadow inset 0 -1px .5px rgba(0,0,0,.49), inset 0 .5px 1px rgba(185,211,217,.3),
 0 6px 14px rgba(0,0,0,.5)`. Pointer: a 2.4px (3px on the 76px knobs) rounded bar,
 `background #b9d3d9`, from 10% to 36% of the cap height, rotated to
 `−135° + value·270°`.
 
 **`soft` — continuous arc.** Default everywhere. One stroked arc at
-`r = size/2 + 3.5`, `stroke-width 1.5` (4 at ≥60px), `stroke-linecap round`; unlit
+`r = size/2 + 3.5`, `stroke-width 3` (4 at ≥60px), `stroke-linecap round`; unlit
 track `#2b3639` (side modules) / `#39474b` (Delay footer), lit portion in the
-indicator colour. The small width is a hairline on purpose: at 36–42px anything
-wider reads as a band rather than a value line. `from="max"` reverses the fill so
-it lights from the top of the travel — used by Delay's **High Cut**.
+indicator colour. `from="max"` reverses the fill so it lights from the top of the
+travel — used by Delay's **High Cut**.
 
 **`scale` — 20-tick ring.** Reserved for standout controls: Delay's Mix, Feedback
 and the two time knobs. 20 radial ticks between `r` and `r + 4` (6 on ≥60px),
@@ -214,27 +209,21 @@ inset cap at 8%.
 knob — the whole footer included — `#b4b4b4` on a `#39474b` track.** The Tape
 stage used to light `#d8f088` on a `#5a7f2a` track; it does not any more.
 
-Knob sizes: 24px in module headers, 38px in footers and Delay stage cells, 36px in
+Knob sizes: 24px in module headers, 38px in footers and Delay stage cells, 40px in
 side-module parameter rows, 42px for Delay time, 76px for Mix/Feedback. Labels sit
-7.5px under the knob at 10px/700 uppercase `letter-spacing .08em` `#b9d3d9`; the
-Delay hero knobs use the same 10px caption 6px under the cap, plus a 10px/500
-`#8ba3a9` value line.
+7.5px under the knob at 10px/700 uppercase `letter-spacing .1em` `#b9d3d9`; the
+Delay hero knobs use 11px labels 6px under the cap, plus a 10px/500 `#8ba3a9`
+value line.
 
 ## Interactions & behaviour
 
 - **Engine steppers** cycle their engine list with wraparound in both directions.
   Changing the engine swaps the parameter set, the icon, the name, and (Modulation)
   shows or hides the trem display.
-- **The Modulation module is titled `MOD`**, not `MODULATION`: at 180px the long
-  word left the header's Level knob no room, and the engine name below it already
-  says which modulation it is.
 - **Module power toggles** — the accent-coloured button in each module header
   enables or bypasses that module on its own, independently of the global bypass.
-  A module that is off dims its name, body and footer to `0.42` — the same fade,
-  one scope down — while its own toggle stays at full opacity, because that toggle
-  is the way back.
-- **Bypass** dims the module row and drops its own ring to `#6c8288`. Those two
-  are the whole of the state — there is no label.
+- **Bypass** toggles the label between `ACTIVE` and `BYPASSED`. In production it
+  should also dim the module row.
 - **Knobs** in the prototype are static. In the app they use the existing pedal-ui
   vertical-drag gesture: drag up increases, `shift` for fine, double-click resets.
 - Hover states are defined only for the chrome buttons (chevrons, save, stepper
@@ -262,15 +251,11 @@ button hover · `#0a0b0c` module divider · `#222b2e`
 Delay footer cell divider · `#2a3336` chrome border · `#233034` display centre line ·
 `#39474b` / `#2b3639` unlit arc · `#4d5f65` · `#6c8288` muted text · `#8ba3a9`
 secondary text · `#9fb8bd` chrome glyph · `#b9d3d9` primary text · `#cfe2e6` preset
-name · `#d6e8ec` chrome glyph hover · `#b4b4b4` neutral indicator · `#111416`
-soft knob cap.
+name · `#d6e8ec` chrome glyph hover · `#b4b4b4` neutral indicator.
 
 Accents: `#e0b23c` Modulation · `#a3ce7a` Delay · `#7fd2d8` Reverb.
 
-Delay footer glyphs: `#309a10` Tape · `#e0b23c` Mod (the Modulation accent
-re-used) · `#e08fc0` Filter. The tape deck carries its own colour rather than
-its slot's, so the Modulation stepper's Tape engine draws in the same green
-while its three siblings wear the module accent.
+Delay footer glyphs: `#d8f088` Tape · `#7fb4e0` Mod · `#e08fc0` Filter.
 
 Radii: 20 host · 12 displays · 9 stepper · 10 readout · 8 panel and chrome button ·
 999 pill and power toggle.
@@ -281,12 +266,12 @@ Shadows: `0 20px 44px rgba(0,0,0,.4)` host ·
 `0 6px 14px rgba(0,0,0,.5)` small knob.
 
 Type: **Space Grotesk**, 500 and 700 only. 19px title · 12px preset name · 11px
-module name · 10px knob label · 9–10px chrome · 9px tagline · 8px micro caption.
-Uppercase tracking runs .08em (knob labels), .1em (pills), .12em (host tagline),
-.14em (micro captions), .16em (engine names), .18em (module names).
+module name · 10–11px knob label · 9–10px chrome · 9px tagline · 8px micro caption.
+Uppercase tracking runs .1em (knob labels, pills), .12em (host tagline), .14em
+(micro captions), .16em (engine names), .18em (module names).
 
-Spacing: 14px host frame · 14px module gap · 18px header padding · 12/16px body
-padding · 18–22px between knob rows.
+Spacing: 14px module gap · 18px header padding · 12/16px body padding · 18–22px
+between knob rows.
 
 ## Assets
 
@@ -304,14 +289,14 @@ padding · 18–22px between knob rows.
 
 ## Files
 
-- `Peak Alpine.dc.html` — the design prototype (open directly in a browser).
+- `Peak Multi Host.dc.html` — the design prototype (open directly in a browser).
 - `support.js` — runtime required by the prototype. Not part of the design.
 - `assets/peak-logo.png`
 
 Upstream source for the Delay module: **`packages/delay-face`** —
 `DelayFace.jsx`, `DelayFace.css`, `TimeControl.jsx`, `juceBindings.jsx`. That
 package is the face itself, with no enclosure; `plugins/peak-delay/jsui/src/
-App.jsx` is now only the Card around it, and Peak Alpine puts the same
+App.jsx` is now only the Card around it, and Peak Machine puts the same
 component in a `ModulePanel`. The generic JUCE-bound controls
 (`JuceKnob`, `JucePill`, the live-value hooks) are
 `@synthpeak/pedal-ui/juce`. Shared components in `packages/pedal-ui/src`

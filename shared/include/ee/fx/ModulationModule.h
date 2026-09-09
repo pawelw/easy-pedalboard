@@ -131,6 +131,16 @@ protected:
         }
     }
 
+    /** The one engine here with any. TapeMachine reads its whole output off a
+        transport delay line - 4.5 ms of capstan plus the tape stage's own - so
+        without this the module would be mixing a 9.7 ms copy of the signal
+        against the dry, which is a comb rather than a tape machine. See
+        MultiEngineModule's note. */
+    int engineLatencySamples (int index) const noexcept override
+    {
+        return index == Tape ? tape.getLatencySamples() : 0;
+    }
+
     void resetEngine (int index) noexcept override
     {
         switch (index)

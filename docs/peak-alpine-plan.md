@@ -321,7 +321,7 @@ Changed:
 | Component | Change |
 |---|---|
 | `PresetBar` | `variant="separated"`: four discrete 8px-radius controls (28×28 prev, 28×28 next, 190×28 name, gap 6; then 28×28 save at gap 10) instead of today's joined segmented group. The joined look stays the default — Peak Delay and Wah keep it. |
-| `Card` | one new prop, `subtitlePlacement="below"`, for the stacked title/tagline column. Everything else about the host panel (padding, 32px logo, 19px title, zero body padding) is scoped in the face's own CSS as `.pm-card`, exactly the way `.pd-card` already scopes Peak Delay's. |
+| `Card` | one new prop, `subtitlePlacement="below"`, for the stacked title/tagline column. Everything else about the host panel (padding, 32px logo, 19px title, zero body padding) is scoped in the face's own CSS as `.pa-card`, exactly the way `.pd-card` already scopes Peak Delay's. |
 | `Slider` | check the 13px thumb against the compact one; add a size token if it differs. Geometry is otherwise already the handover's. |
 
 ### 5.2 New package — `packages/delay-face`
@@ -389,8 +389,45 @@ Each stage is independently verifiable and independently shippable.
 | 6 | ✅ `SpringReverb`'s two new setters (Tension, Low Cut) | `ee_spring_regress`: Peak Spring identical, and the engine section proves the defaults inert, the controls live, and both extremes stable. `ee_reverb_stress` 1512 cases 0 flagged; `ee_dsp_tests` at its known baseline |
 | 7 | `ee::fx::ModulationModule` + `ReverbModule` | `ee_dsp_tests` additions; a `ee_machine_host` driving the real processor with ragged blocks, like `ee_grain_host` |
 | 8 | ✅ `plugins/peak-alpine`: processor, 46-parameter layout, CMake | `ee_alpine_host`: makes sound, all three power toggles reach the audio, bypass bit-exact, all 8 engine pairs finite and audible |
-| 9 | ✅ `PeakAlpineWebEditor` + `ee::plugin::RelaySet`; face bound to real parameters | Standalone launches, editor constructs, WebView loads, `ee_alpine_host` still green. **Not yet done: the `dev` build, `auval -v aufx Palp Peak`, and Ableton Live** — see §7 |
+| 9 | ✅ `PeakAlpineWebEditor` + `ee::plugin::RelaySet`; face bound to real parameters | Standalone launches, editor constructs, WebView loads, `ee_alpine_host` still green. `dev` build installs AU + VST3 universal (`x86_64 arm64`); **`auval -v aufx Palp Peak` → AU VALIDATION SUCCEEDED**. Still not done: Ableton Live — see §7 |
 | 10 | Factory preset bank | `ee_preset_tests` extended to Peak Alpine's bank (every parameter in every file) |
+
+### 6.1 After the first play-through
+
+Five things came back from playing the built plugin. Three were the face, two
+were real, and one of the two was not where it looked.
+
+**Spring's knobs did nothing.** Not the DSP: driven directly, `ee::fx::ReverbModule`
+answers every Spring control, and so does the processor through its APVTS (decay
+0.175, tension 0.373, low cut 0.269 peak difference against the base render). The
+fault was in `@synthpeak/pedal-ui/juce`, which latched each relay state in a
+`useRef` on first render. A module that swaps its engine renders the same knobs
+in the same places with *different* parameter ids, and React re-points those
+components rather than remounting them — so selecting Spring left Decay and Low
+Cut still turning `rev.space.decay` and `rev.space.locut`. Only Tension worked,
+because its key happened to change. Chorus → Phaser had the same bug for the same
+reason. Fixed by resolving the relay from `id` with `useMemo` and adopting the new
+parameter's value when it changes; all three hooks, so it cannot come back through
+a toggle or a stepper instead.
+
+**Tape's Flutter sounded like a chorus.** The module mixes its wet side against
+its own dry, and TapeMachine reads its whole output off a transport line — 288
+samples at 48 kHz — so at anything short of full wet the dry was combing against
+a copy of itself 6 ms late, with the wow sweeping the comb. In the Delay module
+the same tape stage sounds right because nothing there is holding an undelayed
+copy of the same signal alongside it. `MultiEngineModule` now asks each engine
+for its latency and pads the dry path and every shorter engine out to the
+longest, and the processor adds that to what it reports the host.
+`ee_module_stress` grew the check that would have caught it: Tape at rest, at Mix
+40 %, must come back as the input times one constant — a comb fails it however
+the level is scaled. Before the fix, 0.238 out; after, 1e-7.
+
+**The three face changes.** The global bypass lost its `ACTIVE`/`BYPASSED`
+capsule and became the same 22px ring each module wears (`PowerToggle` no longer
+has variants at all); the Modulation module's title is `MOD`; and a module that
+is switched off now dims its name, body and footer to 0.42, the fade the whole
+row already used under global bypass — one language for "not running", at either
+scope. Its own toggle stays lit, because that is the way back.
 
 Stages 1–3 need no C++ build at all. Stages 4–6 are refactors of shipping code
 and each ends green before the next starts.
@@ -424,14 +461,14 @@ README and `Peak Alpine.dc.html` carry them, so the bundle stays the record.
 
 1. **One panel for all three modules.** The Delay module's darker fill inside a
    lighter border is gone; every module is `#20292d` / `#161c1e` / `#0a0b0c`.
-   `ModulePanel`'s `tone` survives as the wider padding a 598px module needs,
+   `ModulePanel`'s `tone` survives as the wider padding a 528px module needs,
    and the `--pui-module-wide*` tokens were deleted rather than aliased.
 2. **The Tape section's green band is gone**, and with it the whole
    `--pui-tape-*` group and `StageGroup`'s `tone` prop. All six footer knobs are
    now one control on one ground; the `PRE` stepper is an ordinary recessed
    switcher.
 3. **Each footer section names itself with a coloured glyph** —
-   `--pui-stage-tape` `#d8f088`, `--pui-stage-mod` `#7fb4e0`,
+   `--pui-stage-tape` `#309a10`, `--pui-stage-mod` `var(--pui-accent-mod)`,
    `--pui-stage-filter` `#e08fc0` — via a new `accent` prop on `StageHeader`.
 
 2 and 3 land on Peak Delay as well as Peak Alpine: one Delay face, no variant,
@@ -464,6 +501,27 @@ look if a light Peak Alpine is ever a real face.
    ever learning where it is. Verified: `--pui-divider` resolves to `#0a0b0c`
    inside a `ModulePanel` and stays `#222b2e` outside one.
 
+### 5.6a Style tuning on the built face
+
+Four values were re-dialled against the running plugin rather than the drawing.
+The README carries them; `Peak Alpine.dc.html` still shows the pre-tuning look.
+
+1. **The soft cap is a flat `#111416`**, not the
+   `--pui-soft-face-top`/`-bottom` gradient. A vertical falloff on an
+   undecorated disc reads as a sphere; flat reads as a cap seen straight on.
+   It is a literal in `Knob.css`, so the pair is dead in all three theme
+   blocks and the cream and grey themes get the onyx cap too - only the
+   gallery renders those, but it is a real difference.
+2. **`SOFT_SWEEP_WIDTH_SMALL` 3 → 1.5.** Below 60px the arc is a hairline; at
+   36-42px anything wider reads as a band. `--pui-knob-reach-small` is derived
+   from it and drops 6.5px → 5px, which tightens Peak Delay's stage rows by
+   1.5px per gap - `StageControl.css` and `StageGroup.css` both spend it.
+3. **`.pui-caption` 11px → 10px.** Shared by `Knob`, `Slider`, `Toggle` and
+   `Dropdown`, so this is every pedal's captions, not Peak Alpine's.
+4. **The host frame is an even 14px** (was `20px 24px 22px`) and the side
+   modules' parameter knobs are **36px** (was 40). The gallery's module demo
+   follows the 36.
+
 ### 5.7 Notes from stage 3
 
 - **The face is built on the real JUCE bindings, not local state.** The plan
@@ -479,7 +537,7 @@ look if a light Peak Alpine is ever a real face.
   deliberately did **not** get the same treatment - 0 is not misleading the way
   "off" is, and duplicating every parameter default in JS is two places to
   drift.
-- **`JuceFader` gained `length`.** 64px of travel fits a 626px pedal card; the
+- **`JuceFader` gained `length`.** 64px of travel fits a 528px pedal card; the
   host header has room for the handoff's 104.
 - **The global bypass is lifted into `App`** and handed down. Two components
   each calling `useJuceToggleValue("on")` hold two independent copies, and with
@@ -738,16 +796,47 @@ snapshot will drift silently if its parameter mirror is not updated.
 two tape sections and a phaser, and a 16-line FDN — in series, in one plugin.
 Worth a measurement at stage 8 before the face work is finished, because the
 answer might be "prepare the unselected reverb lazily" rather than "hold both".
+Still not measured in a host.
+
+**Latency: 576 samples, 12.0 ms, and all of it is tape.** Measured against the
+reported figure by `ee_alpine_host`'s ledger, which puts an impulse through the
+real processor with every Mix at 0. Two identical stages, 288 each — 4.5 ms of
+transport (the room the wow wobbles in) plus 1.5 ms of `TapeCharacter` — one in
+the Modulation module's Tape engine and one in the Delay module's pre section.
+Tremolo, Chorus, Phaser, Space and Spring contribute exactly nothing, and no
+stage anywhere in the plugin has an *unreported* delay: measured equals reported
+to the sample. For scale, every Arturia effect on this machine (TAPE-201,
+BRIGADE, ETERNITY, JUN-6, DIMENSION-D) reports 48 samples, because their wow
+modulates a delay line that *is* the effect; ours is a tape machine, whose
+transport line is pure latency.
+
+Two things follow, and one of them is a real gap:
+
+- The Modulation module reports its 288 **whichever engine is selected**, Tape
+  or not. That is the price of a constant latency contract, and the ledger
+  asserts it: the alternative is calling `setLatencySamples` on every engine
+  switch, which hosts handle badly.
+- **Bypassing the Delay module drops the real latency to 288 while the plugin
+  goes on reporting 576**, so a compensating host pulls everything 6 ms early.
+  `ee::fx::DelayModule` crossfades back to the caller's untouched buffer rather
+  than to a copy delayed to match — the same thing the global bypass does, and
+  the reason a bypassed plugin lands early too. The Modulation module does *not*
+  have this problem: its engage crossfade reads the aligned dry. The fix is to
+  give the delay's bypass reference and the plugin's own an `AlignDelay` each;
+  it would change "bypassed is bit-exact the input" to "bit-exact the input,
+  delayed", which is what makes it line up. Printed by the ledger, deliberately
+  not asserted, until that is decided.
+The fix, if it is worth one, is to delay the bypass path's dry copy too.
 
 **Every build tree installs into the same `~/Library/Audio/Plug-Ins`.** A
 `build-fast/` iteration on peak-alpine does not install, but a `dev` build of
 it will overwrite whatever `build-au/` last put there. Check `lipo -archs`
 before blaming the plugin.
 
-**Face size.** The host panel is a fixed 1046px wide. `installAutoResize` reports
-the card's real rendered size, so the editor follows — but the starting
-`setSize` in the editor should be close (1054 × ~640) so the host doesn't
-visibly jump.
+**Face size.** The host panel is a fixed 944px wide (14px frame + 180 + 14 + 528
++ 14 + 180 + 14px frame). `installAutoResize` reports the card's real rendered
+size, so the editor follows — but the starting `setSize` in the editor should be
+close (952 × ~640) so the host doesn't visibly jump.
 
 ---
 

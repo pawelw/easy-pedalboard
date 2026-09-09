@@ -3,9 +3,72 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 
 #include <cmath>
+#include <vector>
 
 namespace ee::fx
 {
+
+/** A whole-sample delay applied in place, used only to line the module's
+    engines up with each other and with its own dry path. Not a DSP delay line:
+    there is no interpolation and no feedback, because nothing here ever moves -
+    an engine's latency is fixed by its own construction. */
+class AlignDelay
+{
+public:
+    void prepare (int numChannels, int lengthSamples)
+    {
+        length = juce::jmax (0, lengthSamples);
+
+        if (length == 0)
+            return;
+
+        line.setSize (numChannels, length, false, true, true);
+        line.clear();
+        writeIndex = 0;
+    }
+
+    void reset() noexcept
+    {
+        if (length > 0)
+            line.clear();
+
+        writeIndex = 0;
+    }
+
+    void process (juce::AudioBuffer<float>& io, int numChannels, int numSamples) noexcept
+    {
+        if (length == 0)
+            return;
+
+        const int numCh = juce::jmin (numChannels, line.getNumChannels());
+        int w = writeIndex;
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            for (int ch = 0; ch < numCh; ++ch)
+            {
+                float* d = io.getWritePointer (ch);
+                float* stored = line.getWritePointer (ch);
+
+                const float out = stored[w];
+                stored[w] = d[i];
+                d[i] = out;
+            }
+
+            if (++w >= length)
+                w = 0;
+        }
+
+        writeIndex = w;
+    }
+
+    int getLength() const noexcept { return length; }
+
+private:
+    juce::AudioBuffer<float> line;
+    int length = 0;
+    int writeIndex = 0;
+};
 
 /** The chrome a switchable effect module has, without the effects.
  *
@@ -28,6 +91,17 @@ namespace ee::fx
  *
  * `enginesRunWarm` is the override for a module whose engines are expensive and
  * do not need it - see ReverbModule.
+ *
+ * **Engines are latency-aligned.** A module mixes its wet side against its own
+ * dry, so an engine that delays the signal combs against it: Peak Alpine's Tape
+ * engine reads off a transport line 9.7 ms long, and at anything short of full
+ * wet that arrived as a fixed comb sweeping with the wow - a chorus, on a knob
+ * called Flutter. A subclass declares each engine's latency through
+ * `engineLatencySamples` and this pads the dry path and every shorter engine out
+ * to the longest of them, so the module has one honest latency for the host to
+ * compensate and nothing inside it is fighting a copy of itself. A module whose
+ * engines are all latency-free (ReverbModule) pays nothing: every line is zero
+ * samples long and `process` skips it.
  *
  * A subclass supplies `renderEngine` and `resetEngine`. One virtual call per
  * engine per block is nothing; per sample it would not be, which is why the
@@ -75,12 +149,35 @@ public:
         outgoingEngine = -1;
 
         prepareEngines (sr, maxBlock);
+
+        // After prepareEngines, not before: an engine only knows its own
+        // latency once it has been prepared at this sample rate.
+        alignLatency = 0;
+        for (int i = 0; i < engineCount(); ++i)
+            alignLatency = juce::jmax (alignLatency, engineLatencySamples (i));
+
+        dryAlign.prepare (kMaxChannels, alignLatency);
+
+        engineAlign.clear();
+        engineAlign.resize (static_cast<size_t> (juce::jmax (0, engineCount())));
+        for (int i = 0; i < engineCount(); ++i)
+            engineAlign[static_cast<size_t> (i)].prepare (kMaxChannels,
+                                                          alignLatency - engineLatencySamples (i));
     }
+
+    /** What the module delays the signal by, for the owner's
+        `setLatencySamples`. Constant, and the same whichever engine is
+        selected - that is the point of the alignment. */
+    int latencySamples() const noexcept { return alignLatency; }
 
     void reset() noexcept
     {
         for (int i = 0; i < engineCount(); ++i)
             resetEngine (i);
+
+        dryAlign.reset();
+        for (auto& align : engineAlign)
+            align.reset();
 
         fadeSamplesLeft = 0;
         outgoingEngine = -1;
@@ -137,13 +234,32 @@ public:
             // the signal, or it is cold the moment it is selected.
             for (int i = 0; i < engineCount(); ++i)
             {
+                // Every engine that runs also runs its own padding, including
+                // the warm ones nobody is listening to: a padding line that
+                // stopped while its engine kept going would hand back stale
+                // audio the moment that engine was selected, which is the very
+                // click keeping the engines warm exists to avoid.
+                juce::AudioBuffer<float>* into = nullptr;
+
                 if (i == engine)
-                    renderEngine (i, dryBuffer, wetBuffer, numCh, chunk);
+                    into = &wetBuffer;
                 else if (i == outgoingEngine && fadeSamplesLeft > 0)
-                    renderEngine (i, dryBuffer, fadeBuffer, numCh, chunk);
+                    into = &fadeBuffer;
                 else if (enginesRunWarm())
-                    renderEngine (i, dryBuffer, warmBuffer, numCh, chunk);
+                    into = &warmBuffer;
+
+                if (into != nullptr)
+                {
+                    renderEngine (i, dryBuffer, *into, numCh, chunk);
+                    align (i, *into, numCh, chunk);
+                }
             }
+
+            // The dry side of the mix, delayed to meet them. `dryBuffer` is
+            // also what the engage crossfade reads, so a bypassed module is
+            // the input delayed by the module's reported latency rather than
+            // the input as it was - which is what the host is compensating.
+            dryAlign.process (dryBuffer, numCh, chunk);
 
             // Mid-switch: the engine being left is still running, and the two
             // are crossed sample by sample. Equal power rather than linear -
@@ -231,10 +347,23 @@ protected:
         bigger problem, *and* it has checked that they do not click cold. */
     virtual bool enginesRunWarm() const noexcept { return true; }
 
+    /** How many samples engine `index` delays the signal by. Called once, from
+        `prepare`, after `prepareEngines` - so an engine that works its latency
+        out from the sample rate has already done so. Zero by default, which is
+        what every engine that is not a delay line answers. */
+    virtual int engineLatencySamples (int) const noexcept { return 0; }
+
     double sr = 44100.0;
     int maxBlock = 512;
 
 private:
+    /** Engine `index`'s output, padded out to the module's own latency. */
+    void align (int index, juce::AudioBuffer<float>& buffer, int numChannels, int numSamples) noexcept
+    {
+        if (index >= 0 && index < static_cast<int> (engineAlign.size()))
+            engineAlign[static_cast<size_t> (index)].process (buffer, numChannels, numSamples);
+    }
+
     /** The same equal-power law the delay's Mix uses, so a Mix knob means the
         same thing everywhere in the plugin. */
     float dryTarget() const noexcept { return std::cos (mix * juce::MathConstants<float>::halfPi); }
@@ -260,6 +389,13 @@ private:
     /** Where a warm-but-unlistened engine's output goes. Written and never
         read - what matters is that the engine advanced its own state. */
     juce::AudioBuffer<float> warmBuffer;
+
+    /** The padding. `dryAlign` is the whole module latency; each engine's is
+        the remainder between its own and that, so an engine already at the
+        maximum gets a zero-length line and no work. */
+    int alignLatency = 0;
+    AlignDelay dryAlign;
+    std::vector<AlignDelay> engineAlign;
 };
 
 } // namespace ee::fx

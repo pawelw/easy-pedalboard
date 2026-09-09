@@ -55,12 +55,17 @@
 /* Two mirrored corner pieces: each runs vertically out from the button and
    turns into its knob. Drawn as borders on an empty box rather than as an
    SVG, so the 4px corner is just a border-radius and the whole thing tracks
-   the row geometry in CSS with nothing to keep in sync. */
+   the row geometry in CSS with nothing to keep in sync.
+
+   --pui-tick, not --pui-line: the arms land between two knobs and have to
+   hold their own against the panel the way those knobs' unlit tick rings do.
+   --pui-line is the chrome border, a stop darker, and at 1px it disappeared
+   into the module ground entirely. */
 .pd-link__arm {
   position: absolute;
   left: calc(var(--pd-link-btn) / 2);
   right: var(--pd-arm-gap);
-  border-left: 1px solid var(--pui-line);
+  border-left: 1px solid var(--pui-tick);
   pointer-events: none;
 }
 
@@ -69,14 +74,14 @@
      dial down only because TimeControl's knob is `bare`. */
   top: calc(var(--pd-knob-dia) / 2);
   bottom: calc(50% + var(--pd-arm-clear));
-  border-top: 1px solid var(--pui-line);
+  border-top: 1px solid var(--pui-tick);
   border-top-left-radius: 4px;
 }
 
 .pd-link__arm--bottom {
   top: calc(50% + var(--pd-arm-clear));
   bottom: calc(var(--pd-knob-dia) / 2);
-  border-bottom: 1px solid var(--pui-line);
+  border-bottom: 1px solid var(--pui-tick);
   border-bottom-left-radius: 4px;
 }
 

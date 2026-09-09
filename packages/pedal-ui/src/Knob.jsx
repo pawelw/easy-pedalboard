@@ -124,12 +124,13 @@ function Sweep({
   );
 }
 
-// variant="soft"'s arc: thicker than the collar's and pulled in tight to the
-// rim (see the Sweep call in Knob below). The small pair is for the 42px-class
-// knobs, where the full-size arc reads as a band rather than a line.
+// variant="soft"'s arc, pulled in tight to the rim (see the Sweep call in Knob
+// below). At 60px and up it is thicker than the collar's 3.2; the small pair is
+// for the 42px-class knobs and goes the other way, to a hairline, because at
+// that diameter anything wider reads as a band rather than a line.
 const SOFT_SWEEP_GAP = 3.5;
 const SOFT_SWEEP_WIDTH = 4;
-const SOFT_SWEEP_WIDTH_SMALL = 3;
+const SOFT_SWEEP_WIDTH_SMALL = 1.5;
 
 const TICK_COUNT = 20;
 const TICK_LENGTH = 6;

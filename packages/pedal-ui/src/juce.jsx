@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import * as Juce from "juce-framework-frontend";
 import Knob from "./Knob.jsx";
 import Pill from "./Pill.jsx";
@@ -55,13 +55,27 @@ export function useParamId(parameterId) {
     `setValue` updates local state immediately as well as informing the
     relay, rather than waiting on the relay to echo the change back - there
     is no echo outside a real host, which is what keeps this interactive in
-    the gallery and in a plain browser tab. */
+    the gallery and in a plain browser tab.
+
+    **The relay state is looked up from `id` on every change of it**, not once
+    per mount, because a control can be *re-pointed* rather than remounted. A
+    module that swaps its engine renders the same number of knobs in the same
+    places with different parameter ids; React reconciles those by position and
+    key and hands the existing component new props, so a hook that latched its
+    relay in a `useRef` would go on driving the engine that was there before.
+    Peak Alpine's Reverb module did exactly that: selecting Spring left its
+    Decay and Low Cut knobs turning `rev.space.*`, which is a control that
+    moves and does nothing. The same applies to the two hooks below. */
 export function useJuceSliderValue(parameterId) {
   const id = useParamId(parameterId);
-  const sliderState = useRef(Juce.getSliderState(id)).current;
-  const [value, setValue] = useState(sliderState.getNormalisedValue());
+  const sliderState = useMemo(() => Juce.getSliderState(id), [id]);
+  const [value, setValue] = useState(() => sliderState.getNormalisedValue());
 
   useEffect(() => {
+    // Adopt the new parameter's value before listening, because a control can
+    // be *re-pointed* rather than remounted - see the note above.
+    setValue(sliderState.getNormalisedValue());
+
     const listenerId = sliderState.valueChangedEvent.addListener(() =>
       setValue(sliderState.getNormalisedValue()),
     );
@@ -157,8 +171,8 @@ export function JuceKnob({
     would drift the moment anyone widened it.
 
     `length` is the track's own length. It is a property of the header the
-    fader sits in, not of the fader: a 626px pedal card has room for 64px of
-    travel beside its preset bar, and a 1046px host panel has room for 104. */
+    fader sits in, not of the fader: a 528px pedal card has room for 64px of
+    travel beside its preset bar, and a 944px host panel has room for 104. */
 export function JuceFader({ parameterId, label, resetTo = 0, length = 64 }) {
   const id = useParamId(parameterId);
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
@@ -222,15 +236,21 @@ function backendKnowsToggle(id) {
     showing anyone the design. */
 export function useJuceToggleValue(parameterId, defaultValue = false) {
   const id = useParamId(parameterId);
-  const toggleState = useRef(Juce.getToggleState(id)).current;
+  const toggleState = useMemo(() => Juce.getToggleState(id), [id]);
   const [checked, setChecked] = useState(() =>
     backendKnowsToggle(id) ? toggleState.getValue() : defaultValue,
   );
 
   useEffect(() => {
+    setChecked(backendKnowsToggle(id) ? toggleState.getValue() : defaultValue);
+
     const listenerId = toggleState.valueChangedEvent.addListener(() => setChecked(toggleState.getValue()));
     return () => toggleState.valueChangedEvent.removeListener(listenerId);
-  }, [toggleState]);
+    // `defaultValue` is deliberately not a dependency: it is the picture to
+    // draw for a parameter with no backend, not a value to re-adopt if a
+    // caller happens to pass a fresh one on a later render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toggleState, id]);
 
   const setValue = (next) => {
     setChecked(next);
@@ -282,7 +302,7 @@ export function JucePill({ parameterId, icon, label, invert = false }) {
     whichever is second is the one that first makes a real index readable. */
 export function useJuceChoiceValue(parameterId, count) {
   const id = useParamId(parameterId);
-  const comboState = useRef(Juce.getComboBoxState(id)).current;
+  const comboState = useMemo(() => Juce.getComboBoxState(id), [id]);
   const [index, setIndex] = useState(() =>
     (comboState.properties.choices?.length ?? 0) > 1 ? comboState.getChoiceIndex() : 0,
   );
@@ -291,6 +311,8 @@ export function useJuceChoiceValue(parameterId, count) {
     const adopt = () => {
       if ((comboState.properties.choices?.length ?? 0) > 1) setIndex(comboState.getChoiceIndex());
     };
+
+    adopt();
     const ids = [
       [comboState.valueChangedEvent, comboState.valueChangedEvent.addListener(adopt)],
       [comboState.propertiesChangedEvent, comboState.propertiesChangedEvent.addListener(adopt)],

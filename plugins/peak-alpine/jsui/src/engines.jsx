@@ -18,7 +18,7 @@ import {
  * sharing a pool. There is no state to keep here; the APVTS is the store.
  *
  * `knobs` is a flat list, laid out two per row. Never more than two rows: a
- * 186px module that grows a third row stops being the narrow thing the layout
+ * 180px module that grows a third row stops being the narrow thing the layout
  * is built around, so an engine that needs five controls needs a rethink
  * rather than another line here.
  */

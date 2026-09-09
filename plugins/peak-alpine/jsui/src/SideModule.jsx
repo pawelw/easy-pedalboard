@@ -62,10 +62,10 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
     <ModulePanel
       name={name}
       accent={accent}
-      width={186}
+      width={180}
       on={on}
       onToggle={setOn}
-      headerRight={<JuceKnob parameterId={`${prefix}level`} variant="soft" size={24} bare />}
+      headerRight={<JuceKnob parameterId={`${prefix}level`} variant="soft" size={30} bare />}
       footer={<JuceKnob parameterId={`${prefix}mix`} variant="soft" size={38} caption="Mix" />}
     >
       <EngineStepper
@@ -81,14 +81,19 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
 
       <div className="pa-knobs">
         {knobRows(engine.knobs).map((row) => (
-          <div className="pa-knob-row" key={row[0][0]}>
+          /* Keyed by the *scoped* id rather than the leaf name: two engines
+             can put a knob called "decay" in the same place, and a key that
+             only says "decay" has React hand the old knob the new engine's
+             props rather than mount a new one. The hooks survive that now
+             (see useJuceSliderValue), but the identity should be honest. */
+          <div className="pa-knob-row" key={engine.prefix + row[0][0]}>
             {row.map(([id, caption]) => (
               <JuceKnob
-                key={id}
+                key={engine.prefix + id}
                 parameterId={engine.prefix + id}
                 caption={caption}
                 variant="soft"
-                size={40}
+                size={36}
               />
             ))}
           </div>

@@ -94,3 +94,27 @@
 .pui-module--wide .pui-module__footer {
   padding: 14px 18px 12px;
 }
+
+/* Switched off: everything the module *does* fades, and the header's power
+   toggle does not - it is the way back, and it says its own state in its ink
+   (see PowerToggle.css). The name goes with the body rather than staying lit,
+   so a module reads as off from across the panel and not only from its ring.
+
+   Opacity on the parts rather than on the section, deliberately: an opacity on
+   the whole thing would fade the module's border and shadow too, so a bypassed
+   module would stop being a compartment as well as stopping running - and the
+   row would lose its rhythm. The same 0.42 and the same 140ms the host's global
+   bypass uses, because it is the same statement one scope down. */
+.pui-module__name,
+.pui-module__body,
+.pui-module__footer,
+.pui-module__header-right {
+  transition: opacity 140ms ease;
+}
+
+.pui-module[data-off] .pui-module__name,
+.pui-module[data-off] .pui-module__body,
+.pui-module[data-off] .pui-module__footer,
+.pui-module[data-off] .pui-module__header-right {
+  opacity: 0.42;
+}

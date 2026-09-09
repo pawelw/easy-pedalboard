@@ -41,7 +41,7 @@
 }
 
 /* The header's three slots - title, preset bar, level faders - have to fit on
-   one 626px line, so the gap between them is tighter than Card's own. */
+   one 528px line, so the gap between them is tighter than Card's own. */
 .pd-card .pui-card__header {
   padding-bottom: 20px;
   gap: 12px;

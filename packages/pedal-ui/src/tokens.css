@@ -56,13 +56,13 @@
      box one stroke wider again, and the arc is absolutely positioned - so it
      overflows the dial without taking part in layout:
 
-       SOFT_SWEEP_GAP 3.5  +  SOFT_SWEEP_WIDTH_SMALL 3  =  6.5px
+       SOFT_SWEEP_GAP 3.5  +  SOFT_SWEEP_WIDTH_SMALL 1.5  =  5px
 
      Layout measures gaps from the dial; the eye reads them from the arc. Any
      gap next to one of these knobs adds this back, or it renders that much
      tighter than it was drawn. Recompute it if StageControl changes variant
      or starts passing sweepGap again. */
-  --pui-knob-reach-small: 6.5px;
+  --pui-knob-reach-small: 5px;
 
   --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
   --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
@@ -109,7 +109,9 @@
      colour rather than the grayscale the tick scale committed to - a
      single continuous line needs a hue to read as a value at a glance, and
      the green is the family the tape band already established, so it lands
-     as this system's accent rather than a new one. */
+     as this system's accent rather than a new one.
+     -top/-bottom are dead in all three blocks: .pui-knob__soft-cap fills the
+     face with a literal now. */
   --pui-soft-face-top: #fdfdfb;
   --pui-soft-face-bottom: #e8e6df;
   --pui-soft-face-hi: rgba(255, 255, 255, 0.9);
@@ -204,7 +206,8 @@
      a bright highlight on a dark cap stops it reading as dark at all. The
      arc keeps its green (a lighter one, for the darker ground) rather than
      going teal with the rest of the palette, so the accent means the same
-     thing on both faces. */
+     thing on both faces. The cap is a flat #111416 in Knob.css rather than
+     this pair, which describes the gradient it replaced. */
   --pui-soft-face-top: #333f43;
   --pui-soft-face-bottom: #151a1d;
   --pui-soft-face-hi: rgba(185, 211, 217, 0.3);
@@ -299,7 +302,9 @@
      to the panel's own value, so it lifts off a ground it nearly matches on
      shading alone. The arc is the one hue on the whole theme - a steel blue
      rather than the cream theme's green, which belongs to the tape band's
-     family and would read as a stray piece of that band over here. */
+     family and would read as a stray piece of that band over here.
+     The cap itself no longer reads this pair - see the note in the default
+     block above. */
   --pui-soft-face-top: #ffffff;
   --pui-soft-face-bottom: #e9ebed;
   --pui-soft-face-hi: rgba(255, 255, 255, 0.95);
@@ -342,10 +347,16 @@
 
    Fixed hues rather than per-theme values, for the same reason the module
    accents are: what a mark means must not change with the ground under it.
-   Tape keeps the band's own lime, which is the one part of it worth keeping. */
+   Tape is the strongest case of that: `TapeIcon` reads this token itself
+   rather than the colour of the slot it sits in, so the deck is the same green
+   in the Delay footer and in the Modulation stepper, where every other engine
+   glyph wears the module's accent.
+   Mod is --pui-accent-mod's yellow rather than a hue of its own: the stage is
+   modulation, and inside Peak Alpine it sits a module away from the panel
+   that already means that. */
 :root {
-  --pui-stage-tape: #d8f088;
-  --pui-stage-mod: #7fb4e0;
+  --pui-stage-tape: #309a10;
+  --pui-stage-mod: var(--pui-accent-mod);
   --pui-stage-filter: #e08fc0;
 }
 
@@ -390,7 +401,7 @@
 .pui-caption {
   font-family: var(--pui-font-label);
   font-weight: 700;
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--pui-ink);

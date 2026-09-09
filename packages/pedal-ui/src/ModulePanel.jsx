@@ -20,7 +20,7 @@ import "./ModulePanel.css";
  *
  * `tone="wide"` is the module carrying the content (Peak Alpine's Delay). It
  * is a padding difference and nothing else - 18px sides rather than 12px,
- * which is what a 598px panel's contents need to sit in. Every module is the
+ * which is what a 528px panel's contents need to sit in. Every module is the
  * same panel colour; see tokens.css's note on why the wide one stopped having
  * a ground of its own. `tone="side"` is the default.
  *
@@ -31,6 +31,12 @@ import "./ModulePanel.css";
  * `on`/`onToggle` drive the header's power toggle. Omit `onToggle` for a
  * module with nothing to bypass and the toggle is left out entirely rather
  * than rendered dead.
+ *
+ * **A module that is off dims**, the same way the whole row dims under the
+ * host's global bypass - one language for "this is not running", at whichever
+ * scope it was switched off. What does *not* dim is the power toggle itself: it
+ * is the way back, so fading it would make a module hardest to find exactly
+ * when someone is looking for it. It says its own state in its ink instead.
  */
 export default function ModulePanel({
   name,
@@ -47,6 +53,7 @@ export default function ModulePanel({
   return (
     <section
       className={`pui-reset pui-module pui-module--${tone} ${className}`}
+      data-off={onToggle && !on ? true : undefined}
       style={{
         ...(width ? { width } : undefined),
         ...(accent ? { "--pui-accent": accent, "--pui-soft-lit": accent } : undefined),

@@ -362,9 +362,11 @@ void PeakAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
         juce::Decibels::decibelsToGain (apvts.getRawParameterValue (id::outGain)->load()));
     engageGain.setCurrentAndTargetValue (apvts.getRawParameterValue (id::on)->load() > 0.5f ? 1.0f : 0.0f);
 
-    // The dry path's latency, which is the Delay module's tape section - the
-    // only stage in the chain that delays the signal it is not an effect on.
-    setLatencySamples (delay.latencySamples());
+    // Two stages in the chain delay the signal without that being the effect:
+    // the Modulation module's alignment (its Tape engine's transport, which
+    // every other engine is now padded out to) and the Delay module's tape
+    // section. They are in series, so they add.
+    setLatencySamples (modulation.latencySamples() + delay.latencySamples());
 }
 
 void PeakAlpineProcessor::releaseResources()

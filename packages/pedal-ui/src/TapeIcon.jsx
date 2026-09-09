@@ -25,8 +25,18 @@
  * presentation attribute, only one reached through the ordinary CSS pipeline -
  * the same trap Knob.jsx's TickScale documents. Strokes use `currentColor`,
  * which is a plain keyword and safe as an attribute.
+ *
+ * `colour` is the one icon in the set that does not take the colour of the slot
+ * it is dropped into. The deck means tape wherever it appears, and it appears
+ * in two slots that would otherwise disagree - the Delay footer's stage header,
+ * which would give it `--pui-stage-tape`, and the Modulation stepper, which
+ * would give it that module's yellow accent like every other engine glyph.
  */
-export default function TapeIcon({ size = 38, ground = "var(--pui-stage-ground, var(--pui-panel))" }) {
+export default function TapeIcon({
+  size = 38,
+  ground = "var(--pui-stage-ground, var(--pui-panel))",
+  colour = "var(--pui-stage-tape)",
+}) {
   const reel = { fill: ground };
 
   return (
@@ -39,6 +49,7 @@ export default function TapeIcon({ size = 38, ground = "var(--pui-stage-ground, 
       stroke="currentColor"
       strokeWidth="1.6"
       strokeLinejoin="round"
+      style={{ color: colour }}
       aria-hidden="true"
     >
       <rect x="3.5" y="16.5" width="37" height="14" rx="2" />
