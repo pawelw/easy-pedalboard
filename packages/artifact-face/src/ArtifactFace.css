@@ -62,7 +62,7 @@
 /* Small hand nudges: the wave picker drops clear of the Range caption, the
    SYNC pill lifts to line its baseline up with the picker's glyph. */
 .af-sub--wave {
-  bottom: -4px;
+  bottom: -2px;
 }
 
 .af-sub--sync {
@@ -123,9 +123,8 @@
   pointer-events: none;
 }
 
-/* Ring Mod / Bit Crush: nothing to show yet. A single dash centred in the
-   space the Filter body would fill, so the module keeps its height as you
-   step past it. */
+/* Ring Mod: nothing to show yet. A single dash centred in the space the Filter
+   body would fill, so the module keeps its height as you step past it. */
 .af-blank {
   display: flex;
   align-items: center;
@@ -133,6 +132,15 @@
   min-height: 220px;
   font-size: 22px;
   color: var(--pui-ink-dim);
+}
+
+/* Bit Crush body: the stepped-wave display and two knob rows. Held to the same
+   height as the Filter body (and .af-blank) so stepping engines never resizes
+   the module. The display is a plain well - no infinity mark, no swept band. */
+.af-crush {
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
 }
 
 /* --------------------------------------------------------------- the switches */

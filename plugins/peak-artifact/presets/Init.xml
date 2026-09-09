@@ -11,4 +11,8 @@
   <PARAM id="flt.sync" value="0"/>
   <PARAM id="flt.wave" value="0"/>
   <PARAM id="flt.stereo" value="0"/>
+  <PARAM id="crush.bits" value="35"/>
+  <PARAM id="crush.rate" value="30"/>
+  <PARAM id="crush.lp" value="45"/>
+  <PARAM id="crush.jitter" value="0"/>
 </PARAMETERS>

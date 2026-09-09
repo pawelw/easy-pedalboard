@@ -1,0 +1,7 @@
+/* CrushScope reuses the well treatment from FilterScope.css (.pui-scope /
+   .pui-scope__svg). Nothing here yet - the file exists so the component owns a
+   stylesheet import the way FilterScope does, and there is a place to hang
+   Crush-specific chrome if it needs any. */
+.pui-crush-scope {
+  /* marker */
+}

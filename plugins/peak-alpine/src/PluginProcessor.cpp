@@ -4,6 +4,7 @@
 #include "PeakAlpineWebEditor.h"
 
 #include "ee/dsp/AutoWahConfig.h"
+#include "ee/dsp/BitCrusherConfig.h"
 #include "ee/dsp/ChorusConfig.h"
 #include "ee/dsp/PhaserConfig.h"
 #include "ee/dsp/RateMap.h"
@@ -332,6 +333,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artFltStereo, 1 },
                                                             "Artifact Stereo", false));
 
+    // Bit Crush knobs, 0..100 like the Filter's - percent host text, resolved to
+    // real units by ee::fx::ArtifactModule through the ee::dsp::bitcrush maps.
+    addPercent (layout, id::artCrushBits, "Artifact Bits", ee::dsp::bitcrush::kDefaultBitsPct);
+    addPercent (layout, id::artCrushRate, "Artifact Rate", ee::dsp::bitcrush::kDefaultRatePct);
+    addPercent (layout, id::artCrushLp, "Artifact Crush Filter", ee::dsp::bitcrush::kDefaultLpPct);
+    addPercent (layout, id::artCrushJitter, "Artifact Jitter", ee::dsp::bitcrush::kDefaultJitterPct);
+
     // ------------------------------------------------------------- modulation
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modOn, 1 }, "Modulation On", true));
     layout.add (
@@ -555,6 +563,8 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
                             artWaveShape01 (static_cast<int> (raw (id::artFltWave))), artPeriod,
                             flag (id::artFltStereo));
     }
+
+    artifact.setCrush (pct (id::artCrushBits), pct (id::artCrushRate), pct (id::artCrushLp), pct (id::artCrushJitter));
 
     // --------------------------------------------------------------- modulation
     modulation.setEngine (static_cast<int> (raw (id::modEngine)));

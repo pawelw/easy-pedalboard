@@ -359,6 +359,28 @@ if(TARGET PeakSpring)
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
+if(TARGET PeakArtifact)
+    # Baseline for the Bit Crush engine, which was a pass-through placeholder
+    # until it was voiced. New code, so nothing to diff yet - it is the A/B for
+    # the next change that means to leave the crusher alone, and it also asserts
+    # that Jitter renders reproducibly. See RegressHarness.h.
+    juce_add_console_app(ee_bitcrush_regress PRODUCT_NAME "ee_bitcrush_regress")
+
+    target_sources(ee_bitcrush_regress PRIVATE BitCrushRegress.cpp)
+
+    target_compile_definitions(ee_bitcrush_regress PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_bitcrush_regress
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-artifact/src)
+
+    target_link_libraries(ee_bitcrush_regress
+        PRIVATE PeakArtifact ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
 # Peak Alpine's switchable modules (Modulation, Reverb, Artifact). Not a
 # *_regress tool - this is new code, so there is nothing to diff against; it
 # asserts the contract MultiEngineModule promises, and hunts the thing a module

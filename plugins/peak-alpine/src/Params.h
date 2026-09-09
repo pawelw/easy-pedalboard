@@ -40,6 +40,10 @@ inline constexpr const char* artFltTime = "art.flt.time"; // meaning set by artF
 inline constexpr const char* artFltSync = "art.flt.sync"; // false = ms, true = tempo
 inline constexpr const char* artFltWave = "art.flt.wave"; // Triangle / Ramp / Square
 inline constexpr const char* artFltStereo = "art.flt.stereo";
+inline constexpr const char* artCrushBits = "art.crush.bits";
+inline constexpr const char* artCrushRate = "art.crush.rate";
+inline constexpr const char* artCrushLp = "art.crush.lp";
+inline constexpr const char* artCrushJitter = "art.crush.jitter";
 
 // --------------------------------------------------------------- modulation
 inline constexpr const char* modOn = "mod.on";

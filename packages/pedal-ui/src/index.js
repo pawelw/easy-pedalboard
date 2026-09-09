@@ -19,6 +19,7 @@ export { default as PresetSaveDialog } from "./PresetSaveDialog.jsx";
 export { default as WaveIcon } from "./WaveIcon.jsx";
 export { default as FilterCurveIcon } from "./FilterCurveIcon.jsx";
 export { default as FilterScope } from "./FilterScope.jsx";
+export { default as CrushScope } from "./CrushScope.jsx";
 export { freqHzFor01 } from "./autowah.js";
 // The shaped LFO the tremolo engine runs on, ported from ee/dsp/Lfo.h - so a
 // face drawing that engine's envelope draws the wave it actually produces.
@@ -52,6 +53,7 @@ export { default as Chevron } from "./Chevron.jsx";
 // a second copy under a second name is how the two would drift apart.
 export { default as TremoloIcon } from "./TremoloIcon.jsx";
 export { default as PhaserIcon } from "./PhaserIcon.jsx";
+export { default as CrushIcon } from "./CrushIcon.jsx";
 export { default as SpaceIcon } from "./SpaceIcon.jsx";
 export { default as SpringIcon } from "./SpringIcon.jsx";
 export { default as PowerIcon } from "./PowerIcon.jsx";

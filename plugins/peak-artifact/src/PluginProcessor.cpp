@@ -5,6 +5,7 @@
 #include "RateMap.h"
 
 #include "ee/dsp/AutoWahConfig.h"
+#include "ee/dsp/BitCrusherConfig.h"
 #include "ee/plugin/ParamText.h"
 
 #include <cmath>
@@ -22,6 +23,42 @@ constexpr float kWaveShape01[] = { 0.50f, 0.25f, 1.00f };
 juce::String hzToText (float value, int)
 {
     return juce::String (juce::roundToInt (value)) + " Hz";
+}
+
+/** "480 Hz" under 1 kHz, "2.4 kHz" above - for the Bit Crush readouts, which
+    are this file's own (the shared hzToText does not fold to kHz). */
+juce::String freqText (float hz)
+{
+    if (hz >= 1000.0f)
+        return juce::String (hz / 1000.0f, 1) + " kHz";
+    return juce::String (juce::roundToInt (hz)) + " Hz";
+}
+
+// The Bit Crush knobs print real units off the same ee::dsp::bitcrush maps the
+// engine reads. Rate is resolved at a nominal 48 kHz for the host-facing text -
+// like Peak Delay's synced-at-reference-tempo readout, a fixed stand-in for a
+// rate the plugin cannot know here.
+constexpr float kCrushRateTextSr = 48000.0f;
+
+juce::String crushBitsToText (float pct, int)
+{
+    return juce::String (juce::roundToInt (ee::dsp::bitcrush::bitsFor (pct * 0.01f))) + " bit";
+}
+
+juce::String crushRateToText (float pct, int)
+{
+    const int n = ee::dsp::bitcrush::decimationFactorFor (pct * 0.01f);
+    if (n <= 1)
+        return "Off";
+    return freqText (kCrushRateTextSr / static_cast<float> (n));
+}
+
+juce::String crushLpToText (float pct, int)
+{
+    const float hz = ee::dsp::bitcrush::lpHzFor (pct * 0.01f);
+    if (hz >= ee::dsp::bitcrush::kLpBypassHz)
+        return "Off";
+    return freqText (hz);
 }
 
 float freqHzFor (float pct)
@@ -67,11 +104,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
     // Filter is the only voiced engine, so the pedal opens on it. Ring Mod and
     // Bit Crush are selectable and pass audio through untouched for now.
     layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { id::engine, 1 }, "Engine",
-        juce::StringArray { "Ring Mod", "Bit Crush", "Filter" }, 2));
+        juce::ParameterID { id::engine, 1 }, "Engine", juce::StringArray { "Ring Mod", "Bit Crush", "Filter" }, 2));
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::mix, 1 }, "Mix", percent, 50.0f,
-                                                             pctAttr));
+    layout.add (
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::mix, 1 }, "Mix", percent, 50.0f, pctAttr));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { id::fltFreq, 1 }, "Freq", percent, ee::dsp::autowah::kDefaultFreqPct,
@@ -92,10 +128,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::fltSync, 1 }, "Sync", false));
 
-    layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { id::fltWave, 1 }, "Wave", juce::StringArray { "Triangle", "Ramp", "Square" }, 0));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::fltWave, 1 }, "Wave",
+                                                              juce::StringArray { "Triangle", "Ramp", "Square" }, 0));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::fltStereo, 1 }, "Stereo", false));
+
+    // Bit Crush. Knobs are 0..100; the text functions and ee::fx::ArtifactModule
+    // both resolve them through the ee::dsp::bitcrush maps.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::crushBits, 1 }, "Bits", percent,
+                                                             ee::dsp::bitcrush::kDefaultBitsPct,
+                                                             withText (crushBitsToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::crushRate, 1 }, "Rate", percent,
+                                                             ee::dsp::bitcrush::kDefaultRatePct,
+                                                             withText (crushRateToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::crushLp, 1 }, "Filter", percent,
+                                                             ee::dsp::bitcrush::kDefaultLpPct,
+                                                             withText (crushLpToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::crushJitter, 1 }, "Jitter",
+                                                             percent, ee::dsp::bitcrush::kDefaultJitterPct, pctAttr));
 
     return layout;
 }
@@ -111,11 +161,12 @@ void PeakArtifactProcessor::pushSettings (double bpm) noexcept
     module.setMix01 (pct (id::mix));
 
     const bool synced = flag (id::fltSync);
-    const float period = juce::jmax (
-        1.0e-4f, ee::peakartifact::rateToPeriodSeconds (raw (id::fltTime), synced, bpm));
+    const float period = juce::jmax (1.0e-4f, ee::peakartifact::rateToPeriodSeconds (raw (id::fltTime), synced, bpm));
 
     module.setFilter (pct (id::fltFreq), pct (id::fltQ), pct (id::fltRange),
                       waveShape01 (static_cast<int> (raw (id::fltWave))), period, flag (id::fltStereo));
+
+    module.setCrush (pct (id::crushBits), pct (id::crushRate), pct (id::crushLp), pct (id::crushJitter));
 }
 
 juce::String PeakArtifactProcessor::timeReadout() const

@@ -1,12 +1,15 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 #include <limits>
 #include <random>
+#include <set>
 #include <vector>
 
 #include "ee/dsp/AutoWah.h"
+#include "ee/dsp/BitCrusher.h"
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/Grainer.h"
@@ -3662,6 +3665,224 @@ void testSpringDisperses()
     check (std::isfinite (rightEnergy), "the right tank went non-finite");
 }
 
+//==============================================================================
+// Bit crusher (Peak Artifact / Peak Alpine's Bit Crush engine)
+
+void testBitCrusherTransparentAtOff()
+{
+    std::printf ("Bit crusher: Bits 24, full rate, filter open -> bit-exact pass-through\n");
+
+    const int total = static_cast<int> (kSampleRate);
+    std::mt19937 rng (0x51ceu);
+    std::normal_distribution<float> dist (0.0f, 0.2f);
+
+    std::vector<float> srcL (total), srcR (total);
+    for (int i = 0; i < total; ++i)
+    {
+        srcL[i] = std::tanh (dist (rng));
+        srcR[i] = std::tanh (dist (rng));
+    }
+
+    ee::dsp::BitCrusher crusher;
+    crusher.prepare (kSampleRate);
+    crusher.setBits (ee::dsp::bitcrush::kBitsClean);
+    crusher.setRateHz (static_cast<float> (kSampleRate));
+    crusher.setLowpassHz (ee::dsp::bitcrush::kLpMaxHz);
+    crusher.setJitter01 (1.0f); // must not matter while the hold stage is bypassed
+
+    std::vector<float> l (srcL), r (srcR);
+    for (int off = 0; off < total; off += kBlock)
+        crusher.process (l.data() + off, r.data() + off, juce::jmin (kBlock, total - off));
+
+    float worst = 0.0f;
+    for (int i = 0; i < total; ++i)
+        worst = juce::jmax (worst, std::abs (l[i] - srcL[i]), std::abs (r[i] - srcR[i]));
+
+    std::printf ("  largest difference: %.2e\n", worst);
+    check (worst == 0.0f, "bit crusher at rest is not bit exact");
+}
+
+void testBitCrusherSilence()
+{
+    std::printf ("Bit crusher: silence in -> silence out\n");
+
+    ee::dsp::BitCrusher crusher;
+    crusher.prepare (kSampleRate);
+    crusher.setBits (3.0f);
+    crusher.setRateHz (1500.0f);
+    crusher.setLowpassHz (900.0f);
+    crusher.setJitter01 (1.0f);
+
+    std::vector<float> l (kBlock, 0.0f), r (kBlock, 0.0f);
+    float peak = 0.0f;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 2.0 / kBlock); ++b)
+    {
+        for (auto& v : l)
+            v = 0.0f;
+        for (auto& v : r)
+            v = 0.0f;
+
+        crusher.process (l.data(), r.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+    }
+
+    std::printf ("  peak from silent input: %.2e\n", peak);
+    check (peak == 0.0f, "bit crusher generates signal from silence");
+}
+
+void testBitCrusherQuantises()
+{
+    std::printf ("Bit crusher: Bits low -> output takes few distinct levels\n");
+
+    const int total = static_cast<int> (kSampleRate / 4);
+    std::vector<float> l (total), r (total);
+    for (int i = 0; i < total; ++i)
+    {
+        const float s = 0.9f * std::sin (2.0f * 3.14159265f * 110.0f * static_cast<float> (i)
+                                         / static_cast<float> (kSampleRate));
+        l[i] = s;
+        r[i] = s;
+    }
+
+    ee::dsp::BitCrusher crusher;
+    crusher.prepare (kSampleRate);
+    crusher.setBits (3.0f);                               // 8 levels
+    crusher.setRateHz (static_cast<float> (kSampleRate)); // isolate the quantiser
+    crusher.setLowpassHz (ee::dsp::bitcrush::kLpMaxHz);   // ... and skip the filter
+    crusher.setJitter01 (0.0f);
+
+    for (int off = 0; off < total; off += kBlock)
+        crusher.process (l.data() + off, r.data() + off, juce::jmin (kBlock, total - off));
+
+    std::set<int> levels;
+    for (int i = 0; i < total; ++i)
+        levels.insert (juce::roundToInt (l[i] * 100000.0f));
+
+    std::printf ("  distinct output levels: %d\n", static_cast<int> (levels.size()));
+    check (levels.size() <= 10, "3-bit quantiser produced far more than 8 levels");
+    check (levels.size() >= 4, "quantiser collapsed the signal to nothing");
+}
+
+void testBitCrusherDecimates()
+{
+    std::printf ("Bit crusher: Rate low -> output is piecewise constant at that rate\n");
+
+    const int total = static_cast<int> (kSampleRate / 4);
+    std::vector<float> l (total), r (total);
+    for (int i = 0; i < total; ++i)
+    {
+        const float s = std::sin (2.0f * 3.14159265f * 300.0f * static_cast<float> (i)
+                                  / static_cast<float> (kSampleRate));
+        l[i] = s;
+        r[i] = s;
+    }
+
+    const float rateHz = 3000.0f;
+
+    ee::dsp::BitCrusher crusher;
+    crusher.prepare (kSampleRate);
+    crusher.setBits (ee::dsp::bitcrush::kBitsClean); // isolate the hold
+    crusher.setRateHz (rateHz);
+    crusher.setLowpassHz (ee::dsp::bitcrush::kLpMaxHz);
+    crusher.setJitter01 (0.0f);
+
+    for (int off = 0; off < total; off += kBlock)
+        crusher.process (l.data() + off, r.data() + off, juce::jmin (kBlock, total - off));
+
+    int runs = 1;
+    for (int i = 1; i < total; ++i)
+        if (l[i] != l[i - 1])
+            ++runs;
+
+    const double meanRun = static_cast<double> (total) / runs;
+    const double expected = kSampleRate / rateHz;
+
+    std::printf ("  mean run length %.2f samples, expected ~%.2f\n", meanRun, expected);
+    check (meanRun > expected * 0.6 && meanRun < expected * 1.6, "hold rate is not close to the Rate setting");
+}
+
+void testBitCrusherStability()
+{
+    std::printf ("Bit crusher: sustained noise, everything hot -> finite and bounded\n");
+
+    ee::dsp::BitCrusher crusher;
+    crusher.prepare (kSampleRate);
+    crusher.setBits (1.0f);
+    crusher.setDecimation (ee::dsp::bitcrush::kMaxDecimation);
+    crusher.setLowpassHz (ee::dsp::bitcrush::kLpMinHz);
+    crusher.setJitter01 (1.0f);
+
+    std::mt19937 rng (0xd1ceu);
+    std::normal_distribution<float> dist (0.0f, 0.35f);
+
+    std::vector<float> l (kBlock), r (kBlock);
+    bool finite = true;
+    float peak = 0.0f;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 3.0 / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+        {
+            l[i] = std::tanh (dist (rng));
+            r[i] = std::tanh (dist (rng));
+        }
+
+        crusher.process (l.data(), r.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            finite = finite && std::isfinite (l[i]) && std::isfinite (r[i]);
+            peak = juce::jmax (peak, std::abs (l[i]), std::abs (r[i]));
+        }
+    }
+
+    std::printf ("  peak %.3f\n", peak);
+    check (finite, "bit crusher produced a non-finite sample");
+    check (peak < 2.0f, "bit crusher ran away");
+}
+
+void testBitCrusherJitterIsReproducible()
+{
+    std::printf ("Bit crusher: Jitter renders identically on a second run\n");
+
+    const int total = static_cast<int> (kSampleRate / 2);
+    std::vector<float> src (total);
+    for (int i = 0; i < total; ++i)
+        src[i] = std::sin (2.0f * 3.14159265f * 180.0f * static_cast<float> (i) / static_cast<float> (kSampleRate));
+
+    auto render = [&] (std::vector<float>& out)
+    {
+        ee::dsp::BitCrusher crusher;
+        crusher.prepare (kSampleRate);
+        crusher.setBits (8.0f);
+        crusher.setRateHz (3500.0f);
+        crusher.setLowpassHz (ee::dsp::bitcrush::kLpMaxHz);
+        crusher.setJitter01 (0.8f);
+
+        out = src;
+        std::vector<float> r (out);
+        for (int off = 0; off < total; off += kBlock)
+        {
+            const int n = juce::jmin (kBlock, total - off);
+            crusher.process (out.data() + off, r.data() + off, n);
+        }
+    };
+
+    std::vector<float> a, b;
+    render (a);
+    render (b);
+
+    float worst = 0.0f;
+    for (int i = 0; i < total; ++i)
+        worst = juce::jmax (worst, std::abs (a[i] - b[i]));
+
+    std::printf ("  largest difference between runs: %.2e\n", worst);
+    check (worst == 0.0f, "jitter is not reproducible run to run");
+}
+
 } // namespace
 
 int main()
@@ -3796,6 +4017,18 @@ int main()
     testGrainerFreezeHoldsAndRetriggers();
     std::printf ("\n");
     testGrainerStretchScrubsFrozenBuffer();
+    std::printf ("\n");
+    testBitCrusherTransparentAtOff();
+    std::printf ("\n");
+    testBitCrusherSilence();
+    std::printf ("\n");
+    testBitCrusherQuantises();
+    std::printf ("\n");
+    testBitCrusherDecimates();
+    std::printf ("\n");
+    testBitCrusherStability();
+    std::printf ("\n");
+    testBitCrusherJitterIsReproducible();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

@@ -358,10 +358,10 @@ void sweepReverb()
 }
 
 /** ee::fx::ArtifactModule - Peak Alpine's first module and Peak Artifact's
-    whole processor. Only Filter is voiced; Ring Mod and Bit Crush pass audio
-    through untouched, so the interesting cases are the Filter engine's own
-    parameter space and that stepping to and from the two no-ops does not step
-    the signal. */
+    whole processor. Filter and Bit Crush are voiced; Ring Mod passes audio
+    through untouched. The interesting cases are each voiced engine's own
+    parameter space and that stepping to and from the no-op does not step the
+    signal. */
 void sweepArtifact()
 {
     std::printf ("\nArtifact sweep:\n");
@@ -382,6 +382,7 @@ void sweepArtifact()
                 module.setEngaged (true);
 
                 module.setFilter (a, a, a, a, 0.03f + a * 1.5f, a > 0.5f);
+                module.setCrush (a, a, 1.0f - a, a);
 
                 juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
                 fillTestSignal (buffer, kSampleRate);
@@ -391,6 +392,32 @@ void sweepArtifact()
                 worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
                 clean = allFinite (buffer) && clean;
             }
+
+    // Bit Crush's own knob space, on the engine that reads it - every knob at
+    // each end and the middle, each Mix position.
+    for (float bits : { 0.0f, 0.5f, 1.0f })
+        for (float rate : { 0.0f, 0.5f, 1.0f })
+            for (float lp : { 0.0f, 1.0f })
+                for (float jitter : { 0.0f, 1.0f })
+                    for (float mix : { 0.0f, 0.5f, 1.0f })
+                    {
+                        ee::fx::ArtifactModule module;
+                        module.prepare (kSampleRate, 512);
+                        module.setEngine (ee::fx::ArtifactModule::BitCrush);
+                        module.setMix01 (mix);
+                        module.setLevel (1.0f);
+                        module.setEngaged (true);
+
+                        module.setCrush (bits, rate, lp, jitter);
+
+                        juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
+                        fillTestSignal (buffer, kSampleRate);
+                        run (module, buffer);
+
+                        ++cases;
+                        worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+                        clean = allFinite (buffer) && clean;
+                    }
 
     std::printf ("  %d cases, worst peak %.3f\n", cases, worstPeak);
     check (clean, "every Artifact case finite");

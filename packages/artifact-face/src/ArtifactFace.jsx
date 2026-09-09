@@ -1,5 +1,13 @@
 import { useEffect, useState } from "react";
-import { EngineStepper, FilterScope, ModulePanel, Toggle, WaveIcon, freqHzFor01 } from "@synthpeak/pedal-ui";
+import {
+  CrushScope,
+  EngineStepper,
+  FilterScope,
+  ModulePanel,
+  Toggle,
+  WaveIcon,
+  freqHzFor01,
+} from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JucePill,
@@ -14,9 +22,10 @@ import "./ArtifactFace.css";
 /**
  * Peak Artifact's face, minus its pedal enclosure: one switchable module drawn
  * as a `ModulePanel` - a power toggle and name in the header, an engine
- * stepper, and, for the Filter engine, a response scope, two rows of knobs, the
- * wave picker and a Mono/Stereo switch, with Mix in the footer. Ring Mod and
- * Bit Crush show a dash: they are selectable but do nothing yet.
+ * stepper, and then the selected engine's body, with Mix in the footer. Filter
+ * has a response scope, two rows of knobs, the wave picker and a Mono/Stereo
+ * switch; Bit Crush has a stepped-wave display and two rows of knobs. Ring Mod
+ * shows a dash: it is selectable but does nothing yet.
  *
  * One component, two hosts. Peak Artifact wraps this in its own Card; Peak
  * Alpine drops it into its module row as the first module. The whole reason
@@ -102,7 +111,13 @@ function ArtifactFaceBody() {
         onChange={(next) => setEngine(ENGINES.findIndex((e) => e.name === next))}
       />
 
-      {engine.body === "filter" ? <FilterBody /> : <BlankBody />}
+      {engine.body === "filter" ? (
+        <FilterBody />
+      ) : engine.body === "crush" ? (
+        <CrushBody />
+      ) : (
+        <BlankBody />
+      )}
     </ModulePanel>
   );
 }
@@ -176,6 +191,44 @@ function FilterBody() {
 
       <MonoStereoSwitch />
     </>
+  );
+}
+
+/* Its own component so the Crush-only hooks don't run for the other engines. */
+function CrushBody() {
+  const [bits] = useJuceSliderValue("crush.bits");
+  const [rate] = useJuceSliderValue("crush.rate");
+  const [jitter] = useJuceSliderValue("crush.jitter");
+
+  return (
+    // Matches the Filter body's height so stepping between engines doesn't
+    // resize the module - the same job .af-blank does for Ring Mod.
+    <div className="af-crush">
+      {/* A picture of the three destructive knobs: the reference sine held in
+          time by Rate, quantised by Bits, and knocked out of step by Jitter.
+          The Filter knob shapes what comes after, so it is not in the trace. */}
+      <div className="af-display af-display--crush">
+        <CrushScope
+          bits01={bits}
+          rate01={rate}
+          jitter01={jitter}
+          height={64}
+          baseColor={SCOPE.baseColor}
+          fillColor={SCOPE.fillColor}
+        />
+      </div>
+
+      <div className="af-knobs">
+        <div className="af-knob-row">
+          <JuceKnob parameterId="crush.bits" caption="Bits" variant="soft" size={36} />
+          <JuceKnob parameterId="crush.rate" caption="Rate" variant="soft" size={36} />
+        </div>
+        <div className="af-knob-row">
+          <JuceKnob parameterId="crush.lp" caption="Filter" variant="soft" size={36} />
+          <JuceKnob parameterId="crush.jitter" caption="Jitter" variant="soft" size={36} />
+        </div>
+      </div>
+    </div>
   );
 }
 
