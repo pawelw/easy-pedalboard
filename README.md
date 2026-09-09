@@ -545,7 +545,12 @@ after a pluck and then fades. So `cutoff = Freq · 5^(Range · gate · lfo)`.
 After the tank: a per-type make-up gain (a band-pass tap throws away everything
 off the peak and needs the most lift; the low- and high-pass taps keep a whole
 half of the spectrum and need less), a `tanh` that is unity at normal levels and
-only rounds the hottest peaks, then a DC blocker and a mild low-pass.
+only rounds the hottest peaks, then a DC blocker, a fixed 2nd-order low-cut at
+90 Hz and a mild low-pass. The low-cut is the bottom-end counterpart of the
+2.5 kHz output hi-cut the processor adds: at high **Range** and **Q** the
+downswing parks the resonant peak in the sub-bass, where it booms and swipes
+with the sweep. It runs on the wet path only, so **Mix** 0 is still bit-exact
+dry.
 
 Like the other pedals it has no on/off switch of its own - the `on` parameter
 crossfades to the dry signal so the host's device on/off never clicks. The face
@@ -574,7 +579,9 @@ engine warm, so switching to Filter and back never clicks.
 Filter is Peak Wah's engine - `ee::dsp::AutoWah` - with its per-note envelope
 taken out: **Decay is pinned fully up** (the red infinity mark in the display
 says so), so the LFO just runs, and the tap is fixed at **low-pass**. What is
-left is a plain tempo- or free-running swept filter.
+left is a plain tempo- or free-running swept filter. It inherits the engine's
+fixed output low-cut (90 Hz), which keeps the downswing from booming in the
+sub-bass at high **Range** and **Q**.
 
 | Knob      | Range         | What it does                                                          |
 | --------- | ------------- | ------------------------------------------------------------------- |
