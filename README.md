@@ -561,6 +561,42 @@ size, per-type make-up, grit, output filtering, knob defaults - lives in
 `shared/include/ee/dsp/AutoWahConfig.h` (and the LFO rate range in
 `plugins/peak-wah/src/RateMap.h`); retune there and rebuild.
 
+### Peak Artifact
+
+A switchable module - **Ring Mod**, **Bit Crush**, **Filter** - as a pedal of
+its own, drawn as one narrow compartment in the style of Peak Alpine's
+Modulation side-module but in red. A `<>` stepper picks the engine.
+
+Only **Filter** is voiced. Ring Mod and Bit Crush are selectable and pass the
+signal through untouched, ready to be filled in later. The module keeps every
+engine warm, so switching to Filter and back never clicks.
+
+Filter is Peak Wah's engine - `ee::dsp::AutoWah` - with its per-note envelope
+taken out: **Decay is pinned fully up** (the red infinity mark in the display
+says so), so the LFO just runs, and the tap is fixed at **low-pass**. What is
+left is a plain tempo- or free-running swept filter.
+
+| Knob      | Range         | What it does                                                          |
+| --------- | ------------- | ------------------------------------------------------------------- |
+| **Freq**  | 200 - 1600 Hz | Centre cutoff the LFO sweeps around                                  |
+| **Q**     | 0 - 100 %     | Resonance of the tank                                                |
+| **Range** | 0 - 100 %     | Depth of the sweep either side of Freq                               |
+| **Time**  | -             | LFO rate. The **ms / Sync** switch under it locks the knob to the host tempo (note divisions) or reads one cycle in ms (30 ms - 3 s) |
+| **Mix**   | 0 - 100 %     | Dry / wet blend, in the footer                                       |
+
+A **Wave** `<>` picker (Triangle / Ramp / Square) sets the LFO shape - the same
+`ee::dsp::lfoValue` morph the display and the audio path both read - and a
+**Mono / Stereo** switch runs the right channel half a cycle out of phase.
+
+The display above the knobs is the same size as Peak Alpine's tremolo display
+and traces the swept wave, scaled by Range, over two cycles.
+
+Like the other pedals it has no on/off switch of its own - the `on` parameter
+crossfades to the dry signal so the host's device on/off never clicks. The face
+uses the onyx theme with a `#c00001` module accent. The Filter voicing lives in
+`shared/include/ee/dsp/AutoWahConfig.h` (LFO rate range in
+`plugins/peak-artifact/src/RateMap.h`).
+
 ### Peak Grain
 
 A granular delay into a plain plate. Mono or stereo in, stereo out. Fifteen
@@ -831,6 +867,7 @@ auval -v aufx Pchr Peak                                     # Peak Chorus
 auval -v aufx Povd Peak                                     # Peak Overdrive
 auval -v aufx Pwah Peak                                     # Peak Wah
 auval -v aufx Ptap Peak                                     # Peak Tape
+auval -v aufx Part Peak                                     # Peak Artifact
 ```
 
 The tape machine also has its own sweep, which walks every knob combination and

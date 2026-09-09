@@ -1,0 +1,169 @@
+/* Peak Artifact's enclosure and the one module inside it. Everything within
+   the module is a shared pedal-ui component; what is here is the card frame
+   and the module's own body rhythm - lifted from Peak Alpine's Modulation
+   side-module so the two read as the same object.
+
+   html/body's own margin/overflow/background live in index.html - see
+   plugins/peak-wah/jsui/index.html for why. */
+
+.page {
+  display: flex;
+  justify-content: center;
+  /* The plugin window is sized to the panel plus exactly this much on every
+     side (installAutoResize's `padding`) - change one, change the other. */
+  padding: 4px;
+}
+
+/* A one-module face spends far less width than a pedal's control board, so the
+   card frame is pulled in to match. Scoped here the way `.pd-card` scopes Peak
+   Delay's, rather than adding a variant to Card itself. */
+.pa-card.pui-card {
+  padding: 14px;
+  overflow: hidden;
+}
+
+.pa-card .pui-card__header {
+  padding: 0 2px 16px;
+  gap: 14px;
+}
+
+.pa-card .pui-card__title {
+  font-size: 19px;
+}
+
+.pa-card .pui-card__subtitle {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--pui-ink-dim);
+}
+
+.pa-card .pui-card__logo {
+  height: 30px;
+}
+
+.pa-card .pui-card__header-left--stacked {
+  gap: 11px;
+}
+
+/* The body is the module and nothing else. */
+.pa-card .pui-card__body {
+  padding: 0;
+}
+
+/* "BIT CRUSH" is a letter wider than any engine name Peak Alpine's steppers
+   carry, and truncates in a 180px module at the shared letter-spacing. Pull it
+   in just enough that the three names and the three wave names all fit whole. */
+.pa-card .pui-stepper__name {
+  letter-spacing: 0.1em;
+}
+
+/* --------------------------------------------------------------- module body */
+
+/* The Filter engine's two knob rows. Gap to the stepper/display above is the
+   handoff's 22px; between the rows it is 18px. */
+.pa-knobs {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.pa-knob-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-evenly;
+  gap: 8px;
+}
+
+/* The Time knob carries its ms/Sync switch directly under it. The switch is
+   wider than a knob, so it is taken out of flow and the padding stands in for
+   its height - in flow it widens this column, and the row's two knobs then sit
+   somewhere other than the two above them. Anchored right: as near centred
+   under the knob as it goes without leaving the module. */
+.pa-time {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 28px;
+}
+
+.pa-time .pa-inline-switch {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+}
+
+.pa-display {
+  position: relative;
+  margin-top: 16px;
+}
+
+/* The infinity mark that stands in for the removed Decay knob: Decay is pinned
+   fully up, so the sweep runs forever. Red, tucked into the well's top-right. */
+.pa-inf {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  font-size: 13px;
+  line-height: 1;
+  color: #c00001;
+  pointer-events: none;
+}
+
+.pa-wave {
+  margin-top: 18px;
+  /* The red is the engine stepper's - this one picks a wave shape, so its
+     arrows and its shape run in ink like the name between them. */
+  --pui-accent: var(--pui-ink);
+}
+
+.pa-wave .pui-stepper {
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+/* Ring Mod / Bit Crush: nothing to show yet. A single dash centred in the
+   space the Filter body would fill, so the module keeps its height as you
+   step past it. */
+.pa-blank {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  font-size: 22px;
+  color: var(--pui-ink-dim);
+}
+
+/* --------------------------------------------------------------- the switches */
+
+.pa-inline-switch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pa-inline-switch--tight {
+  gap: 7px;
+}
+
+/* Mono/Stereo drops to the foot of the module body, whatever is above it, so
+   it sits just clear of the footer's top border. */
+.pa-ms-switch {
+  margin-top: auto;
+  padding: 18px 0 6px;
+}
+
+.pa-switch-label {
+  font-family: var(--pui-font-label);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pui-ink-dim);
+  transition: color 120ms ease;
+}
+
+.pa-switch-label[data-active] {
+  color: var(--pui-ink);
+}

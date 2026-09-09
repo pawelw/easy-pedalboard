@@ -1,6 +1,7 @@
 import PeakWahFace from "peak-wah-jsui/src/App.jsx";
 import PeakDelayFace from "peak-delay-jsui/src/App.jsx";
 import PeakAlpineFace from "peak-alpine-jsui/src/App.jsx";
+import PeakArtifactFace from "peak-artifact-jsui/src/App.jsx";
 
 // One entry per pedal in plugins/. `face` is the pedal's own real App.jsx,
 // imported straight from its jsui project - nothing here re-implements a
@@ -19,6 +20,7 @@ export const pedals = [
   // that contains the others rather than sitting beside them.
   { slug: "peak-alpine", name: "Peak Alpine", face: PeakAlpineFace, theme: "onyx" },
 
+  { slug: "peak-artifact", name: "Peak Artifact", face: PeakArtifactFace, theme: "onyx" },
   { slug: "peak-chorus", name: "Peak Chorus", face: null },
   { slug: "peak-delay", name: "Peak Delay", face: PeakDelayFace, theme: "onyx" },
   { slug: "peak-eq", name: "Peak EQ", face: null },
