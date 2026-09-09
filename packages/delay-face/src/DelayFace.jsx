@@ -120,8 +120,8 @@ function DelayFaceBody() {
             </div>
 
             <div className="pd-time-rows">
-              <TimeControl side="Left" parameterId="ltime" />
-              <TimeControl side="Right" parameterId="rtime" />
+              <TimeControl side="L" parameterId="ltime" />
+              <TimeControl side="R" parameterId="rtime" />
             </div>
           </div>
 

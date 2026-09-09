@@ -38,6 +38,15 @@ constexpr ee::dsp::RateMap kTremRateMap { ee::dsp::tremolo::kRateMinPeriodMs, ee
 constexpr float kMinGainDb = -24.0f;
 constexpr float kMaxGainDb = 12.0f;
 
+// A module's own output trim. Symmetric on purpose, unlike the host's In/Out
+// pair above: this one rests at unity and the face draws its arc out from the
+// middle, so the two halves have to be the same size or "no change" would not
+// be at twelve o'clock. It also stops short of silence at the bottom, which
+// the old 0..100 % level did not - and since the three modules are in series,
+// a Level anyone could wind to zero was a knob that silenced the whole plugin.
+// Mix and the module's own power toggle are how you take a module out.
+constexpr float kModuleTrimDb = 12.0f;
+
 constexpr int kDefaultDivision = 5; // 1/8
 constexpr float kDefaultTime01 = ee::peakdelay::time01ForDivision (kDefaultDivision);
 
@@ -79,6 +88,14 @@ void addPercent (juce::AudioProcessorValueTreeState::ParameterLayout& layout,
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, 1 }, name, percent, defaultPct,
                                                              withText (percentToText)));
 }
+
+/** A module's Level: +/- kModuleTrimDb around unity, resting at 0 dB. */
+void addTrimDb (juce::AudioProcessorValueTreeState::ParameterLayout& layout, const char* id, const char* name)
+{
+    const auto range = juce::NormalisableRange<float> (-kModuleTrimDb, kModuleTrimDb, 0.1f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, 1 }, name, range, 0.0f,
+                                                             withText (gainDbToText)));
+}
 } // namespace
 
 PeakAlpineProcessor::PeakAlpineProcessor()
@@ -106,7 +123,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (
         std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::modEngine, 1 }, "Modulation Engine",
                                                       juce::StringArray { "Tape", "Tremolo", "Chorus", "Phaser" }, 1));
-    addPercent (layout, id::modLevel, "Modulation Level", 100.0f);
+    addTrimDb (layout, id::modLevel, "Modulation Level");
     addPercent (layout, id::modMix, "Modulation Mix", 40.0f);
 
     // Ranges and defaults are each engine's own pedal's, so the same knob
@@ -190,7 +207,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::revOn, 1 }, "Reverb On", true));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::revEngine, 1 }, "Reverb Engine",
                                                               juce::StringArray { "Space", "Spring" }, 0));
-    addPercent (layout, id::revLevel, "Reverb Level", 100.0f);
+    addTrimDb (layout, id::revLevel, "Reverb Level");
     addPercent (layout, id::revMix, "Reverb Mix", 30.0f);
 
     auto spaceDecay = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
@@ -284,7 +301,7 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
     // --------------------------------------------------------------- modulation
     modulation.setEngine (static_cast<int> (raw (id::modEngine)));
     modulation.setEngaged (flag (id::modOn));
-    modulation.setLevel (pct (id::modLevel));
+    modulation.setLevel (juce::Decibels::decibelsToGain (raw (id::modLevel)));
     modulation.setMix01 (pct (id::modMix));
 
     modulation.setTape (pct (id::modTapeSat), pct (id::modTapeFlutter), pct (id::modTapeWear), pct (id::modTapeNoise));
@@ -324,7 +341,7 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
     // ------------------------------------------------------------------- reverb
     reverb.setEngine (static_cast<int> (raw (id::revEngine)));
     reverb.setEngaged (flag (id::revOn));
-    reverb.setLevel (pct (id::revLevel));
+    reverb.setLevel (juce::Decibels::decibelsToGain (raw (id::revLevel)));
     reverb.setMix01 (pct (id::revMix));
 
     reverb.setSpace (raw (id::revSpaceDecay), pct (id::revSpaceShimmer), raw (id::revSpaceLoCut),

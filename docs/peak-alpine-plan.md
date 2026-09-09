@@ -461,7 +461,7 @@ README and `Peak Alpine.dc.html` carry them, so the bundle stays the record.
 
 1. **One panel for all three modules.** The Delay module's darker fill inside a
    lighter border is gone; every module is `#20292d` / `#161c1e` / `#0a0b0c`.
-   `ModulePanel`'s `tone` survives as the wider padding a 528px module needs,
+   `ModulePanel`'s `tone` survives as the wider padding a 560px module needs,
    and the `--pui-module-wide*` tokens were deleted rather than aliased.
 2. **The Tape section's green band is gone**, and with it the whole
    `--pui-tape-*` group and `StageGroup`'s `tone` prop. All six footer knobs are
@@ -833,10 +833,10 @@ The fix, if it is worth one, is to delay the bypass path's dry copy too.
 it will overwrite whatever `build-au/` last put there. Check `lipo -archs`
 before blaming the plugin.
 
-**Face size.** The host panel is a fixed 944px wide (14px frame + 180 + 14 + 528
+**Face size.** The host panel is a fixed 976px wide (14px frame + 180 + 14 + 560
 + 14 + 180 + 14px frame). `installAutoResize` reports the card's real rendered
 size, so the editor follows — but the starting `setSize` in the editor should be
-close (952 × ~640) so the host doesn't visibly jump.
+close (984 × ~640) so the host doesn't visibly jump.
 
 ---
 

@@ -105,7 +105,7 @@ function DelayModule() {
       name="Delay"
       accent="var(--pui-accent-delay)"
       tone="wide"
-      width={528}
+      width={560}
       on={on}
       onToggle={setOn}
       className="pa-delay"

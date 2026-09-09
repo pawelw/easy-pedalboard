@@ -65,7 +65,14 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
       width={180}
       on={on}
       onToggle={setOn}
-      headerRight={<JuceKnob parameterId={`${prefix}level`} variant="soft" size={30} bare />}
+      /* Level is a trim, not a fader: it rests at unity in the middle of its
+         travel, so the arc reads out from twelve o'clock in whichever
+         direction it has been moved. Wound fully clockwise at rest - which is
+         what a 0..100 % level looks like - it said "turned all the way up"
+         about a module that was doing nothing to the level at all. */
+      headerRight={
+        <JuceKnob parameterId={`${prefix}level`} variant="soft" size={30} scaleFrom="centre" bare />
+      }
       footer={<JuceKnob parameterId={`${prefix}mix`} variant="soft" size={38} caption="Mix" />}
     >
       <EngineStepper

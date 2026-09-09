@@ -20,7 +20,7 @@ import "./ModulePanel.css";
  *
  * `tone="wide"` is the module carrying the content (Peak Alpine's Delay). It
  * is a padding difference and nothing else - 18px sides rather than 12px,
- * which is what a 528px panel's contents need to sit in. Every module is the
+ * which is what a 560px panel's contents need to sit in. Every module is the
  * same panel colour; see tokens.css's note on why the wide one stopped having
  * a ground of its own. `tone="side"` is the default.
  *

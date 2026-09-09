@@ -89,7 +89,11 @@ function Collar({ radius, angle }) {
     (unchanged); `variant="scale"` passes its own smaller gap and the
     grayscale tick tokens instead - same arc, different geometry/palette.
     `from` is TickScale's, on an arc: "max" lights the span between the value
-    and the top of travel, for a cut that rests wide open. */
+    and the top of travel, for a cut that rests wide open. "centre" lights the
+    span between twelve o'clock and the value, in whichever direction it has
+    been turned - for a trim whose resting position is the middle and whose
+    travel is a departure from it in either direction, so which *way* it has
+    been moved is as much of the reading as how far. */
 function Sweep({
   diameter,
   value,
@@ -102,7 +106,18 @@ function Sweep({
   const r = diameter / 2 + gap;
   const box = r + width;
   const fromMax = from === "max";
-  const lit = fromMax ? value < 0.996 : value > 0.004;
+  const fromCentre = from === "centre";
+
+  // The same 0.004 of travel every reading here treats as "still at rest", so a
+  // knob parked at its resting position shows a bare track rather than a stub
+  // of lit arc - measured from the middle rather than from an end.
+  const lit = fromCentre ? Math.abs(value - 0.5) > 0.004 : fromMax ? value < 0.996 : value > 0.004;
+
+  const span = fromCentre
+    ? arcPath(r, Math.min(angleFor(0.5), angleFor(value)), Math.max(angleFor(0.5), angleFor(value)))
+    : fromMax
+      ? arcPath(r, angleFor(value), MAX_ANGLE)
+      : arcPath(r, MIN_ANGLE, angleFor(value));
 
   return (
     <svg
@@ -113,12 +128,7 @@ function Sweep({
     >
       <g fill="none" strokeWidth={width} strokeLinecap="round">
         <path d={arcPath(r, MIN_ANGLE, MAX_ANGLE)} stroke={trackColor} />
-        {lit && (
-          <path
-            d={fromMax ? arcPath(r, angleFor(value), MAX_ANGLE) : arcPath(r, MIN_ANGLE, angleFor(value))}
-            stroke={litColor}
-          />
-        )}
+        {lit && <path d={span} stroke={litColor} />}
       </g>
     </svg>
   );
@@ -180,18 +190,27 @@ function TickScale({ diameter, value, gap = SWEEP_GAP, from = "min" }) {
   // up. `from: "max"` reverses it, for a control whose *resting* position is
   // the top of its range and whose travel is a subtraction: a high cut sits at
   // the top doing nothing, and what the lit ticks then show is how much of the
-  // band is being taken away.
+  // band is being taken away. `from: "centre"` lights out from the middle in
+  // whichever direction the knob has been turned, for a trim that rests at
+  // twelve o'clock - the same three readings Sweep draws.
   const fromMax = from === "max";
+  const fromCentre = from === "centre";
 
   // -1 / TICK_COUNT (nothing lit) below the same threshold Sweep uses for its
   // own arc, so a knob at its resting end shows no lit tick at all rather than
   // always lighting the end one (Math.round(0 * anything) is still 0, which
   // would otherwise read as "the first tick has been passed").
-  const rest = fromMax ? value < 0.996 : value > 0.004;
+  const rest = fromCentre ? Math.abs(value - 0.5) > 0.004 : fromMax ? value < 0.996 : value > 0.004;
   const edge = Math.round(value * (TICK_COUNT - 1));
+  const middle = Math.round(0.5 * (TICK_COUNT - 1));
   const litFrom = fromMax && rest ? edge : TICK_COUNT;
   const litCount = ! fromMax && rest ? edge : -1;
-  const isLit = (i) => (fromMax ? i >= litFrom : i <= litCount);
+  const isLit = (i) =>
+    fromCentre
+      ? rest && (edge >= middle ? i > middle && i <= edge : i < middle && i >= edge)
+      : fromMax
+        ? i >= litFrom
+        : i <= litCount;
 
   const ticks = useMemo(() => {
     const toRad = (d) => ((d - 90) * Math.PI) / 180;
@@ -289,10 +308,14 @@ function EndMarker({ label, radius, lit }) {
  * instead (StageControl), that padding reads as ~14px of dead space either
  * side, silently widening whatever gap the row asked for.
  *
- * `scaleFrom`: which end of `variant="scale"`'s tick ring fills - "min"
- * (default) or "max", for a knob that rests at the top of its range and counts
- * downwards. Peak EQ draws the same distinction as an inverted arc on its High
- * Cut; this is that idea on a tick scale.
+ * `scaleFrom`: where the value reading starts from - "min" (default), "max"
+ * for a knob that rests at the top of its range and counts downwards, or
+ * "centre" for a trim that rests at twelve o'clock and departs from it either
+ * way. Peak EQ draws the "max" distinction as an inverted arc on its High Cut;
+ * this is that idea generalised, and it drives both the soft variant's arc and
+ * the scale variant's tick ring, so the prop means one thing whichever a
+ * caller picks. A "centre" knob wants `centreValue` left at its 0.5 default:
+ * double-click then puts it back exactly where it rests.
  *
  * `centreValue`: where a double-click puts the knob, the middle of its travel
  * by default. Not the parameter's own default, which for several of these is

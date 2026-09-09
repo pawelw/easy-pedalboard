@@ -73,6 +73,9 @@ function Showcase() {
   const [knob, setKnob] = useState(0.4);
   const [soft, setSoft] = useState(0.5);
   const [softSmall, setSoftSmall] = useState(0.72);
+  // Off centre on purpose: a centre-reading knob parked at 0.5 draws no arc at
+  // all, which is the right picture and a useless demonstration of one.
+  const [trim, setTrim] = useState(0.68);
   const [slider, setSlider] = useState(0.3);
   const [inLevel, setInLevel] = useState(0.66);
   const [outLevel, setOutLevel] = useState(0.66);
@@ -154,7 +157,37 @@ function Showcase() {
           />
         </div>
 
-        <Readout label="Left" value="1/8" unit="250 ms" />
+        {/* scaleFrom="centre": the arc reads out from twelve o'clock in
+            whichever direction the knob has been turned, for a trim whose
+            resting value is the middle of its range rather than an end. Peak
+            Alpine's module Level knobs are this - at rest they are doing
+            nothing, and a knob wound fully clockwise said the opposite.
+            Shown beside the "min" reading at the same size, because the point
+            of it is the comparison. */}
+        <SectionLabel>Soft knob — scaleFrom "min" and "centre"</SectionLabel>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 34 }}>
+          <Knob
+            variant="soft"
+            value={softSmall}
+            onChange={setSoftSmall}
+            caption="Level"
+            valueLabel={`${Math.round(softSmall * 100)} %`}
+            size={42}
+          />
+          <span style={{ "--pui-soft-lit": "var(--pui-accent-mod)" }}>
+            <Knob
+              variant="soft"
+              value={trim}
+              onChange={setTrim}
+              scaleFrom="centre"
+              caption="Level"
+              valueLabel={`${(trim * 24 - 12).toFixed(1)} dB`}
+              size={42}
+            />
+          </span>
+        </div>
+
+        <Readout label="L" value="1/8" unit="250 ms" />
 
         {/* The three things the scope has to keep separable: feedback changes
             how far the run trails off, mix changes only the heights (and the
@@ -311,7 +344,7 @@ function Showcase() {
           </ModulePanel>
 
           {/* The wide tone, empty. Same panel as its neighbour - all `tone`
-              buys is the wider padding a 528px module's contents need - and
+              buys is the wider padding a 560px module's contents need - and
               there is nothing about that worth filling with borrowed
               controls. The Delay face itself is what goes in here. */}
           <ModulePanel

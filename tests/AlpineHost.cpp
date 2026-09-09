@@ -86,6 +86,21 @@ void modOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id
 void delayOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::dlyOn, false); }
 void reverbOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::revOn, false); }
 
+/** Every module doing something at once. Note the Shimmer: this case is
+    deliberately *not* a reproducible baseline, and its checksum is printed with
+    a warning rather than kept.
+
+    DaisySP's PitchShifter - which the Space reverb's shimmer is built on - draws
+    its modulation slew coefficients from `daisysp::myrand()`, and that is one
+    function-local `static uint32_t seed` shared by every instance in the
+    process and advanced per sample from inside `Process()`. So two shimmer
+    renders in one process start at different points of the sequence and do not
+    agree, and two plugin instances on different audio threads race on it. The
+    variation is inaudible - a slightly different approach rate on a modulation
+    whose depth is zero unless `SetFun` is called, which nothing here does - but
+    it means no shimmered render can be checksummed against another. Everything
+    else in this file is bit-reproducible; ee_alpine_host's own diagnostic
+    confirmed shimmer is the only stage that is not. */
 void everything (juce::AudioProcessorValueTreeState& s)
 {
     using namespace ee::alpine::id;
@@ -306,8 +321,9 @@ int main (int argc, char* argv[])
         out.makeCopyOf (input);
         render (out, everything);
 
-        std::printf ("  %s  peak %.6f  rms %.6f\n", checksum (out).toRawUTF8(),
-                     out.getMagnitude (0, kLength), out.getRMSLevel (0, 0, kLength));
+        std::printf ("  %s  peak %.6f  rms %.6f   (not a baseline - shimmer, see above)\n",
+                     checksum (out).toRawUTF8(), out.getMagnitude (0, kLength),
+                     out.getRMSLevel (0, 0, kLength));
         check (allFinite (out), "every module at once is finite");
         check (out.getMagnitude (0, kLength) < 4.0f, "...and nothing ran away");
     }

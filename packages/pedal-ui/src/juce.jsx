@@ -125,7 +125,11 @@ export function useFormattedText(scopedId, value) {
     `showValueBelow` (default false): the opposite kind of duplication -
     Mix/Feedback have no readout anywhere else, so they print their value
     as a permanent second line under the caption instead (Knob's own
-    `subLabel`), always visible rather than only appearing mid-drag. */
+    `subLabel`), always visible rather than only appearing mid-drag.
+
+    `scaleFrom` is Knob's, passed straight through - "centre" for a parameter
+    whose resting value is the middle of its range, so the arc reads as a
+    departure from unity rather than as a level wound all the way up. */
 export function JuceKnob({
   parameterId,
   caption,
@@ -133,6 +137,7 @@ export function JuceKnob({
   variant,
   endMarkerLabel,
   sweepGap,
+  scaleFrom,
   showValueLabel = true,
   showValueBelow = false,
   bare = false,
@@ -147,6 +152,7 @@ export function JuceKnob({
       size={size}
       bare={bare}
       sweepGap={sweepGap}
+      scaleFrom={scaleFrom}
       caption={caption}
       endMarkerLabel={endMarkerLabel}
       value={value}
@@ -172,7 +178,7 @@ export function JuceKnob({
 
     `length` is the track's own length. It is a property of the header the
     fader sits in, not of the fader: a 528px pedal card has room for 64px of
-    travel beside its preset bar, and a 944px host panel has room for 104. */
+    travel beside its preset bar, and a 976px host panel has room for 104. */
 export function JuceFader({ parameterId, label, resetTo = 0, length = 64 }) {
   const id = useParamId(parameterId);
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);

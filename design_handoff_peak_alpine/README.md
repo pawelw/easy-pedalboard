@@ -54,12 +54,12 @@ only the engine steppers and the bypass button respond to clicks.
 
 Outer host panel:
 
-- Fixed width **944px**, `background #171d20`, `border 1px solid #2b2b2b`,
+- Fixed width **976px**, `background #171d20`, `border 1px solid #2b2b2b`,
   `border-radius 20px`, `box-shadow 0 20px 44px rgba(0,0,0,.4)`,
   `padding 14px`, page background `#0f1315`.
 - Header row, then a `display:flex; gap:14px; align-items:stretch` module row.
 
-Module row track widths: **180 / 528 / 180**. The two side modules are fixed; only
+Module row track widths: **180 / 560 / 180**. The two side modules are fixed; only
 Delay carries the wide content.
 
 ### Host header (grid: three flex tracks)
@@ -107,8 +107,17 @@ and two shapes for one idea made the header read as two kinds of control.
   transparent fill, `border 1px solid <accent 40%>`, 12px power glyph in the
   accent, hover `background <accent 12%>`, **no label** — then the module name
   11px/700 uppercase `letter-spacing .18em` `#b9d3d9`, a `flex:1` spacer, and on
-  the side modules only, the 24px **Level** knob flush to the right edge with no
+  the side modules only, the **Level** knob flush to the right edge with no
   text label. The Delay header ends at the spacer.
+
+  **Level is a trim, not a fader.** It rests at unity in the *middle* of its
+  travel (±12 dB, default 0 dB) and its arc lights out from twelve o'clock in
+  whichever direction it has been turned — `scaleFrom="centre"` on pedal-ui's
+  Knob. An earlier draft made it 0–100 % resting at 100, which drew a knob wound
+  fully clockwise to say that a module was doing nothing to the level at all;
+  it also let Level be wound to silence, and since the three modules are in
+  series that was a knob on one module that muted the whole plugin. Mix and the
+  module's power toggle are how a module is taken out.
 - No drag handles anywhere.
 - Body padding `14px 12px 0` (side) / `16px 18px 0` (Delay).
 - Footer (side modules): `border-top 1px solid #0a0b0c`, `padding 14px 12px 12px`,
@@ -147,7 +156,7 @@ scope (L/R rows, amber input marker, taps alternating above/below the centre lin
 with decaying opacity), 76px **Mix** and **Feedback** knobs on the 20-tick scale
 ring with `35 %` readouts, the linked Left/Right time knobs (42px, scale ring)
 joined by the brace and 29px link button feeding two readout fields
-(`LEFT 1/8 250ms`, `RIGHT 1/8T 167ms`), the `SYNC` / `NORMAL` pills, and the
+(`L 1/8 250ms`, `R 1/8T 167ms`), the `SYNC` / `NORMAL` pills, and the
 three-cell stage footer — **Tape** (with the `PRE` position stepper), **Mod**
 and **Filter**, divided by **two** `1px solid #0a0b0c` verticals — the same
 line colour as the module's own header and footer strips.
