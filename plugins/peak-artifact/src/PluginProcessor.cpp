@@ -247,6 +247,10 @@ void PeakArtifactProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
     wasPlaying = isPlaying;
 
     module.process (buffer, numCh, numSamples);
+
+    // Publish the Filter engine's live sweep position for the editor's scope.
+    lfoModLUi.store (module.filterModL(), std::memory_order_relaxed);
+    lfoModRUi.store (module.filterModR(), std::memory_order_relaxed);
 }
 
 juce::AudioProcessorEditor* PeakArtifactProcessor::createEditor()

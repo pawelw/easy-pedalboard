@@ -57,6 +57,14 @@ public:
     void snapFilterPhase (double target01) noexcept { wah.snapPhase (target01); }
     void nudgeFilterPhase (double target01) noexcept { wah.nudgePhase (target01); }
 
+    /** The Filter engine's signed cutoff-sweep exponent per channel at the last
+        processed sample (Range * gate * lfo) - what the face's response scope
+        rides on, the same feed Peak Wah pushes. The engine stays warm even when
+        it is not the selected one, so these keep moving; the face only reads
+        them while Filter is showing. */
+    float filterModL() const noexcept { return wah.modL(); }
+    float filterModR() const noexcept { return wah.modR(); }
+
 protected:
     int engineCount() const noexcept override { return NumEngines; }
 

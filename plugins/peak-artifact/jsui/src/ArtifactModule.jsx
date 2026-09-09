@@ -1,4 +1,5 @@
-import { BarDisplay, EngineStepper, ModulePanel, Toggle, WaveIcon, lfoValue } from "@synthpeak/pedal-ui";
+import { useEffect, useState } from "react";
+import { EngineStepper, FilterScope, ModulePanel, Toggle, WaveIcon, freqHzFor01 } from "@synthpeak/pedal-ui";
 import { JuceKnob, useJuceChoiceValue, useJuceSliderValue, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
 import { ENGINES, WAVES } from "./engines.jsx";
 
@@ -6,29 +7,41 @@ import { ENGINES, WAVES } from "./engines.jsx";
 // knob value arcs through the one `accent` prop on ModulePanel.
 const ACCENT = "#c00001";
 
-// The display well is 63px, the same as Peak Alpine's tremolo display, and its
-// bars run 8..34px - identical geometry so the two modules read as one family.
-const BAR_MIN = 8;
-const BAR_SPAN = 26;
-const BARS = 26;
+// The response scope's ink, keeping Peak Wah's scope shapes but in this face's
+// red rather than its blue/grey. The well's own background and grid come from
+// the --pui-scope-* overrides on .pa-display (index.css).
+const SCOPE = {
+  baseColor: "#e5504e", // the resting curve - bright enough to read on the dark well
+  sweepColor: "#c00001", // the swept L/R curves and the Range band
+  fillColor: "rgba(224, 72, 70, 0.16)", // wash under the swept curves
+};
 
-/** The wave that sweeps the filter cutoff, traced from `lfoValue` (the same
-    port of ee/dsp/Lfo.h the audio path reads) over two cycles and scaled by
-    Range. At Range 0 it flattens to a line, which is what the filter is then
-    doing. Decay is not in this picture: it is pinned fully up, so the sweep
-    just runs - the red infinity mark in the well says so. */
-function filterBars(range01, shape01) {
-  return Array.from({ length: BARS }, (_, i) => {
-    const phase = (i / (BARS - 1)) * 2;
-    return BAR_MIN + BAR_SPAN * range01 * Math.abs(lfoValue(phase, shape01));
-  });
+/**
+ * The Filter engine's live cutoff-sweep exponent for both channels, pushed from
+ * the processor as the one "filterMod" event (PeakArtifactWebEditor's Timer) -
+ * the same feed Peak Wah's scope rides on. Outside a real host there is no
+ * backend to send it, so it stays at 0 and the two swept curves rest on the
+ * base curve.
+ */
+function useFilterMod() {
+  const [mod, setMod] = useState({ modL: 0, modR: 0 });
+
+  useEffect(() => {
+    if (typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;
+    const id = window.__JUCE__.backend.addEventListener("filterMod", (event) =>
+      setMod({ modL: event.modL ?? 0, modR: event.modR ?? 0 }),
+    );
+    return () => window.__JUCE__.backend.removeEventListener(id);
+  }, []);
+
+  return mod;
 }
 
 /**
  * One switchable module: a power toggle and name in the header, an engine
- * stepper, and - for the Filter engine - a display, two rows of knobs, the
- * wave picker and a Mono/Stereo switch, with Mix in the footer. Ring Mod and
- * Bit Crush show a dash: they are selectable but do nothing yet.
+ * stepper, and - for the Filter engine - a response scope, two rows of knobs,
+ * the wave picker and a Mono/Stereo switch, with Mix in the footer. Ring Mod
+ * and Bit Crush show a dash: they are selectable but do nothing yet.
  */
 export default function ArtifactModule() {
   // Default index 2 (Filter) with no backend - the processor opens on Filter
@@ -62,15 +75,34 @@ export default function ArtifactModule() {
 /* Its own component so the Filter-only hooks don't run for the other two
    engines - the same reason Peak Alpine splits its displays out. */
 function FilterBody() {
+  const [freq] = useJuceSliderValue("flt.freq");
+  const [q] = useJuceSliderValue("flt.q");
   const [range] = useJuceSliderValue("flt.range");
   const [waveIndex, setWave] = useJuceChoiceValue("flt.wave", WAVES.length);
   const wave = WAVES[waveIndex] ?? WAVES[0];
+  const { modL, modR } = useFilterMod();
 
   return (
     <>
+      {/* The same component Peak Wah's scope is: a resting curve whose peak
+          rises and narrows with Q and slides with Freq, a translucent band
+          showing how far Range lets it sweep, and two curves riding the live
+          L/R sweep inside it. Only the ink changes here. */}
       <div className="pa-display">
-        <BarDisplay heights={filterBars(range, wave.shape01)} ariaLabel="Filter LFO shape" />
-        <span className="pa-inf" aria-label="Decay: always on">&#8734;</span>
+        <FilterScope
+          baseFreqHz={freqHzFor01(freq)}
+          resonance01={q}
+          sweepDepth01={range}
+          modL={modL}
+          modR={modR}
+          height={64}
+          baseColor={SCOPE.baseColor}
+          sweepColor={SCOPE.sweepColor}
+          fillColor={SCOPE.fillColor}
+        />
+        <span className="pa-inf" aria-label="Decay: always on">
+          &#8734;
+        </span>
       </div>
 
       <div className="pa-knobs">

@@ -22,7 +22,7 @@ class PeakArtifactProcessor;
     The parameters come from `ee::plugin::RelaySet`, which walks the processor's
     own list and builds the right relay for each - there is no parameter list in
     this file, so adding one to the layout binds it with no editor change. */
-class PeakArtifactWebEditor : public juce::AudioProcessorEditor
+class PeakArtifactWebEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
     explicit PeakArtifactWebEditor (PeakArtifactProcessor&);
@@ -33,6 +33,12 @@ public:
     int getControlParameterIndex (Component&) override { return relays.getControlParameterIndex(); }
 
 private:
+    /** Pushes the Filter engine's live modL / modR to the "filterMod" event at
+        a UI frame rate - the response scope's live wash rides on it, and none
+        of it is a parameter so there is no relay to carry it. Same shape and
+        name as Peak Wah's feed. */
+    void timerCallback() override;
+
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
 
     PeakArtifactProcessor& processorRef;

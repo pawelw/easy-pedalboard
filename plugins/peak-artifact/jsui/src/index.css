@@ -97,6 +97,13 @@
 .pa-display {
   position: relative;
   margin-top: 16px;
+  /* FilterScope reads these for its well and its grid. Onyx leaves the
+     --pui-scope-* group on the light-theme values (it is a digital-pedal
+     token set), so this face sets its own: a near-black well with the
+     faintest warm cast and dim red-grey grid lines, to sit with the module's
+     red ink rather than against Peak Wah's blue/grey scope. */
+  --pui-scope-bg: #17090a;
+  --pui-scope-grid: #3b2122;
 }
 
 /* The infinity mark that stands in for the removed Decay knob: Decay is pinned

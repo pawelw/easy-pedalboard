@@ -60,6 +60,13 @@ public:
         the processor answers this rather than the parameter's own text. */
     juce::String timeReadout() const;
 
+    /** Live per-channel cutoff-sweep exponent (Range * gate * lfo) for the
+        Filter engine, for the editor's response scope. Written from the audio
+        thread, read by PeakArtifactWebEditor's Timer - the same "filterMod"
+        feed Peak Wah has. */
+    std::atomic<float> lfoModLUi { 0.0f };
+    std::atomic<float> lfoModRUi { 0.0f };
+
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

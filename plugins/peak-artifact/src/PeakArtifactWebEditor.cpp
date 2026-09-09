@@ -78,13 +78,26 @@ PeakArtifactWebEditor::PeakArtifactWebEditor (PeakArtifactProcessor& p)
     // rendered size (installAutoResize).
     setSize (380, 600);
     setResizable (false, false);
+
+    startTimerHz (45); // the rate Peak Wah's scope feed runs at
 }
 
-PeakArtifactWebEditor::~PeakArtifactWebEditor() = default;
+PeakArtifactWebEditor::~PeakArtifactWebEditor()
+{
+    stopTimer();
+}
 
 void PeakArtifactWebEditor::resized()
 {
     webView.setBounds (getLocalBounds());
+}
+
+void PeakArtifactWebEditor::timerCallback()
+{
+    auto* payload = new juce::DynamicObject();
+    payload->setProperty ("modL", processorRef.lfoModLUi.load (std::memory_order_relaxed));
+    payload->setProperty ("modR", processorRef.lfoModRUi.load (std::memory_order_relaxed));
+    webView.emitEventIfBrowserIsVisible ("filterMod", juce::var (payload));
 }
 
 std::optional<juce::WebBrowserComponent::Resource> PeakArtifactWebEditor::getResource (const juce::String& url)
