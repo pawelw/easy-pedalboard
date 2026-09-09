@@ -1,7 +1,9 @@
 import { useState } from "react";
 import Button from "./Button.jsx";
+import Chevron from "./Chevron.jsx";
 import PresetPicker from "./PresetPicker.jsx";
 import PresetSaveDialog from "./PresetSaveDialog.jsx";
+import SaveIcon from "./SaveIcon.jsx";
 import "./PresetBar.css";
 
 // What the bar shows with nothing behind it: a plain browser tab, the
@@ -23,6 +25,9 @@ const DEMO_FACTORY = [
   "Digital - Glass Halves",
 ];
 
+// The joined variant's own arrows: a heavier 24-unit glyph than the shared
+// Chevron's, matching the 12px squares it sits in. The separated variant uses
+// the shared one, at the size the host header draws it.
 function ChevronLeftIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -35,16 +40,6 @@ function ChevronRightIcon() {
   return (
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
       <path d="M9 18l6-6-6-6" />
-    </svg>
-  );
-}
-
-function SaveIcon() {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" />
-      <path d="M17 21v-8H7v8" />
-      <path d="M7 3v5h8" />
     </svg>
   );
 }
@@ -65,18 +60,31 @@ function SaveIcon() {
  * predating the shared one, styled with literal colours against that pedal's
  * cream panel. Fold it in here when Wah is next touched; doing it blind would
  * move that face's header for no reason of its own.
+ *
+ * `variant`:
+ *  - `"joined"` (default) is the segmented control every pedal face carries:
+ *    prev, next and the name box share their edges and read as one object,
+ *    with Save beside it.
+ *  - `"separated"` is Peak Alpine's host header: four discrete rounded
+ *    controls at a wider size. Four rather than one because that header is a
+ *    row of separate chrome objects - the level faders and the bypass pill are
+ *    next to it - and a segmented group among them reads as the odd one out.
+ *    The name field is also nearly twice as wide there, which is what buys the
+ *    room for a preset name to be read rather than truncated.
  */
 export default function PresetBar({
   factory = DEMO_FACTORY,
   user = [],
   value,
   canAuthor = false,
+  variant = "joined",
   onLoad,
   onStep,
   onSave,
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState("");
+  const separated = variant === "separated";
 
   const save = async (kind, name) => {
     // onSave answers with the native side's verdict, so a name the store
@@ -93,15 +101,23 @@ export default function PresetBar({
   };
 
   return (
-    <div className="pui-reset pui-presetbar">
+    <div className={`pui-reset pui-presetbar pui-presetbar--${variant}`}>
       <div className="pui-presetbar__group">
         <Button onClick={() => onStep?.(-1)} aria-label="Previous preset">
-          <ChevronLeftIcon />
+          {separated ? <Chevron direction="left" width={8} height={12} /> : <ChevronLeftIcon />}
         </Button>
         <Button onClick={() => onStep?.(1)} aria-label="Next preset">
-          <ChevronRightIcon />
+          {separated ? <Chevron direction="right" width={8} height={12} /> : <ChevronRightIcon />}
         </Button>
-        <PresetPicker factory={factory} user={user} value={value} onChange={onLoad} />
+        <PresetPicker
+          factory={factory}
+          user={user}
+          value={value}
+          onChange={onLoad}
+          chevron={separated ? <Chevron direction="updown" width={10} height={13} /> : undefined}
+          // Two 28px buttons and the two 6px gaps between them and the field.
+          reachBack={separated ? 68 : undefined}
+        />
       </div>
 
       <Button
@@ -111,7 +127,7 @@ export default function PresetBar({
         }}
         aria-label="Save preset"
       >
-        <SaveIcon />
+        <SaveIcon size={separated ? 14 : 13} variant={separated ? "chrome" : "default"} />
       </Button>
 
       <PresetSaveDialog

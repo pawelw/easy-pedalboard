@@ -236,17 +236,21 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
   outline-color: var(--pui-soft-lit);
 }
 
-/* Fills the dial edge to edge - what the arc hugs is the cap itself. The
-   gradient runs top-to-bottom rather than the collar cap's 135deg diagonal:
-   a diagonal highlight on an undecorated disc reads as a sphere, and this
-   is meant to read as a flat-topped cap seen straight on. The rim is an
-   inset hairline instead of a border so it costs the cap no diameter, and
-   the inner top highlight is what keeps a dark onyx cap from going flat.
-   The two offset crescents over that hairline light it from above. */
+/* Fills the dial edge to edge - what the arc hugs is the cap itself. The face
+   is one flat value rather than a gradient: any vertical falloff on an
+   undecorated disc reads as a sphere, and this is meant to read as a
+   flat-topped cap seen straight on. All the modelling is therefore in the rim,
+   an inset hairline instead of a border so it costs the cap no diameter, plus
+   the inner top highlight that keeps the cap from going flat against a dark
+   panel. The two offset crescents over that hairline light it from above.
+
+   The fill is a literal rather than a token, so --pui-soft-face-top and
+   --pui-soft-face-bottom are currently unread and this cap is onyx-black under
+   every theme, not just onyx. */
 .pui-knob__soft-cap {
     position: absolute;
     inset: 2px;
     border-radius: 50%;
-    background: linear-gradient(180deg, var(--pui-soft-face-top), var(--pui-soft-face-bottom));
+    background: #111416;
     box-shadow: inset 0 -1px 0.5px var(--pui-soft-rim-lo), inset 0 0.5px 1px var(--pui-soft-face-hi), var(--pui-soft-shadow);
 }

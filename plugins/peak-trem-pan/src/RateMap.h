@@ -1,12 +1,18 @@
 #pragma once
 
 #include "ee/dsp/RateMap.h"
+#include "ee/dsp/TremoloConfig.h"
 
-/** Peak Trem & Pan's Rate knob: one LFO cycle from 2 s (knob down) to 10 ms (knob up). */
+/** Peak Trem & Pan's Rate knob: one LFO cycle from 2 s (knob down) to 10 ms
+    (knob up). The three numbers live with the tremolo's voicing rather than
+    here, because Peak Alpine's Modulation module carries the same knob and the
+    same position has to mean the same rate on both faces. */
 namespace ee::trempan
 {
 
-inline constexpr ee::dsp::RateMap kMap { 10.0f, 2000.0f, 300.0f };
+inline constexpr ee::dsp::RateMap kMap { ee::dsp::tremolo::kRateMinPeriodMs,
+                                         ee::dsp::tremolo::kRateMaxPeriodMs,
+                                         ee::dsp::tremolo::kRateSkewCentreMs };
 
 inline juce::NormalisableRange<float> freePeriodMsRange()
 {

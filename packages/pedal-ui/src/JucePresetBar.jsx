@@ -61,8 +61,12 @@ function usePresetBridge() {
  * tree, and every WebSliderRelay attachment on the face is already listening
  * to its own parameter - so the face redraws itself for the same reason it
  * does when a host automates something.
+ *
+ * `variant` is PresetBar's, forwarded. The only prop there is, and it is here
+ * because how the bar is *drawn* is the face's decision while everything else
+ * about it comes off the bridge.
  */
-export default function JucePresetBar() {
+export default function JucePresetBar({ variant }) {
   const { state, load, step, save } = usePresetBridge();
 
   return (
@@ -71,6 +75,7 @@ export default function JucePresetBar() {
       user={state.user}
       value={{ kind: state.currentKind, name: state.currentName }}
       canAuthor={state.canAuthor}
+      variant={variant}
       onLoad={load}
       onStep={step}
       onSave={save}

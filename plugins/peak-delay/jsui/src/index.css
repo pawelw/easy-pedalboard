@@ -1,11 +1,16 @@
-/* html/body's own margin/overflow/background live in index.html now, not
+/* Peak Delay's enclosure, and nothing else. The face's own layout moved to
+   @synthpeak/delay-face with the component; what is left here is the part
+   that is this pedal's rather than the Delay face's - its page padding, its
+   card, and how far the face's footer has to reach to escape both.
+
+   html/body's own margin/overflow/background live in index.html now, not
    here - see plugins/peak-wah/jsui/src/index.css for why. */
 
 .page {
   display: flex;
   justify-content: center;
   /* The plugin window is sized to the panel plus exactly this much on every
-     side (see PeakDelayWebEditor::PeakDelayWebEditor's setSize call) - change
+     side (see installAutoResize's `padding`, which defaults to it) - change
      one, change the other. */
   padding: 4px;
 }
@@ -17,17 +22,26 @@
    rather than changing Card.css itself. */
 .pd-card.pui-card {
   padding: 22px 26px 24px;
-  /* Clips the footer's green band back to the card's own 20px corner radius.
-     The band reaches the card edge by escaping this padding with negative
-     margins (see .pd-footer__half--tape), which without this would leave a
-     green square poking out past the rounded bottom-left corner. The handoff
-     gets there by moving the padding onto an inner div instead; the negative
-     margins the reference face itself uses do the same thing without
-     restructuring Card, which Wah and the gallery also render. */
+  /* Clips the footer back to the card's own 20px corner radius. The footer
+     reaches the card edge by escaping this padding with negative margins (see
+     --pd-bleed-* below), which without this would leave its divider lines
+     running past the rounded bottom corners. The handoff gets there by moving
+     the padding onto an inner div instead; the negative margins the reference
+     face itself uses do the same thing without restructuring Card, which Wah
+     and the gallery also render. */
   overflow: hidden;
+
+  /* How far DelayFace's footer has to travel to reach this card's edge. Two
+     nested paddings, which is why these don't match the 26/24 above: the
+     card's own 26px sides and 24px bottom, plus .pui-card__body's 10px sides
+     (Card's, shared with Wah). The 1px border is deliberately left showing -
+     the footer stops just inside it, as in the handoff's reference face. */
+  --pd-bleed-x: 36px;
+  --pd-bleed-bottom: 24px;
 }
+
 /* The header's three slots - title, preset bar, level faders - have to fit on
-   one 626px line, so the gap between them is tighter than Card's own. */
+   one 528px line, so the gap between them is tighter than Card's own. */
 .pd-card .pui-card__header {
   padding-bottom: 20px;
   gap: 12px;
@@ -43,158 +57,4 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
-}
-
-.pd-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 32px;
-  margin-top: 32px;
-}
-
-.pd-time-col {
-  display: flex;
-  flex-direction: column;
-  width: calc(236px + var(--pd-link-col));
-  gap: 16px;
-}
-
-/* The link bracket's column, and the geometry the arms are pinned to. Named
-   rather than inlined because the card's own width is 568 + this, and the
-   arms have to meet the Time knobs' dial centres exactly. */
-.pd-card {
-  --pd-link-col: 38px; /* button + arm + the gap to the knob */
-  --pd-link-btn: 29px; /* the square button, icon 15 + 7px padding either side */
-  --pd-knob-dia: 42px; /* the Time knobs' dial: half of it is the arm's height */
-  --pd-arm-gap: 10px; /* "space between lines and knobs" */
-  --pd-arm-clear: 18px; /* how far the arms stop short of the button */
-}
-
-.pd-link-group {
-  display: flex;
-  align-items: stretch;
-}
-
-.pd-time-rows {
-  display: flex;
-  flex-direction: column;
-  width: 100%;
-  gap: 24px;
-  margin-left: 9px;
-}
-
-.pd-link {
-  position: relative;
-  flex: none;
-  width: var(--pd-link-col);
-}
-
-/* Two mirrored corner pieces: each runs vertically out from the button and
-   turns into its knob. Drawn as borders on an empty box rather than as an
-   SVG, so the 4px corner is just a border-radius and the whole thing tracks
-   the row geometry in CSS with nothing to keep in sync. */
-.pd-link__arm {
-  position: absolute;
-  left: calc(var(--pd-link-btn) / 2);
-  right: var(--pd-arm-gap);
-  border-left: 1px solid var(--pui-line);
-  pointer-events: none;
-}
-
-.pd-link__arm--top {
-  /* The horizontal run sits on the top knob's dial centre - which is half a
-     dial down only because TimeControl's knob is `bare`. */
-  top: calc(var(--pd-knob-dia) / 2);
-  bottom: calc(50% + var(--pd-arm-clear));
-  border-top: 1px solid var(--pui-line);
-  border-top-left-radius: 4px;
-}
-
-.pd-link__arm--bottom {
-  top: calc(50% + var(--pd-arm-clear));
-  bottom: calc(var(--pd-knob-dia) / 2);
-  border-bottom: 1px solid var(--pui-line);
-  border-bottom-left-radius: 4px;
-}
-
-.pd-link__button {
-  position: absolute;
-  left: 5%;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-/* Icon-only and square-ish, not the full-width capsule the Sync pill is -
-   scoped here rather than in Pill.css, which the Sync pill still wants. */
-.pd-link__button .pui-button.pui-pill {
-  padding: 4px;
-  border-radius: 4px;
-}
-
-
-.pd-time-control {
-  display: flex;
-  align-items: center;
-  gap: 11px;
-}
-
-.pd-pills {
-  display: flex;
-  gap: 7px;
-  /* Lines up under the Time rows rather than under the link bracket. */
-  margin-left: calc(var(--pd-link-col) + 6px);
-}
-
-/* One row of three sections: Tape (which says where it is) on a green band,
-   then Mod (inside the feedback loop) and Filter (on the repeats) on the plain
-   panel. COMPONENTS.md's face layout, widened from two sections to three - what
-   paid for the third was moving each knob's name under it and dropping its
-   permanent value line (see StageControl), which took roughly a third of the
-   footer's width back. */
-/* The negative margins take the whole footer - divider included - out to the
-   card's edge, so the tape band reads as part of the enclosure rather than as
-   a panel drawn on it, and the divider runs the band's full width instead of
-   stopping 10px short at each end.
-   Escaping the edge means clearing TWO nested paddings, which is why these
-   don't match the 26/24 in .pd-card: the card's own 26px sides and 24px
-   bottom, plus .pui-card__body's 10px sides (Card's, shared with Wah). The
-   1px border is deliberately left showing - the band stops just inside it,
-   as in the handoff's reference face. Card's overflow:hidden (see .pd-card)
-   rounds off the escaped bottom-left corner. */
-.pd-footer {
-  display: flex;
-  margin: 20px -36px -24px;
-  border-top: 1px solid var(--pui-divider);
-}
-
-/* `flex: 1 1 0` rather than `flex: 1`: true thirds. On `flex: 1` the sections
-   are sized from their content, and the green one's longer knob names would
-   push the divisions off the even spacing the band's edge is drawn against. */
-.pd-footer__section {
-  flex: 1 1 0;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  /* The bottom pads against the knob captions, which sit below the tick rings
-     - see --pui-knob-reach-small. */
-  padding: 12px 14px;
-}
-
-/* The green band still reaches the card's own left and bottom edge, but its
-   padding is even rather than carrying the whole bleed distance on the left:
-   its contents are centred now (see StageHeader and StageGroup), and centred
-   content inside a lopsided box lands off the middle of the thing it is drawn
-   on. 24 either side is the same 48px the 36/12 split spent, so the section
-   comes out exactly as wide as before and the other two do not move. */
-.pd-footer__section--tape {
-  background: var(--pui-tape-band);
-}
-
-/* A hairline wherever two plain sections meet, so Mod and Filter read as two
-   sections rather than as one wide row of four knobs. Not drawn against the
-   tape band, which separates itself by colour - hence the pair of :not()s
-   rather than a blanket rule on every section after the first. */
-.pd-footer__section:not(.pd-footer__section--tape) + .pd-footer__section:not(.pd-footer__section--tape) {
-  border-left: 1px solid var(--pui-divider);
 }

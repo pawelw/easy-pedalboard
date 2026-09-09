@@ -157,12 +157,12 @@ PeakDelayWebEditor::PeakDelayWebEditor (PeakDelayProcessor& p)
     // Just a starting size for the brief moment before the page's own
     // ResizeObserver reports its real rendered size - see jsui/src/autoSize.js.
     // Close to the real thing on purpose: the width is exact (the card is a
-    // fixed 626 plus .page's 4px each side), the height only a guess, so the
+    // fixed 528 plus .page's 4px each side), the height only a guess, so the
     // host sees at most a small vertical correction rather than a window that
     // visibly jumps. It must not be *relied* on - a face whose card can't fit
     // in the starting window used to deadlock here, which is what Card.css's
     // `flex: none` now prevents.
-    setSize (634, 440);
+    setSize (536, 440);
     setResizable (false, false);
 
     startTimerHz (45); // the rate Peak Wah's own live feed runs at
@@ -189,8 +189,8 @@ PeakDelayWebEditor::~PeakDelayWebEditor()
 void PeakDelayWebEditor::timerCallback()
 {
     auto* payload = new juce::DynamicObject();
-    payload->setProperty ("level", processorRef.inputLevelUi.load (std::memory_order_relaxed));
-    payload->setProperty ("strikes", processorRef.strikeCountUi.load (std::memory_order_relaxed));
+    payload->setProperty ("level", processorRef.inputMeter.getLevel());
+    payload->setProperty ("strikes", processorRef.inputMeter.getStrikes());
     payload->setProperty ("bpm", processorRef.hostBpm());
     webView.emitEventIfBrowserIsVisible ("delayMeter", juce::var (payload));
 }

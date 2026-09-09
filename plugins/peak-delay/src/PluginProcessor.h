@@ -5,10 +5,9 @@
 
 #include <array>
 
-#include "ee/dsp/Phaser.h"
-#include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
-#include "ee/dsp/TapeTransport.h"
+#include "ee/fx/DelayModule.h"
+#include "ee/plugin/InputMeter.h"
 #include "ee/plugin/PresetStore.h"
 
 #if EE_HAS_FACTORY_PRESETS
@@ -113,19 +112,14 @@ public:
         in the web view because the level feed the editor pushes is a 45 Hz
         sample of something that happens in milliseconds. Written from the
         audio thread. */
-    std::atomic<float> inputLevelUi { 0.0f };
-    std::atomic<int> strikeCountUi { 0 };
+    ee::plugin::InputMeter inputMeter;
 
     /** The tape machine's current/default voicing, for the EE_TAPE_TUNER dev
         panel - same reason as above, the web editor needs a way to reach the
         tape without being a member of this class. Both placements are the same
         machine and are tuned together; either one can answer for the pair. */
-    const ee::dsp::TapeTuning& tapeTuning() const noexcept { return tapeIn.tape.getTuning(); }
-    void setTapeTuning (const ee::dsp::TapeTuning& t) noexcept
-    {
-        tapeIn.tape.setTuning (t);
-        tapeOut.tape.setTuning (t);
-    }
+    const ee::dsp::TapeTuning& tapeTuning() const noexcept { return chain.tapeTuning(); }
+    void setTapeTuning (const ee::dsp::TapeTuning& t) noexcept { chain.setTapeTuning (t); }
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
@@ -144,50 +138,9 @@ private:
         half its own section. The Phaser is fixed on the repeats instead. */
     bool tapeIsPost() const noexcept;
 
-    /** Splits Wear and Flutter between the two tape placements - all to the
-        pre section at 0, all to the post one at 1. */
-    void updateTapeAmounts (float placement) noexcept;
-
-    /** A delay time with the post section's latency already taken off it, so
-        the first repeat lands where the Time knob says. */
-    float trimmedDelaySeconds (float seconds) const noexcept;
-
-    /** Fast-attack/slow-release peak follower on the pedal input, plus the
-        onset test that drives strikeCountUi. Per block rather than per sample:
-        the face redraws at 45 Hz and a block is a quarter of that. */
-    void meterInput (const float* left, const float* right, int numSamples) noexcept;
-
-    /** The Filter section, in place on the repeats. Two cuts either end of the
-        band, the same pair Peak EQ carries in its top corner and built from the
-        same juce::dsp coefficients, so the two pedals cut alike.
-
-        On the delay's output rather than inside its feedback path, which is
-        where a tone control on an echo often sits - because the compounding
-        version of this knob already exists. Drift is a rolloff inside the loop
-        that takes a little more top off every pass; this shapes the repeats
-        once, and leaves the dry signal alone. The two do different jobs, and
-        putting a second lowpass in the loop would only have blurred the first.
-
-        Both ends bypass exactly at their resting positions, so a Filter section
-        nobody has touched is not in the signal path at all. */
-    void runFilter (float* left, float* right, int numSamples) noexcept;
-
-    /** Recomputes the cut coefficients when either knob has actually moved.
-        `force` rebuilds both, for the first block after prepare. */
-    void updateFilters (bool force);
-
-    /** The Mod section's insert half, in place. ee::dsp::Phaser on Peak Phase's
-        own default voicing; its wet/dry is fixed at the setting where the
-        notches are deepest (ee::dsp::phaser::kWetMix), so the knob blends the
-        whole stage in from out here. At 0 the stage is skipped and the input is
-        left bit exact.
-
-        Runs on the repeats only, after the delay, its tape placement and the
-        Filter section - the last stage of the wet path. It used to sit on the
-        finished mix, which put the sweep on the note being played as well as
-        on its echoes, and at Mix 0 the pedal was still audibly phasing a signal
-        that had never been near the delay. */
-    void runPhaser (float* left, float* right, int numSamples) noexcept;
+    /** Every setting the chain takes, read off the parameters in real units.
+        Shared by prepareToPlay and processBlock, which both need the whole set. */
+    void pushSettings (double bpm, bool synced) noexcept;
 
     void parameterChanged (const juce::String& parameterID, float newValue) override;
     void mirrorTime (const juce::String& from, const juce::String& to);
@@ -214,74 +167,11 @@ private:
         inverse, named for what the knobs are actually doing. */
     bool isSynced() const;
 
-    /** One tape machine in one place in the chain: the transport's wobble
-        (Flutter), then the tape itself (Wear), in the order a machine has them.
-        Both are the stages Peak Tape's knobs of the same name drive - shared
-        engines, not second models of them, so the two pedals cannot drift
-        apart. */
-    struct TapeSection
-    {
-        ee::dsp::TapeTransport transport;
-        ee::dsp::TapeCharacter tape;
-
-        void prepare (double sampleRate)
-        {
-            transport.prepare (sampleRate);
-            tape.prepare (sampleRate);
-        }
-
-        void reset() noexcept
-        {
-            transport.reset();
-            tape.reset();
-        }
-
-        void setAmounts (float wear01, float flutter01) noexcept
-        {
-            transport.setFlutter01 (flutter01);
-            tape.setAmount (wear01);
-        }
-
-        void process (float* left, float* right, int numSamples) noexcept
-        {
-            transport.process (left, right, numSamples);
-            tape.process (left, right, numSamples);
-        }
-
-        int latencySamples() const noexcept { return transport.getLatencySamples() + tape.getLatencySamples(); }
-    };
-
-    /** Both of the Tape section's placements, wired in permanently: one in
-        front of the delay, one on its output. Only ever one of them is turned
-        up - the router crossfades Wear and Flutter from one to the other - and
-        at zero both stages are bit-exact pass-through with a fixed latency, so
-        the idle one costs a delay line and colours nothing.
-
-        Two of them rather than one that moves, because a stage that moves has
-        to be fed a different signal the instant it moves, and the six
-        milliseconds of the *other* signal still inside its delay line come out
-        as a splice. That was the click. Nothing here ever changes what it is
-        fed, so there is nothing to splice: what the router changes is only how
-        far each one is turned up, which is the same thing turning the Wear knob
-        does. */
-    TapeSection tapeIn;
-    TapeSection tapeOut;
-
-    ee::dsp::Phaser phaser;
-
-    static constexpr int kMaxChannels = 2;
-
-    /** The Filter section's two cuts, one pair per channel. `*Active` is the
-        bypass: at the resting end of its travel a cut is not run at all, so it
-        cannot colour a signal it is not cutting. */
-    std::array<juce::dsp::IIR::Filter<float>, kMaxChannels> hiPass;
-    std::array<juce::dsp::IIR::Filter<float>, kMaxChannels> loPass;
-    float loCutHz = kLoCutMinHz;
-    float hiCutHz = kHiCutMaxHz;
-    bool hiPassActive = false;
-    bool loPassActive = false;
-
-    ee::dsp::TapeDelay delay;
+    /** The pedal's whole chain: the delay line, a tape machine either side of
+        it, the filter pair and the phaser on the repeats, the dry/wet law and
+        the trims. Peak Alpine's Delay module is a second instance of this, which
+        is why none of it is written out here any more - a fix lands in both. */
+    ee::fx::DelayModule chain;
 
     std::atomic<float>* leftTimeParam = nullptr;
     std::atomic<float>* rightTimeParam = nullptr;
@@ -301,22 +191,6 @@ private:
     std::atomic<float>* outGainParam = nullptr;
     std::atomic<float>* onParam = nullptr;
 
-    /** Where the Tape section is, as a number rather than a switch: 0 is
-        entirely in front of the delay, 1 entirely on its repeats, and the
-        router glides between them over kPlacementSeconds. Read once per block -
-        the two sections' own parameter smoothing carries it the rest of the
-        way, exactly as it does for a hand on the Wear knob. */
-    juce::SmoothedValue<float> tapePlacement;
-
-    /** What the post section's latency costs the repeats, taken back off the
-        delay's own time so the gap between the dry signal and its first repeat
-        is what the Time knob says in either placement. */
-    float postLatencySeconds = 0.0f;
-
-    /** This block's stage settings, read off the parameters once at the top of
-        processBlock so the per-chunk code does not have to reach for them. */
-    float phaserBlend = 0.0f;
-
     /** Stops the two time parameters echoing each other forever. */
     std::atomic<bool> mirroring { false };
 
@@ -327,45 +201,8 @@ private:
     /** Written on the audio thread, read from the editor - see currentBpm(). */
     std::atomic<double> lastKnownBpm { 120.0 };
 
-    /** The prepared sample rate. meterInput()'s follower is specified in
-        seconds, so it needs this to turn a block length into a time. */
+    /** The prepared sample rate, for the readouts' own use. */
     double sr = 44100.0;
-
-    juce::SmoothedValue<float> dryGain;
-    juce::SmoothedValue<float> wetGain;
-
-    /** The header's two faders. Input trims what the pedal is fed - dry path
-        and delay input alike, so it moves the whole pedal rather than just the
-        repeats - and Output rides the finished signal. Both sit inside the
-        bypass crossfade, so a bypassed pedal is unity whatever they say. */
-    juce::SmoothedValue<float> inGain;
-    juce::SmoothedValue<float> outGain;
-
-    /** 1 while the pedal is engaged, 0 when bypassed. Fades the tape off the
-        dry path and closes the delay input, leaving the repeats to ring out. */
-    juce::SmoothedValue<float> engageGain;
-
-    /** The stage chain's working buffers. `stageBuffer` carries the signal
-        through a side's stages so the untouched version survives for the
-        bypass crossfade; `mixBuffer` holds dry+wet before the post side runs;
-        `modBuffer` is the Phaser's output, blended back by its knob. */
-    juce::AudioBuffer<float> stageBuffer;
-    juce::AudioBuffer<float> inputBuffer;
-    juce::AudioBuffer<float> wetBuffer;
-    juce::AudioBuffer<float> mixBuffer;
-    juce::AudioBuffer<float> modBuffer;
-
-    /** meterInput()'s audio-thread state: the smoothed peak inputLevelUi is
-        mapped from, a slower average an onset has to stand out against, and
-        how many samples are left of the refractory period that stops one note
-        being counted as several. */
-    float peakLevelSmoothed = 0.0f;
-    float onsetFloor = 0.0f;
-    int onsetHoldSamples = 0;
-
-    /** engageGain sampled once per chunk. The pre and the post crossfade both
-        need the same ramp, and a SmoothedValue can only be walked once. */
-    std::vector<float> engageRamp;
 
     int maxBlock = 512;
 

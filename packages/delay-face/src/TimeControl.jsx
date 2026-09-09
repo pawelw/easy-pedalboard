@@ -1,11 +1,12 @@
 import { Readout } from "@synthpeak/pedal-ui";
-import { JuceKnob, useTimeReadoutText } from "./juceBindings.jsx";
+import { JuceKnob } from "@synthpeak/pedal-ui/juce";
+import { useTimeReadoutText } from "./juceBindings.jsx";
 
 /**
- * A 42px scale knob paired with a recessed Readout - Delay's Left/Right Time
- * rows (COMPONENTS.md #3). Delay-local rather than a `@synthpeak/pedal-ui`
- * component: it's just a Knob + a Readout wired together, nothing another
- * pedal would reuse as its own unit.
+ * A 42px scale knob paired with a recessed Readout - the Delay face's
+ * Left/Right Time rows (COMPONENTS.md #3). It lives beside `DelayFace` rather
+ * than in `@synthpeak/pedal-ui`: it is just a Knob and a Readout wired
+ * together, and nothing outside this face would reuse it as a unit.
  */
 export default function TimeControl({ side, parameterId }) {
   const [text, msText, isMs] = useTimeReadoutText(parameterId);

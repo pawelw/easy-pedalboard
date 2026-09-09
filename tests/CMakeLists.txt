@@ -114,6 +114,28 @@ if(TARGET PeakDelay)
 endif()
 
 if(TARGET PeakDelay)
+    # The A/B for a change to Peak Delay that is meant to change nothing: a
+    # battery of settings through the whole processor, one checksum per pass.
+    # ee_delay_match above is the other thing - a voicing renderer for a real
+    # file. See RegressHarness.h.
+    juce_add_console_app(ee_delay_regress PRODUCT_NAME "ee_delay_regress")
+
+    target_sources(ee_delay_regress PRIVATE DelayRegress.cpp)
+
+    target_compile_definitions(ee_delay_regress PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_delay_regress
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
+
+    target_link_libraries(ee_delay_regress
+        PRIVATE PeakDelay ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+if(TARGET PeakDelay)
     # ee::plugin::PresetStore against a real pedal - the factory bank compiled
     # in from plugins/peak-delay/presets, and a user bank in a folder of its
     # own. Shared machinery every pedal is meant to adopt, so it is worth a
@@ -152,6 +174,29 @@ if(TARGET PeakTremPan)
 
     target_link_libraries(ee_trempan_stress
         PRIVATE PeakTremPan ee_shared
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+if(TARGET PeakTremPan)
+    # Renders a fixed battery of settings through the whole Trem & Pan processor
+    # and prints a checksum per pass. Not a pass/fail suite: it is the A/B for a
+    # change that is meant to change nothing, so its output is compared against
+    # itself from before the change. See RegressHarness.h for why *_regress and
+    # *_match are two different families.
+    juce_add_console_app(ee_trempan_regress PRODUCT_NAME "ee_trempan_regress")
+
+    target_sources(ee_trempan_regress PRIVATE TremPanRegress.cpp)
+
+    target_compile_definitions(ee_trempan_regress PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_trempan_regress
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-trem-pan/src)
+
+    target_link_libraries(ee_trempan_regress
+        PRIVATE PeakTremPan ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
@@ -292,3 +337,63 @@ target_compile_definitions(ee_au_host PUBLIC
 target_link_libraries(ee_au_host
     PRIVATE juce::juce_audio_processors juce::juce_audio_utils
     PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakSpring)
+    # The A/B for a change to the spring tank that is meant to leave Peak Spring
+    # exactly as it is - Tension and Low Cut are additive, and this is what says
+    # so. See RegressHarness.h.
+    juce_add_console_app(ee_spring_regress PRODUCT_NAME "ee_spring_regress")
+
+    target_sources(ee_spring_regress PRIVATE SpringRegress.cpp)
+
+    target_compile_definitions(ee_spring_regress PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_spring_regress
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-spring/src)
+
+    target_link_libraries(ee_spring_regress
+        PRIVATE PeakSpring ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+# Peak Alpine's two switchable modules. Not a *_regress tool - this is new code,
+# so there is nothing to diff against; it asserts the contract MultiEngineModule
+# promises, and hunts the thing a module built out of six other people's engines
+# is most likely to get wrong: a click on the engine switch.
+juce_add_console_app(ee_module_stress PRODUCT_NAME "ee_module_stress")
+
+target_sources(ee_module_stress PRIVATE ModuleStress.cpp)
+
+target_compile_definitions(ee_module_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_module_stress
+    PRIVATE ee_dsp juce::juce_audio_processors juce::juce_dsp
+    PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakAlpine)
+    # Drives the real Peak Alpine processor like a host: does it make sound, do
+    # the three power toggles reach the audio, is a bypassed plugin unity, and
+    # is every engine pair finite. Prints a checksum per case, so it is also the
+    # baseline for the next refactor of it.
+    juce_add_console_app(ee_alpine_host PRODUCT_NAME "ee_alpine_host")
+
+    target_sources(ee_alpine_host PRIVATE AlpineHost.cpp)
+
+    target_compile_definitions(ee_alpine_host PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_alpine_host
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-alpine/src)
+
+    target_link_libraries(ee_alpine_host
+        PRIVATE PeakAlpine ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()

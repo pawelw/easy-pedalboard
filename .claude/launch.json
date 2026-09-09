@@ -4,14 +4,47 @@
     {
       "name": "peak-delay-jsui",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "plugins/peak-delay/jsui"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "plugins/peak-delay/jsui"
+      ],
       "port": 3001
+    },
+    {
+      "name": "peak-alpine-jsui",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "plugins/peak-alpine/jsui"
+      ],
+      "port": 3002
     },
     {
       "name": "pedal-gallery",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "apps/pedal-gallery"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--prefix",
+        "apps/pedal-gallery"
+      ],
       "port": 3100
+    },
+    {
+      "name": "design-handoff",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "3200",
+        "--directory",
+        "design_handoff_peak_alpine"
+      ],
+      "port": 3200
     }
   ]
 }

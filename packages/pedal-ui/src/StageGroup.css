@@ -19,15 +19,16 @@
   gap: var(--pui-knob-reach-small);
 }
 
-/* The two tones. Each sets its own text colours *and* re-points the knob
-   tokens, which the Knobs below inherit - that is the whole mechanism, so
-   neither Knob nor StageRouter needs a `tone` prop and nothing outside this
-   file changes.
+/* The stage tokens every section reads. One set now, not two: the Tape
+   section used to re-point the knob tokens to a green group on its own
+   wrapper, so the same Knob rendered green inside the band and plain outside
+   it. The band is gone (see tokens.css) and with it the whole mechanism -
+   every footer knob is the same control, and what tells the sections apart is
+   the coloured glyph in each one's StageHeader.
 
    Stage values are on --pui-ink-soft, never --pui-ink-dim: the dim ink
-   measures 4.2:1 on the panel and makes the mod half read as disabled beside
-   the green one (TOKENS.md). */
-.pui-stage-group--default {
+   measures 4.2:1 on the panel and reads as disabled (TOKENS.md). */
+.pui-stage-group {
   --pui-stage-icon: var(--pui-ink);
   --pui-stage-name: var(--pui-ink);
   --pui-stage-value: var(--pui-ink-soft);
@@ -36,44 +37,7 @@
 
   /* The arc reads as a value line, not an accent: the same grayscale pair the
      Time/Mix/Feedback tick rings above the footer use, so a stage knob and a
-     scale knob show their value in one colour. The tape tone below keeps its
-     green - there the accent is the section. */
+     scale knob show their value in one colour. */
   --pui-soft-track: var(--pui-tick);
   --pui-soft-lit: var(--pui-tick-lit);
-}
-
-.pui-stage-group--tape {
-  --pui-stage-icon: var(--pui-tape-lit);
-  --pui-stage-name: var(--pui-tape-ink);
-  --pui-stage-value: var(--pui-tape-lit);
-  --pui-stage-well: var(--pui-tape-well);
-  --pui-stage-arrow: var(--pui-tape-lit);
-
-  --pui-tick: var(--pui-tape-track);
-  --pui-tick-lit: var(--pui-tape-lit);
-  --pui-knob-body: var(--pui-tape-knob-body);
-  --pui-cap-grad-top: var(--pui-tape-cap-top);
-  --pui-cap-grad-bottom: var(--pui-tape-cap-bot);
-  --pui-cap-ring: var(--pui-tape-cap-rim);
-
-  /* Only the arc takes the band's green here - the cap itself is left on the
-     theme's black, so all six footer knobs are one control that happens to sit
-     on two grounds. The needle is themed; see below. */
-  --pui-soft-track: var(--pui-tape-track);
-  --pui-soft-lit: var(--pui-tape-lit);
-}
-
-/* The needle is the one part of the tape tone that cannot be a fixed accent.
-   It is drawn on the knob cap, not on the band, and the cap is the theme's
-   (variant="soft" reads --pui-soft-face-*, which the tape group deliberately
-   leaves alone): near-black under onyx, pale under light and grey. A green
-   needle reads on the dark cap and washes out on the pale ones, so on the
-   light themes these two tokens are simply left at their theme values and the
-   band's knobs point in the same charcoal as every other knob on the face.
-   Scoped to onyx rather than given a --pui-tape-needle token so every other
-   theme tracks --pui-pointer/--pui-soft-needle automatically - including any
-   added later - instead of restating their literals. */
-[data-pui-theme="onyx"] .pui-stage-group--tape {
-  --pui-pointer: var(--pui-tape-lit);
-  --pui-soft-needle: var(--pui-tape-lit);
 }

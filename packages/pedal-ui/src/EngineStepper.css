@@ -1,0 +1,62 @@
+.pui-stepper {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 6px;
+  border-radius: 9px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+}
+
+.pui-stepper__arrow {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--pui-accent, var(--pui-ink));
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.pui-stepper__arrow:hover,
+.pui-stepper__arrow:focus-visible {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* `min-width: 0` so a long engine name truncates inside the well rather than
+   pushing the two arrows apart - the arrows are the fixed part of this
+   control and the name is what has to give. */
+.pui-stepper__value {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+}
+
+.pui-stepper__icon {
+  flex: none;
+  display: flex;
+  color: var(--pui-accent, var(--pui-ink));
+}
+
+.pui-stepper__name {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pui-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

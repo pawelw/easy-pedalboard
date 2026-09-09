@@ -1,0 +1,163 @@
+/* Peak Alpine's enclosure and its module row. Everything inside a module is
+   the module's own component; what is here is the host.
+
+   html/body's own margin/overflow/background live in index.html, not here -
+   see plugins/peak-wah/jsui/src/index.css for why. */
+
+.page {
+  display: flex;
+  justify-content: center;
+  /* The plugin window is sized to the panel plus exactly this much on every
+     side (see installAutoResize's `padding`, which defaults to it) - change
+     one, change the other. */
+  padding: 4px;
+}
+
+/* Card's own padding and type are the pedals' (18/22/22, a 22px title beside
+   its subtitle). A host panel spends its width on three modules rather than on
+   one pedal's controls, so it re-spends those here - an even 14px frame, wider
+   than the 8px between the modules so the row reads as one object inside the
+   card rather than as three sitting on its edges. Scoped here the same way
+   `.pd-card` scopes Peak Delay's, rather than adding another variant to Card
+   itself. */
+.pa-card.pui-card {
+  padding: 14px 14px 14px;
+  /* The module row's own panels are `overflow: hidden` and rounded; this does
+     the same for the host, so nothing can escape its 20px corners. */
+  overflow: hidden;
+}
+
+.pa-card .pui-card__header {
+  padding: 0 2px 18px;
+  gap: 14px;
+}
+
+.pa-card .pui-card__title {
+  font-size: 19px;
+}
+
+.pa-card .pui-card__subtitle {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--pui-ink-dim);
+}
+
+.pa-card .pui-card__logo {
+  height: 32px;
+}
+
+/* The mark is a two-line block's neighbour here, not a word's - 11px reads as
+   the same gap beside 32px of logo that Card's 10px does beside 26px. */
+.pa-card .pui-card__header-left--stacked {
+  gap: 11px;
+}
+
+/* The body is the module row and nothing else, so Card's own 10px of side
+   padding would just inset the row inside the padding the card already has. */
+.pa-card .pui-card__body {
+  padding: 0;
+}
+
+.pa-host-controls {
+  display: flex;
+  align-items: center;
+  /* Deliberate, and not to be collapsed into the row's own rhythm: see
+     HostControls' note on what the two sides of it do. */
+  gap: 32px;
+}
+
+.pa-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* `align-items: stretch` is what makes the two short modules take the Delay
+   module's height, so their footers line up with its own bottom edge rather
+   than each ending where its content does. */
+.pa-modules {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  transition: opacity 140ms ease;
+}
+
+/* Bypassed: the row dims as one object. Not `display: none` and not per-module
+   - every control stays exactly where it was and stays readable, because
+   bypass is a thing you switch back off. */
+.pa-modules--bypassed {
+  opacity: 0.42;
+}
+
+/* How far DelayFace's footer has to travel to reach the Delay module's edges.
+   One padding to clear rather than the Card's two, and none at the bottom -
+   ModulePanel's body already ends flush there. */
+.pa-delay {
+  --pd-bleed-x: 18px;
+  --pd-bleed-bottom: 0px;
+}
+
+/* Both side modules' footers hold the same height whether or not there is a
+   Mix knob in them - Tape has none (it runs fully wet), and without this its
+   footer would collapse to its padding and pull the module out of step with
+   Reverb's. 87px is the height a soft 38px knob with its caption takes. */
+.pa-modules .pui-module__footer {
+  box-sizing: border-box;
+  min-height: 87px;
+}
+
+.pa-footer-empty {
+  height: 0;
+}
+
+/* A side module's parameter rows. The gap to the stepper (or to the display
+   under it) is the handoff's 22px; between the two rows it is 18px. */
+.pa-knobs {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 22px;
+}
+
+.pa-knob-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-evenly;
+  gap: 8px;
+}
+
+/* One knob on its own row (Tape's Tone) - held to the middle rather than
+   spread, so it lines up under the gap between the pair above it. */
+.pa-knob-row--centre {
+  justify-content: center;
+}
+
+.pa-display {
+  margin-top: 16px;
+}
+
+/* Tape's Mono/Stereo switch. `margin-top: auto` drops it to the foot of the
+   module body whatever is above it, so it sits just clear of the footer's top
+   border - the row of knobs keeps its own top alignment and this fills the
+   slack between. */
+.pa-tape-switch {
+  margin-top: auto;
+  padding: 16px 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pa-tape-switch__label {
+  font-family: var(--pui-font-label);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pui-ink-dim);
+  transition: color 120ms ease;
+}
+
+.pa-tape-switch__label[data-active] {
+  color: var(--pui-ink);
+}

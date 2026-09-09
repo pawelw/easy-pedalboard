@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { Card, Logo, WaveIcon, FilterCurveIcon } from "@synthpeak/pedal-ui";
 import { JuceKnob, JuceToggle, JuceFilterScope, useFilterMod } from "./juceBindings.jsx";
 import PresetBar from "./PresetBar.jsx";
-import { installAutoResize } from "./autoSize.js";
+import { installAutoResize } from "@synthpeak/pedal-ui/juce";
 import "./index.css";
 
 export default function App() {

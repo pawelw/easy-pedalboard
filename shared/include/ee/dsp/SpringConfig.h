@@ -92,9 +92,21 @@ constexpr float kChirpSpread  = 0.36f;   // +/- this fraction of kChirpDelayMs
 // at the top of the spectrum, so the chirp sweeps upward the way a real spring
 // does. Flip the sign and the boing falls instead of rising.
 //   -0.45 = soft, nearly a plain delay
-//   -0.62 = surf tank  <-- default
+//   -0.62 = surf tank  <-- default, and where the Tension control rests
 //   -0.78 = extreme, almost a pitch sweep
 constexpr float kChirpCoefficient = -0.62f;
+
+// How far the exposed Tension control moves that coefficient either way. This
+// is what a spring's tension actually changes: a slack spring disperses gently
+// and boings low and soft, a taut one chirps hard and sweeps. So Tension up is
+// *more* negative - further from a plain delay, further into the sweep.
+//
+// Symmetric about kChirpCoefficient on purpose, so a Tension of exactly 0.5
+// lands on the surf-tank value bit for bit and a tank nobody has touched is
+// the tank that was here before the control existed. The span keeps both ends
+// inside the range the comment above documents as usable.
+constexpr float kTensionSpan      = 0.16f;
+constexpr float kDefaultTension01 = 0.5f;
 
 // ============================================================================
 // LOOP FILTERING
@@ -133,9 +145,27 @@ constexpr float kInputLowCutHz  = 60.0f;
 constexpr float kInputHighCutHz = 5500.0f;
 
 // The pickup at the far end, on the wet output only - outside every feedback
-// path, so it colours what you hear and nothing else.
+// path, so it colours what you hear and nothing else. kOutputLowCutHz is where
+// the Low Cut control rests, not a fixed value - see LOW CUT below.
 constexpr float kOutputLowCutHz  = 60.0f;
 constexpr float kOutputHighCutHz = 6000.0f;
+
+// ============================================================================
+// LOW CUT
+// ============================================================================
+// Travel of the exposed Low Cut control, which moves kOutputLowCutHz. It is the
+// pickup's own high-pass, so it thins the tail without touching how fast it
+// dies - the one thing a filter inside the loop could not do.
+//
+// The same range FdnReverb's own low cut has, deliberately: Peak Alpine puts a
+// Low Cut knob on both of its reverb engines, and a knob that means one thing
+// on Space and another on Spring is two knobs wearing one label.
+//
+// A tank driven with nothing under 60 Hz has nothing under 60 Hz to remove, so
+// the bottom of this range is not "off" so much as "already off" - which is
+// what makes kOutputLowCutHz a sensible place for it to rest.
+constexpr float kMinLowCutHz = 20.0f;
+constexpr float kMaxLowCutHz = 800.0f;
 
 // Body, as a shelf on that finished output. The reference tank carries far
 // more weight under 250 Hz than the loop alone can account for, but its low

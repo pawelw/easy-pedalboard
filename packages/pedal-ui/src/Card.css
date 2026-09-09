@@ -57,6 +57,19 @@
   gap: 10px;
 }
 
+/* subtitlePlacement="below": the mark sits beside a two-line title column, so
+   the row centres on the block rather than aligning to the title's baseline -
+   there are two baselines now and neither is the one the logo wants. */
+.pui-card__header-left--stacked {
+  align-items: center;
+}
+
+.pui-card__titles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
 /* The centre slot is centred on the card, not on whatever space its two
    neighbours happen to leave: left and right each take an equal share of the
    free space, which puts the middle item exactly on the card's centre line

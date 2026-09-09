@@ -18,8 +18,11 @@
   margin-left: 16px;
 }
 
+/* Fixed rather than auto so the two Time rows' values start on the same x
+   whatever their labels are. 12px is one glyph at this size: the labels are
+   "L" and "R", and a track cut for "RIGHT" left the value a gutter to cross. */
 .pui-readout__label {
-  flex: 0 0 34px;
+  flex: 0 0 12px;
   font-family: var(--pui-font-label);
   font-weight: 700;
   font-size: 9px;

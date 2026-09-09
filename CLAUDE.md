@@ -1,6 +1,6 @@
 # Synth Peak — working notes
 
-Eleven JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
+Twelve JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
 framework. `README.md` is the user-facing manual (what each pedal does, how to
 install it); this file is the map for working on the code.
 
@@ -50,6 +50,11 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress      # tape knob sweep, non-finite hunt
 ./build/tests/ee_reverb_stress_artefacts/Release/ee_reverb_stress  # reverb tail stability
 ./build/tests/ee_trempan_stress_artefacts/Release/ee_trempan_stress
+./build/tests/ee_trempan_regress_artefacts/Release/ee_trempan_regress [outDir]
+./build/tests/ee_delay_regress_artefacts/Release/ee_delay_regress [outDir]
+./build/tests/ee_spring_regress_artefacts/Release/ee_spring_regress [outDir]
+./build/tests/ee_module_stress_artefacts/Release/ee_module_stress    # Peak Alpine's switchable modules
+./build/tests/ee_alpine_host_artefacts/Release/ee_alpine_host        # drives the real Peak Alpine processor
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
@@ -86,6 +91,38 @@ install one: `EE_INSTALL_PLUGINS` is on outside the `fast` preset, so a full
 build of a dev-server tree overwrites `~/Library/Audio/Plug-Ins` with a face
 that is blank whenever Vite is not running.
 
+**`*_regress` and `*_match` are two different families**, and the distinction
+matters when you add one. A `*_match` tool (`ee_delay_match`, `ee_spring_match`,
+`ee_tape_render`) renders a real input file so a voicing can be A/B'd by ear
+against a reference recording - it answers "is this the sound we want". A
+`*_regress` tool answers "is this the *same* sound as before": it renders a
+fixed battery of settings through the whole processor over ragged block sizes
+and prints an FNV-1a checksum of the finished audio per pass. Run it before a
+change that is meant to change nothing, keep the output, run it after, diff.
+**Sample-exact is the bar** - "sounds the same" is not, because a move that
+alters one sample has altered the code path.
+
+They generate their own input and need no file, so the comparison re-runs from a
+clean checkout with nothing to fetch; pass a directory to also get one wav per
+pass. Their shared parts - the deterministic test signal, the checksum, the
+ragged block sizes and a `FakePlayHead` that plays and relocates - are in
+`tests/RegressHarness.h`. The playhead is not optional decoration: without one,
+an offline render never reaches a tempo- or phase-locked engine's alignment
+code at all, which is the code a refactor is most likely to break.
+
+`ee_trempan_regress` covers every LFO shape anchor, the bias stage in and out,
+the panning law, a synced pass with a transport jump, and the bypass crossfade.
+`ee_delay_regress` covers the three routings, both tape placements, the filter
+pair off its resting points, the in-loop drift and the on-the-repeats phaser,
+free-running and synced times, uneven L/R, and both ends of the Mix law.
+`ee_spring_regress` covers the Decay knob end to end plus the mono tank, and
+then does something the other two do not: a second section drives
+`ee::dsp::SpringReverb` **directly**, at controls Peak Spring does not expose.
+That is what an *additive* change needs - the pedal battery can only show the
+pedal did not move, which for a control it never calls is true by accident. The
+engine section asserts the harder thing: that setting the new controls to their
+documented defaults is bit-identical to never setting them at all.
+
 The last two binaries above are diagnostic tools rather than pass/fail suites,
 for the class of bug that only appears in a host. `ee_grain_host` instantiates
 the real processor and drives it the way a host does - `--sr`, `--block`,
@@ -109,6 +146,21 @@ brings it down with a SIGBUS.
 Anything else is yours — and `scripts/dev-check.sh` already filters these two out
 of its verdict, so keep its filter list and this section in sync.
 
+**Shimmer is not bit-reproducible, and it is not our bug.** Any render with the
+Space reverb's Shimmer above zero differs run to run, even in the same process
+with the same binary and the same input — so it cannot be checksummed against
+another render, and a `*_regress` battery must leave Shimmer at 0. DaisySP's
+`PitchShifter`, which the shimmer is built on, draws its modulation slew
+coefficients from `daisysp::myrand()` (`_deps/daisysp-src/Source/Effects/pitchshifter.h`),
+and that is one function-local `static uint32_t seed` shared by every instance
+in the process and advanced *per sample* from inside `Process()`. Two shimmered
+renders therefore start at different points of the sequence; two plugin
+instances on different audio threads also race on it. Inaudible — the depth it
+scales is zero unless `SetFun` is called, which nothing here does — but it will
+waste an afternoon if you are bisecting a checksum. It affects Peak Reverb and
+Peak Alpine's Space engine. `ee_alpine_host` prints its one shimmered case
+marked "not a baseline".
+
 ## Formatting
 
 `.clang-format` encodes the house style (JUCE: Allman braces, 4 spaces, `foo (a)`
@@ -127,11 +179,17 @@ Never reformat a file you are not otherwise changing.
 ## Layout
 
 ```
-shared/include/ee/dsp/    DSP primitives and engines (mostly header-only)
+shared/include/ee/dsp/    DSP primitives and engines (mostly header-only) -
+                          Chorus, Phaser, Tremolo, TapeMachine, FdnReverb,
+                          SpringReverb, TapeDelay. A pedal is one of these plus
+                          its parameters; nothing owns its own copy of the maths.
 shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knobs
 shared/src/dsp/           FdnReverb, SpringReverb + TapeDelay implementations
 shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knob…)
 shared/src/ui/            its implementation
+shared/include/ee/fx/     compositions of engines with an opinion about their
+                          order - DelayModule is Peak Delay's whole chain, which
+                          Peak Alpine's Delay module is a second instance of
 shared/include/ee/plugin/ the bypass crossfade, shared parameter formatters,
                           and the preset store + its WebView bridge
 plugins/peak-*/presets/   that pedal's factory presets - see below
@@ -139,7 +197,23 @@ cmake/AddPeakPlugin.cmake the juce_add_plugin boilerplate, once
 plugins/peak-*/src/       one PluginProcessor.{h,cpp} each: parameters + processBlock
 plugins/peak-*/CMakeLists.txt  a peak_add_plugin() call — six lines
 tests/                    offline DSP tests, stress sweeps, UI snapshot renderer
+
+packages/pedal-ui/        the WebView face component library (Knob, Card,
+                          ModulePanel…) — JUCE-free, so the gallery can render it
+packages/pedal-ui/src/juce.jsx   its JUCE half, a separate entry point
+                          (`@synthpeak/pedal-ui/juce`): JuceKnob, JucePill, the
+                          live-value hooks, ParamScope, installAutoResize
+packages/delay-face/      Peak Delay's face minus its enclosure — the component
+                          Peak Delay and Peak Alpine's Delay module both render
+plugins/peak-*/jsui/      a WebView pedal's own page: its enclosure and whatever
+                          is specific to it, and nothing else
+apps/pedal-gallery/       dev-only: every face plus the component showcase
 ```
+
+A face's parameter ids are resolved through the enclosing `ParamScope`, so the
+same component binds to `mix` in Peak Delay and `dly.mix` inside Peak Alpine.
+A pedal that wraps nothing in one is bound exactly as it was before that
+existed.
 
 The UI is data-driven: a pedal describes its face with an `ee::ui::PedalSpec` in
 `createEditor()` and writes no editor code. See "Adding another effect" in
