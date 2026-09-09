@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="on" value="1"/>
+  <PARAM id="engine" value="2"/>
+  <PARAM id="mix" value="50"/>
+  <PARAM id="flt.freq" value="48.7"/>
+  <PARAM id="flt.q" value="58"/>
+  <PARAM id="flt.range" value="61"/>
+  <PARAM id="flt.time" value="0.5"/>
+  <PARAM id="flt.sync" value="0"/>
+  <PARAM id="flt.wave" value="0"/>
+  <PARAM id="flt.stereo" value="0"/>
+</PARAMETERS>

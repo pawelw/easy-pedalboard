@@ -162,7 +162,7 @@ add_subdirectory(shared)
 # ---------------------------------------------------------------------------
 set(EE_ALL_PLUGINS
     peak-reverb peak-spring peak-delay peak-eq peak-trem-pan peak-chorus peak-alpine
-    peak-phase peak-overdrive peak-wah peak-tape peak-grain)
+    peak-artifact peak-phase peak-overdrive peak-wah peak-tape peak-grain)
 
 set(EE_PLUGINS "all" CACHE STRING
     "Semicolon-separated pedals to build, or \"all\". e.g. -DEE_PLUGINS=peak-wah;peak-tape")

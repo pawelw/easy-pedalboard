@@ -75,6 +75,7 @@ public:
         aGlide = timeCoeff (autowah::kRetriggerGlideMs * 0.001f, fs);
         updateDecay();
         updateType();
+        updateOutputHighpass (fs);
 
         onsetGate.prepare (fs, autowah::kOnsetEnvDecayMs, autowah::kOnsetAttackWidthMs,
                            autowah::kOnsetRiseRatioOn, autowah::kOnsetRiseRatioOff,
@@ -103,6 +104,8 @@ public:
         for (auto& v : f0Smoothed) v = fBase;
         dcZ.fill (0.0f);
         lpZ.fill (0.0f);
+        hpZ1.fill (0.0f);
+        hpZ2.fill (0.0f);
         for (auto& tank : tanks)
             tank.reset();
         retune();
@@ -383,6 +386,24 @@ private:
         makeupHP = gain (autowah::kMakeupDbHP);
     }
 
+    /** The wet-path output low-cut: a 2nd-order Butterworth high-pass at a fixed
+        corner, coefficients solved once here (RBJ cookbook) since the frequency
+        never moves. Transposed Direct Form II in post(). */
+    void updateOutputHighpass (float fs) noexcept
+    {
+        const float fc = juce::jlimit (10.0f, 0.45f * fs, autowah::kOutputHighpassHz);
+        const float w0 = juce::MathConstants<float>::twoPi * fc / fs;
+        const float cosw0 = std::cos (w0);
+        const float alpha = std::sin (w0) / (2.0f * 0.70710678f); // Q = 1/sqrt(2)
+
+        const float a0 = 1.0f + alpha;
+        hpB0 = ((1.0f + cosw0) * 0.5f) / a0;
+        hpB1 = -(1.0f + cosw0) / a0;
+        hpB2 = hpB0;
+        hpA1 = (-2.0f * cosw0) / a0;
+        hpA2 = (1.0f - alpha) / a0;
+    }
+
     /** Make-up for the current tap blend, crossfaded in dB rather than in gain:
         a straight line between two gains that are 15 dB apart bulges well above
         either of them in the middle, which is heard as a bump halfway through
@@ -420,14 +441,23 @@ private:
 
     inline float post (int ch, float x, float makeup) noexcept
     {
+        const size_t c = static_cast<size_t> (ch);
+
         x *= makeup;
         x = std::tanh (autowah::kGritDrive * x) / autowah::kGritDrive;
 
-        dcZ[static_cast<size_t> (ch)] += aDc * (x - dcZ[static_cast<size_t> (ch)]);
-        x -= dcZ[static_cast<size_t> (ch)];
+        dcZ[c] += aDc * (x - dcZ[c]);
+        x -= dcZ[c];
 
-        lpZ[static_cast<size_t> (ch)] += aLp * (x - lpZ[static_cast<size_t> (ch)]);
-        return lpZ[static_cast<size_t> (ch)];
+        // Output low-cut: 2nd-order Butterworth high-pass, TDF2. Clears the
+        // sub-bass boom the sweep parks under the resonance at high Range / Q.
+        const float hpIn = x;
+        x = hpB0 * hpIn + hpZ1[c];
+        hpZ1[c] = hpB1 * hpIn - hpA1 * x + hpZ2[c];
+        hpZ2[c] = hpB2 * hpIn - hpA2 * x;
+
+        lpZ[c] += aLp * (x - lpZ[c]);
+        return lpZ[c];
     }
 
     double sampleRate = 44100.0;
@@ -477,6 +507,12 @@ private:
     float aDc = 0.0f, aLp = 0.0f;
     std::array<float, 2> dcZ { { 0.0f, 0.0f } };
     std::array<float, 2> lpZ { { 0.0f, 0.0f } };
+
+    // Output low-cut (2nd-order Butterworth high-pass): coeffs shared across
+    // channels, TDF2 state per channel - the same split dcZ / lpZ use.
+    float hpB0 = 1.0f, hpB1 = 0.0f, hpB2 = 0.0f, hpA1 = 0.0f, hpA2 = 0.0f;
+    std::array<float, 2> hpZ1 { { 0.0f, 0.0f } };
+    std::array<float, 2> hpZ2 { { 0.0f, 0.0f } };
 
     std::array<Tank, 2> tanks;
 };

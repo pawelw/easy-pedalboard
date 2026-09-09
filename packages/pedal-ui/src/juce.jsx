@@ -305,17 +305,23 @@ export function JucePill({ parameterId, icon, label, invert = false }) {
 
     Both of the relay's events are listened to, and for the same reason: the
     initial value and the properties arrive in no guaranteed order, so
-    whichever is second is the one that first makes a real index readable. */
-export function useJuceChoiceValue(parameterId, count) {
+    whichever is second is the one that first makes a real index readable.
+
+    `defaultIndex` is the counterpart of useJuceToggleValue's `defaultValue`:
+    the position to draw when there is no backend at all (the gallery, a plain
+    browser tab), consulted only for a relay that has never learned its
+    choices. It is not a default for the parameter - the processor owns that -
+    only for the picture, so a face opens on the engine its plugin actually
+    ships on rather than always on index 0. */
+export function useJuceChoiceValue(parameterId, count, defaultIndex = 0) {
   const id = useParamId(parameterId);
   const comboState = useMemo(() => Juce.getComboBoxState(id), [id]);
-  const [index, setIndex] = useState(() =>
-    (comboState.properties.choices?.length ?? 0) > 1 ? comboState.getChoiceIndex() : 0,
-  );
+  const knowsChoices = () => (comboState.properties.choices?.length ?? 0) > 1;
+  const [index, setIndex] = useState(() => (knowsChoices() ? comboState.getChoiceIndex() : defaultIndex));
 
   useEffect(() => {
     const adopt = () => {
-      if ((comboState.properties.choices?.length ?? 0) > 1) setIndex(comboState.getChoiceIndex());
+      if (knowsChoices()) setIndex(comboState.getChoiceIndex());
     };
 
     adopt();

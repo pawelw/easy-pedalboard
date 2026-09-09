@@ -161,6 +161,14 @@ constexpr float kGritDrive  = 0.9f;
 constexpr float kDcBlockerHz = 12.0f;
 constexpr float kOutputLowpassHz = 8000.0f;
 
+// The low-end counterpart of kOutputLowpassHz: a fixed 2nd-order (Butterworth)
+// high-pass on the wet path. With Range high and Q large the LFO's downswing
+// parks the resonant peak in the sub-bass, where it booms and "swipes" with the
+// sweep - the same unpleasantness the output low-pass clears at the top. It sits
+// inside post(), which runs on the wet side of the Mix only, so the dry path is
+// untouched and Mix 0 stays bit-exact. Shared by Peak Wah and Peak Artifact.
+constexpr float kOutputHighpassHz = 90.0f;
+
 // ============================================================================
 // DEFAULTS (knob positions the pedal opens on, 0..100 unless noted)
 // ============================================================================
