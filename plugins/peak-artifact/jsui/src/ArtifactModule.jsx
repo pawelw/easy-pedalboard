@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { EngineStepper, FilterScope, ModulePanel, Toggle, WaveIcon, freqHzFor01 } from "@synthpeak/pedal-ui";
-import { JuceKnob, useJuceChoiceValue, useJuceSliderValue, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
+import { JuceKnob, JucePill, useJuceChoiceValue, useJuceSliderValue, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
 import { ENGINES, WAVES } from "./engines.jsx";
 
 // Peak Artifact's red. It reaches the power ring, the engine stepper and the
@@ -110,23 +110,33 @@ function FilterBody() {
           <JuceKnob parameterId="flt.freq" caption="Freq" variant="soft" size={36} />
           <JuceKnob parameterId="flt.q" caption="Q" variant="soft" size={36} />
         </div>
+        {/* Range and Time each carry a small control directly under them: the
+            wave <> picker (glyph only, no name - it is small enough to sit here
+            rather than on a row of its own, which is what keeps the module
+            short) and the SYNC pill, the same control Peak Delay uses. */}
         <div className="pa-knob-row">
-          <JuceKnob parameterId="flt.range" caption="Range" variant="soft" size={36} />
-          <div className="pa-time">
+          <div className="pa-subcol">
+            <JuceKnob parameterId="flt.range" caption="Range" variant="soft" size={36} />
+            <div className="pa-sub pa-sub--wave">
+              <EngineStepper
+                engines={WAVES.map((w) => w.name)}
+                value={wave.name}
+                icon={<WaveIcon shape01={wave.shape01} size={15} />}
+                label="Wave"
+                onChange={(next) => setWave(WAVES.findIndex((w) => w.name === next))}
+              />
+            </div>
+          </div>
+
+          <div className="pa-subcol">
             <JuceKnob parameterId="flt.time" caption="Time" variant="soft" size={36} />
-            <SyncSwitch />
+            <div className="pa-sub pa-sub--sync">
+              {/* flt.sync's own sense is already "synced to tempo", so it
+                  lights when on with no invert. */}
+              <JucePill parameterId="flt.sync" label="Sync" />
+            </div>
           </div>
         </div>
-      </div>
-
-      <div className="pa-wave">
-        <EngineStepper
-          engines={WAVES.map((w) => w.name)}
-          value={wave.name}
-          icon={<WaveIcon shape01={wave.shape01} size={22} />}
-          label="Wave"
-          onChange={(next) => setWave(WAVES.findIndex((w) => w.name === next))}
-        />
       </div>
 
       <MonoStereoSwitch />
@@ -138,24 +148,6 @@ function BlankBody() {
   return (
     <div className="pa-blank" aria-hidden="true">
       &mdash;
-    </div>
-  );
-}
-
-/* ms / Sync, sitting under the Time knob - two labels either side of the
-   switch so both readings of the knob are named. */
-function SyncSwitch() {
-  const [synced, setSynced] = useJuceToggleValue("flt.sync", false);
-
-  return (
-    <div className="pa-inline-switch pa-inline-switch--tight">
-      <span className="pa-switch-label" data-active={!synced || undefined}>
-        ms
-      </span>
-      <Toggle checked={synced} onChange={setSynced} ariaLabel="Time: ms / Sync" />
-      <span className="pa-switch-label" data-active={synced || undefined}>
-        Sync
-      </span>
     </div>
   );
 }

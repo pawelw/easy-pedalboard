@@ -75,23 +75,64 @@
   gap: 8px;
 }
 
-/* The Time knob carries its ms/Sync switch directly under it. The switch is
-   wider than a knob, so it is taken out of flow and the padding stands in for
-   its height - in flow it widens this column, and the row's two knobs then sit
-   somewhere other than the two above them. Anchored right: as near centred
-   under the knob as it goes without leaving the module. */
-.pa-time {
+/* Range and Time each carry a small control directly under them - the wave <>
+   picker and the SYNC pill. Both are wider than the 36px knob, so each is taken
+   out of flow (the padding stands in for its height) - in flow it would widen
+   its column and pull the row's two knobs out of line with Freq / Q above.
+   Centred on the knob, overflowing the column evenly on both sides. */
+.pa-subcol {
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-bottom: 28px;
+  padding-bottom: 32px;
 }
 
-.pa-time .pa-inline-switch {
+.pa-sub {
   position: absolute;
-  right: 0;
+  left: 50%;
   bottom: 0;
+  transform: translateX(-50%);
+}
+
+/* Small hand nudges: the wave picker drops clear of the Range caption, the
+   SYNC pill lifts to line its baseline up with the picker's glyph. */
+.pa-sub--wave {
+  bottom: -4px;
+}
+
+.pa-sub--sync {
+  bottom: 2px;
+}
+
+/* The wave glyph traces one LFO cycle starting from the peak (lfoValue's
+   phase-0 = +1 convention), which puts the trough in the middle and reads
+   upside down as a standalone icon. Flip it so a triangle points up. */
+.pa-sub .pui-wave-icon {
+  transform: scaleY(-1);
+}
+
+/* The wave picker: chevrons and the shaped-LFO glyph, no name - small enough
+   to live under the Range knob rather than on a row of its own. Arrows and
+   glyph run in the panel's own ink rather than the module's red, so it reads
+   as secondary to the engine stepper up top. */
+.pa-sub .pui-stepper {
+  --pui-accent: var(--pui-ink);
+  gap: 2px; /* space between each chevron and the wave glyph */
+  padding: 3px 3px;
+}
+
+.pa-sub .pui-stepper__value {
+  gap: 0;
+}
+
+.pa-sub .pui-stepper__name {
+  display: none;
+}
+
+.pa-sub .pui-stepper__arrow {
+  width: 15px;
+  height: 15px;
 }
 
 .pa-display {
@@ -118,18 +159,6 @@
   pointer-events: none;
 }
 
-.pa-wave {
-  margin-top: 18px;
-  /* The red is the engine stepper's - this one picks a wave shape, so its
-     arrows and its shape run in ink like the name between them. */
-  --pui-accent: var(--pui-ink);
-}
-
-.pa-wave .pui-stepper {
-  padding-top: 4px;
-  padding-bottom: 4px;
-}
-
 /* Ring Mod / Bit Crush: nothing to show yet. A single dash centred in the
    space the Filter body would fill, so the module keeps its height as you
    step past it. */
@@ -149,10 +178,6 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-}
-
-.pa-inline-switch--tight {
-  gap: 7px;
 }
 
 /* Mono/Stereo drops to the foot of the module body, whatever is above it, so
