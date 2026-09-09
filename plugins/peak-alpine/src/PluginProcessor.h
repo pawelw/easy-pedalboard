@@ -3,6 +3,8 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
+#include <vector>
+
 #include "ee/fx/DelayModule.h"
 #include "ee/fx/ModulationModule.h"
 #include "ee/fx/ReverbModule.h"
@@ -29,11 +31,11 @@
  * does is read the knobs, turn them into the real units the three modules take,
  * and wrap the lot in a global bypass.
  */
-class PeakAlpineProcessor : public juce::AudioProcessor
+class PeakAlpineProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     PeakAlpineProcessor();
-    ~PeakAlpineProcessor() override = default;
+    ~PeakAlpineProcessor() override;
 
     void prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock) override;
     void releaseResources() override;
@@ -95,6 +97,20 @@ private:
         would be wrong until the next block. */
     void pushSettings (double bpm) noexcept;
 
+    /** Follows a person turning one of the Delay module's two Time knobs onto
+        the other while its "Sync L/R" button is on - the same mirror Peak Delay
+        runs, ported here because the Delay module is only DSP and carries none
+        of this. Registered as an APVTS listener for the two times and the
+        button. */
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
+    void mirrorTime (const juce::String& from, const juce::String& to);
+
+    /** Every route a whole APVTS tree can arrive by goes through this rather
+        than calling apvts.replaceState directly - a host restoring a session,
+        and the preset store, which is handed this as its install hook - so the
+        L/R mirror can stand down for the length of the install. */
+    void installState (const juce::ValueTree& tree);
+
     /** Reads the host's tempo off the playhead and caches it. ONLY safe from
         processBlock/prepareToPlay: JUCE documents getPlayHead() as callable only
         from the audio callback, and Ableton's playhead really is invalid outside
@@ -111,9 +127,26 @@ private:
         so this is its inverse, named for what the knobs are doing. */
     bool delayIsSynced() const;
 
+    /** Decodes the embedded tape floor once and hands it to the Modulation
+        module's tape engine, so its Noise knob plays the recording Peak Tape
+        does rather than the synthesised hiss fallback. The buffer is a member:
+        the engine loops from these samples and the pointers must outlive it. */
+    void loadTapeNoiseSample();
+
+    juce::AudioBuffer<float> tapeNoiseSample;
+    std::vector<const float*> tapeNoiseChannels;
+    double tapeNoiseSampleRate = 44100.0;
+
     ee::fx::ModulationModule modulation;
     ee::fx::DelayModule delay;
     ee::fx::ReverbModule reverb;
+
+    /** Stops the two Delay-module time parameters echoing each other forever. */
+    std::atomic<bool> mirroring { false };
+
+    /** Held while installState is putting a whole tree in place, so the L/R
+        mirror stands down for the length of it. See installState. */
+    std::atomic<bool> installingState { false };
 
     static constexpr int kMaxChannels = 2;
 

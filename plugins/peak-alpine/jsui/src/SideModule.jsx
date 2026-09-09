@@ -1,4 +1,4 @@
-import { BarDisplay, EngineStepper, ModulePanel, lfoValue } from "@synthpeak/pedal-ui";
+import { BarDisplay, EngineStepper, ModulePanel, Toggle, lfoValue } from "@synthpeak/pedal-ui";
 import { JuceKnob, useJuceChoiceValue, useJuceSliderValue, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
 import { knobRows } from "./engines.jsx";
 
@@ -73,7 +73,16 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
       headerRight={
         <JuceKnob parameterId={`${prefix}level`} variant="soft" size={30} scaleFrom="centre" bare />
       }
-      footer={<JuceKnob parameterId={`${prefix}mix`} variant="soft" size={38} caption="Mix" />}
+      /* Tape runs fully wet and is not offered a Mix (see engines.jsx) - the
+         footer strip stays for the row to keep its shape, held to height in
+         CSS, but empty. */
+      footer={
+        engine.hideMix ? (
+          <div className="pa-footer-empty" aria-hidden="true" />
+        ) : (
+          <JuceKnob parameterId={`${prefix}mix`} variant="soft" size={38} caption="Mix" />
+        )
+      }
     >
       <EngineStepper
         engines={engines.map((e) => e.name)}
@@ -105,8 +114,51 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
             ))}
           </div>
         ))}
+
+        {/* One knob on a row of its own, centred under the pairs - Tape's
+            Tone. `scaleFrom="centre"` draws its arc out from twelve o'clock,
+            the way the bipolar tilt reads. */}
+        {engine.centre && (
+          <div className="pa-knob-row pa-knob-row--centre" key={engine.prefix + engine.centre[0]}>
+            <JuceKnob
+              parameterId={engine.prefix + engine.centre[0]}
+              caption={engine.centre[1]}
+              variant="soft"
+              size={36}
+              scaleFrom="centre"
+            />
+          </div>
+        )}
       </div>
+
+      {/* Pinned to the bottom of the body, just above the footer, however many
+          knob rows are above it - Tape's Mono/Stereo switch. */}
+      {engine.toggle && (
+        <TapeSwitch
+          parameterId={engine.prefix + engine.toggle[0]}
+          labelOff={engine.toggle[1]}
+          labelOn={engine.toggle[2]}
+        />
+      )}
     </ModulePanel>
+  );
+}
+
+/* Its own component so its hook only runs for the engine that actually has a
+   switch - the same reason the two displays below are split out. */
+function TapeSwitch({ parameterId, labelOff, labelOn }) {
+  const [on, setOn] = useJuceToggleValue(parameterId, true);
+
+  return (
+    <div className="pa-tape-switch">
+      <span className="pa-tape-switch__label" data-active={!on || undefined}>
+        {labelOff}
+      </span>
+      <Toggle checked={on} onChange={setOn} ariaLabel={`Tape: ${labelOff} / ${labelOn}`} />
+      <span className="pa-tape-switch__label" data-active={on || undefined}>
+        {labelOn}
+      </span>
+    </div>
   );
 }
 

@@ -15,10 +15,11 @@
 
 /* Card's own padding and type are the pedals' (18/22/22, a 22px title beside
    its subtitle). A host panel spends its width on three modules rather than on
-   one pedal's controls, so it re-spends those here - an even 14px frame, the
-   same measure as the gap between the modules, so the row sits in the card the
-   way it sits in itself. Scoped here the same way `.pd-card` scopes Peak
-   Delay's, rather than adding another variant to Card itself. */
+   one pedal's controls, so it re-spends those here - an even 14px frame, wider
+   than the 8px between the modules so the row reads as one object inside the
+   card rather than as three sitting on its edges. Scoped here the same way
+   `.pd-card` scopes Peak Delay's, rather than adding another variant to Card
+   itself. */
 .pa-card.pui-card {
   padding: 14px 14px 14px;
   /* The module row's own panels are `overflow: hidden` and rounded; this does
@@ -96,6 +97,19 @@
   --pd-bleed-bottom: 0px;
 }
 
+/* Both side modules' footers hold the same height whether or not there is a
+   Mix knob in them - Tape has none (it runs fully wet), and without this its
+   footer would collapse to its padding and pull the module out of step with
+   Reverb's. 87px is the height a soft 38px knob with its caption takes. */
+.pa-modules .pui-module__footer {
+  box-sizing: border-box;
+  min-height: 87px;
+}
+
+.pa-footer-empty {
+  height: 0;
+}
+
 /* A side module's parameter rows. The gap to the stepper (or to the display
    under it) is the handoff's 22px; between the two rows it is 18px. */
 .pa-knobs {
@@ -112,6 +126,38 @@
   gap: 8px;
 }
 
+/* One knob on its own row (Tape's Tone) - held to the middle rather than
+   spread, so it lines up under the gap between the pair above it. */
+.pa-knob-row--centre {
+  justify-content: center;
+}
+
 .pa-display {
   margin-top: 16px;
+}
+
+/* Tape's Mono/Stereo switch. `margin-top: auto` drops it to the foot of the
+   module body whatever is above it, so it sits just clear of the footer's top
+   border - the row of knobs keeps its own top alignment and this fills the
+   slack between. */
+.pa-tape-switch {
+  margin-top: auto;
+  padding: 16px 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.pa-tape-switch__label {
+  font-family: var(--pui-font-label);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pui-ink-dim);
+  transition: color 120ms ease;
+}
+
+.pa-tape-switch__label[data-active] {
+  color: var(--pui-ink);
 }

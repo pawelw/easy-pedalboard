@@ -210,7 +210,7 @@ flag, and do the crossfades described above.
 
 | Module | Engines | Notes |
 |---|---|---|
-| `ModulationModule` | `TapeMachine`, `Tremolo`, `Chorus`, `Phaser` | Tape's Tone and Stereo, and Tremolo's Panning, stay at their defaults — not on the design's face. Tremolo's rate keeps the free-running Hz mapping; tempo sync is not exposed here (Peak Trem-Pan keeps it). |
+| `ModulationModule` | `TapeMachine`, `Tremolo`, `Chorus`, `Phaser` | The Tape engine is now the whole of Peak Tape: Tone (a bipolar knob on its own third row) and a Mono/Stereo switch (pinned to the foot of the body) are both on the face, and the recorded tape floor is handed to it so Noise plays the recording rather than the synth-hiss fallback. Tape has **no Mix** — the transport's wow makes its wet path wander, so any partial blend against the dry combs and is heard as tremolo; it runs fully wet, the footer strip stays but the knob is dropped (`MultiEngineModule::engineUsesMix`). Tremolo's Panning stays at its default; Tremolo's rate keeps the free-running Hz mapping (tempo sync stays Peak Trem-Pan's). |
 | `ReverbModule` | `FdnReverb`, `SpringReverb` | Both are mono-in/stereo-out; the module sums to mono for the send exactly as `PeakReverbProcessor` and `PeakSpringProcessor` do. |
 
 ---
@@ -421,6 +421,16 @@ longest, and the processor adds that to what it reports the host.
 `ee_module_stress` grew the check that would have caught it: Tape at rest, at Mix
 40 %, must come back as the input times one constant — a comb fails it however
 the level is scaled. Before the fix, 0.238 out; after, 1e-7.
+
+**Level rested at the top of its travel.** It was 0..100 % defaulting to 100, so
+both header knobs sat wound fully clockwise to say that a module was doing
+nothing to the level — and, because the three modules are in series, a Level
+anyone could wind to zero was a knob on one module that silenced the whole
+plugin. It is now a symmetric ±12 dB trim resting at 0 dB, drawn with a new
+`scaleFrom="centre"` on pedal-ui's Knob: the arc lights out from twelve o'clock
+in whichever direction it has been turned, and draws nothing at all at rest.
+Unity is bit-identical either way, so all eight engine checksums in
+`ee_alpine_host` are unmoved.
 
 **The three face changes.** The global bypass lost its `ACTIVE`/`BYPASSED`
 capsule and became the same 22px ring each module wears (`PowerToggle` no longer
@@ -816,6 +826,13 @@ Two things follow, and one of them is a real gap:
   or not. That is the price of a constant latency contract, and the ledger
   asserts it: the alternative is calling `setLatencySamples` on every engine
   switch, which hosts handle badly.
+- **Shimmer is not bit-reproducible** — `daisysp::PitchShifter` advances one
+  process-wide `static` RNG per sample, so two shimmered renders never agree and
+  two instances on different audio threads race on it. Found while bisecting a
+  moving checksum that turned out to be nothing to do with the change under
+  test. Inaudible, but it means Shimmer must stay at 0 in any regression
+  battery; `ee_alpine_host` marks its one shimmered case "not a baseline". See
+  CLAUDE.md's known-failures section.
 - **Bypassing the Delay module drops the real latency to 288 while the plugin
   goes on reporting 576**, so a compensating host pulls everything 6 ms early.
   `ee::fx::DelayModule` crossfades back to the caller's untouched buffer rather
@@ -833,10 +850,11 @@ The fix, if it is worth one, is to delay the bypass path's dry copy too.
 it will overwrite whatever `build-au/` last put there. Check `lipo -archs`
 before blaming the plugin.
 
-**Face size.** The host panel is a fixed 976px wide (14px frame + 180 + 14 + 560
-+ 14 + 180 + 14px frame). `installAutoResize` reports the card's real rendered
-size, so the editor follows — but the starting `setSize` in the editor should be
-close (984 × ~640) so the host doesn't visibly jump.
+**Face size.** The host panel is a fixed 966px wide (a 14px frame and a 1px
+border either side of a row of 180 + 8 + 560 + 8 + 180). `installAutoResize`
+reports the card's real rendered size, so the editor follows — but the starting
+`setSize` in the editor should be close (974 × ~640) so the host doesn't visibly
+jump.
 
 ---
 

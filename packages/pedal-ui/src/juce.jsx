@@ -178,7 +178,7 @@ export function JuceKnob({
 
     `length` is the track's own length. It is a property of the header the
     fader sits in, not of the fader: a 528px pedal card has room for 64px of
-    travel beside its preset bar, and a 976px host panel has room for 104. */
+    travel beside its preset bar, and a 966px host panel has room for 104. */
 export function JuceFader({ parameterId, label, resetTo = 0, length = 64 }) {
   const id = useParamId(parameterId);
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);

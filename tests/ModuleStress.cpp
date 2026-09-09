@@ -72,7 +72,7 @@ void run (Module& module, juce::AudioBuffer<float>& buffer, int switchTo = -1, i
 
 void setModulationDefaults (ee::fx::ModulationModule& m)
 {
-    m.setTape (0.5f, 0.4f, 0.5f, 0.2f);
+    m.setTape (0.5f, 0.4f, 0.5f, 0.2f, 0.3f, 1.0f);
     m.setTremolo (0.7f, 0.25f, 0.5f, 0.3f);
     m.setChorus (0.6f, 0.5f, 90.0f);
     m.setPhaser (0.4f, 0.6f);
@@ -128,53 +128,82 @@ void checkMixZeroIsDry (Module& module, const char* name)
     check (matchesDelayedInput (module, out, input, 0), "mix 0 returns the input bit for bit");
 }
 
-/** The whole reason the alignment exists: at a *partial* Mix, an engine that
-    delays the signal is being summed with the module's own dry, and if the two
-    are not lined up that sum is a comb filter. Tape at rest is bypassed at every
-    knob and is a bit-exact pass-through with a fixed latency, so the sum has to
-    come back as the input and nothing else - one sample out and this fails,
-    which is the state the Modulation module's Flutter knob shipped in.
+/** Tape opts out of the Mix control (ModulationModule::engineUsesMix): its wet
+    output rides a transport delay line and wanders with the wow, so a fixed dry
+    summed alongside it at any partial Mix is a comb whose notch sweeps at the
+    wow rate - heard as tremolo, which is the state the Flutter knob shipped in.
+    So Tape runs fully wet and ignores Mix, the same as Peak Tape, which has no
+    mix control at all.
 
-    "The input and nothing else" is not "the input at the same level". The mix
-    law is equal-power, so at Mix 0.4 the two gains are cos and sin of the same
-    angle and they sum to 1.397 rather than to 1 - correct for the uncorrelated
-    pair it is written for, and a plain 2.9 dB lift for a wet side that happens
-    to *be* the dry. So what is checked is the shape: the output has to be that
-    one constant times the input, with no frequency-dependent term in it. A comb
-    would fail here however the level was scaled. */
+    The property that gives: Tape at rest is a bit-exact pass-through at *every*
+    Mix, not just at 0 and 1 - Mix does nothing, and the wet path at rest is the
+    delayed input. One sample of misalignment, or any dry summed back in, and
+    this fails. */
 void checkTapeAtRestIsDry()
 {
-    ee::fx::ModulationModule module;
-    module.prepare (kSampleRate, 512);
-    module.setEngine (ee::fx::ModulationModule::Tape);
-    module.setTape (0.0f, 0.0f, 0.0f, 0.0f);
-    module.setMix01 (0.4f);
-    module.setLevel (1.0f);
-    module.setEngaged (true);
+    for (float mix : { 0.0f, 0.4f, 1.0f })
+    {
+        ee::fx::ModulationModule module;
+        module.prepare (kSampleRate, 512);
+        module.setEngine (ee::fx::ModulationModule::Tape);
+        module.setTape (0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        module.setMix01 (mix);
+        module.setLevel (1.0f);
+        module.setEngaged (true);
 
-    juce::AudioBuffer<float> input (2, 8192);
-    fillTestSignal (input, kSampleRate);
+        juce::AudioBuffer<float> input (2, 8192);
+        fillTestSignal (input, kSampleRate);
 
-    juce::AudioBuffer<float> out;
-    out.makeCopyOf (input);
-    run (module, out);
+        juce::AudioBuffer<float> out;
+        out.makeCopyOf (input);
+        run (module, out);
 
-    // Past the mix ramp, which starts at the module's resting Mix rather than
-    // at this one - the first 20 ms is that ramp, not the alignment.
-    const int settled = module.latencySamples() + static_cast<int> (kSampleRate * 0.05);
+        const bool ok = matchesDelayedInput (module, out, input, 0);
+        std::printf ("  %s  Tape at rest is the input at Mix %3.0f %%\n", ok ? "ok  " : "FAIL", mix * 100.0f);
+        if (! ok)
+            ++failures;
+    }
+}
 
-    const float angle = 0.4f * juce::MathConstants<float>::halfPi;
-    const float gain = std::cos (angle) + std::sin (angle);
+/** The bug itself: with Flutter up, the old parallel mix combed the wander in
+    the wet against a fixed dry, and the notch swept at the wow rate. Mix now
+    does nothing to Tape - it runs fully wet - so two renders that differ only
+    in Mix have to come out sample-for-sample identical. Under the old code they
+    were a bare dry path versus a swept comb. */
+void checkTapeIgnoresMix()
+{
+    const auto renderTape = [] (float mix, juce::AudioBuffer<float>& out)
+    {
+        ee::fx::ModulationModule module;
+        module.prepare (kSampleRate, 512);
+        module.setEngine (ee::fx::ModulationModule::Tape);
+        module.setTape (0.6f, 0.9f, 0.5f, 0.0f, 0.4f, 1.0f); // Flutter high; Noise off (it is random)
+        module.setMix01 (mix);
+        module.setLevel (1.0f);
+        module.setEngaged (true);
+
+        juce::AudioBuffer<float> in (2, static_cast<int> (kSampleRate / 2));
+        fillTestSignal (in, kSampleRate);
+        out.makeCopyOf (in);
+        run (module, out);
+    };
+
+    juce::AudioBuffer<float> atZero, atHalf, atFull;
+    renderTape (0.0f, atZero);
+    renderTape (0.5f, atHalf);
+    renderTape (1.0f, atFull);
 
     float worst = 0.0f;
     for (int ch = 0; ch < 2; ++ch)
-        for (int i = settled; i < input.getNumSamples(); ++i)
-            worst = juce::jmax (worst, std::abs (out.getSample (ch, i)
-                                                 - gain * input.getSample (ch, i - module.latencySamples())));
+        for (int i = 0; i < atZero.getNumSamples(); ++i)
+        {
+            worst = juce::jmax (worst, std::abs (atHalf.getSample (ch, i) - atFull.getSample (ch, i)));
+            worst = juce::jmax (worst, std::abs (atZero.getSample (ch, i) - atFull.getSample (ch, i)));
+        }
 
-    std::printf ("  %s  Tape at rest is the input at Mix 40 %% (worst %.7f)\n", worst <= 1.0e-5f ? "ok  " : "FAIL",
-                 worst);
-    if (worst > 1.0e-5f)
+    const bool ok = worst <= 1.0e-6f;
+    std::printf ("  %s  Tape output does not move with Mix, Flutter up (worst %.7f)\n", ok ? "ok  " : "FAIL", worst);
+    if (! ok)
         ++failures;
 }
 
@@ -265,7 +294,7 @@ void sweepModulation()
                     module.setLevel (1.0f);
                     module.setEngaged (true);
 
-                    module.setTape (a, b, a, b);
+                    module.setTape (a, b, a, b, a, b);
                     module.setTremolo (a, 0.01f + b * 1.5f, a, b);
                     module.setChorus (0.05f + a * 8.0f, b, a * 180.0f);
                     module.setPhaser (0.05f + a * 8.0f, b);
@@ -328,6 +357,10 @@ int main()
 
     {
         ee::fx::ModulationModule module;
+        // Tape (the default engine) ignores Mix - it runs fully wet - so the
+        // "Mix 0 is the dry input" contract is checked on one that honours it.
+        // Set before prepare so there is no engine crossfade to ramp through.
+        module.setEngine (ee::fx::ModulationModule::Tremolo);
         module.prepare (kSampleRate, 512);
         setModulationDefaults (module);
         checkMixZeroIsDry (module, "Modulation");
@@ -339,6 +372,7 @@ int main()
         checkBypassIsUnity (module, "Modulation");
     }
     checkTapeAtRestIsDry();
+    checkTapeIgnoresMix();
     {
         ee::fx::ReverbModule module;
         module.prepare (kSampleRate, 512);

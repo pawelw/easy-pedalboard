@@ -17,10 +17,13 @@ import {
  * and that falls out of every engine owning its own parameters rather than
  * sharing a pool. There is no state to keep here; the APVTS is the store.
  *
- * `knobs` is a flat list, laid out two per row. Never more than two rows: a
- * 180px module that grows a third row stops being the narrow thing the layout
- * is built around, so an engine that needs five controls needs a rethink
- * rather than another line here.
+ * `knobs` is a flat list, laid out two per row. Two rows is the norm; Tape is
+ * the one engine that runs to three, because it is the whole of Peak Tape and
+ * that pedal has five knobs plus a switch. `centre` is a single knob on a row
+ * of its own under the pairs (Tape's bipolar Tone); `toggle` is a Mono/Stereo
+ * switch pinned to the bottom of the body, just above the footer. Both are
+ * Tape-only for now - an engine that wants either needs a look at the layout,
+ * not just a line here.
  */
 
 // Chorus is ModIcon, not a glyph of its own - the mark the design draws for it
@@ -36,6 +39,15 @@ export const MOD_ENGINES = [
       ["wear", "Wear"],
       ["noise", "Noise"],
     ],
+    // A bipolar tilt that rests dead centre - its own row under the four.
+    centre: ["tone", "Tone"],
+    // The machine's mono/stereo switch, pinned to the bottom of the body.
+    toggle: ["stereo", "Mono", "Stereo"],
+    // No Mix: the tape transport's wow makes the wet path wander, so any
+    // partial blend against the dry combs and is heard as tremolo. It runs
+    // fully wet, like Peak Tape - the module's power toggle is its dry/wet.
+    // The footer strip stays (its height is fixed in CSS); only the knob goes.
+    hideMix: true,
   },
   {
     name: "Tremolo",

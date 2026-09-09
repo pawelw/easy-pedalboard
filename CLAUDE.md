@@ -146,6 +146,21 @@ brings it down with a SIGBUS.
 Anything else is yours — and `scripts/dev-check.sh` already filters these two out
 of its verdict, so keep its filter list and this section in sync.
 
+**Shimmer is not bit-reproducible, and it is not our bug.** Any render with the
+Space reverb's Shimmer above zero differs run to run, even in the same process
+with the same binary and the same input — so it cannot be checksummed against
+another render, and a `*_regress` battery must leave Shimmer at 0. DaisySP's
+`PitchShifter`, which the shimmer is built on, draws its modulation slew
+coefficients from `daisysp::myrand()` (`_deps/daisysp-src/Source/Effects/pitchshifter.h`),
+and that is one function-local `static uint32_t seed` shared by every instance
+in the process and advanced *per sample* from inside `Process()`. Two shimmered
+renders therefore start at different points of the sequence; two plugin
+instances on different audio threads also race on it. Inaudible — the depth it
+scales is zero unless `SetFun` is called, which nothing here does — but it will
+waste an afternoon if you are bisecting a checksum. It affects Peak Reverb and
+Peak Alpine's Space engine. `ee_alpine_host` prints its one shimmered case
+marked "not a baseline".
+
 ## Formatting
 
 `.clang-format` encodes the house style (JUCE: Allman braces, 4 spaces, `foo (a)`

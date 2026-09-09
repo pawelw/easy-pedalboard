@@ -36,12 +36,25 @@ public:
 
     // -------------------------------------------------------------- the knobs
 
-    void setTape (float saturation01, float flutter01, float wear01, float noise01) noexcept
+    void setTape (float saturation01, float flutter01, float wear01, float noise01, float tone, float stereo01) noexcept
     {
         tape.setSaturation01 (saturation01);
         tape.setFlutter01 (flutter01);
         tape.setWear01 (wear01);
         tape.setNoise01 (noise01);
+        tape.setTone (tone);
+        tape.setStereo01 (stereo01);
+    }
+
+    /** Hands the tape engine a recording of a tape floor to loop, the same one
+        Peak Tape plays - without it the Noise knob is the synthesised hiss
+        fallback rather than the real floor. Pointers are not owned; the caller
+        keeps the samples alive for as long as the module runs. Safe before
+        prepare(). See ee::dsp::TapeMachine::setNoiseSample. */
+    void setTapeNoiseSample (const float* const* channelData, int numChannels,
+                             int numSamples, double sampleRateOfSample) noexcept
+    {
+        tape.setNoiseSample (channelData, numChannels, numSamples, sampleRateOfSample);
     }
 
     /** `periodSeconds` rather than a rate knob: the mapping from a knob to a
@@ -72,6 +85,14 @@ public:
 
 protected:
     int engineCount() const noexcept override { return NumEngines; }
+
+    /** Tape rides a transport delay line, so its wet output wanders in time with
+        the wow. Any partial Mix against a static dry is a comb whose notch
+        sweeps at the wow rate - audible as tremolo, clean only at the ends. So
+        Tape is not offered a Mix at all: it runs fully wet, matching Peak Tape,
+        which has no mix control either, and the face drops the Mix knob for it.
+        The other three engines are unchanged. */
+    bool engineUsesMix (int index) const noexcept override { return index != Tape; }
 
     void prepareEngines (double sampleRate, int maxBlockSize) override
     {

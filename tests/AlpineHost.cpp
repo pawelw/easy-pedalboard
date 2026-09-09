@@ -129,6 +129,13 @@ void everything (juce::AudioProcessorValueTreeState& s)
     happening the Tape engine would comb against the dry at any partial Mix -
     the "Flutter sounds like a chorus" bug, which is what this guards.
 
+    Tape (engine 0) is the exception now: it has no Mix and runs fully wet (see
+    ModulationModule::engineUsesMix), so at Mix 0 this measures the Tape
+    engine's own output - padded to the same latency, but its peak smeared a
+    few samples by the live saturation and wear - rather than the dry path. It
+    is printed, not asserted; the dry path under Tape is checked instead with
+    the module bypassed, where the output is that padded dry.
+
     The other is printed and not asserted: switching the **Delay** module off
     takes its 288 samples out of the real path while the plugin goes on
     reporting them, because `ee::fx::DelayModule` crossfades back to the
@@ -196,17 +203,36 @@ void checkLatencyLedger()
                      arrival ([&silent, &off] (juce::AudioProcessorValueTreeState& s)
                               { silent (s); setFlag (s, off.id, false); }));
 
-    // The contract: one figure, whichever engine is selected.
+    // The contract: one figure, whichever engine is selected. Engines 1-3 mix
+    // their wet against the dry, so at Mix 0 the impulse returns down the dry
+    // path and has to land on `reported`. Tape (0) runs fully wet, so its row
+    // is its own output and is printed, not asserted.
     bool flat = true;
     for (int engine = 0; engine < 4; ++engine)
     {
         const int at = arrival ([&silent, engine] (juce::AudioProcessorValueTreeState& s)
                                 { silent (s); setChoice (s, ee::alpine::id::modEngine, engine); });
-        std::printf ("  %-26s %-3d %4d samples\n", "Modulation engine", engine, at);
-        flat = flat && at == reported;
+        const bool asserted = engine != ee::fx::ModulationModule::Tape;
+        std::printf ("  %-22s %-3d %4d samples%s\n", "Modulation engine", engine, at,
+                     asserted ? "" : "   (Tape: fully wet, not the dry path)");
+        if (asserted)
+            flat = flat && at == reported;
     }
 
-    check (flat, "...and does not move with the Modulation engine");
+    check (flat, "...and does not move with the Modulation engine that mixes");
+
+    // Tape's dry path still has to be padded to the module's latency even
+    // though nothing normally hears it alone: with the module bypassed the
+    // output is that dry, and it must land on `reported` like the rest.
+    const int tapeBypassed = arrival (
+        [&silent] (juce::AudioProcessorValueTreeState& s)
+        {
+            silent (s);
+            setChoice (s, ee::alpine::id::modEngine, ee::fx::ModulationModule::Tape);
+            setFlag (s, ee::alpine::id::modOn, false);
+        });
+    std::printf ("  %-26s %4d samples\n", "Tape, module bypassed", tapeBypassed);
+    check (tapeBypassed == reported, "the Tape dry path is aligned to the reported latency");
 }
 } // namespace
 

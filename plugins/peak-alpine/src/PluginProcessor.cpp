@@ -14,6 +14,10 @@
 
 #include "ee/fx/DelayTimeMap.h"
 
+#include "TapeAssets.h"
+
+#include <juce_audio_formats/juce_audio_formats.h>
+
 namespace
 {
 using namespace ee::alpine;
@@ -71,6 +75,18 @@ juce::String degreesToText (float value, int)
     return juce::String (juce::roundToInt (value)) + juce::String (juce::CharPointer_UTF8 ("\xc2\xb0"));
 }
 
+/** Peak Tape's Tone readout: bipolar, rests at 0, the sign carries the
+    direction. Kept in step with plugins/peak-tape's own toneToText. */
+juce::String toneToText (float value, int)
+{
+    const int rounded = juce::roundToInt (value);
+
+    if (rounded == 0)
+        return "0 %";
+
+    return (rounded > 0 ? "+" : "") + juce::String (rounded) + " %";
+}
+
 using Attributes = juce::AudioParameterFloatAttributes;
 
 Attributes withText (juce::String (*fn) (float, int))
@@ -104,6 +120,108 @@ PeakAlpineProcessor::PeakAlpineProcessor()
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    // Loading a preset is a whole tree arriving at once, which the L/R mirror
+    // has to stand down for - see installState.
+    presets.installState = [this] (const juce::ValueTree& tree) { installState (tree); };
+
+    apvts.addParameterListener (id::dlyLeftTime, this);
+    apvts.addParameterListener (id::dlyRightTime, this);
+    apvts.addParameterListener (id::dlySync, this);
+
+    loadTapeNoiseSample();
+}
+
+PeakAlpineProcessor::~PeakAlpineProcessor()
+{
+    apvts.removeParameterListener (id::dlyLeftTime, this);
+    apvts.removeParameterListener (id::dlyRightTime, this);
+    apvts.removeParameterListener (id::dlySync, this);
+}
+
+/** Decodes the embedded tape floor once, at construction, exactly as
+    PeakTapeProcessor does. The Modulation module's tape engine loops it from
+    these samples, so the buffer has to outlive every process call - it is a
+    member, and the pointers handed over are into it. */
+void PeakAlpineProcessor::loadTapeNoiseSample()
+{
+    juce::WavAudioFormat wav;
+    auto stream = std::make_unique<juce::MemoryInputStream> (
+        TapeAssets::tapenoise_wav, static_cast<size_t> (TapeAssets::tapenoise_wavSize), false);
+
+    std::unique_ptr<juce::AudioFormatReader> reader (wav.createReaderFor (stream.release(), true));
+
+    if (reader == nullptr || reader->lengthInSamples <= 0)
+        return; // no recording: the engine falls back to synthesised hiss
+
+    const int numSamples = static_cast<int> (juce::jmin (reader->lengthInSamples, juce::int64 (10 * 60 * 44100)));
+    const int numChannels = juce::jlimit (1, 2, static_cast<int> (reader->numChannels));
+
+    tapeNoiseSample.setSize (numChannels, numSamples);
+    reader->read (&tapeNoiseSample, 0, numSamples, 0, true, numChannels > 1);
+    tapeNoiseSampleRate = reader->sampleRate;
+
+    tapeNoiseChannels.resize (static_cast<size_t> (numChannels));
+    for (int ch = 0; ch < numChannels; ++ch)
+        tapeNoiseChannels[static_cast<size_t> (ch)] = tapeNoiseSample.getReadPointer (ch);
+
+    modulation.setTapeNoiseSample (tapeNoiseChannels.data(), numChannels, numSamples, tapeNoiseSampleRate);
+}
+
+/** Mirrors one Delay-module Time parameter onto the other, guarded by the
+    caller against re-entry. Kept in normalised units and only written when it
+    actually differs, so the host sees one automation move, not a jitter. */
+void PeakAlpineProcessor::mirrorTime (const juce::String& from, const juce::String& to)
+{
+    auto* source = apvts.getParameter (from);
+    auto* destination = apvts.getParameter (to);
+
+    if (source == nullptr || destination == nullptr)
+        return;
+
+    const float value = source->getValue();
+
+    if (std::abs (destination->getValue() - value) > 1.0e-6f)
+        destination->setValueNotifyingHost (value);
+}
+
+/** Installs a whole APVTS tree - a host restoring a session, a preset load -
+    with the Sync L/R mirror held off for the length of it. A tree arriving in
+    one piece is self-consistent already, and its parameters land one at a time
+    in the file's own order, so without this bracket the mirror fires for the
+    first Time written while the button still holds the previous state and
+    collapses a preset whose two sides are deliberately apart. This mirrors
+    PeakDelayProcessor::installState. */
+void PeakAlpineProcessor::installState (const juce::ValueTree& tree)
+{
+    installingState = true;
+    apvts.replaceState (tree);
+    installingState = false;
+}
+
+void PeakAlpineProcessor::parameterChanged (const juce::String& parameterID, float newValue)
+{
+    if (installingState.load())
+        return;
+
+    // Read the button from the callback argument rather than a cached value:
+    // the two are not guaranteed to be in step at this point.
+    const bool synced =
+        parameterID == id::dlySync ? newValue > 0.5f : apvts.getRawParameterValue (id::dlySync)->load() > 0.5f;
+
+    if (! synced)
+        return;
+
+    if (mirroring.exchange (true))
+        return;
+
+    // Turning sync on adopts the left value, which is the one the user set last
+    // in the common case of reaching for the button after dialling the left knob.
+    if (parameterID == id::dlyRightTime)
+        mirrorTime (id::dlyRightTime, id::dlyLeftTime);
+    else
+        mirrorTime (id::dlyLeftTime, id::dlyRightTime);
+
+    mirroring = false;
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createParameterLayout()
@@ -132,6 +250,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     addPercent (layout, id::modTapeFlutter, "Tape Flutter", ee::dsp::tape::kDefaultFlutterPct);
     addPercent (layout, id::modTapeWear, "Tape Wear", ee::dsp::tape::kDefaultWearPct);
     addPercent (layout, id::modTapeNoise, "Tape Noise", ee::dsp::tape::kDefaultNoisePct);
+
+    // Tone and Stereo, the two Tape controls the first cut of the face left at
+    // their defaults - now on it, so this engine is the whole of Peak Tape.
+    // Tone is the same bipolar tilt: -100 dark, 0 flat and bypassed, +100
+    // bright, resting in the middle.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::modTapeTone, 1 }, "Tape Tone",
+                                                             juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+                                                             ee::dsp::tape::kDefaultTonePct, withText (toneToText)));
+
+    // Mono is one transport under both channels; Stereo opens them onto
+    // different points of a slow modulation. On by default, as Peak Tape's is.
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modTapeStereo, 1 }, "Tape Stereo",
+                                                            ee::dsp::tape::kDefaultStereoOn));
 
     addPercent (layout, id::modTremAmount, "Tremolo Amount", 50.0f);
     // A plain 0..1 knob, like Peak Trem & Pan's: what a position means depends
@@ -168,15 +299,25 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     // The host's own text for a Time knob is the synced reading at the
     // reference tempo - the same choice Peak Delay makes, for the same reason:
     // a host has no pill to tell it which mode the knob is in.
-    const auto timeAttributes = Attributes().withStringFromValueFunction (
-        [] (float v, int) { return ee::peakdelay::timeMap().toText (v, true, ee::peakdelay::kReferenceBpm); });
+    //
+    // Meta, all three: with Sync L/R on, turning one Time knob moves the other
+    // (parameterChanged -> mirrorTime), and turning Sync on adopts the left
+    // value into the right. auval's "parameter did not stay set" check fails on
+    // exactly that unless the parameters doing it are flagged - and a host that
+    // caches parameter values needs the flag to know to re-read.
+    const auto timeAttributes =
+        Attributes()
+            .withStringFromValueFunction (
+                [] (float v, int) { return ee::peakdelay::timeMap().toText (v, true, ee::peakdelay::kReferenceBpm); })
+            .withMeta (true);
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::dlyLeftTime, 1 }, "Left Time",
                                                              juce::NormalisableRange<float> (0.0f, 1.0f),
                                                              kDefaultTime01, timeAttributes));
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::dlyRightTime, 1 }, "Right Time",
                                                              juce::NormalisableRange<float> (0.0f, 1.0f),
                                                              kDefaultTime01, timeAttributes));
-    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::dlySync, 1 }, "Sync L/R", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::dlySync, 1 }, "Sync L/R", true,
+                                                            juce::AudioParameterBoolAttributes().withMeta (true)));
     layout.add (
         std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::dlyTimeUnit, 1 }, "Time Unit", false));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::dlyType, 1 }, "Delay Type",
@@ -304,7 +445,10 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
     modulation.setLevel (juce::Decibels::decibelsToGain (raw (id::modLevel)));
     modulation.setMix01 (pct (id::modMix));
 
-    modulation.setTape (pct (id::modTapeSat), pct (id::modTapeFlutter), pct (id::modTapeWear), pct (id::modTapeNoise));
+    // Tone is a bipolar -100..100 knob and the engine takes -1..1; Stereo is
+    // the machine's mono/stereo switch.
+    modulation.setTape (pct (id::modTapeSat), pct (id::modTapeFlutter), pct (id::modTapeWear), pct (id::modTapeNoise),
+                        raw (id::modTapeTone) * 0.01f, flag (id::modTapeStereo) ? 1.0f : 0.0f);
 
     // The Rate knob is a position, not a rate: what it means is this face's
     // map, and free-running here because the module's face has no Sync switch.
@@ -365,6 +509,13 @@ void PeakAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
     modulation.prepare (sampleRate, maxBlock);
     delay.prepare (sampleRate, maxBlock);
     reverb.prepare (sampleRate, maxBlock);
+
+    // Re-hand the tape floor after prepare, the same belt-and-braces
+    // PeakTapeProcessor uses - the read rate is worked out from both the sample
+    // and the session, and prepare has just changed the session's.
+    if (! tapeNoiseChannels.empty())
+        modulation.setTapeNoiseSample (tapeNoiseChannels.data(), static_cast<int> (tapeNoiseChannels.size()),
+                                       tapeNoiseSample.getNumSamples(), tapeNoiseSampleRate);
 
     inputMeter.prepare (sampleRate);
 
@@ -489,7 +640,7 @@ void PeakAlpineProcessor::setStateInformation (const void* data, int sizeInBytes
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
         if (xml->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xml));
+            installState (juce::ValueTree::fromXml (*xml));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

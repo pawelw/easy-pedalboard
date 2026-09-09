@@ -6,11 +6,12 @@ import "./Toggle.css";
  * with its styling stripped so ours applies instead - keyboard toggling and
  * ARIA state come from Mantine for free.
  */
-export default function Toggle({ checked, onChange, caption }) {
+export default function Toggle({ checked, onChange, caption, ariaLabel }) {
   return (
     <div className="pui-reset pui-toggle">
       <Switch
         unstyled
+        aria-label={ariaLabel}
         checked={checked}
         onChange={(event) => onChange(event.currentTarget.checked)}
         classNames={{

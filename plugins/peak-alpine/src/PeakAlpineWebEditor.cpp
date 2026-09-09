@@ -118,11 +118,11 @@ PeakAlpineWebEditor::PeakAlpineWebEditor (PeakAlpineProcessor& p)
     webView.goToURL (kUseDevServer ? devServerAddress : juce::WebBrowserComponent::getResourceProviderRoot());
 
     // A starting size for the moment before the page reports its own. The width
-    // is exact - the host panel measures 976 (14px frame + 180 + 14 + 560 + 14
-    // + 180 + 14px frame) plus the page's 4px either side - and the height is a
-    // close guess, so the host sees at most a small vertical correction rather
-    // than a window that visibly jumps.
-    setSize (984, 590);
+    // is exact - the host panel measures 966 (a 14px frame and a 1px border
+    // either side of a row of 180 + 8 + 560 + 8 + 180) plus the page's 4px
+    // either side - and the height is a close guess, so the host sees at most a
+    // small vertical correction rather than a window that visibly jumps.
+    setSize (974, 590);
     setResizable (false, false);
 
     startTimerHz (45); // the rate every other face's live feed runs at

@@ -140,8 +140,9 @@ public:
         levelGain.reset (sr, kGainRampSeconds);
         engageGain.reset (sr, kGainRampSeconds);
 
-        dryGain.setCurrentAndTargetValue (dryTarget());
-        wetGain.setCurrentAndTargetValue (wetTarget());
+        const bool usesMix = engineUsesMix (engine);
+        dryGain.setCurrentAndTargetValue (usesMix ? dryTarget() : 0.0f);
+        wetGain.setCurrentAndTargetValue (usesMix ? wetTarget() : 1.0f);
         levelGain.setCurrentAndTargetValue (level);
         engageGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
 
@@ -215,8 +216,18 @@ public:
         if (numCh <= 0 || numSamples <= 0)
             return;
 
-        dryGain.setTargetValue (dryTarget());
-        wetGain.setTargetValue (wetTarget());
+        // An engine that opts out of the Mix control (see engineUsesMix) runs
+        // fully wet and is never summed against a static dry copy of the input.
+        // This is for an engine whose wet path wanders in time - Tape's wow
+        // rides a transport delay line - where a fixed dry alongside it is a
+        // comb whose notch sweeps with the wow, heard as tremolo at any partial
+        // Mix and clean only at the ends. So Mix is simply not offered for it;
+        // the module's own power toggle is its dry/wet. Every other engine is
+        // unchanged.
+        const bool usesMix = engineUsesMix (engine);
+
+        dryGain.setTargetValue (usesMix ? dryTarget() : 0.0f);
+        wetGain.setTargetValue (usesMix ? wetTarget() : 1.0f);
         levelGain.setTargetValue (level);
         engageGain.setTargetValue (engaged ? 1.0f : 0.0f);
 
@@ -346,6 +357,14 @@ protected:
         engines are expensive enough that running all of them always is the
         bigger problem, *and* it has checked that they do not click cold. */
     virtual bool enginesRunWarm() const noexcept { return true; }
+
+    /** Whether engine `index` is offered the module's Mix control. True by
+        default. Return false for an engine that must run fully wet - one whose
+        wet output wanders in time (a tape transport's wow), where any partial
+        Mix combs a fixed dry against the moving wet and is heard as tremolo.
+        Such an engine ignores Mix entirely; the module's power toggle is its
+        dry/wet, and the face is expected to drop the Mix knob for it too. */
+    virtual bool engineUsesMix (int) const noexcept { return true; }
 
     /** How many samples engine `index` delays the signal by. Called once, from
         `prepare`, after `prepareEngines` - so an engine that works its latency

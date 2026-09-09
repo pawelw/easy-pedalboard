@@ -54,10 +54,10 @@ only the engine steppers and the bypass button respond to clicks.
 
 Outer host panel:
 
-- Fixed width **976px**, `background #171d20`, `border 1px solid #2b2b2b`,
+- Fixed width **966px**, `background #171d20`, `border 1px solid #2b2b2b`,
   `border-radius 20px`, `box-shadow 0 20px 44px rgba(0,0,0,.4)`,
   `padding 14px`, page background `#0f1315`.
-- Header row, then a `display:flex; gap:14px; align-items:stretch` module row.
+- Header row, then a `display:flex; gap:8px; align-items:stretch` module row.
 
 Module row track widths: **180 / 560 / 180**. The two side modules are fixed; only
 Delay carries the wide content.
@@ -294,7 +294,7 @@ module name · 10px knob label · 9–10px chrome · 9px tagline · 8px micro ca
 Uppercase tracking runs .08em (knob labels), .1em (pills), .12em (host tagline),
 .14em (micro captions), .16em (engine names), .18em (module names).
 
-Spacing: 14px host frame · 14px module gap · 18px header padding · 12/16px body
+Spacing: 14px host frame · 8px module gap · 18px header padding · 12/16px body
 padding · 18–22px between knob rows.
 
 ## Assets

@@ -36,6 +36,8 @@ inline constexpr const char* modTapeSat = "mod.tape.sat";
 inline constexpr const char* modTapeFlutter = "mod.tape.flutter";
 inline constexpr const char* modTapeWear = "mod.tape.wear";
 inline constexpr const char* modTapeNoise = "mod.tape.noise";
+inline constexpr const char* modTapeTone = "mod.tape.tone";
+inline constexpr const char* modTapeStereo = "mod.tape.stereo";
 
 inline constexpr const char* modTremAmount = "mod.trem.amount";
 inline constexpr const char* modTremRate = "mod.trem.rate";
