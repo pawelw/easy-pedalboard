@@ -87,6 +87,65 @@ namespace
 
         return r;
     }
+
+    // Excite the network, then feed it silence for minutes. A linear reverb fed
+    // silence is stone dead many RT60s later; if it is still making sound well
+    // past that, the round-trip gain has crept over unity somewhere - the
+    // "roars after half an hour" bug, which the 40-block sweep above is far too
+    // short to see. `settledPeak` is the loudest sample in the last fifth of the
+    // run (>> 6*decay of silence by then); on a healthy reverb it is basically
+    // the denormal floor. `peak` is the loudest sample anywhere in the tail.
+    struct GrowthResult { float settledPeak = 0.0f; float peak = 0.0f; bool nonFinite = false; };
+
+    GrowthResult runDecayGrowth (double sampleRate, int blockSize, float decay, float resonance,
+                                 float exciteSeconds, float tailSeconds)
+    {
+        ee::dsp::FdnReverb reverb;
+        reverb.prepare (sampleRate);
+        reverb.setDecayTime (decay);
+        reverb.setResonance (resonance);
+        reverb.setShimmer (0.0f);
+        reverb.setLowCut (ee::dsp::FdnReverb::kMinLowCutHz);
+
+        std::vector<float> mono (static_cast<size_t> (blockSize));
+        std::vector<float> wetL (static_cast<size_t> (blockSize));
+        std::vector<float> wetR (static_cast<size_t> (blockSize));
+
+        const int exciteBlocks = static_cast<int> (exciteSeconds * sampleRate / blockSize);
+        const int tailBlocks   = static_cast<int> (tailSeconds   * sampleRate / blockSize);
+        const int settledFrom  = exciteBlocks + (4 * tailBlocks) / 5;
+
+        GrowthResult g;
+        double phase = 0.0;
+        const double inc = 3.14159265358979 * 2.0 * 180.0 / sampleRate;
+
+        for (int b = 0; b < exciteBlocks + tailBlocks; ++b)
+        {
+            const bool exciting = b < exciteBlocks;
+            for (int i = 0; i < blockSize; ++i)
+            {
+                mono[static_cast<size_t> (i)] = exciting ? 0.5f * (float) std::sin (phase) : 0.0f;
+                phase += inc;
+            }
+
+            reverb.process (mono.data(), wetL.data(), wetR.data(), blockSize);
+
+            if (exciting)
+                continue;
+
+            for (int i = 0; i < blockSize; ++i)
+                for (const float v : { wetL[static_cast<size_t> (i)], wetR[static_cast<size_t> (i)] })
+                {
+                    if (! std::isfinite (v)) g.nonFinite = true;
+                    const float a = std::fabs (v);
+                    g.peak = std::fmax (g.peak, a);
+                    if (b >= settledFrom)
+                        g.settledPeak = std::fmax (g.settledPeak, a);
+                }
+        }
+
+        return g;
+    }
 }
 
 int main()
@@ -120,6 +179,39 @@ int main()
                                      r.peak, (int) r.nonFinite, sr, blk, decay, res, shim, lc, in);
                     }
                 }
+
+    std::printf ("\n%d cases, worst tail peak %.3f, %d flagged\n", cases, worstPeak, bad);
+
+    // ---- long-duration decay: the "roars after minutes" bug -----------------
+    std::printf ("\n=== long-duration decay (silence tail must not grow) ===\n");
+
+    // The incident settings clustered at long decay / mid resonance (stiller
+    // lines); kMaxDecay and reso 1.0 are the highest-loop-gain corners on top.
+    const float longDecays[] = { 3.3f, 4.0f, ee::dsp::FdnReverb::kMaxDecay };
+    const float longResos[]  = { 0.50f, 0.56f, 1.0f };
+
+    for (float decay : longDecays)
+        for (float res : longResos)
+        {
+            const auto g = runDecayGrowth (48000.0, 512, decay, res, 0.5f, 180.0f);
+            ++cases;
+            worstPeak = std::fmax (worstPeak, g.peak);
+
+            // 180 s of silence is >> 6*decay even at the 8 s max, so a healthy
+            // tail is long gone. Anything still audible then is a runaway.
+            const bool alive = g.settledPeak > 1.0e-4f;
+            if (g.nonFinite || alive || g.peak > 16.0f)
+            {
+                ++bad;
+                std::printf ("  !!! decay=%.2f res=%.2f  settledPeak=%.3e peak=%.3f nonFinite=%d\n",
+                             decay, res, g.settledPeak, g.peak, (int) g.nonFinite);
+            }
+            else
+            {
+                std::printf ("  ok   decay=%.2f res=%.2f  settledPeak=%.3e peak=%.3f\n",
+                             decay, res, g.settledPeak, g.peak);
+            }
+        }
 
     std::printf ("\n%d cases, worst tail peak %.3f, %d flagged\n", cases, worstPeak, bad);
     std::printf ("%s\n", bad == 0 ? "OK - nothing exploded" : "FAIL - see flagged cases above");

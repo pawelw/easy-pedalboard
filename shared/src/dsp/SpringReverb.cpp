@@ -14,6 +14,14 @@ constexpr float kPi = 3.14159265358979f;
 // clear of anything a real spring reverb produces.
 constexpr float kRunawayCeiling = 64.0f;
 
+// Hard ceiling on what is written back into a spring's delay line. Real audio
+// drives the tank to order 1-2; this sits far above that, so a healthy tail is
+// stored bit-for-bit and only a divergent loop meets it - where it caps the
+// round trip at unity, parking the mode at a bounded level instead of letting
+// it climb. Kept below kRunawayCeiling so a parked mode still trips the guard
+// below and resets rather than ringing on.
+constexpr float kLineStateCeiling = 48.0f;
+
 /** One-pole lowpass coefficient for a corner frequency. */
 float onePoleCoeff (float cornerHz, double sampleRate) noexcept
 {
@@ -207,7 +215,7 @@ void SpringReverb::process (const float* monoIn, float* outL, float* outR, int n
                 // damper carries the decay gain itself.
                 const float y = s.damper.process (s.chirp.process (delayed));
 
-                s.line.write (drive + y);
+                s.line.write (std::clamp (drive + y, -kLineStateCeiling, kLineStateCeiling));
                 s.line.advance();
 
                 wet[t] += y;

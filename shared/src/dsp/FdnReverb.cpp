@@ -128,6 +128,22 @@ namespace
     // NaN. ~+36 dBFS, so no transient on any real setting comes near it.
     constexpr float kRunawayCeiling = 64.0f;
 
+    // Hard ceiling on what is written back into a feedback line. Real audio
+    // drives the network to order 1-2; this sits ~28 dB above that, so a
+    // healthy tail is stored bit-for-bit and only a divergent mode ever meets
+    // it. Meeting it caps that mode's round trip at unity - it parks at a
+    // bounded level instead of climbing decade after decade - which turns a
+    // stuck blow-up into, at worst, a loud resonant note that the output guard
+    // above then catches and resets. A limiter, not a voicing stage: if it is
+    // audible, something is already wrong. Kept below kRunawayCeiling so a
+    // parked mode still trips that guard rather than ringing on forever.
+    constexpr float kLineStateCeiling = 48.0f;
+
+    inline float clampLineState (float x) noexcept
+    {
+        return juce::jlimit (-kLineStateCeiling, kLineStateCeiling, x);
+    }
+
     // A lossless FDN retains more energy the longer it rings, so wet level would
     // otherwise rise ~9 dB across the decay sweep. Measured gain follows
     // (decay ^ kGainExponent) closely; normalising against the midpoint keeps
@@ -599,7 +615,7 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
                  + tapSign (i, 0b0101) * shimmerSideL
                  + tapSign (i, 0b1010) * shimmerSideR);
 
-            lines[idx].write (v[idx] + inject + shimmerInject);
+            lines[idx].write (clampLineState (v[idx] + inject + shimmerInject));
             lines[idx].advance();
         }
     }
