@@ -1,5 +1,11 @@
 import { BarDisplay, EngineStepper, ModulePanel, Toggle, lfoValue } from "@synthpeak/pedal-ui";
-import { JuceKnob, useJuceChoiceValue, useJuceSliderValue, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
+import {
+  JuceKnob,
+  JucePill,
+  useJuceChoiceValue,
+  useJuceSliderValue,
+  useJuceToggleValue,
+} from "@synthpeak/pedal-ui/juce";
 import { knobRows } from "./engines.jsx";
 
 // The display wells are 63px tall and their bars run 8px to 34px, which is the
@@ -130,6 +136,17 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
           </div>
         )}
       </div>
+
+      {/* The Tremolo engine's tempo-sync pill, centred under the knob grid.
+          `mod.trem.sync`'s own sense is already "synced to tempo", so it lights
+          when on with no invert - the same as the Artifact Filter's Sync pill.
+          The Rate knob's mid-drag readout re-fetches off its own value, so it
+          picks the new unit up on the next turn. */}
+      {engine.sync && (
+        <div className="pa-sync-row">
+          <JucePill parameterId={engine.sync} label="Sync" />
+        </div>
+      )}
 
       {/* Pinned to the bottom of the body, just above the footer, however many
           knob rows are above it - Tape's Mono/Stereo switch. */}

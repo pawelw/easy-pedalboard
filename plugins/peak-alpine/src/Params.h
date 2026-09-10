@@ -16,9 +16,13 @@ namespace ee::alpine::id
  * Dots are safe: an APVTS id is a *value* in the state tree, not a property
  * name, and VST3 hashes it while AU addresses by index.
  *
- * **The Delay leaf names are Peak Delay's own, exactly.** That is not tidiness,
- * it is the mechanism - drop the `dly.` and you have that pedal's parameter
- * list, which is what makes one prefix enough to bind one face to two plugins.
+ * **The Delay and Artifact leaf names are their pedal's own, exactly.** That is
+ * not tidiness, it is the mechanism - drop the `dly.` (or `art.`) and you have
+ * that pedal's parameter list, which is what makes one prefix enough to bind one
+ * face to two plugins. The two exceptions are `dly.level` and `art.level`: those
+ * are this plugin's module chrome, the same Level trim `mod.level` and
+ * `rev.level` are, and they are driven from Peak Alpine's own header rather than
+ * from the shared face - so the face still speaks only its pedal's own names.
  */
 
 // ------------------------------------------------------------------- global
@@ -32,6 +36,7 @@ inline constexpr const char* on = "on";
 // its parameter list, which is what lets one `ArtifactFace` bind to both.
 inline constexpr const char* artOn = "art.on";
 inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Filter
+inline constexpr const char* artLevel = "art.level";   // module chrome, not Peak Artifact's
 inline constexpr const char* artMix = "art.mix";
 inline constexpr const char* artFltFreq = "art.flt.freq";
 inline constexpr const char* artFltQ = "art.flt.q";
@@ -63,7 +68,8 @@ inline constexpr const char* modTapeTone = "mod.tape.tone";
 inline constexpr const char* modTapeStereo = "mod.tape.stereo";
 
 inline constexpr const char* modTremAmount = "mod.trem.amount";
-inline constexpr const char* modTremRate = "mod.trem.rate";
+inline constexpr const char* modTremRate = "mod.trem.rate"; // meaning set by modTremSync
+inline constexpr const char* modTremSync = "mod.trem.sync"; // false = ms, true = tempo
 inline constexpr const char* modTremShape = "mod.trem.shape";
 inline constexpr const char* modTremTube = "mod.trem.tube";
 
@@ -76,6 +82,7 @@ inline constexpr const char* modPhaseDepth = "mod.phase.depth";
 
 // -------------------------------------------------------------------- delay
 inline constexpr const char* dlyOn = "dly.on";
+inline constexpr const char* dlyLevel = "dly.level"; // module chrome, not Peak Delay's
 inline constexpr const char* dlyLeftTime = "dly.ltime";
 inline constexpr const char* dlyRightTime = "dly.rtime";
 inline constexpr const char* dlySync = "dly.sync";

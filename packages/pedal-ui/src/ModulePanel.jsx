@@ -24,9 +24,9 @@ import "./ModulePanel.css";
  * same panel colour; see tokens.css's note on why the wide one stopped having
  * a ground of its own. `tone="side"` is the default.
  *
- * `headerRight` is the slot the side modules put their Level knob in, flush to
- * the header's right edge with no text label of its own. The wide module
- * leaves it empty and its header simply ends at the spacer.
+ * `headerRight` is the slot a module puts its Level knob in, flush to the
+ * header's right edge with no text label of its own. A module with no Level of
+ * its own leaves it empty and its header simply ends at the spacer.
  *
  * `on`/`onToggle` drive the header's power toggle. Omit `onToggle` for a
  * module with nothing to bypass and the toggle is left out entirely rather

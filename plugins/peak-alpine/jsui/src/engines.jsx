@@ -62,6 +62,9 @@ export const MOD_ENGINES = [
       ["shape", "Shape"],
       ["tube", "Tube"],
     ],
+    // Flips the Rate knob between a free period in ms and a tempo-locked note
+    // division - the same control the Delay module and Peak Trem & Pan carry.
+    sync: "mod.trem.sync",
   },
   {
     name: "Chorus",

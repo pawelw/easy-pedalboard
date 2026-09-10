@@ -136,6 +136,15 @@
   margin-top: 16px;
 }
 
+/* The Tremolo engine's tempo-sync pill, on a centred row under the knob grid.
+   16px clears the second knob row's captions; the pill flips the Rate knob's
+   readout between a period in ms and a note division. */
+.pa-sync-row {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
 /* Tape's Mono/Stereo switch. `margin-top: auto` drops it to the foot of the
    module body whatever is above it, so it sits just clear of the footer's top
    border - the row of knobs keeps its own top alignment and this fills the

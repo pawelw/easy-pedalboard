@@ -14,6 +14,15 @@
 #define EE_JSUI_DEV_SERVER 0
 #endif
 
+#ifndef EE_ALPINE_WATCHDOG
+#define EE_ALPINE_WATCHDOG 0
+#endif
+
+#if EE_ALPINE_WATCHDOG
+#include "AlpineWatchdog.h"
+#include "AlpineWatchdogPanel.h"
+#endif
+
 class PeakAlpineProcessor;
 
 /** Peak Alpine's face: the same juce::WebBrowserComponent + React arrangement
@@ -75,6 +84,19 @@ private:
     };
 
     SinglePageBrowser webView;
+
+#if EE_ALPINE_WATCHDOG
+    /** Drains the processor's watchdog on the timer: any newly frozen incident
+        is formatted, appended to the log file, and shown on the panel. */
+    void pollWatchdog();
+    juce::String formatIncident (const AlpineWatchdog::Incident&) const;
+
+    std::unique_ptr<AlpineWatchdogPanel> watchdogPanel;
+    juce::StringArray watchdogParamIds; // getParameters() order, matches the snapshot
+    juce::File watchdogLog;
+    juce::uint32 lastWatchdogSeq = 0;
+    int watchdogIncidents = 0;
+#endif
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PeakAlpineWebEditor)
 };

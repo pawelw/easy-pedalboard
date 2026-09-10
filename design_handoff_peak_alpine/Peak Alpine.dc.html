@@ -104,29 +104,52 @@
           </div>
         </sc-if>
 
-        <div style="margin-top:22px;display:flex;flex-direction:column;gap:18px">
-          <sc-for list="{{ modRows }}" as="row" hint-placeholder-count="2">
-            <div style="display:flex;align-items:flex-start;justify-content:space-evenly;gap:8px">
-          <sc-for list="{{ row.knobs }}" as="k" hint-placeholder-count="2">
-            <div style="display:flex;flex-direction:column;align-items:center;width:76px">
-              <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
-                <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
-                  <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
-                  <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
-                </svg>
-                <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
-                  <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
-                </div>
+        <sc-if value="{{ modIsAdv }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:22px;display:flex;flex-direction:column;gap:18px">
+            <sc-for list="{{ modRows }}" as="row" hint-placeholder-count="2">
+              <div style="display:flex;align-items:flex-start;justify-content:space-evenly;gap:8px">
+                <sc-for list="{{ row.knobs }}" as="k" hint-placeholder-count="2">
+                  <div style="display:flex;flex-direction:column;align-items:center;width:76px">
+                    <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
+                      <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                        <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
+                        <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+                      </svg>
+                      <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                        <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+                      </div>
+                    </div>
+                    <div style="margin-top:7.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap;text-align:center">{{ k.name }}</div>
+                  </div>
+                </sc-for>
               </div>
-              <div style="margin-top:7.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap;text-align:center">{{ k.name }}</div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ modIsEasy }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:26px;display:flex;flex-direction:column;align-items:center">
+            <div style="position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ modEasy.box }}" height="{{ modEasy.box }}" viewBox="{{ modEasy.vb }}" fill="none" stroke-width="4" stroke-linecap="round">
+                <path d="{{ modEasy.dTrack }}" style="stroke:#2b3639"></path>
+                <path d="{{ modEasy.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+              </svg>
+              <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 10px 20px rgba(0,0,0,.5)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ modEasy.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:3px;margin-left:-1.5px;border-radius:999px;background:#b9d3d9"></div></div>
+              </div>
             </div>
-          </sc-for>
-            </div>
-          </sc-for>
+            <div style="margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ modEasy.name }}</div>
+            <div style="margin-top:4px;font-size:10px;font-weight:500;color:#8ba3a9">{{ modEasyValue }}</div>
+          </div>
+        </sc-if>
+
+        <div style="margin-top:auto;margin-left:-12px;margin-right:-12px;display:flex">
+          <button type="button" onClick="{{ modShowEasy }}" style="flex:1 1 0;padding:7px 0 8px;border:0;border-top:1px solid {{ modEasyEdge }};font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;background:{{ modEasyBg }};color:{{ modEasyInk }}">Easy</button>
+          <button type="button" onClick="{{ modShowAdv }}" style="flex:1 1 0;padding:7px 0 8px;border:0;border-top:1px solid {{ modAdvEdge }};border-left:1px solid #0a0b0c;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;background:{{ modAdvBg }};color:{{ modAdvInk }}">Adv</button>
         </div>
       </div>
 
-      <div style="margin-top:18px;border-top:1px solid #0a0b0c;padding:14px 12px 12px;display:flex;align-items:center;justify-content:center">
+      <div style="border-top:1px solid #0a0b0c;padding:14px 12px 12px;display:flex;align-items:center;justify-content:center">
         <sc-for list="{{ modFooter }}" as="k" hint-placeholder-count="2">
           <div style="display:flex;flex-direction:column;align-items:center;width:76px">
             <div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
@@ -362,29 +385,52 @@
           </sc-for>
         </div>
 
-        <div style="margin-top:22px;display:flex;flex-direction:column;gap:20px">
-          <sc-for list="{{ revRows }}" as="row" hint-placeholder-count="3">
-            <div style="display:flex;align-items:flex-start;justify-content:space-evenly;gap:8px">
-              <sc-for list="{{ row.knobs }}" as="k" hint-placeholder-count="2">
-                <div style="display:flex;flex-direction:column;align-items:center;width:76px">
-                  <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
-                    <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
-                      <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
-                      <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
-                    </svg>
-                    <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
-                      <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+        <sc-if value="{{ revIsAdv }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:22px;display:flex;flex-direction:column;gap:20px">
+            <sc-for list="{{ revRows }}" as="row" hint-placeholder-count="3">
+              <div style="display:flex;align-items:flex-start;justify-content:space-evenly;gap:8px">
+                <sc-for list="{{ row.knobs }}" as="k" hint-placeholder-count="2">
+                  <div style="display:flex;flex-direction:column;align-items:center;width:76px">
+                    <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
+                      <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                        <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
+                        <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+                      </svg>
+                      <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                        <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+                      </div>
                     </div>
+                    <div style="margin-top:7.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap;text-align:center">{{ k.name }}</div>
                   </div>
-                  <div style="margin-top:7.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap;text-align:center">{{ k.name }}</div>
-                </div>
-              </sc-for>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ revIsEasy }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:26px;display:flex;flex-direction:column;align-items:center">
+            <div style="position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ revEasy.box }}" height="{{ revEasy.box }}" viewBox="{{ revEasy.vb }}" fill="none" stroke-width="4" stroke-linecap="round">
+                <path d="{{ revEasy.dTrack }}" style="stroke:#2b3639"></path>
+                <path d="{{ revEasy.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+              </svg>
+              <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 10px 20px rgba(0,0,0,.5)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ revEasy.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:3px;margin-left:-1.5px;border-radius:999px;background:#b9d3d9"></div></div>
+              </div>
             </div>
-          </sc-for>
+            <div style="margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ revEasy.name }}</div>
+            <div style="margin-top:4px;font-size:10px;font-weight:500;color:#8ba3a9">{{ revEasyValue }}</div>
+          </div>
+        </sc-if>
+
+        <div style="margin-top:auto;margin-left:-12px;margin-right:-12px;display:flex">
+          <button type="button" onClick="{{ revShowEasy }}" style="flex:1 1 0;padding:7px 0 8px;border:0;border-top:1px solid {{ revEasyEdge }};font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;background:{{ revEasyBg }};color:{{ revEasyInk }}">Easy</button>
+          <button type="button" onClick="{{ revShowAdv }}" style="flex:1 1 0;padding:7px 0 8px;border:0;border-top:1px solid {{ revAdvEdge }};border-left:1px solid #0a0b0c;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;background:{{ revAdvBg }};color:{{ revAdvInk }}">Adv</button>
         </div>
       </div>
 
-      <div style="margin-top:18px;border-top:1px solid #0a0b0c;padding:14px 12px 12px;display:flex;align-items:center;justify-content:center">
+      <div style="border-top:1px solid #0a0b0c;padding:14px 12px 12px;display:flex;align-items:center;justify-content:center">
         <sc-for list="{{ revFooter }}" as="k" hint-placeholder-count="1">
           <div style="display:flex;flex-direction:column;align-items:center;width:76px">
             <div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
@@ -492,8 +538,27 @@ const pairs = (list) => {
   return rows;
 };
 
+/** The Easy tab's one knob: the macro that stands in for the whole engine. */
+const EASY = {
+  Tape: 0.42,
+  Tremolo: 0.58,
+  Chorus: 0.46,
+  Phaser: 0.52,
+  Space: 0.62,
+  Spring: 0.48,
+};
+
+/** The tab is attached to the knobs above it: the selected one drops the line
+    along that edge and carries the panel's own fill, so it reads as one surface
+    with the content it belongs to. */
+const tab = (active) => ({
+  bg: active ? "transparent" : "#191f22",
+  ink: active ? "#b9d3d9" : "#5f7378",
+  edge: active ? "transparent" : "#0a0b0c",
+});
+
 class Component extends DCLogic {
-  state = { mod: null, rev: null, bypassed: false };
+  state = { mod: null, rev: null, bypassed: false, modTab: "Adv", revTab: "Adv" };
 
   componentDidUpdate(prev) {
     if (prev.modEngine !== this.props.modEngine) this.setState({ mod: null });
@@ -526,6 +591,11 @@ class Component extends DCLogic {
 
     const decayBars = [34, 29, 24, 19, 15, 11, 8].map((h) => ({ h: `${h}px` }));
 
+    const modEasyV = EASY[modEngine];
+    const revEasyV = EASY[revEngine];
+    const modTabs = { easy: tab(this.state.modTab === "Easy"), adv: tab(this.state.modTab === "Adv") };
+    const revTabs = { easy: tab(this.state.revTab === "Easy"), adv: tab(this.state.revTab === "Adv") };
+
     return {
       // The word beside the glyph is gone: the module row behind it dims when
       // the plugin is bypassed, and the ring drops to the dim ink, which is the
@@ -541,6 +611,18 @@ class Component extends DCLogic {
       modPrev: () => this.step("mod", MOD_ENGINES, modEngine, -1),
       modNext: () => this.step("mod", MOD_ENGINES, modEngine, 1),
       modRows: pairs(MOD_PARAMS[modEngine]).map((row) => ({ knobs: row.map(([n, v]) => soft(n, v, 40)) })),
+      modIsAdv: this.state.modTab === "Adv",
+      modIsEasy: this.state.modTab === "Easy",
+      modShowAdv: () => this.setState({ modTab: "Adv" }),
+      modShowEasy: () => this.setState({ modTab: "Easy" }),
+      modAdvBg: modTabs.adv.bg,
+      modAdvInk: modTabs.adv.ink,
+      modAdvEdge: modTabs.adv.edge,
+      modEasyBg: modTabs.easy.bg,
+      modEasyInk: modTabs.easy.ink,
+      modEasyEdge: modTabs.easy.edge,
+      modEasy: soft("Amount", modEasyV, 96),
+      modEasyValue: `${Math.round(modEasyV * 100)} %`,
       modFooter: [soft("Mix", 0.4, 38)],
       modHead: soft("Level", 0.55, 24),
       tremBars,
@@ -562,6 +644,18 @@ class Component extends DCLogic {
       revPrev: () => this.step("rev", REV_ENGINES, revEngine, -1),
       revNext: () => this.step("rev", REV_ENGINES, revEngine, 1),
       revRows: REV_PARAMS[revEngine].map((row) => ({ knobs: row.map(([n, v]) => soft(n, v, 40)) })),
+      revIsAdv: this.state.revTab === "Adv",
+      revIsEasy: this.state.revTab === "Easy",
+      revShowAdv: () => this.setState({ revTab: "Adv" }),
+      revShowEasy: () => this.setState({ revTab: "Easy" }),
+      revAdvBg: revTabs.adv.bg,
+      revAdvInk: revTabs.adv.ink,
+      revAdvEdge: revTabs.adv.edge,
+      revEasyBg: revTabs.easy.bg,
+      revEasyInk: revTabs.easy.ink,
+      revEasyEdge: revTabs.easy.edge,
+      revEasy: soft("Amount", revEasyV, 96),
+      revEasyValue: `${Math.round(revEasyV * 100)} %`,
       revFooter: [soft("Mix", 0.34, 38)],
       revHead: soft("Level", 0.5, 24),
       decayBars,

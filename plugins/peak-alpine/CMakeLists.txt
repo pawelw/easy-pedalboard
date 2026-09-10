@@ -12,3 +12,11 @@ peak_add_plugin(PeakAlpine
 # run build`) rather than through BinaryData - see plugins/peak-delay/jsui.
 target_compile_definitions(PeakAlpine PRIVATE
     PEAKALPINE_JSUI_DIR="${CMAKE_CURRENT_SOURCE_DIR}/jsui")
+
+# Dev-only output-safety flight recorder + side panel (the safety net itself,
+# sanitizeOutput, is always compiled). Never ship one.
+if(EE_ALPINE_WATCHDOG)
+    target_sources(PeakAlpine PRIVATE src/AlpineWatchdogPanel.cpp)
+    target_compile_definitions(PeakAlpine PUBLIC EE_ALPINE_WATCHDOG=1)
+    message(STATUS "Peak Alpine: output watchdog panel enabled - development build")
+endif()

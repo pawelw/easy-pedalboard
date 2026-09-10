@@ -1,11 +1,20 @@
 import { useEffect } from "react";
 import { Card, JucePresetBar, ModulePanel, PowerToggle } from "@synthpeak/pedal-ui";
-import { JuceFader, installAutoResize, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
+import { JuceFader, JuceKnob, installAutoResize, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
 import { DelayFace } from "@synthpeak/delay-face";
 import { ArtifactFace } from "@synthpeak/artifact-face";
 import SideModule from "./SideModule.jsx";
 import { MOD_ENGINES, REVERB_ENGINES } from "./engines.jsx";
 import "./index.css";
+
+/** A module's Level trim for the header's right-hand slot. Identical to the one
+    SideModule gives Modulation and Reverb: a bipolar trim resting at unity, its
+    arc drawn out from twelve o'clock in whichever direction it has been moved. */
+function ModuleLevel({ parameterId }) {
+  return (
+    <JuceKnob parameterId={parameterId} variant="soft" size={30} scaleFrom="centre" bare />
+  );
+}
 
 /** The host's two trims and its global bypass, in the header's right-hand
     slot. The 32px between the fader stack and the toggle is deliberate and is
@@ -74,9 +83,10 @@ export default function App() {
         <div className={`pa-modules${on ? "" : " pa-modules--bypassed"}`}>
           {/* First in the chain: Peak Artifact's whole face, bound through an
               "art." prefix. Same component the pedal renders - a fix lands in
-              both. Its own Mix sits in its footer, so it takes no Level knob
-              here, the way the Delay module doesn't either. */}
-          <ArtifactFace prefix="art." />
+              both. Its own Mix sits in its footer; the Level trim in its header
+              is this plugin's chrome, handed in rather than drawn by the shared
+              face, so that face still binds only to names Peak Artifact has. */}
+          <ArtifactFace prefix="art." headerRight={<ModuleLevel parameterId="art.level" />} />
 
           {/* "Mod", not "Modulation": a 180px module's header has the toggle,
               the name and a Level knob in it, and the long word left the knob
@@ -90,9 +100,9 @@ export default function App() {
             prefix="mod."
           />
 
-          {/* The one module whose header ends at the spacer: it has no Level
-              knob and no footer Mix, because the face inside it already
-              carries a 76px Mix of its own. */}
+          {/* No footer Mix - the face inside it already carries a 76px Mix of
+              its own - but a Level trim in its header, this plugin's chrome the
+              same as the other three modules' Level. */}
           <DelayModule />
 
           <SideModule
@@ -119,6 +129,7 @@ function DelayModule() {
       width={560}
       on={on}
       onToggle={setOn}
+      headerRight={<ModuleLevel parameterId="dly.level" />}
       className="pa-delay"
     >
       <DelayFace prefix="dly." />

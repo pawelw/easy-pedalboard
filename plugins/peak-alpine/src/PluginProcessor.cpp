@@ -11,6 +11,7 @@
 #include "ee/dsp/RingModulatorConfig.h"
 #include "ee/dsp/SpringConfig.h"
 #include "ee/dsp/TapeMachineConfig.h"
+#include "ee/dsp/Tremolo.h"
 #include "ee/dsp/TremoloConfig.h"
 #include "ee/plugin/Bypass.h"
 #include "ee/plugin/ParamText.h"
@@ -324,6 +325,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
                                                               juce::StringArray { "Ring Mod", "Bit Crush", "Filter" },
                                                               2));
+    addTrimDb (layout, id::artLevel, "Artifact Level");
     addPercent (layout, id::artMix, "Artifact Mix", 50.0f);
 
     // Freq prints as a bare rounded "Hz" - Peak Artifact's own readout, not
@@ -400,9 +402,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
 
     addPercent (layout, id::modTremAmount, "Tremolo Amount", 50.0f);
     // A plain 0..1 knob, like Peak Trem & Pan's: what a position means depends
-    // on the Sync switch, so the mapping is the map's rather than the range's.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::modTremRate, 1 }, "Tremolo Rate",
-                                                             juce::NormalisableRange<float> (0.0f, 1.0f), 0.5f));
+    // on the Tremolo Sync switch - a free LFO period in ms, or a tempo-locked
+    // note division. Host text is the synced reading (a host has no pill to say
+    // which mode the knob is in) and the editor overrides it live, the same
+    // choice the Artifact Time knob and Peak Trem & Pan make.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::modTremRate, 1 }, "Tremolo Rate", juce::NormalisableRange<float> (0.0f, 1.0f), 0.5f,
+        withText ([] (float v, int) { return kTremRateMap.rateToText (v, true); })));
+    layout.add (
+        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modTremSync, 1 }, "Tremolo Sync", false));
     addPercent (layout, id::modTremShape, "Tremolo Shape", 50.0f);
     addPercent (layout, id::modTremTube, "Tremolo Tube", 0.0f);
 
@@ -457,6 +465,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::dlyType, 1 }, "Delay Type",
                                                               juce::StringArray { "Normal", "Wide", "Ping Pong" }, 0));
     addPercent (layout, id::dlyFeedback, "Feedback", 35.0f);
+    addTrimDb (layout, id::dlyLevel, "Delay Level");
     addPercent (layout, id::dlyMix, "Delay Mix", 35.0f);
     addPercent (layout, id::dlyWear, "Delay Wear", 0.0f);
     addPercent (layout, id::dlyFlutter, "Delay Flutter", 0.0f);
@@ -572,6 +581,13 @@ juce::String PeakAlpineProcessor::artifactTimeReadout() const
     return artRateToText (time01, synced);
 }
 
+juce::String PeakAlpineProcessor::tremoloRateReadout() const
+{
+    const float rate01 = apvts.getRawParameterValue (id::modTremRate)->load();
+    const bool synced = apvts.getRawParameterValue (id::modTremSync)->load() > 0.5f;
+    return kTremRateMap.rateToText (rate01, synced);
+}
+
 // ------------------------------------------------------------------- settings
 
 void PeakAlpineProcessor::pushSettings (double bpm) noexcept
@@ -583,6 +599,7 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
     // ----------------------------------------------------------------- artifact
     artifact.setEngine (static_cast<int> (raw (id::artEngine)));
     artifact.setEngaged (flag (id::artOn));
+    artifact.setLevel (juce::Decibels::decibelsToGain (raw (id::artLevel)));
     artifact.setMix01 (pct (id::artMix));
 
     {
@@ -611,8 +628,11 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
                         raw (id::modTapeTone) * 0.01f, flag (id::modTapeStereo) ? 1.0f : 0.0f);
 
     // The Rate knob is a position, not a rate: what it means is this face's
-    // map, and free-running here because the module's face has no Sync switch.
-    const float tremPeriodSeconds = kTremRateMap.rateToPeriodSeconds (raw (id::modTremRate), false, bpm);
+    // map, set by the Tremolo Sync switch - a free period in ms, or a
+    // tempo-locked note division. The transport that aligns a synced LFO's
+    // phase to the host grid is handed over separately, from processBlock.
+    const bool tremSynced = flag (id::modTremSync);
+    const float tremPeriodSeconds = kTremRateMap.rateToPeriodSeconds (raw (id::modTremRate), tremSynced, bpm);
     modulation.setTremolo (pct (id::modTremAmount), tremPeriodSeconds, pct (id::modTremShape), pct (id::modTremTube));
 
     modulation.setChorus (raw (id::modChorusRate), pct (id::modChorusDepth), raw (id::modChorusPhase));
@@ -638,9 +658,11 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
     delay.setMix01 (pct (id::dlyMix));
     delay.setEngaged (flag (id::dlyOn));
 
-    // The host owns the trims; the module's own are left at unity so they are
-    // not applied twice.
-    delay.setTrims (1.0f, 1.0f);
+    // The host owns the input trim, so the module's is left at unity. The
+    // module's output trim is the Delay Level knob in the header - the same
+    // +/- kModuleTrimDb trim mod.level and rev.level are, resting at 0 dB where
+    // decibelsToGain is exactly 1.0f and the module is bit-identical bypassed.
+    delay.setTrims (1.0f, juce::Decibels::decibelsToGain (raw (id::dlyLevel)));
 
     // ------------------------------------------------------------------- reverb
     reverb.setEngine (static_cast<int> (raw (id::revEngine)));
@@ -659,6 +681,14 @@ void PeakAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
 {
     sr = sampleRate;
     maxBlock = juce::jmax (1, maximumExpectedSamplesPerBlock);
+
+    badBlockRun = 0;
+    safetyResetHoldBlocks =
+        juce::jlimit (4, 64, static_cast<int> (std::lround (0.025 * sampleRate / juce::jmax (1, maxBlock))));
+
+#if EE_ALPINE_WATCHDOG
+    watchdog.prepare (*this, sampleRate, maxBlock);
+#endif
 
     // prepareToPlay is one of the callbacks where the playhead is valid, so the
     // cache starts out holding the host's real tempo rather than 120.
@@ -829,12 +859,64 @@ void PeakAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         artWasPlaying = isPlaying;
     }
 
+    // The Modulation module's Tremolo LFO: free-running, and when its Sync
+    // switch is on and the transport is rolling, also pulled onto the host
+    // grid. Peak Trem & Pan drives its engine's Transport exactly this way -
+    // `synced` for the engine is the switch AND a finite ppq AND playing.
+    {
+        const float tremRate01 = apvts.getRawParameterValue (id::modTremRate)->load();
+        const bool tremSyncSwitch = apvts.getRawParameterValue (id::modTremSync)->load() > 0.5f;
+
+        double ppqStart = 0.0;
+        bool havePpq = false;
+        bool isPlaying = false;
+        if (auto* playHead = getPlayHead())
+            if (const auto position = playHead->getPosition())
+            {
+                if (const auto ppq = position->getPpqPosition())
+                {
+                    ppqStart = *ppq;
+                    havePpq = std::isfinite (ppqStart);
+                }
+                isPlaying = position->getIsPlaying();
+            }
+
+        ee::dsp::Tremolo::Transport transport;
+        transport.synced = tremSyncSwitch && havePpq && isPlaying;
+        transport.playing = isPlaying;
+        transport.ppqStart = ppqStart;
+        transport.cyclesPerQuarter =
+            1.0 / juce::jmax (1.0e-4, static_cast<double> (ee::dsp::RateMap::syncedDivisionBeats (tremRate01)));
+        transport.ppqPerSample = bpm / (60.0 * sr);
+        modulation.setTremoloTransport (transport);
+    }
+
     // The chain. Fixed order, and each module is responsible for its own
     // dry/wet and its own power toggle - all this does is hand the signal on.
+#if EE_ALPINE_WATCHDOG
+    watchdog.beginBlock();
+    watchdog.setStagePeak (AlpineWatchdog::stageInput, buffer, numCh, numSamples);
+#endif
+
     artifact.process (buffer, numCh, numSamples);
+#if EE_ALPINE_WATCHDOG
+    watchdog.setStagePeak (AlpineWatchdog::stageArtifact, buffer, numCh, numSamples);
+#endif
+
     modulation.process (buffer, numCh, numSamples);
+#if EE_ALPINE_WATCHDOG
+    watchdog.setStagePeak (AlpineWatchdog::stageModulation, buffer, numCh, numSamples);
+#endif
+
     delay.process (buffer, numCh, numCh, numSamples);
+#if EE_ALPINE_WATCHDOG
+    watchdog.setStagePeak (AlpineWatchdog::stageDelay, buffer, numCh, numSamples);
+#endif
+
     reverb.process (buffer, numCh, numSamples);
+#if EE_ALPINE_WATCHDOG
+    watchdog.setStagePeak (AlpineWatchdog::stageReverb, buffer, numCh, numSamples);
+#endif
 
     // The Artifact Filter engine's live sweep position, for the editor's scope.
     artifactModL.store (artifact.filterModL(), std::memory_order_relaxed);
@@ -843,6 +925,93 @@ void PeakAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
     // The global bypass crossfades back to the input as it was before the
     // Input trim, so a bypassed plugin is unity whatever either trim says.
     ee::plugin::crossfadeToDry (buffer, dryBuffer, engageGain, numCh, numSamples, &outGain);
+
+    // The last line of defence - on the finished output, every block, every
+    // build. See sanitizeOutput.
+    const SafetyVerdict verdict = sanitizeOutput (buffer, numCh, numSamples);
+
+#if EE_ALPINE_WATCHDOG
+    watchdog.endBlock (verdict.peak, verdict.nonFinite, verdict.clamped, verdict.didReset, verdict.firstBadBlock,
+                       getPlayHead());
+#else
+    juce::ignoreUnused (verdict);
+#endif
+}
+
+PeakAlpineProcessor::SafetyVerdict
+PeakAlpineProcessor::sanitizeOutput (juce::AudioBuffer<float>& buffer, int numCh, int numSamples) noexcept
+{
+    bool nonFinite = false;
+    bool clamped = false;
+    float peak = 0.0f;
+
+    for (int ch = 0; ch < numCh; ++ch)
+    {
+        float* d = buffer.getWritePointer (ch);
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            float x = d[i];
+
+            if (! std::isfinite (x))
+            {
+                x = 0.0f;
+                d[i] = 0.0f;
+                nonFinite = true;
+            }
+            else if (x > kSafetyCeiling)
+            {
+                x = kSafetyCeiling;
+                d[i] = kSafetyCeiling;
+                clamped = true;
+            }
+            else if (x < -kSafetyCeiling)
+            {
+                x = -kSafetyCeiling;
+                d[i] = -kSafetyCeiling;
+                clamped = true;
+            }
+
+            peak = juce::jmax (peak, std::abs (x));
+        }
+    }
+
+    lastOutputPeak.store (peak, std::memory_order_relaxed);
+
+    SafetyVerdict verdict;
+    verdict.nonFinite = nonFinite;
+    verdict.clamped = clamped;
+    verdict.peak = peak;
+
+    if (nonFinite || clamped)
+    {
+        verdict.firstBadBlock = badBlockRun == 0;
+        ++badBlockRun;
+        safetyTrips.fetch_add (1, std::memory_order_relaxed);
+
+        if (badBlockRun >= safetyResetHoldBlocks)
+        {
+            // A run this long is not a transient - something has latched. Flush
+            // every module's state and give the host one clear block rather
+            // than a brickwalled roar.
+            artifact.reset();
+            modulation.reset();
+            delay.reset();
+            reverb.reset();
+            buffer.clear();
+
+            badBlockRun = 0;
+            verdict.didReset = true;
+            verdict.peak = 0.0f;
+            safetyResets.fetch_add (1, std::memory_order_relaxed);
+        }
+    }
+    else
+    {
+        badBlockRun = 0;
+    }
+
+    return verdict;
 }
 
 juce::AudioProcessorEditor* PeakAlpineProcessor::createEditor()

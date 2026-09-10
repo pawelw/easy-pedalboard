@@ -40,11 +40,18 @@ import "./ArtifactFace.css";
  * Alpine, whose are namespaced by module. Nothing below takes an id map; the
  * `ParamScope` does the whole job, and the leaf names are identical in both
  * plugins on purpose.
+ *
+ * `headerRight` is whatever the host wants in the module header's right-hand
+ * slot - Peak Alpine puts a Level trim there, the same one its other modules
+ * carry; Peak Artifact passes nothing and the slot stays empty. It is the
+ * host's to supply because that Level is the host's chrome, not one of this
+ * pedal's parameters - keeping it out here is what lets the face bind only to
+ * names Peak Artifact actually has.
  */
-export default function ArtifactFace({ prefix = "" }) {
+export default function ArtifactFace({ prefix = "", headerRight = null }) {
   return (
     <ParamScope prefix={prefix}>
-      <ArtifactFaceBody />
+      <ArtifactFaceBody headerRight={headerRight} />
     </ParamScope>
   );
 }
@@ -88,7 +95,7 @@ function useFilterMod() {
 
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     ArtifactFace itself would read the enclosing scope, not the one it declares. */
-function ArtifactFaceBody() {
+function ArtifactFaceBody({ headerRight = null }) {
   // Default index 2 (Filter) with no backend - the processor opens on Filter
   // too, since it is the only voiced engine.
   const [engineIndex, setEngine] = useJuceChoiceValue("engine", ENGINES.length, 2);
@@ -102,6 +109,7 @@ function ArtifactFaceBody() {
       width={168}
       on={on}
       onToggle={setOn}
+      headerRight={headerRight}
       className="af-module"
       footer={<JuceKnob parameterId="mix" caption="Mix" variant="soft" size={38} />}
     >

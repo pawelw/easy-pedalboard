@@ -3,7 +3,20 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
+#include <atomic>
 #include <vector>
+
+// The output-safety watchdog is a dev-only flight recorder (see
+// plugins/peak-alpine/CMakeLists.txt). The safety net it sits behind -
+// sanitizeOutput - ships in every build; only the recorder and its panel are
+// gated on this.
+#ifndef EE_ALPINE_WATCHDOG
+#define EE_ALPINE_WATCHDOG 0
+#endif
+
+#if EE_ALPINE_WATCHDOG
+#include "AlpineWatchdog.h"
+#endif
 
 #include "ee/fx/ArtifactModule.h"
 #include "ee/fx/DelayModule.h"
@@ -93,6 +106,12 @@ public:
         so the processor answers this - the same reason Peak Artifact does. */
     juce::String artifactTimeReadout() const;
 
+    /** The Modulation module's Tremolo Rate knob: the LFO period in ms when
+        free, the note value when synced. The processor answers it for the same
+        reason it answers the Artifact one - no Sync switch or host tempo in the
+        web view. */
+    juce::String tremoloRateReadout() const;
+
     /** The Artifact module's Filter engine live cutoff-sweep exponent per
         channel (Range * gate * lfo), for the face's response scope. Written
         from the audio thread, read by the editor's Timer as one "filterMod"
@@ -102,6 +121,31 @@ public:
 
     double hostBpm() const { return currentBpm(); }
 
+    /** What sanitizeOutput did to one block, handed back to the caller (and,
+        in a watchdog build, on to the flight recorder). */
+    struct SafetyVerdict
+    {
+        bool nonFinite = false;
+        bool clamped = false;
+        bool didReset = false;
+        bool firstBadBlock = false;
+        float peak = 0.0f;
+    };
+
+    /** The output-safety net's running tally. Public so the editor can show it
+        and a future test can assert on it: how many blocks it has had to
+        sanitise, and how many times a sustained run of them forced a reset of
+        the four modules. */
+    std::atomic<int> safetyTrips { 0 };
+    std::atomic<int> safetyResets { 0 };
+    std::atomic<float> lastOutputPeak { 0.0f };
+
+#if EE_ALPINE_WATCHDOG
+    /** Dev-only: the per-block black box the watchdog panel reads. Public
+        because the editor polls it - see PeakAlpineWebEditor. */
+    AlpineWatchdog watchdog;
+#endif
+
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
@@ -110,6 +154,15 @@ private:
         both need the whole set, and a control pushed from only one of them
         would be wrong until the next block. */
     void pushSettings (double bpm) noexcept;
+
+    /** The last line of defence, run on the finished output every block in
+        every build. Replaces any non-finite sample with silence and brickwalls
+        anything past +/-kSafetyCeiling; if the output stays bad for
+        safetyResetHoldBlocks in a row - which a NaN latched in a feedback line
+        does forever - it resets the four modules and clears the block. It
+        cannot catch the first bad block before it is heard, but it stops the
+        sustained roar that follows. */
+    SafetyVerdict sanitizeOutput (juce::AudioBuffer<float>& buffer, int numCh, int numSamples) noexcept;
 
     /** Follows a person turning one of the Delay module's two Time knobs onto
         the other while its "Sync L/R" button is on - the same mirror Peak Delay
@@ -187,6 +240,18 @@ private:
 
     double sr = 44100.0;
     int maxBlock = 512;
+
+    /** +12 dBFS. Not a limiter - a wall the output should never reach unless
+        something upstream has broken. Legit resonance and feedback peaks stay
+        well under it. */
+    static constexpr float kSafetyCeiling = 4.0f;
+
+    /** Consecutive sanitised blocks before sanitizeOutput resets the modules.
+        Set from the sample rate and block size in prepareToPlay to roughly
+        25 ms - long enough that one glitchy block that clears on its own does
+        not trip a reset, short enough that a latched blow-up dies fast. */
+    int safetyResetHoldBlocks = 16;
+    int badBlockRun = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PeakAlpineProcessor)
 };
