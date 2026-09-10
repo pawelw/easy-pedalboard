@@ -19,6 +19,10 @@ const BAR_SPAN = 26;
 const TREM_BARS = 26;
 const DECAY_BARS = 7;
 
+// The Easy / Adv strip is hidden for now and every module opens on Adv. The
+// Easy path below is kept whole so flipping this back is the only change.
+const SHOW_EASY_TABS = false;
+
 /** The tremolo's own envelope, traced from the same shaped-LFO the audio path
     uses (`lfoValue`, a hand-kept port of ee/dsp/Lfo.h) rather than from a
     stand-in curve - a picture drawn from a different formula than the engine
@@ -185,7 +189,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
         </>
       )}
 
-      <ModuleTabs value={tab} onChange={setTab} />
+      {SHOW_EASY_TABS && <ModuleTabs value={tab} onChange={setTab} />}
     </ModulePanel>
   );
 }

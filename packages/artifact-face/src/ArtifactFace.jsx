@@ -109,6 +109,10 @@ function useFilterMod() {
   return mod;
 }
 
+// The Easy / Adv strip is hidden for now and every face opens on Adv. The Easy
+// path below is kept whole so flipping this back is the only change needed.
+const SHOW_EASY_TABS = false;
+
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     ArtifactFace itself would read the enclosing scope, not the one it declares. */
 function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = null }) {
@@ -165,7 +169,7 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
         <RingBody />
       )}
 
-      {easy && <ModuleTabs value={tab} onChange={setTab} />}
+      {SHOW_EASY_TABS && easy && <ModuleTabs value={tab} onChange={setTab} />}
     </ModulePanel>
   );
 }
