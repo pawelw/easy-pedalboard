@@ -3,21 +3,29 @@
 #include "ee/dsp/AutoWah.h"
 #include "ee/dsp/BitCrusher.h"
 #include "ee/dsp/RingModulator.h"
+#include "ee/dsp/Rust.h"
 #include "ee/fx/MultiEngineModule.h"
 
 namespace ee::fx
 {
 
-/** Peak Artifact's module: three engines, one at a time.
+/** Peak Artifact's module: four engines, one at a time.
  *
- * All three are voiced. Each takes the footer Mix as its dry/wet - none of them
- * has a wet path that wanders in time (the trap `engineUsesMix` exists for), so
- * a fixed dry alongside the wet combs harmlessly rather than sweeping.
+ * All four are voiced. Each takes the footer Mix as its dry/wet. Rust's warble
+ * has a wet path that wanders in time, but only under wear and gently - it is
+ * wow, the intended movement, not the tremolo artefact `engineUsesMix` guards
+ * Tape against - so it too keeps the Mix.
  *
  * Ring Mod is `ee::dsp::RingModulator` - a sine-carrier ring modulator with a
  * post low-pass and two voicings (Earworm's carrier wobble, Green Lantern's
  * octave blend), voiced from the JHS 3 Series Ring Modulator. Its Blend is the
  * footer Mix.
+ *
+ * Rust is `ee::dsp::Rust` - degradation with a memory. A per-channel wear state
+ * follows the recent input level and heals back when it stops, driving a
+ * corrosion chain (warble, grit, bit/rate crumble, crackle, dropouts) whose
+ * depth is wear * Grind. Two voicings: Oxide (a decaying magnetic coating) and
+ * Contact (a failing jack). Its dry/wet is the footer Mix.
  *
  * Filter is `ee::dsp::AutoWah`, the Peak Wah engine, with its per-note envelope
  * taken out of the picture: Decay is pinned fully up (the engine latches on and
@@ -41,6 +49,7 @@ public:
         RingMod = 0,
         BitCrush,
         Filter,
+        Rust,
         NumEngines
     };
 
@@ -89,6 +98,17 @@ public:
         ring.setMode (mode);
     }
 
+    /** Every Rust control in one call. `grind01` and `tone01` are raw 0..1 knob
+        positions; `mode` is 0 = Oxide, 1 = Contact. Wear and its recovery are
+        fixed inside the engine - there is no knob for them. The dry/wet is the
+        module's footer Mix. */
+    void setRust (float grind01, float tone01, int mode) noexcept
+    {
+        rust.setGrind01 (grind01);
+        rust.setTone01 (tone01);
+        rust.setMode (mode);
+    }
+
     /** The Filter engine's signed cutoff-sweep exponent per channel at the last
         processed sample (Range * gate * lfo) - what the face's response scope
         rides on, the same feed Peak Wah pushes. The engine stays warm even when
@@ -100,8 +120,9 @@ public:
 protected:
     int engineCount() const noexcept override { return NumEngines; }
 
-    /** All three engines are summed against the dry - the footer Mix is their
-        Blend. None has a wet path that wanders in time, so none opts out. */
+    /** All four engines are summed against the dry - the footer Mix is their
+        Blend. Rust's warble wanders in time but only gently and only under
+        wear, so it keeps the Mix like the rest (see the class note). */
     bool engineUsesMix (int) const noexcept override { return true; }
 
     void prepareEngines (double sampleRate, int) override
@@ -116,6 +137,7 @@ protected:
 
         crusher.prepare (sampleRate);
         ring.prepare (sampleRate);
+        rust.prepare (sampleRate);
     }
 
     void renderEngine (int index, const juce::AudioBuffer<float>& dry, juce::AudioBuffer<float>& wet,
@@ -132,6 +154,8 @@ protected:
             crusher.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
         else if (index == RingMod)
             ring.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
+        else if (index == Rust)
+            rust.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
     }
 
     void resetEngine (int index) noexcept override
@@ -142,6 +166,8 @@ protected:
             crusher.reset();
         else if (index == RingMod)
             ring.reset();
+        else if (index == Rust)
+            rust.reset();
     }
 
 private:
@@ -154,6 +180,7 @@ private:
     ee::dsp::AutoWah wah;
     ee::dsp::BitCrusher crusher;
     ee::dsp::RingModulator ring;
+    ee::dsp::Rust rust;
 };
 
 } // namespace ee::fx

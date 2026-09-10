@@ -15,6 +15,7 @@
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/Phaser.h"
 #include "ee/dsp/RingModulator.h"
+#include "ee/dsp/Rust.h"
 #include "ee/dsp/SpringReverb.h"
 #include "ee/dsp/Overdrive.h"
 #include "ee/dsp/TapeCharacter.h"
@@ -2908,6 +2909,301 @@ void testRingModulator()
     }
 }
 
+// ------------------------------------------------------------------------ rust
+
+void testRust()
+{
+    std::printf ("Rust: silence, bounds, reproducibility, wear as a memory, mode Tone scaling\n");
+
+    // 1. Silence in -> silence out, both modes, everything up.
+    for (int mode : { 0, 1 })
+    {
+        ee::dsp::Rust rust;
+        rust.prepare (kSampleRate);
+        rust.setGrind01 (1.0f);
+        rust.setTone01 (0.5f);
+        rust.setMode (mode);
+
+        std::vector<float> l (kBlock, 0.0f), r (kBlock, 0.0f);
+        float peak = 0.0f;
+        bool finite = true;
+        for (int b = 0; b < 400; ++b)
+        {
+            std::fill (l.begin(), l.end(), 0.0f);
+            std::fill (r.begin(), r.end(), 0.0f);
+            rust.process (l.data(), r.data(), kBlock);
+            for (int i = 0; i < kBlock; ++i)
+            {
+                finite = finite && std::isfinite (l[static_cast<size_t> (i)]);
+                peak = juce::jmax (peak, std::abs (l[static_cast<size_t> (i)]));
+            }
+        }
+        check (finite && peak < 1.0e-6f, "silent input stays silent");
+    }
+
+    // 2. A sine in stays finite and bounded across a mode / knob sweep.
+    {
+        float worst = 0.0f;
+        bool finite = true;
+        for (int mode : { 0, 1 })
+            for (float grind : { 0.0f, 0.5f, 1.0f })
+                for (float tone : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f })
+                {
+                    ee::dsp::Rust rust;
+                    rust.prepare (kSampleRate);
+                    rust.setMode (mode);
+                    rust.setGrind01 (grind);
+                    rust.setTone01 (tone);
+
+                    std::vector<float> l (kBlock), r (kBlock);
+                    double phase = 0.0;
+                    for (int b = 0; b < 240; ++b)
+                    {
+                        fillRingSine (l, r, phase, 220.0);
+                        rust.process (l.data(), r.data(), kBlock);
+                        for (int i = 0; i < kBlock; ++i)
+                        {
+                            finite = finite && std::isfinite (l[static_cast<size_t> (i)]);
+                            worst = juce::jmax (worst, std::abs (l[static_cast<size_t> (i)]));
+                        }
+                    }
+                }
+        check (finite, "output stays finite for a sine input");
+        check (worst < 2.0f, "output stays bounded (worst " + juce::String (worst, 3) + ")");
+    }
+
+    // 3. Two identical renders are bit-for-bit equal - the only RNG is the
+    //    warble walk, fixed-seeded in reset(), so a render can be checksummed.
+    {
+        auto render = [] (std::vector<float>& out)
+        {
+            ee::dsp::Rust rust;
+            rust.prepare (kSampleRate);
+            rust.setMode (1);
+            rust.setGrind01 (0.7f);
+            rust.setTone01 (0.6f);
+
+            std::vector<float> l (kBlock), r (kBlock);
+            double phase = 0.0;
+            out.clear();
+            for (int b = 0; b < 300; ++b)
+            {
+                fillRingSine (l, r, phase, 196.0);
+                rust.process (l.data(), r.data(), kBlock);
+                out.insert (out.end(), l.begin(), l.end());
+            }
+        };
+
+        std::vector<float> a, b;
+        render (a);
+        render (b);
+        check (a == b, "two identical renders match sample for sample");
+    }
+
+    // 4. Wear is a memory: driven with a steady loud tone the output diverges
+    //    from the input more as time goes on (the corrosion builds), then heals
+    //    back toward the input once the tone stops.
+    {
+        ee::dsp::Rust rust;
+        rust.prepare (kSampleRate);
+        rust.setMode (0); // Oxide
+        rust.setGrind01 (0.8f);
+        rust.setTone01 (0.9f);
+
+        std::vector<float> l (kBlock), r (kBlock), dry (kBlock);
+        double phase = 0.0, dryPhase = 0.0;
+
+        auto meanAbsDiff = [] (const std::vector<float>& a, const std::vector<float>& b)
+        {
+            double acc = 0.0;
+            for (size_t i = 0; i < a.size(); ++i)
+                acc += std::abs (a[i] - b[i]);
+            return static_cast<float> (acc / static_cast<double> (a.size()));
+        };
+
+        float earlyDiff = 0.0f, lateDiff = 0.0f;
+        const int blocksPerSecond = static_cast<int> (kSampleRate / kBlock);
+
+        for (int b = 0; b < blocksPerSecond * 4; ++b)
+        {
+            fillRingSine (l, r, phase, 110.0);
+            fillRingSine (dry, dry, dryPhase, 110.0); // same tone, untouched
+            rust.process (l.data(), r.data(), kBlock);
+
+            if (b == 2)
+                earlyDiff = meanAbsDiff (l, dry);
+            if (b == blocksPerSecond * 3)
+                lateDiff = meanAbsDiff (l, dry);
+        }
+
+        check (lateDiff > 0.02f && lateDiff > earlyDiff * 2.0f,
+               "wear builds: late diff " + juce::String (lateDiff, 4) + " >> early diff "
+                   + juce::String (earlyDiff, 4));
+
+        // Now silence for long enough to heal, then a quiet probe should pass
+        // near-clean.
+        for (int b = 0; b < blocksPerSecond * 6; ++b)
+        {
+            std::fill (l.begin(), l.end(), 0.0f);
+            std::fill (r.begin(), r.end(), 0.0f);
+            rust.process (l.data(), r.data(), kBlock);
+        }
+
+        // Measure the probe in its first few ms, before the probe itself has
+        // had time to rust the path again (the attack is hundreds of ms).
+        float probeDiff = 0.0f;
+        double probePhase = 0.0, probeDryPhase = 0.0;
+        for (int b = 0; b < 8; ++b)
+        {
+            fillRingSine (l, r, probePhase, 110.0);
+            fillRingSine (dry, dry, probeDryPhase, 110.0);
+            rust.process (l.data(), r.data(), kBlock);
+            if (b == 2)
+                probeDiff = meanAbsDiff (l, dry);
+        }
+
+        check (probeDiff < lateDiff * 0.5f,
+               "wear heals: probe diff " + juce::String (probeDiff, 4) + " << driven diff "
+                   + juce::String (lateDiff, 4));
+    }
+
+    // 5. At a real guitar level (~0.2, well below a normalised sine) and the
+    //    factory knob positions, sustained playing must audibly corrode the
+    //    signal - a continuous difference, not the odd sparse click. This is
+    //    the regression for the detector that tracked the waveform troughs and
+    //    so never let wear accumulate: the engine passed the guitar through
+    //    almost untouched.
+    {
+        ee::dsp::Rust eng;
+        eng.prepare (kSampleRate);
+        eng.setMode (0); // Oxide
+        eng.setGrind01 (ee::dsp::rust::kDefaultGrindPct * 0.01f);
+        eng.setTone01 (ee::dsp::rust::kDefaultTonePct * 0.01f);
+
+        std::vector<float> l (kBlock), r (kBlock), dry (kBlock);
+        double phase = 0.0, dryPhase = 0.0;
+
+        double diffSq = 0.0, inSq = 0.0;
+        long n = 0;
+        const int blocksPerSecond = static_cast<int> (kSampleRate / kBlock);
+
+        for (int b = 0; b < blocksPerSecond * 2; ++b)
+        {
+            fillRingSine (l, r, phase, 130.0);
+            fillRingSine (dry, dry, dryPhase, 130.0);
+            for (int i = 0; i < kBlock; ++i) // knock 0.6 down to a guitar-ish 0.2
+            {
+                l[static_cast<size_t> (i)] *= 0.33f;
+                r[static_cast<size_t> (i)] *= 0.33f;
+                dry[static_cast<size_t> (i)] *= 0.33f;
+            }
+            eng.process (l.data(), r.data(), kBlock);
+
+            if (b >= blocksPerSecond) // measure only after wear has had a second to build
+                for (int i = 0; i < kBlock; ++i)
+                {
+                    const double d = l[static_cast<size_t> (i)] - dry[static_cast<size_t> (i)];
+                    diffSq += d * d;
+                    inSq += dry[static_cast<size_t> (i)] * dry[static_cast<size_t> (i)];
+                    ++n;
+                }
+        }
+
+        const float diffRms = static_cast<float> (std::sqrt (diffSq / static_cast<double> (n)));
+        const float inRms   = static_cast<float> (std::sqrt (inSq / static_cast<double> (n)));
+        check (diffRms > 0.2f * inRms,
+               "default patch corrodes a guitar-level signal: diff rms " + juce::String (diffRms, 4)
+                   + " vs input rms " + juce::String (inRms, 4));
+    }
+
+    // 6. Neither mode adds anything on top of the signal. Drive it hard, then
+    //    feed silence: the output must be at the noise floor almost at once -
+    //    every stage shapes the input, there is no crackle / hiss / dropout
+    //    generator in either voicing.
+    for (int mode : { 0, 1 })
+    {
+        ee::dsp::Rust rust;
+        rust.prepare (kSampleRate);
+        rust.setMode (mode);
+        rust.setGrind01 (1.0f);
+        rust.setTone01 (0.6f);
+
+        std::vector<float> l (kBlock), r (kBlock);
+        double phase = 0.0;
+        const int blocksPerSecond = static_cast<int> (kSampleRate / kBlock);
+
+        for (int b = 0; b < blocksPerSecond * 2; ++b) // 2 s of loud tone
+        {
+            fillRingSine (l, r, phase, 120.0);
+            rust.process (l.data(), r.data(), kBlock);
+        }
+
+        float tailPeak = 0.0f;
+        for (int b = 0; b < blocksPerSecond; ++b) // 1 s of silence after
+        {
+            std::fill (l.begin(), l.end(), 0.0f);
+            std::fill (r.begin(), r.end(), 0.0f);
+            rust.process (l.data(), r.data(), kBlock);
+
+            if (b >= blocksPerSecond / 2) // measure the second half-second
+                for (int i = 0; i < kBlock; ++i)
+                    tailPeak = juce::jmax (tailPeak, std::abs (l[static_cast<size_t> (i)]));
+        }
+
+        check (tailPeak < 1.0e-3f,
+               juce::String (mode == 0 ? "Oxide" : "Contact")
+                   + " tail is silent within a second of the input stopping (peak "
+                   + juce::String (tailPeak, 6) + ")");
+    }
+
+    // 7. Contact is darker than Oxide at the same Tone knob - the engine scales
+    //    the knob down before the map. Feed quiet white noise (Grind 0, wear low
+    //    enough that the Contact clip stays open) and compare the high-frequency
+    //    content: Contact's should be clearly lower.
+    {
+        auto renderNoiseHf = [] (int mode) -> float
+        {
+            ee::dsp::Rust rust;
+            rust.prepare (kSampleRate);
+            rust.setMode (mode);
+            rust.setGrind01 (0.0f);
+            rust.setTone01 (0.8f);
+
+            juce::Random rng (2001);
+            std::vector<float> l (kBlock), r (kBlock);
+            double diffSq = 0.0;
+            long n = 0;
+            const int blocksPerSecond = static_cast<int> (kSampleRate / kBlock);
+
+            for (int b = 0; b < blocksPerSecond * 2; ++b)
+            {
+                for (int i = 0; i < kBlock; ++i)
+                {
+                    const float s = (rng.nextFloat() * 2.0f - 1.0f) * 0.05f;
+                    l[static_cast<size_t> (i)] = s;
+                    r[static_cast<size_t> (i)] = s;
+                }
+                rust.process (l.data(), r.data(), kBlock);
+
+                if (b >= blocksPerSecond) // after the tone LP has settled
+                    for (int i = 1; i < kBlock; ++i)
+                    {
+                        const double d = l[static_cast<size_t> (i)] - l[static_cast<size_t> (i - 1)];
+                        diffSq += d * d;
+                        ++n;
+                    }
+            }
+            return static_cast<float> (std::sqrt (diffSq / static_cast<double> (n)));
+        };
+
+        const float oxideHf   = renderNoiseHf (0);
+        const float contactHf = renderNoiseHf (1);
+        check (contactHf < oxideHf * 0.9f,
+               "Contact Tone lands darker than Oxide: HF " + juce::String (contactHf, 5) + " vs "
+                   + juce::String (oxideHf, 5));
+    }
+}
+
 void testSpringDecay()
 {
     std::printf ("Spring tank decay vs the knob:\n");
@@ -4097,6 +4393,8 @@ int main()
     testAutoWahMixRampIsSmooth();
     std::printf ("\n");
     testRingModulator();
+    std::printf ("\n");
+    testRust();
     std::printf ("\n");
     testSpringDecay();
     std::printf ("\n");

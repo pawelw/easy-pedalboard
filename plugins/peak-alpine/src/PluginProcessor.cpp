@@ -9,6 +9,7 @@
 #include "ee/dsp/PhaserConfig.h"
 #include "ee/dsp/RateMap.h"
 #include "ee/dsp/RingModulatorConfig.h"
+#include "ee/dsp/RustConfig.h"
 #include "ee/dsp/SpringConfig.h"
 #include "ee/dsp/TapeMachineConfig.h"
 #include "ee/dsp/Tremolo.h"
@@ -114,6 +115,18 @@ juce::String artRingLpToText (float pct, int)
 {
     const float hz = ee::dsp::ringmod::lpHzFor (pct * 0.01f);
     if (hz >= ee::dsp::ringmod::kLpBypassHz)
+        return "Off";
+    return artHzToText (hz, 0);
+}
+
+/** The Artifact Rust engine's Tone readout, off the ee::dsp::rust map
+    ee::fx::ArtifactModule reads - a bare rounded "Hz" (this file's house style),
+    "Off" past the bypass point. Grind stays a plain percent. This is the Oxide
+    reading; Contact scales the knob down before the map, darker than shown. */
+juce::String artRustToneToText (float pct, int)
+{
+    const float hz = ee::dsp::rust::toneHzFor (pct * 0.01f);
+    if (hz >= ee::dsp::rust::kToneBypassHz)
         return "Off";
     return artHzToText (hz, 0);
 }
@@ -320,11 +333,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
 
     // --------------------------------------------------------------- artifact
     // Every id, range and default is Peak Artifact's, because the module is
-    // Peak Artifact's. All three engines are voiced (see ee::fx::ArtifactModule).
+    // Peak Artifact's. All four engines are voiced (see ee::fx::ArtifactModule).
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artOn, 1 }, "Artifact On", true));
-    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
-                                                              juce::StringArray { "Ring Mod", "Bit Crush", "Filter" },
-                                                              2));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
+        juce::StringArray { "Ring Mod", "Bit Crush", "Filter", "Rust" }, 2));
     addTrimDb (layout, id::artLevel, "Artifact Level");
     addPercent (layout, id::artMix, "Artifact Mix", 50.0f);
 
@@ -371,6 +384,16 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
         withText (artRingLpToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artRingMode, 1 }, "Artifact Mode",
                                                               juce::StringArray { "Earworm", "Green Lantern" }, 0));
+
+    // Rust. Two knobs - Grind (plain percent) and Tone (real units off the
+    // ee::dsp::rust map). Wear and its recovery are fixed inside the engine.
+    // Blend is Artifact Mix, not a knob of its own.
+    addPercent (layout, id::artRustGrind, "Artifact Grind", ee::dsp::rust::kDefaultGrindPct);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::artRustTone, 1 }, "Artifact Rust Tone", percent, ee::dsp::rust::kDefaultTonePct,
+        withText (artRustToneToText)));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { id::artRustMode, 1 }, "Artifact Rust Mode", juce::StringArray { "Oxide", "Contact" }, 0));
 
     // ------------------------------------------------------------- modulation
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modOn, 1 }, "Modulation On", true));
@@ -615,6 +638,8 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
 
     artifact.setRing (pct (id::artRingFreq), pct (id::artRingTweak), pct (id::artRingLp),
                       static_cast<int> (raw (id::artRingMode)));
+
+    artifact.setRust (pct (id::artRustGrind), pct (id::artRustTone), static_cast<int> (raw (id::artRustMode)));
 
     // --------------------------------------------------------------- modulation
     modulation.setEngine (static_cast<int> (raw (id::modEngine)));

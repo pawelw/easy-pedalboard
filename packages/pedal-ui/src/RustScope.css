@@ -1,0 +1,6 @@
+/* RustScope reuses the well treatment from FilterScope.css (.pui-scope /
+   .pui-scope__svg), like CrushScope / RingScope. Nothing here yet - the file
+   exists so the component owns a stylesheet import the way its siblings do. */
+.pui-rust-scope {
+  /* marker */
+}

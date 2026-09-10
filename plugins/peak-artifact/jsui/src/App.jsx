@@ -17,7 +17,7 @@ export default function App() {
     <div className="page">
       <Card
         title="Peak Artifact"
-        subtitle="Ring Mod / Bit Crush / Filter"
+        subtitle="Ring Mod / Bit Crush / Filter / Rust"
         subtitlePlacement="below"
         headerCenter={<JucePresetBar />}
         className="pa-card"

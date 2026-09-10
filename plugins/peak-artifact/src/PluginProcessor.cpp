@@ -7,6 +7,7 @@
 #include "ee/dsp/AutoWahConfig.h"
 #include "ee/dsp/BitCrusherConfig.h"
 #include "ee/dsp/RingModulatorConfig.h"
+#include "ee/dsp/RustConfig.h"
 #include "ee/plugin/ParamText.h"
 
 #include <cmath>
@@ -78,6 +79,18 @@ juce::String ringLpToText (float pct, int)
     return freqText (hz);
 }
 
+// Rust's Tone readout, off the same ee::dsp::rust map ee::fx::ArtifactModule
+// reads. Grind stays a plain percent. The number here is the Oxide reading; in
+// Contact the engine scales the knob down before the map, so the effective
+// corner is lower than shown - noted on the face rather than folded in here.
+juce::String rustToneToText (float pct, int)
+{
+    const float hz = ee::dsp::rust::toneHzFor (pct * 0.01f);
+    if (hz >= ee::dsp::rust::kToneBypassHz)
+        return "Off";
+    return freqText (hz);
+}
+
 float freqHzFor (float pct)
 {
     const float t = std::pow (juce::jlimit (0.0f, 1.0f, pct * 0.01f), ee::dsp::autowah::kFreqKnobSkew);
@@ -118,9 +131,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::on, 1 }, "On", true));
 
-    // All three engines are voiced; the pedal opens on Filter.
+    // All four engines are voiced; the pedal opens on Filter.
     layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { id::engine, 1 }, "Engine", juce::StringArray { "Ring Mod", "Bit Crush", "Filter" }, 2));
+        juce::ParameterID { id::engine, 1 }, "Engine", juce::StringArray { "Ring Mod", "Bit Crush", "Filter", "Rust" },
+        2));
 
     layout.add (
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::mix, 1 }, "Mix", percent, 50.0f, pctAttr));
@@ -177,6 +191,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::ringMode, 1 }, "Mode",
                                                               juce::StringArray { "Earworm", "Green Lantern" }, 0));
 
+    // Rust. Two knobs only - Grind (a plain percent) and Tone (real units off
+    // the ee::dsp::rust map). Wear and its recovery are fixed inside the engine.
+    // Its dry/wet is the footer Mix, not a knob here.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::rustGrind, 1 }, "Grind", percent,
+                                                             ee::dsp::rust::kDefaultGrindPct, pctAttr));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::rustTone, 1 }, "Tone", percent,
+                                                             ee::dsp::rust::kDefaultTonePct,
+                                                             withText (rustToneToText)));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::rustMode, 1 }, "Rust Mode",
+                                                              juce::StringArray { "Oxide", "Contact" }, 0));
+
     return layout;
 }
 
@@ -199,6 +224,8 @@ void PeakArtifactProcessor::pushSettings (double bpm) noexcept
     module.setCrush (pct (id::crushBits), pct (id::crushRate), pct (id::crushLp), pct (id::crushJitter));
 
     module.setRing (pct (id::ringFreq), pct (id::ringTweak), pct (id::ringLp), static_cast<int> (raw (id::ringMode)));
+
+    module.setRust (pct (id::rustGrind), pct (id::rustTone), static_cast<int> (raw (id::rustMode)));
 }
 
 juce::String PeakArtifactProcessor::timeReadout() const

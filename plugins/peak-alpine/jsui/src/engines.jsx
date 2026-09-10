@@ -214,6 +214,13 @@ export const ARTIFACT_EASY = {
       { id: "flt.range", min: 0.25, max: 0.85 },
     ],
   },
+  Rust: {
+    name: "Decay",
+    targets: [
+      { id: "rust.grind", min: 0.15, max: 0.9 },
+      { id: "rust.tone", min: 0.35, max: 0.9 },
+    ],
+  },
 };
 
 /** Two knobs per row, so neither side module ever runs past two. */

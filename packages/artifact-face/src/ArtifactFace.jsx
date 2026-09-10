@@ -6,6 +6,7 @@ import {
   ModulePanel,
   ModuleTabs,
   RingScope,
+  RustScope,
   Toggle,
   WaveIcon,
   freqHzFor01,
@@ -28,8 +29,9 @@ import "./ArtifactFace.css";
  * stepper, and then the selected engine's body, with Mix in the footer. Filter
  * has a response scope, two rows of knobs, the wave picker and a Mono/Stereo
  * switch; Bit Crush has a stepped-wave display and two rows of knobs; Ring Mod
- * has a lattice display, its three knobs and an Earworm / Green Lantern switch.
- * The footer Mix doubles as the Ring Mod's Blend.
+ * has a lattice display, its three knobs and an Earworm / Green Lantern switch;
+ * Rust has a corrosion display, two rows of knobs and an Oxide / Contact
+ * switch. The footer Mix doubles as the Ring Mod's and Rust's Blend.
  *
  * One component, two hosts. Peak Artifact wraps this in its own Card; Peak
  * Alpine drops it into its module row as the first module. The whole reason
@@ -157,6 +159,8 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
         <FilterBody />
       ) : engine.body === "crush" ? (
         <CrushBody />
+      ) : engine.body === "rust" ? (
+        <RustBody />
       ) : (
         <RingBody />
       )}
@@ -244,11 +248,31 @@ function RingDisplay() {
   );
 }
 
+function RustDisplay() {
+  const [grind] = useJuceSliderValue("rust.grind");
+  const [mode] = useJuceChoiceValue("rust.mode", 2, 0);
+
+  return (
+    // A reference sine coarsened by Grind - squared off (Contact) or wavering
+    // and darkening (Oxide). Picture only, no live wear feed.
+    <div className="af-display af-display--rust">
+      <RustScope
+        grind01={grind}
+        mode={mode}
+        height={64}
+        baseColor={SCOPE.baseColor}
+        fillColor={SCOPE.fillColor}
+      />
+    </div>
+  );
+}
+
 /* The display for whichever engine is selected - what the Easy view puts above
    its macro knob, the same well the Adv body carries. */
 function ArtifactEngineDisplay({ engine }) {
   if (engine === "Crasher") return <CrushDisplay />;
   if (engine === "Ring") return <RingDisplay />;
+  if (engine === "Rust") return <RustDisplay />;
   return <FilterDisplay />;
 }
 
@@ -364,6 +388,53 @@ function RingModeSwitch() {
       />
       <span className="af-switch-label" data-active={green || undefined}>
         Green Lantern
+      </span>
+    </div>
+  );
+}
+
+/* The Rust body: its corrosion display, one knob row (Grind / Tone) and the
+   mode switch. Wear and its recovery are fixed inside the engine, so there is
+   no knob for them. */
+function RustBody() {
+  return (
+    // Matches the other engine bodies' height so stepping between engines
+    // doesn't resize the module.
+    <div className="af-rust">
+      <RustDisplay />
+
+      <div className="af-knobs">
+        <div className="af-knob-row">
+          <JuceKnob parameterId="rust.grind" caption="Grind" variant="soft" size={36} />
+          <JuceKnob parameterId="rust.tone" caption="Tone" variant="soft" size={36} />
+        </div>
+      </div>
+
+      <RustModeSwitch />
+    </div>
+  );
+}
+
+/* Pinned to the foot of the module body, like Mono/Stereo. Oxide is the soft
+   magnetic-decay voicing (full warble, wear darkens the tone); Contact is
+   harder and more electrical (little warble, wear squares the peaks with a
+   hard clip and deepens the crumble). Neither adds noise. */
+function RustModeSwitch() {
+  const [mode, setMode] = useJuceChoiceValue("rust.mode", 2, 0);
+  const contact = mode === 1;
+
+  return (
+    <div className="af-inline-switch af-mode-switch">
+      <span className="af-switch-label" data-active={!contact || undefined}>
+        Oxide
+      </span>
+      <Toggle
+        checked={contact}
+        onChange={(v) => setMode(v ? 1 : 0)}
+        ariaLabel="Oxide / Contact"
+      />
+      <span className="af-switch-label" data-active={contact || undefined}>
+        Contact
       </span>
     </div>
   );

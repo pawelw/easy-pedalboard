@@ -19,4 +19,7 @@
   <PARAM id="ring.tweak" value="0"/>
   <PARAM id="ring.lp" value="60"/>
   <PARAM id="ring.mode" value="0"/>
+  <PARAM id="rust.grind" value="50"/>
+  <PARAM id="rust.tone" value="65"/>
+  <PARAM id="rust.mode" value="0"/>
 </PARAMETERS>

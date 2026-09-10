@@ -91,6 +91,8 @@ void setArtifactDefaults (ee::fx::ArtifactModule& m)
     m.setFilter (0.5f, 0.5f, 0.6f, 0.5f, 0.4f, false);
     // freq01, tweak01, lp01, mode (0 = Earworm)
     m.setRing (0.4f, 0.0f, 0.6f, 0);
+    // grind01, tone01, mode (0 = Oxide)
+    m.setRust (0.5f, 0.65f, 0);
 }
 
 
@@ -360,7 +362,7 @@ void sweepReverb()
 }
 
 /** ee::fx::ArtifactModule - Peak Alpine's first module and Peak Artifact's
-    whole processor. All three engines are voiced; the interesting cases are
+    whole processor. All four engines are voiced; the interesting cases are
     each engine's own parameter space and that stepping between them does not
     step the signal. */
 void sweepArtifact()
@@ -447,6 +449,32 @@ void sweepArtifact()
                         clean = allFinite (buffer) && clean;
                     }
 
+    // Rust's own knob space - Grind and Tone at each end and the middle, both
+    // modes, each Mix position. Wear and its recovery are fixed inside the
+    // engine; Grind at 1 is the worst case for level.
+    for (float grind : { 0.0f, 0.5f, 1.0f })
+        for (float tone : { 0.0f, 0.5f, 1.0f })
+            for (int mode : { 0, 1 })
+                for (float mix : { 0.0f, 0.5f, 1.0f })
+                {
+                    ee::fx::ArtifactModule module;
+                    module.prepare (kSampleRate, 512);
+                    module.setEngine (ee::fx::ArtifactModule::Rust);
+                    module.setMix01 (mix);
+                    module.setLevel (1.0f);
+                    module.setEngaged (true);
+
+                    module.setRust (grind, tone, mode);
+
+                    juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
+                    fillTestSignal (buffer, kSampleRate);
+                    run (module, buffer);
+
+                    ++cases;
+                    worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+                    clean = allFinite (buffer) && clean;
+                }
+
     std::printf ("  %d cases, worst peak %.3f\n", cases, worstPeak);
     check (clean, "every Artifact case finite");
     check (worstPeak < 8.0f, "nothing ran away");
@@ -532,11 +560,10 @@ int main()
         checkSwitchDoesNotClick (module, 1, 0, "Reverb Spring -> Space");
     }
 
-    // Every neighbouring Artifact pair plus the wrap - to and from the two
-    // pass-through engines as well as Filter, since a crossfade between a
-    // filtered signal and a bare copy of the input is exactly where a step
-    // would show.
-    const int artPairs[][2] = { { 0, 1 }, { 1, 2 }, { 2, 0 }, { 0, 2 } };
+    // Every neighbouring Artifact pair plus the wrap - Ring Mod, Bit Crush,
+    // Filter, Rust - since a crossfade between two engines that voice the signal
+    // very differently is exactly where a step would show.
+    const int artPairs[][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 0, 2 } };
     for (const auto& pair : artPairs)
     {
         ee::fx::ArtifactModule module;

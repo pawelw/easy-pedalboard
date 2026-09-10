@@ -568,13 +568,12 @@ size, per-type make-up, grit, output filtering, knob defaults - lives in
 
 ### Peak Artifact
 
-A switchable module - **Ring Mod**, **Bit Crush**, **Filter** - as a pedal of
-its own, drawn as one narrow compartment in the style of Peak Alpine's
+A switchable module - **Ring Mod**, **Bit Crush**, **Filter**, **Rust** - as a
+pedal of its own, drawn as one narrow compartment in the style of Peak Alpine's
 Modulation side-module but in red. A `<>` stepper picks the engine.
 
-Only **Filter** is voiced. Ring Mod and Bit Crush are selectable and pass the
-signal through untouched, ready to be filled in later. The module keeps every
-engine warm, so switching to Filter and back never clicks.
+All four engines are voiced. The module keeps every engine warm, so switching
+between them never clicks.
 
 Filter is Peak Wah's engine - `ee::dsp::AutoWah` - with its per-note envelope
 taken out: **Decay is pinned fully up** (the red infinity mark in the display
@@ -603,6 +602,29 @@ crossfades to the dry signal so the host's device on/off never clicks. The face
 uses the onyx theme with a `#c00001` module accent. The Filter voicing lives in
 `shared/include/ee/dsp/AutoWahConfig.h` (LFO rate range in
 `plugins/peak-artifact/src/RateMap.h`).
+
+**Rust** - `ee::dsp::Rust` - is degradation with a memory. A per-channel *wear*
+state tracks the recent input level: it climbs while you play and heals back
+when you stop, so a note rusts as it rings and the corrosion follows how hard
+you play. Wear drives a chain of tape-style warble, a grit stage, and bit-depth
+/ sample-rate crumble, its depth scaled by **Grind**. Every stage shapes your
+sound - nothing is layered on top - so the output falls silent the instant you
+do. Wear and its recovery are fixed at the top of their range, so there are only
+two knobs. An **Oxide / Contact** switch picks the flavour: Oxide is a soft
+decaying magnetic coating (full warble, wear darkens the tone); Contact is
+harder and more electrical (little warble, wear squares the peaks with a hard
+clip and deepens the crumble) and much brighter, so its **Tone** knob is scaled
+darker - 75 % in Contact lands around where 50 % would in Oxide.
+
+| Knob      | Range        | What it does                                                       |
+| --------- | ------------ | ---------------------------------------------------------------- |
+| **Grind** | 0 - 100 %    | Amount of crumble at full wear, from gentle grime to full breakup |
+| **Tone**  | 300 Hz - Off | Post low-pass; darker in Contact, and Oxide wear darkens it further |
+| **Mix**   | 0 - 100 %    | Dry / wet blend, in the footer                                    |
+
+The voicing lives in `shared/include/ee/dsp/RustConfig.h`. The only RNG is the
+warble's slow random walk, fixed-seeded in `reset()`, so a render repeats bit
+for bit and can be checksummed.
 
 ### Peak Grain
 
