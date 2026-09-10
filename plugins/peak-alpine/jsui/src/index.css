@@ -119,6 +119,14 @@
   margin-top: 22px;
 }
 
+/* The Easy tab's single macro knob, centred. A touch more air above it than
+   the Adv grid's 22px - one knob on its own wants the room. */
+.pa-easy {
+  margin-top: 26px;
+  display: flex;
+  justify-content: center;
+}
+
 .pa-knob-row {
   display: flex;
   align-items: flex-start;

@@ -119,6 +119,15 @@ namespace
     // the offline harness; retune it there if the voicing above changes a lot.
     constexpr float kDecayCompensation = 1.40f;
 
+    // Last-ditch magnitude gate for the feedback network, below. A marginal
+    // instability - round-trip gain a hair over unity in some band, from the
+    // in-loop interpolators' small passband bump - grows the tail exponentially
+    // without it ever going non-finite, so the isfinite check alone never sees
+    // it: the level just climbs until something downstream brickwalls it into a
+    // roar. Anything past this is not a reverb tail; treat it exactly like a
+    // NaN. ~+36 dBFS, so no transient on any real setting comes near it.
+    constexpr float kRunawayCeiling = 64.0f;
+
     // A lossless FDN retains more energy the longer it rings, so wet level would
     // otherwise rise ~9 dB across the decay sweep. Measured gain follows
     // (decay ^ kGainExponent) closely; normalising against the midpoint keeps
@@ -554,12 +563,15 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
             outR[s] += config::kWetLowShelf * wetLowShelfState[1];
         }
 
-        // Last line of defence: if anything in the feedback network has gone
-        // non-finite, the delay lines are now poisoned and every following
+        // Last line of defence: if the feedback network has gone non-finite -
+        // or has run away to a finite level no tail could reach, which a
+        // round-trip gain slightly over unity does without ever tripping
+        // isfinite - the delay lines are now poisoned and every following
         // sample would roar. Silence the rest of the block and clear the whole
         // network so the next block starts clean - one glitched block, then
         // recovery, rather than a stuck blow-up.
-        if (! std::isfinite (outL[s]) || ! std::isfinite (outR[s]))
+        if (! std::isfinite (outL[s]) || ! std::isfinite (outR[s])
+            || std::abs (outL[s]) > kRunawayCeiling || std::abs (outR[s]) > kRunawayCeiling)
         {
             for (int k = s; k < numSamples; ++k)
                 outL[k] = outR[k] = 0.0f;

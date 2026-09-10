@@ -43,6 +43,7 @@ export { default as FilterIcon } from "./FilterIcon.jsx";
 // the compartment a whole pedal's worth of controls goes into; the four below
 // it are what a module's own chrome is made of.
 export { default as ModulePanel } from "./ModulePanel.jsx";
+export { default as ModuleTabs } from "./ModuleTabs.jsx";
 export { default as PowerToggle } from "./PowerToggle.jsx";
 export { default as EngineStepper } from "./EngineStepper.jsx";
 export { default as BarDisplay } from "./BarDisplay.jsx";

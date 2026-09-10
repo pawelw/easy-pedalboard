@@ -11,7 +11,7 @@
 
 <div style="min-height:100vh;display:flex;align-items:flex-start;justify-content:center;padding:28px 20px 48px">
 
-<div style="flex:none;width:1046px;background:#171d20;border:1px solid #2b2b2b;border-radius:20px;box-shadow:0 20px 44px rgba(0,0,0,.4);padding:20px 24px 22px;overflow:hidden">
+<div style="flex:none;width:1246px;background:#171d20;border:1px solid #2b2b2b;border-radius:20px;box-shadow:0 20px 44px rgba(0,0,0,.4);padding:20px 24px 22px;overflow:hidden">
 
   <div style="display:flex;align-items:center;gap:14px;padding:0 2px 18px">
     <div style="flex:1 1 0;display:flex;align-items:center;gap:11px">
@@ -61,6 +61,123 @@
   </div>
 
   <div style="display:flex;align-items:stretch;gap:14px">
+
+    <div style="flex:none;width:186px;display:flex;flex-direction:column;background:#20292d;border:1px solid #161c1e;border-radius:8px;overflow:hidden;box-shadow:1px 3px 3px -1px rgba(0,0,0,.54);--pui-soft-lit:#e0524f">
+      <div style="display:flex;align-items:center;gap:10px;padding:13px 12px 12px;min-height:56px;border-bottom:1px solid #0a0b0c">
+        <button type="button" style="flex:none;width:22px;height:22px;padding:0;display:flex;align-items:center;justify-content:center;border-radius:999px;border:1px solid rgba(224,82,79,.4);background:transparent;color:#e0524f;cursor:pointer" style-hover="background:rgba(224,82,79,.12)"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 1.6 V7"></path><path d="M12.1 3.6 A6 6 0 1 1 3.9 3.6"></path></svg></button>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#b9d3d9">Artifact</span>
+        <span style="flex:1"></span>
+        <div style="flex:none;display:flex;align-items:center">
+          <div style="position:relative;width:24px;height:24px;display:flex;align-items:center;justify-content:center">
+            <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ artHead.box }}" height="{{ artHead.box }}" viewBox="{{ artHead.vb }}" fill="none" stroke-width="2.2" stroke-linecap="round">
+              <path d="{{ artHead.dTrack }}" style="stroke:#2b3639"></path>
+              <path d="{{ artHead.dLit }}" style="stroke:#e0524f"></path>
+            </svg>
+            <div style="position:absolute;inset:1.5px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 .5px 1px rgba(185,211,217,.3),0 4px 10px rgba(0,0,0,.5)">
+              <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ artHead.rot }}"><div style="position:absolute;top:12%;left:50%;height:28%;width:2px;margin-left:-1px;border-radius:999px;background:#b9d3d9"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="flex:1;display:flex;flex-direction:column;padding:14px 12px 0">
+        <div style="display:flex;align-items:center;gap:2px;padding:5px 6px;border-radius:9px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6)">
+          <button type="button" onClick="{{ artPrev }}" style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:#e0524f;cursor:pointer" style-hover="background:rgba(255,255,255,.08)"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 1.2 L1.6 5 L5.2 8.8"></path></svg></button>
+          <div style="flex:1;display:flex;align-items:center;justify-content:center;gap:9px;min-width:0">
+            <span style="flex:none;display:flex;color:#e0524f">
+              <sc-if value="{{ artIsRing }}" hint-placeholder-val="{{ false }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M11 24 C16 6, 24 6, 29 18 C34 30, 42 30, 47 12" opacity=".3"></path><path d="M6 24 C11 6, 19 6, 24 18 C29 30, 37 30, 42 12" opacity=".55"></path><path d="M1 24 C6 6, 14 6, 19 18 C24 30, 32 30, 37 12"></path></svg></sc-if>
+              <sc-if value="{{ artIsCrasher }}" hint-placeholder-val="{{ false }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 26 H9 V14 H16 V22 H23 V8 H30 V20 H37 V13 H42"></path></svg></sc-if>
+              <sc-if value="{{ artIsFilter }}" hint-placeholder-val="{{ true }}"><svg width="26" height="21" viewBox="0 0 44 36" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 30 C9 30, 10 8, 17 8 L27 8 C34 8, 35 30, 42 30"></path></svg></sc-if>
+            </span>
+            <span style="font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ artEngineName }}</span>
+          </div>
+          <button type="button" onClick="{{ artNext }}" style="width:22px;height:22px;flex:none;display:flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:5px;background:transparent;color:#e0524f;cursor:pointer" style-hover="background:rgba(255,255,255,.08)"><svg width="7" height="10" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 1.2 L5.4 5 L1.8 8.8"></path></svg></button>
+        </div>
+
+        <div style="margin-top:16px;height:63px;border-radius:12px;background:#101416;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center">
+          <span style="position:absolute;left:0;right:0;top:50%;height:1px;background:#233034"></span>
+          <sc-if value="{{ artIsRing }}" hint-placeholder-val="{{ false }}">
+            <svg width="150" height="42" viewBox="0 0 150 42" fill="none">
+              <path d="M6 21 Q9 9 12 21 T18 21 T24 21 T30 21 T36 21 T42 21 T48 21 T54 21 T60 21 T66 21 T72 21 T78 21 T84 21 T90 21 T96 21 T102 21 T108 21 T114 21 T120 21 T126 21 T132 21 T138 21 T144 21" stroke="#e0524f" stroke-width="2"></path>
+              <path d="M6 21 C42 3 108 3 144 21" stroke="#e0524f" stroke-width="1.2" opacity=".35"></path>
+              <path d="M6 21 C42 39 108 39 144 21" stroke="#e0524f" stroke-width="1.2" opacity=".35"></path>
+            </svg>
+          </sc-if>
+          <sc-if value="{{ artIsCrasher }}" hint-placeholder-val="{{ false }}">
+            <svg width="150" height="40" viewBox="0 0 150 40" fill="none" stroke="#e0524f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 20 H20 V12 H34 V6 H48 V12 H62 V20 H76 V28 H90 V34 H104 V28 H118 V20 H144"></path>
+            </svg>
+          </sc-if>
+          <sc-if value="{{ artIsFilter }}" hint-placeholder-val="{{ true }}">
+            <svg width="150" height="44" viewBox="0 0 150 44" fill="none" stroke="#e0524f" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 38 L46 38 C60 38 62 30 70 13 C74 5 82 5 86 20 C92 37 106 39 144 39" opacity=".92"></path>
+            </svg>
+          </sc-if>
+        </div>
+
+        <sc-if value="{{ artIsAdv }}" hint-placeholder-val="{{ true }}">
+          <div style="margin-top:22px;display:flex;flex-direction:column;gap:20px">
+            <sc-for list="{{ artRows }}" as="row" hint-placeholder-count="2">
+              <div style="display:flex;align-items:flex-start;justify-content:space-evenly;gap:8px">
+                <sc-for list="{{ row.knobs }}" as="k" hint-placeholder-count="2">
+                  <div style="display:flex;flex-direction:column;align-items:center;width:76px">
+                    <div style="position:relative;width:40px;height:40px;display:flex;align-items:center;justify-content:center">
+                      <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                        <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
+                        <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+                      </svg>
+                      <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                        <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+                      </div>
+                    </div>
+                    <div style="margin-top:7.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap;text-align:center">{{ k.name }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ artIsEasy }}" hint-placeholder-val="{{ false }}">
+          <div style="margin-top:26px;display:flex;flex-direction:column;align-items:center">
+            <div style="position:relative;width:67px;height:67px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ artEasy.box }}" height="{{ artEasy.box }}" viewBox="{{ artEasy.vb }}" fill="none" stroke-width="4" stroke-linecap="round">
+                <path d="{{ artEasy.dTrack }}" style="stroke:#2b3639"></path>
+                <path d="{{ artEasy.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+              </svg>
+              <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 10px 20px rgba(0,0,0,.5)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ artEasy.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:3px;margin-left:-1.5px;border-radius:999px;background:#b9d3d9"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ artEasy.name }}</div>
+            <div style="margin-top:4px;font-size:10px;font-weight:500;color:#8ba3a9">{{ artEasyValue }}</div>
+            <div style="margin-top:7px;font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#5f7378;text-align:center">{{ artEasyDrives }}</div>
+          </div>
+        </sc-if>
+
+        <div style="margin-top:auto;margin-left:-12px;margin-right:-12px;display:flex">
+          <button type="button" onClick="{{ artShowEasy }}" style="flex:1 1 0;padding:7px 0 8px;border:0;border-top:1px solid {{ artEasyEdge }};font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;background:{{ artEasyBg }};color:{{ artEasyInk }}">Easy</button>
+          <button type="button" onClick="{{ artShowAdv }}" style="flex:1 1 0;padding:7px 0 8px;border:0;border-top:1px solid {{ artAdvEdge }};border-left:1px solid #0a0b0c;font-family:inherit;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;background:{{ artAdvBg }};color:{{ artAdvInk }}">Adv</button>
+        </div>
+      </div>
+
+      <div style="border-top:1px solid #0a0b0c;padding:14px 12px 12px;display:flex;align-items:center;justify-content:center">
+        <sc-for list="{{ artFooter }}" as="k" hint-placeholder-count="1">
+          <div style="display:flex;flex-direction:column;align-items:center;width:76px">
+            <div style="position:relative;width:38px;height:38px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ k.box }}" height="{{ k.box }}" viewBox="{{ k.vb }}" fill="none" stroke-width="3" stroke-linecap="round">
+                <path d="{{ k.dTrack }}" style="stroke:#2b3639"></path>
+                <path d="{{ k.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
+              </svg>
+              <div style="position:absolute;inset:2px;border-radius:50%;background:linear-gradient(180deg,#333f43,#151a1d);box-shadow:inset 0 -1px .5px rgba(0,0,0,.49),inset 0 .5px 1px rgba(185,211,217,.3),0 6px 14px rgba(0,0,0,.5)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ k.rot }}"><div style="position:absolute;top:10%;left:50%;height:26%;width:2.4px;margin-left:-1.2px;border-radius:999px;background:#b9d3d9"></div></div>
+              </div>
+            </div>
+            <div style="margin-top:7.5px;font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ k.name }}</div>
+          </div>
+        </sc-for>
+      </div>
+    </div>
 
     <div style="flex:none;width:186px;display:flex;flex-direction:column;background:#20292d;border:1px solid #161c1e;border-radius:8px;overflow:hidden;box-shadow:1px 3px 3px -1px rgba(0,0,0,.54);--pui-soft-lit:#e0b23c">
       <div style="display:flex;align-items:center;gap:10px;padding:13px 12px 12px;min-height:56px;border-bottom:1px solid #0a0b0c">
@@ -129,7 +246,7 @@
 
         <sc-if value="{{ modIsEasy }}" hint-placeholder-val="{{ false }}">
           <div style="margin-top:26px;display:flex;flex-direction:column;align-items:center">
-            <div style="position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center">
+            <div style="position:relative;width:67px;height:67px;display:flex;align-items:center;justify-content:center">
               <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ modEasy.box }}" height="{{ modEasy.box }}" viewBox="{{ modEasy.vb }}" fill="none" stroke-width="4" stroke-linecap="round">
                 <path d="{{ modEasy.dTrack }}" style="stroke:#2b3639"></path>
                 <path d="{{ modEasy.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
@@ -140,6 +257,7 @@
             </div>
             <div style="margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ modEasy.name }}</div>
             <div style="margin-top:4px;font-size:10px;font-weight:500;color:#8ba3a9">{{ modEasyValue }}</div>
+            <div style="margin-top:7px;font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#5f7378;text-align:center">{{ modEasyDrives }}</div>
           </div>
         </sc-if>
 
@@ -410,7 +528,7 @@
 
         <sc-if value="{{ revIsEasy }}" hint-placeholder-val="{{ false }}">
           <div style="margin-top:26px;display:flex;flex-direction:column;align-items:center">
-            <div style="position:relative;width:96px;height:96px;display:flex;align-items:center;justify-content:center">
+            <div style="position:relative;width:67px;height:67px;display:flex;align-items:center;justify-content:center">
               <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ revEasy.box }}" height="{{ revEasy.box }}" viewBox="{{ revEasy.vb }}" fill="none" stroke-width="4" stroke-linecap="round">
                 <path d="{{ revEasy.dTrack }}" style="stroke:#2b3639"></path>
                 <path d="{{ revEasy.dLit }}" style="stroke:var(--pui-soft-lit)"></path>
@@ -421,6 +539,7 @@
             </div>
             <div style="margin-top:10px;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#b9d3d9;white-space:nowrap">{{ revEasy.name }}</div>
             <div style="margin-top:4px;font-size:10px;font-weight:500;color:#8ba3a9">{{ revEasyValue }}</div>
+            <div style="margin-top:7px;font-size:8px;font-weight:700;letter-spacing:.11em;text-transform:uppercase;color:#5f7378;text-align:center">{{ revEasyDrives }}</div>
           </div>
         </sc-if>
 
@@ -453,7 +572,7 @@
 </div>
 
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;modEngine&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Tape&quot;,&quot;Tremolo&quot;,&quot;Chorus&quot;,&quot;Phaser&quot;],&quot;default&quot;:&quot;Tremolo&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Engines&quot;},&quot;reverbEngine&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Space&quot;,&quot;Spring&quot;],&quot;default&quot;:&quot;Space&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Engines&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;artEngine&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Ring&quot;,&quot;Crasher&quot;,&quot;Filter&quot;],&quot;default&quot;:&quot;Filter&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Engines&quot;},&quot;modEngine&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Tape&quot;,&quot;Tremolo&quot;,&quot;Chorus&quot;,&quot;Phaser&quot;],&quot;default&quot;:&quot;Tremolo&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Engines&quot;},&quot;reverbEngine&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;Space&quot;,&quot;Spring&quot;],&quot;default&quot;:&quot;Space&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Engines&quot;}}">
 const A0 = -135, A1 = 135;
 
 const pt = (r, d) => {
@@ -515,6 +634,14 @@ function scale(v, size, gap) {
   };
 }
 
+const ART_ENGINES = ["Ring", "Crasher", "Filter"];
+
+const ART_PARAMS = {
+  Ring: [[["Freq", 0.4], ["Tweak", 0.28]], [["Filter", 0.72]]],
+  Crasher: [[["Bits", 0.55], ["Rate", 0.48]], [["Filter", 0.66], ["Jitter", 0.16]]],
+  Filter: [[["Freq", 0.44], ["Q", 0.38]], [["Range", 0.5], ["Time", 0.32]]],
+};
+
 const MOD_ENGINES = ["Tape", "Tremolo", "Chorus", "Phaser"];
 
 const MOD_PARAMS = {
@@ -538,14 +665,21 @@ const pairs = (list) => {
   return rows;
 };
 
-/** The Easy tab's one knob: the macro that stands in for the whole engine. */
+/** The Easy tab's one knob: the macro that stands in for the whole engine.
+    `name` is what it is called on the face, `v` its resting position, `drives`
+    the adv params it rides - the "musical move" for that engine. These are a
+    starting point; the maxed-out target for each is defined by the adv-panel
+    screenshots the team hands back. */
 const EASY = {
-  Tape: 0.42,
-  Tremolo: 0.58,
-  Chorus: 0.46,
-  Phaser: 0.52,
-  Space: 0.62,
-  Spring: 0.48,
+  Ring: { name: "Metal", v: 0.35, drives: "Freq · Tweak · Filter" },
+  Crasher: { name: "Crush", v: 0.45, drives: "Bits · Rate · Jitter" },
+  Filter: { name: "Sweep", v: 0.55, drives: "Freq · Q · Range" },
+  Tape: { name: "Character", v: 0.42, drives: "Saturation · Flutter · Wear" },
+  Tremolo: { name: "Depth", v: 0.58, drives: "Amount · Shape · Tube" },
+  Chorus: { name: "Lush", v: 0.46, drives: "Depth · Rate · Phase" },
+  Phaser: { name: "Sweep", v: 0.52, drives: "Depth · Rate" },
+  Space: { name: "Size", v: 0.62, drives: "Decay · Reso · Low Cut" },
+  Spring: { name: "Boing", v: 0.48, drives: "Decay · Tension" },
 };
 
 /** The tab is attached to the knobs above it: the selected one drops the line
@@ -558,9 +692,10 @@ const tab = (active) => ({
 });
 
 class Component extends DCLogic {
-  state = { mod: null, rev: null, bypassed: false, modTab: "Adv", revTab: "Adv" };
+  state = { art: null, mod: null, rev: null, bypassed: false, artTab: "Adv", modTab: "Adv", revTab: "Adv" };
 
   componentDidUpdate(prev) {
+    if (prev.artEngine !== this.props.artEngine) this.setState({ art: null });
     if (prev.modEngine !== this.props.modEngine) this.setState({ mod: null });
     if (prev.reverbEngine !== this.props.reverbEngine) this.setState({ rev: null });
   }
@@ -571,6 +706,7 @@ class Component extends DCLogic {
   }
 
   renderVals() {
+    const artEngine = this.state.art ?? this.props.artEngine ?? "Filter";
     const modEngine = this.state.mod ?? this.props.modEngine ?? "Tremolo";
     const revEngine = this.state.rev ?? this.props.reverbEngine ?? "Space";
 
@@ -591,8 +727,10 @@ class Component extends DCLogic {
 
     const decayBars = [34, 29, 24, 19, 15, 11, 8].map((h) => ({ h: `${h}px` }));
 
-    const modEasyV = EASY[modEngine];
-    const revEasyV = EASY[revEngine];
+    const artMacro = EASY[artEngine];
+    const modMacro = EASY[modEngine];
+    const revMacro = EASY[revEngine];
+    const artTabs = { easy: tab(this.state.artTab === "Easy"), adv: tab(this.state.artTab === "Adv") };
     const modTabs = { easy: tab(this.state.modTab === "Easy"), adv: tab(this.state.modTab === "Adv") };
     const revTabs = { easy: tab(this.state.revTab === "Easy"), adv: tab(this.state.revTab === "Adv") };
 
@@ -621,8 +759,9 @@ class Component extends DCLogic {
       modEasyBg: modTabs.easy.bg,
       modEasyInk: modTabs.easy.ink,
       modEasyEdge: modTabs.easy.edge,
-      modEasy: soft("Amount", modEasyV, 96),
-      modEasyValue: `${Math.round(modEasyV * 100)} %`,
+      modEasy: soft(modMacro.name, modMacro.v, 67),
+      modEasyValue: `${Math.round(modMacro.v * 100)} %`,
+      modEasyDrives: modMacro.drives,
       modFooter: [soft("Mix", 0.4, 38)],
       modHead: soft("Level", 0.55, 24),
       tremBars,
@@ -654,11 +793,35 @@ class Component extends DCLogic {
       revEasyBg: revTabs.easy.bg,
       revEasyInk: revTabs.easy.ink,
       revEasyEdge: revTabs.easy.edge,
-      revEasy: soft("Amount", revEasyV, 96),
-      revEasyValue: `${Math.round(revEasyV * 100)} %`,
+      revEasy: soft(revMacro.name, revMacro.v, 67),
+      revEasyValue: `${Math.round(revMacro.v * 100)} %`,
+      revEasyDrives: revMacro.drives,
       revFooter: [soft("Mix", 0.34, 38)],
       revHead: soft("Level", 0.5, 24),
       decayBars,
+
+      artEngineName: artEngine,
+      artIsRing: artEngine === "Ring",
+      artIsCrasher: artEngine === "Crasher",
+      artIsFilter: artEngine === "Filter",
+      artPrev: () => this.step("art", ART_ENGINES, artEngine, -1),
+      artNext: () => this.step("art", ART_ENGINES, artEngine, 1),
+      artRows: ART_PARAMS[artEngine].map((row) => ({ knobs: row.map(([n, v]) => soft(n, v, 40)) })),
+      artIsAdv: this.state.artTab === "Adv",
+      artIsEasy: this.state.artTab === "Easy",
+      artShowAdv: () => this.setState({ artTab: "Adv" }),
+      artShowEasy: () => this.setState({ artTab: "Easy" }),
+      artAdvBg: artTabs.adv.bg,
+      artAdvInk: artTabs.adv.ink,
+      artAdvEdge: artTabs.adv.edge,
+      artEasyBg: artTabs.easy.bg,
+      artEasyInk: artTabs.easy.ink,
+      artEasyEdge: artTabs.easy.edge,
+      artEasy: soft(artMacro.name, artMacro.v, 67),
+      artEasyValue: `${Math.round(artMacro.v * 100)} %`,
+      artEasyDrives: artMacro.drives,
+      artFooter: [soft("Mix", 0.36, 38)],
+      artHead: soft("Level", 0.5, 24),
     };
   }
 }

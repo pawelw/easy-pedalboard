@@ -125,6 +125,12 @@ public:
         included, and who checks the two agree. */
     static constexpr float kGainRampSeconds = 0.02f;
 
+    /** Anything past this at the module output is a runaway, not audio: an
+        engine's feedback loop gone marginally unstable climbs to a finite but
+        absurd level without ever going non-finite. Scrubbed like a NaN.
+        ~+36 dBFS, well clear of any legitimate wet-plus-level peak. */
+    static constexpr float kRunawayCeiling = 64.0f;
+
     void prepare (double sampleRate, int maximumExpectedSamplesPerBlock)
     {
         sr = sampleRate > 0.0 ? sampleRate : 44100.0;
@@ -327,7 +333,11 @@ public:
                     // anything but unity.
                     float out = dry + (mixed - dry) * e;
 
-                    if (! std::isfinite (out))
+                    // Non-finite, or a finite runaway from an engine whose
+                    // feedback loop has drifted marginally unstable - its own
+                    // guard resets it, but this block's tail has already
+                    // climbed. Either way it is not audio.
+                    if (! std::isfinite (out) || std::abs (out) > kRunawayCeiling)
                         out = 0.0f;
 
                     buffer.getWritePointer (ch, offset)[i] = out;

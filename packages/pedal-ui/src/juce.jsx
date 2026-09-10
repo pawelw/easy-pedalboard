@@ -165,6 +165,55 @@ export function JuceKnob({
   );
 }
 
+/** The "Easy" tab's one macro knob. It is *not* bound to a parameter of its
+    own - there is no backing `easy` parameter yet; that lands once the per-
+    engine target ranges are locked from the design. Turning it writes each of
+    the engine's own Adv parameters to `lerp(min, max, pos)`, so one knob makes
+    the whole engine's musical move at once.
+
+    Its position is local React state: it opens at `defaultValue`, and is
+    neither automatable nor saved in a preset (the Adv parameters it moves
+    *are* - a preset still round-trips, the macro just re-centres on load).
+
+    `targets` is `[{ id, min = 0, max = 1 }]`, `id` a leaf name. It is resolved
+    through `idPrefix` when one is given (Peak Alpine's side modules build ids
+    from the engine's own prefix, `mod.trem.`), otherwise through the enclosing
+    `ParamScope` (the Artifact face, scoped `art.`). Pass a stable `targets`
+    reference - a module-level constant - so the relay lookups are not rebuilt
+    every render. */
+export function JuceMacroKnob({
+  caption,
+  targets,
+  idPrefix,
+  size = 68,
+  defaultValue = 0.5,
+}) {
+  const scopePrefix = useContext(ParamScopeContext);
+  const prefix = idPrefix ?? scopePrefix;
+  const [pos, setPos] = useState(defaultValue);
+
+  const relays = useMemo(
+    () => targets.map((t) => ({ min: 0, max: 1, ...t, state: Juce.getSliderState(prefix + t.id) })),
+    [prefix, targets],
+  );
+
+  const apply = (next) => {
+    setPos(next);
+    for (const { state, min, max } of relays) state.setNormalisedValue(min + (max - min) * next);
+  };
+
+  return (
+    <Knob
+      variant="soft"
+      size={size}
+      caption={caption}
+      subLabel={`${Math.round(pos * 100)} %`}
+      value={pos}
+      onChange={apply}
+    />
+  );
+}
+
 /** One of a header's level faders, bound to a WebSliderRelay by parameter id -
     the shared `Slider`, the control Peak EQ's bands are, laid on its side at
     header size and dragged like a knob. Same optimistic-state pattern as

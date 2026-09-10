@@ -7,6 +7,7 @@ import {
   Knob,
   ModIcon,
   ModulePanel,
+  ModuleTabs,
   PhaserIcon,
   PowerToggle,
   PresetBar,
@@ -101,6 +102,7 @@ function Showcase() {
   const [modLevel, setModLevel] = useState(0.55);
   const [modMix, setModMix] = useState(0.4);
   const [modKnobs, setModKnobs] = useState([0.58, 0.36, 0.5, 0.3]);
+  const [moduleTab, setModuleTab] = useState("adv");
   const setModKnob = (i, v) => setModKnobs((all) => all.map((old, at) => (at === i ? v : old)));
 
   return (
@@ -318,7 +320,7 @@ function Showcase() {
               </div>
             )}
 
-            <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 18, paddingBottom: 14 }}>
+            <div style={{ marginTop: 22, display: "flex", flexDirection: "column", gap: 18 }}>
               {[
                 ["Amount", "Rate"],
                 ["Shape", "Tube"],
@@ -341,6 +343,10 @@ function Showcase() {
                 </div>
               ))}
             </div>
+
+            {/* The Easy / Adv strip Peak Alpine's three narrow modules carry:
+                bleeds to the panel edges and pins to the foot of the body. */}
+            <ModuleTabs value={moduleTab} onChange={setModuleTab} />
           </ModulePanel>
 
           {/* The wide tone, empty. Same panel as its neighbour - all `tone`

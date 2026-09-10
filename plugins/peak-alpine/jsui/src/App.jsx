@@ -4,7 +4,7 @@ import { JuceFader, JuceKnob, installAutoResize, useJuceToggleValue } from "@syn
 import { DelayFace } from "@synthpeak/delay-face";
 import { ArtifactFace } from "@synthpeak/artifact-face";
 import SideModule from "./SideModule.jsx";
-import { MOD_ENGINES, REVERB_ENGINES } from "./engines.jsx";
+import { ARTIFACT_EASY, MOD_ENGINES, REVERB_ENGINES } from "./engines.jsx";
 import "./index.css";
 
 /** A module's Level trim for the header's right-hand slot. Identical to the one
@@ -86,7 +86,12 @@ export default function App() {
               both. Its own Mix sits in its footer; the Level trim in its header
               is this plugin's chrome, handed in rather than drawn by the shared
               face, so that face still binds only to names Peak Artifact has. */}
-          <ArtifactFace prefix="art." headerRight={<ModuleLevel parameterId="art.level" />} />
+          <ArtifactFace
+            prefix="art."
+            headerRight={<ModuleLevel parameterId="art.level" />}
+            easyTab
+            easyConfig={ARTIFACT_EASY}
+          />
 
           {/* "Mod", not "Modulation": a 180px module's header has the toggle,
               the name and a Level knob in it, and the long word left the knob

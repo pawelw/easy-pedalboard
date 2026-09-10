@@ -1,6 +1,8 @@
-import { BarDisplay, EngineStepper, ModulePanel, Toggle, lfoValue } from "@synthpeak/pedal-ui";
+import { useState } from "react";
+import { BarDisplay, EngineStepper, ModulePanel, ModuleTabs, Toggle, lfoValue } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
+  JuceMacroKnob,
   JucePill,
   useJuceChoiceValue,
   useJuceSliderValue,
@@ -64,6 +66,12 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
   const [on, setOn] = useJuceToggleValue(`${prefix}on`, true);
   const engine = engines[engineIndex] ?? engines[0];
 
+  // Which face this module shows: "adv" is the full parameter set, "easy" the
+  // single macro knob. Per-module rather than shared - the three narrow
+  // modules are switched independently. Not backed by a parameter (the macro
+  // itself isn't either yet), so it re-opens on Adv each session.
+  const [tab, setTab] = useState("adv");
+
   return (
     <ModulePanel
       name={name}
@@ -101,6 +109,23 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
       {engine.display === "tremolo" && <TremoloDisplay prefix={engine.prefix} />}
       {engine.display === "decay" && <DecayDisplay parameterId={engine.decayId} />}
 
+      {tab === "easy" ? (
+        /* The Easy face: one macro knob that rides this engine's own Adv
+           knobs (engines.jsx's `easy.targets`). The display above stays -
+           it reads the same parameters the macro is moving, so it answers
+           to the Easy knob too. */
+        <div className="pa-easy">
+          {/* Keyed by engine so the macro re-centres when the engine changes,
+              rather than carrying one engine's position onto the next. */}
+          <JuceMacroKnob
+            key={engine.prefix}
+            caption={engine.easy.name}
+            targets={engine.easy.targets}
+            idPrefix={engine.prefix}
+          />
+        </div>
+      ) : (
+        <>
       <div className="pa-knobs">
         {knobRows(engine.knobs).map((row) => (
           /* Keyed by the *scoped* id rather than the leaf name: two engines
@@ -157,6 +182,10 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
           labelOn={engine.toggle[2]}
         />
       )}
+        </>
+      )}
+
+      <ModuleTabs value={tab} onChange={setTab} />
     </ModulePanel>
   );
 }

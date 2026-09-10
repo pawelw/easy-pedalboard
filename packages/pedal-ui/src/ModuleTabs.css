@@ -1,0 +1,40 @@
+/* Pinned to the foot of the module body, bled out past its 12px side padding
+   so the strip runs edge to edge and its divider lines up with the module's
+   own header and footer strips. `margin-top: auto` drops it below whatever
+   the body holds, so a short Easy view and a tall Adv view put their tabs in
+   the same place. */
+.pui-module-tabs {
+  margin: auto -12px 0;
+  display: flex;
+}
+
+.pui-module-tabs__tab {
+  flex: 1 1 0;
+  padding: 7px 0 8px;
+  border: 0;
+  border-top: 1px solid var(--pui-module-divider);
+  font-family: var(--pui-font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  /* Not selected: a recessed slab, one shade under the module's own ground. */
+  background: #191f22;
+  color: var(--pui-ink-dim);
+}
+
+/* The seam between the two tabs, the same line as the strip's own top edge. */
+.pui-module-tabs__tab + .pui-module-tabs__tab {
+  border-left: 1px solid var(--pui-module-divider);
+}
+
+/* Selected: no top border and the panel's own fill, so the content above it
+   and this tab read as one surface. */
+.pui-module-tabs__tab[data-active] {
+  border-top-color: transparent;
+  background: transparent;
+  color: var(--pui-ink);
+}

@@ -8,6 +8,12 @@ namespace
 {
 constexpr float kPi = 3.14159265358979f;
 
+// Last-ditch magnitude gate for the tank, below. A feedback loop that has
+// drifted marginally unstable climbs to a finite but absurd level without ever
+// going non-finite, so the isfinite check alone never catches it. ~+36 dBFS -
+// clear of anything a real spring reverb produces.
+constexpr float kRunawayCeiling = 64.0f;
+
 /** One-pole lowpass coefficient for a corner frequency. */
 float onePoleCoeff (float cornerHz, double sampleRate) noexcept
 {
@@ -226,11 +232,13 @@ void SpringReverb::process (const float* monoIn, float* outL, float* outR, int n
             outR[n] = outL[n];
         }
 
-        if (! std::isfinite (outL[n]) || ! std::isfinite (outR[n]))
+        if (! std::isfinite (outL[n]) || ! std::isfinite (outR[n])
+            || std::abs (outL[n]) > kRunawayCeiling || std::abs (outR[n]) > kRunawayCeiling)
         {
             // Whatever got in there is already in the feedback path, so every
-            // later sample would roar. Silence the rest of the block and clear
-            // the tank - one glitched block, then recovery.
+            // later sample would roar - non-finite, or a finite runaway from a
+            // loop gone marginally unstable. Silence the rest of the block and
+            // clear the tank - one glitched block, then recovery.
             for (int k = n; k < numSamples; ++k)
                 outL[k] = outR[k] = 0.0f;
             reset();

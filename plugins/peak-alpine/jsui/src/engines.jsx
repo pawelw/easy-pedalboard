@@ -24,6 +24,11 @@ import {
  * switch pinned to the bottom of the body, just above the footer. Both are
  * Tape-only for now - an engine that wants either needs a look at the layout,
  * not just a line here.
+ *
+ * `easy` is the module's "Easy" tab: `{ name, targets }`, where `targets` is
+ * the set of this engine's own knobs the one macro knob rides, each with the
+ * normalised `min`/`max` it spans as the macro goes 0..1. The macro has no
+ * parameter of its own yet (see `JuceMacroKnob`) - it just drives these.
  */
 
 // Chorus is ModIcon, not a glyph of its own - the mark the design draws for it
@@ -48,6 +53,18 @@ export const MOD_ENGINES = [
     // fully wet, like Peak Tape - the module's power toggle is its dry/wet.
     // The footer strip stays (its height is fixed in CSS); only the knob goes.
     hideMix: true,
+    // The Easy tab's macro: one knob that opens saturation, flutter and wear
+    // together - the "more tape" move. Starting ranges; the maxed-out target
+    // for each is the design's to lock (a screenshot of the Adv panel at full
+    // Easy). `min`/`max` are normalised 0..1 positions of the named knob.
+    easy: {
+      name: "Character",
+      targets: [
+        { id: "sat", min: 0.15, max: 0.75 },
+        { id: "flutter", min: 0.2, max: 0.6 },
+        { id: "wear", min: 0.05, max: 0.5 },
+      ],
+    },
   },
   {
     name: "Trem",
@@ -65,6 +82,15 @@ export const MOD_ENGINES = [
     // Flips the Rate knob between a free period in ms and a tempo-locked note
     // division - the same control the Delay module and Peak Trem & Pan carry.
     sync: "mod.trem.sync",
+    // Rate is left out on purpose - the tempo feel is the player's to set.
+    easy: {
+      name: "Depth",
+      targets: [
+        { id: "amount", min: 0.1, max: 0.9 },
+        { id: "shape", min: 0.35, max: 0.65 },
+        { id: "tube", min: 0.0, max: 0.5 },
+      ],
+    },
   },
   {
     name: "Chorus",
@@ -75,6 +101,14 @@ export const MOD_ENGINES = [
       ["depth", "Depth"],
       ["phase", "Phase"],
     ],
+    easy: {
+      name: "Lush",
+      targets: [
+        { id: "depth", min: 0.2, max: 0.85 },
+        { id: "rate", min: 0.2, max: 0.5 },
+        { id: "phase", min: 0.4, max: 0.95 },
+      ],
+    },
   },
   {
     name: "Phaser",
@@ -84,6 +118,13 @@ export const MOD_ENGINES = [
       ["rate", "Rate"],
       ["depth", "Depth"],
     ],
+    easy: {
+      name: "Sweep",
+      targets: [
+        { id: "depth", min: 0.2, max: 0.9 },
+        { id: "rate", min: 0.15, max: 0.5 },
+      ],
+    },
   },
 ];
 
@@ -102,6 +143,16 @@ export const REVERB_ENGINES = [
       ["locut", "Low Cut"],
       ["reso", "Reso"],
     ],
+    // Shimmer is left out - it is a taste control, and not bit-reproducible
+    // (see CLAUDE.md), so a macro should not be nudging it under the player.
+    easy: {
+      name: "Size",
+      targets: [
+        { id: "decay", min: 0.25, max: 0.9 },
+        { id: "reso", min: 0.3, max: 0.65 },
+        { id: "locut", min: 0.1, max: 0.35 },
+      ],
+    },
   },
   {
     name: "Spring",
@@ -118,8 +169,52 @@ export const REVERB_ENGINES = [
       ["tension", "Tension"],
       ["locut", "Low Cut"],
     ],
+    easy: {
+      name: "Boing",
+      targets: [
+        { id: "decay", min: 0.2, max: 0.85 },
+        { id: "tension", min: 0.35, max: 0.7 },
+      ],
+    },
   },
 ];
+
+/**
+ * The Artifact module's Easy macros, keyed by engine name. Artifact is
+ * `ArtifactFace` from `@synthpeak/artifact-face`, a face shared with the
+ * standalone Peak Artifact pedal - so its Easy config is handed in from here
+ * as a prop rather than living on that package's own engine table, which the
+ * standalone pedal (no Easy tab) has no use for.
+ *
+ * Leaf ids carry the engine's own sub-prefix (`flt.`, `crush.`, `ring.`); the
+ * face resolves them through its `art.` ParamScope.
+ */
+export const ARTIFACT_EASY = {
+  Ring: {
+    name: "Metal",
+    targets: [
+      { id: "ring.freq", min: 0.2, max: 0.7 },
+      { id: "ring.tweak", min: 0.1, max: 0.6 },
+      { id: "ring.lp", min: 0.5, max: 0.95 },
+    ],
+  },
+  Crasher: {
+    name: "Crush",
+    targets: [
+      { id: "crush.bits", min: 0.2, max: 0.8 },
+      { id: "crush.rate", min: 0.25, max: 0.8 },
+      { id: "crush.jitter", min: 0.0, max: 0.4 },
+    ],
+  },
+  Filter: {
+    name: "Sweep",
+    targets: [
+      { id: "flt.freq", min: 0.2, max: 0.75 },
+      { id: "flt.q", min: 0.2, max: 0.7 },
+      { id: "flt.range", min: 0.25, max: 0.85 },
+    ],
+  },
+};
 
 /** Two knobs per row, so neither side module ever runs past two. */
 export function knobRows(knobs) {

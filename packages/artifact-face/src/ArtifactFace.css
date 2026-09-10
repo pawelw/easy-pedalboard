@@ -32,6 +32,15 @@
   margin-top: 22px;
 }
 
+/* The Easy tab's single macro knob (Peak Alpine only - `easyTab`), centred.
+   A touch more air above it than the Adv grid's 22px: one knob wants the room,
+   and there is no display above it in this face's Easy view. */
+.af-easy {
+  margin-top: 26px;
+  display: flex;
+  justify-content: center;
+}
+
 .af-knob-row {
   display: flex;
   align-items: flex-start;

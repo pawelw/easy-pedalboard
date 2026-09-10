@@ -4,6 +4,7 @@ import {
   EngineStepper,
   FilterScope,
   ModulePanel,
+  ModuleTabs,
   RingScope,
   Toggle,
   WaveIcon,
@@ -11,6 +12,7 @@ import {
 } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
+  JuceMacroKnob,
   JucePill,
   ParamScope,
   useJuceChoiceValue,
@@ -47,11 +49,23 @@ import "./ArtifactFace.css";
  * host's to supply because that Level is the host's chrome, not one of this
  * pedal's parameters - keeping it out here is what lets the face bind only to
  * names Peak Artifact actually has.
+ *
+ * `easyTab` adds the Easy / Adv strip at the foot of the body - Peak Alpine
+ * turns it on, the standalone Peak Artifact pedal does not, so that pedal's
+ * face is untouched. `easyConfig` is the per-engine macro map it needs when
+ * `easyTab` is on: `{ [engineName]: { name, targets } }`, handed in from the
+ * host rather than kept on this package's engine table (which the standalone
+ * pedal has no use for). See Peak Alpine's engines.jsx `ARTIFACT_EASY`.
  */
-export default function ArtifactFace({ prefix = "", headerRight = null }) {
+export default function ArtifactFace({
+  prefix = "",
+  headerRight = null,
+  easyTab = false,
+  easyConfig = null,
+}) {
   return (
     <ParamScope prefix={prefix}>
-      <ArtifactFaceBody headerRight={headerRight} />
+      <ArtifactFaceBody headerRight={headerRight} easyTab={easyTab} easyConfig={easyConfig} />
     </ParamScope>
   );
 }
@@ -95,12 +109,16 @@ function useFilterMod() {
 
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     ArtifactFace itself would read the enclosing scope, not the one it declares. */
-function ArtifactFaceBody({ headerRight = null }) {
+function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = null }) {
   // Default index 2 (Filter) with no backend - the processor opens on Filter
   // too, since it is the only voiced engine.
   const [engineIndex, setEngine] = useJuceChoiceValue("engine", ENGINES.length, 2);
   const [on, setOn] = useJuceToggleValue("on", true);
+  // "adv" is the full engine body, "easy" the single macro knob. Only reached
+  // when `easyTab` is on and `easyConfig` has an entry for this engine.
+  const [tab, setTab] = useState("adv");
   const engine = ENGINES[engineIndex] ?? ENGINES[0];
+  const easy = easyTab ? easyConfig?.[engine.name] : null;
 
   return (
     <ModulePanel
@@ -121,49 +139,128 @@ function ArtifactFaceBody({ headerRight = null }) {
         onChange={(next) => setEngine(ENGINES.findIndex((e) => e.name === next))}
       />
 
-      {engine.body === "filter" ? (
+      {easy && tab === "easy" ? (
+        /* The Easy face: this engine's own display well, then one macro knob
+           riding its Adv knobs (Peak Alpine's ARTIFACT_EASY). The macro is
+           resolved through the `art.` ParamScope this face already declares -
+           no idPrefix needed. The well reads the same parameters the macro
+           moves, so it answers to the Easy knob too. */
+        <>
+          <ArtifactEngineDisplay engine={engine.name} />
+          <div className="af-easy">
+            {/* Keyed by engine so the macro re-centres on an engine change
+                rather than carrying its position across. */}
+            <JuceMacroKnob key={engine.name} caption={easy.name} targets={easy.targets} />
+          </div>
+        </>
+      ) : engine.body === "filter" ? (
         <FilterBody />
       ) : engine.body === "crush" ? (
         <CrushBody />
       ) : (
         <RingBody />
       )}
+
+      {easy && <ModuleTabs value={tab} onChange={setTab} />}
     </ModulePanel>
   );
+}
+
+/* Each engine's display well, split out so its own slider hooks run only for
+   the engine that is actually showing one - and so the Easy view can render
+   the same well above its macro knob without also mounting that engine's body.
+   The same reason Peak Alpine splits its displays out. */
+function FilterDisplay() {
+  const [freq] = useJuceSliderValue("flt.freq");
+  const [q] = useJuceSliderValue("flt.q");
+  const [range] = useJuceSliderValue("flt.range");
+  const { modL, modR } = useFilterMod();
+
+  return (
+    // The same component Peak Wah's scope is: a resting curve whose peak rises
+    // and narrows with Q and slides with Freq, a translucent band showing how
+    // far Range lets it sweep, and two curves riding the live L/R sweep inside
+    // it. Only the ink changes here.
+    <div className="af-display">
+      <FilterScope
+        baseFreqHz={freqHzFor01(freq)}
+        resonance01={q}
+        sweepDepth01={range}
+        modL={modL}
+        modR={modR}
+        height={64}
+        baseColor={SCOPE.baseColor}
+        sweepColor={SCOPE.sweepColor}
+        fillColor={SCOPE.fillColor}
+      />
+      <span className="af-inf" aria-label="Decay: always on">
+        &#8734;
+      </span>
+    </div>
+  );
+}
+
+function CrushDisplay() {
+  const [bits] = useJuceSliderValue("crush.bits");
+  const [rate] = useJuceSliderValue("crush.rate");
+  const [jitter] = useJuceSliderValue("crush.jitter");
+
+  return (
+    // A picture of the three destructive knobs: the reference sine held in time
+    // by Rate, quantised by Bits, and knocked out of step by Jitter. The Filter
+    // knob shapes what comes after, so it is not in the trace.
+    <div className="af-display af-display--crush">
+      <CrushScope
+        bits01={bits}
+        rate01={rate}
+        jitter01={jitter}
+        height={64}
+        baseColor={SCOPE.baseColor}
+        fillColor={SCOPE.fillColor}
+      />
+    </div>
+  );
+}
+
+function RingDisplay() {
+  const [freq] = useJuceSliderValue("ring.freq");
+  const [tweak] = useJuceSliderValue("ring.tweak");
+  const [mode] = useJuceChoiceValue("ring.mode", 2, 0);
+
+  return (
+    // The DSB-SC lattice: a slow program sine cut into the carrier. Freq sets
+    // the lattice density, Tweak wobbles it (Earworm) or leans it toward the
+    // rectified octave (Green Lantern). Picture only, no feed.
+    <div className="af-display af-display--ring">
+      <RingScope
+        freq01={freq}
+        tweak01={tweak}
+        mode={mode}
+        height={64}
+        baseColor={SCOPE.baseColor}
+        fillColor={SCOPE.fillColor}
+      />
+    </div>
+  );
+}
+
+/* The display for whichever engine is selected - what the Easy view puts above
+   its macro knob, the same well the Adv body carries. */
+function ArtifactEngineDisplay({ engine }) {
+  if (engine === "Crasher") return <CrushDisplay />;
+  if (engine === "Ring") return <RingDisplay />;
+  return <FilterDisplay />;
 }
 
 /* Its own component so the Filter-only hooks don't run for the other two
    engines - the same reason Peak Alpine splits its displays out. */
 function FilterBody() {
-  const [freq] = useJuceSliderValue("flt.freq");
-  const [q] = useJuceSliderValue("flt.q");
-  const [range] = useJuceSliderValue("flt.range");
   const [waveIndex, setWave] = useJuceChoiceValue("flt.wave", WAVES.length);
   const wave = WAVES[waveIndex] ?? WAVES[0];
-  const { modL, modR } = useFilterMod();
 
   return (
     <>
-      {/* The same component Peak Wah's scope is: a resting curve whose peak
-          rises and narrows with Q and slides with Freq, a translucent band
-          showing how far Range lets it sweep, and two curves riding the live
-          L/R sweep inside it. Only the ink changes here. */}
-      <div className="af-display">
-        <FilterScope
-          baseFreqHz={freqHzFor01(freq)}
-          resonance01={q}
-          sweepDepth01={range}
-          modL={modL}
-          modR={modR}
-          height={64}
-          baseColor={SCOPE.baseColor}
-          sweepColor={SCOPE.sweepColor}
-          fillColor={SCOPE.fillColor}
-        />
-        <span className="af-inf" aria-label="Decay: always on">
-          &#8734;
-        </span>
-      </div>
+      <FilterDisplay />
 
       <div className="af-knobs">
         <div className="af-knob-row">
@@ -204,29 +301,13 @@ function FilterBody() {
   );
 }
 
-/* Its own component so the Crush-only hooks don't run for the other engines. */
+/* The Bit Crush body: its display well and two knob rows. */
 function CrushBody() {
-  const [bits] = useJuceSliderValue("crush.bits");
-  const [rate] = useJuceSliderValue("crush.rate");
-  const [jitter] = useJuceSliderValue("crush.jitter");
-
   return (
     // Matches the Filter body's height so stepping between engines doesn't
     // resize the module - the same job .af-blank does for Ring Mod.
     <div className="af-crush">
-      {/* A picture of the three destructive knobs: the reference sine held in
-          time by Rate, quantised by Bits, and knocked out of step by Jitter.
-          The Filter knob shapes what comes after, so it is not in the trace. */}
-      <div className="af-display af-display--crush">
-        <CrushScope
-          bits01={bits}
-          rate01={rate}
-          jitter01={jitter}
-          height={64}
-          baseColor={SCOPE.baseColor}
-          fillColor={SCOPE.fillColor}
-        />
-      </div>
+      <CrushDisplay />
 
       <div className="af-knobs">
         <div className="af-knob-row">
@@ -242,29 +323,13 @@ function CrushBody() {
   );
 }
 
-/* Its own component so the Ring-only hooks don't run for the other engines. */
+/* The Ring Mod body: its lattice display, three knobs and the mode switch. */
 function RingBody() {
-  const [freq] = useJuceSliderValue("ring.freq");
-  const [tweak] = useJuceSliderValue("ring.tweak");
-  const [mode] = useJuceChoiceValue("ring.mode", 2, 0);
-
   return (
     // Matches the Filter / Crush body height so stepping between engines doesn't
     // resize the module.
     <div className="af-ring">
-      {/* The DSB-SC lattice: a slow program sine cut into the carrier. Freq
-          sets the lattice density, Tweak wobbles it (Earworm) or leans it
-          toward the rectified octave (Green Lantern). Picture only, no feed. */}
-      <div className="af-display af-display--ring">
-        <RingScope
-          freq01={freq}
-          tweak01={tweak}
-          mode={mode}
-          height={64}
-          baseColor={SCOPE.baseColor}
-          fillColor={SCOPE.fillColor}
-        />
-      </div>
+      <RingDisplay />
 
       <div className="af-knobs">
         <div className="af-knob-row">
