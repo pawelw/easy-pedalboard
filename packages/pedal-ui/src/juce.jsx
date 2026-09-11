@@ -410,7 +410,7 @@ export function JuceChoicePill({ parameterId, labels }) {
     Wear/Flutter on the tape section, Drift/Phaser on the mod one, Low/High on
     the filter. `scaleFrom="max"` is for a cut that rests wide open at the top
     of its travel; see Knob's own note on it. */
-export function JuceStageKnob({ parameterId, name, scaleFrom }) {
+export function JuceStageKnob({ parameterId, name, scaleFrom, size }) {
   const id = useParamId(parameterId);
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const valueLabel = useFormattedText(id, value);
@@ -421,6 +421,7 @@ export function JuceStageKnob({ parameterId, name, scaleFrom }) {
       value={value}
       valueLabel={valueLabel}
       scaleFrom={scaleFrom}
+      size={size}
       onChange={setValue}
       onDragStart={() => sliderState.sliderDragStarted()}
       onDragEnd={() => sliderState.sliderDragEnded()}

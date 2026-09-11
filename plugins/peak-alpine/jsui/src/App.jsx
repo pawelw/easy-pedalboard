@@ -131,13 +131,13 @@ function DelayModule() {
       name="Delay"
       accent="var(--pui-accent-delay)"
       tone="wide"
-      width={560}
+      width={490}
       on={on}
       onToggle={setOn}
       headerRight={<ModuleLevel parameterId="dly.level" />}
       className="pa-delay"
     >
-      <DelayFace prefix="dly." />
+      <DelayFace prefix="dly." tapeRouter={false} stageKnobSize={36} mainKnobSize={60} />
     </ModulePanel>
   );
 }

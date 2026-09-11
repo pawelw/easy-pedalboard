@@ -26,7 +26,9 @@ namespace ee::dsp
 
     Both channels share one set of flutter oscillators - a capstan wobbles the
     whole machine, and giving each side its own turns the effect into a chorus.
-    The grit is seeded per channel, so only that part is decorrelated.
+    The grit shares one noise source too, so its texture is mono like a real
+    tape floor bed rather than spreading across the image; only its gain
+    (via each channel's own envelope) still tracks that channel's signal.
 */
 class TapeCharacter
 {
@@ -61,11 +63,10 @@ public:
     {
         smoothedDepth = 0.0f;
         modRng = 0x2545f491u;
+        noiseRng = 0x9e3779b9u;
 
         for (auto& s : modState)
             s = 0.0f;
-
-        uint32_t seed = 0x9e3779b9u;
 
         for (auto& c : channels)
         {
@@ -78,8 +79,6 @@ public:
             c.noiseLpState2 = 0.0f;
             c.hiCutZ1 = 0.0f;
             c.hiCutZ2 = 0.0f;
-            c.rngState = seed;
-            seed = seed * 1664525u + 1013904223u;
         }
     }
 
@@ -109,6 +108,11 @@ public:
             float wobble = smoothedDepth * modDepth * modulator();
             wobble = std::clamp (wobble, -tuning.wobbleLimitSamples, tuning.wobbleLimitSamples);
 
+            // One draw per sample, shared by both channels, so the grit's raw
+            // texture is mono - only each channel's own envelope below still
+            // decides how loud it rides on that side.
+            const float rawNoise = whiteNoise (noiseRng);
+
             for (size_t c = 0; c < channels.size(); ++c)
             {
                 auto& ch = channels[c];
@@ -118,7 +122,7 @@ public:
                 ch.line.advance();
 
                 if (amount > 0.0f)
-                    y = colour (ch, y);
+                    y = colour (ch, y, rawNoise);
 
                 io[c][i] = y;
             }
@@ -137,7 +141,6 @@ private:
         float noiseLpState2 = 0.0f;
         float hiCutZ1 = 0.0f;
         float hiCutZ2 = 0.0f;
-        uint32_t rngState = 1u;
     };
 
     static constexpr float kTwoPi = 6.28318530718f;
@@ -161,7 +164,7 @@ private:
         return static_cast<float> (static_cast<int32_t> (state)) * 4.6566129e-10f;
     }
 
-    float colour (Channel& ch, float x) noexcept
+    float colour (Channel& ch, float x, float rawNoise) noexcept
     {
         // The bias is what puts even harmonics in; subtracting tanh(bias) keeps
         // the curve through the origin so quiet passages stay quiet.
@@ -172,7 +175,11 @@ private:
 
         ch.envState += envCoeff * (std::abs (y) - ch.envState);
 
-        float n = whiteNoise (ch.rngState);
+        // Same raw draw as the other channel; each channel's own highpass/
+        // lowpass state below still filters it independently, but since both
+        // start from the same sample and share the same coefficients they stay
+        // in lock-step, so the filtered texture comes out identical too.
+        float n = rawNoise;
         ch.noiseHpState += noiseHpCoeff * (n - ch.noiseHpState);
         n -= ch.noiseHpState;
         ch.noiseLpState += noiseLpCoeff * (n - ch.noiseLpState);
@@ -284,6 +291,7 @@ private:
     float modNorm[3] = { 1.0f, 1.0f, 1.0f };
     float modDepth = 0.0f;
     uint32_t modRng = 0x2545f491u;
+    uint32_t noiseRng = 0x9e3779b9u;
 
     float smoothedDepth = 0.0f;
     float depthCoeff = 0.0f;

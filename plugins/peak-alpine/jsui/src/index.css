@@ -97,6 +97,20 @@
   --pd-bleed-bottom: 0px;
 }
 
+/* The face's own two spacings, re-spent for a 490px module rather than Peak
+   Delay's 528px card. Scoped here rather than changed in the package, because
+   that package is the pedal's face as much as it is this module's. */
+.pa-delay .pd-row {
+  gap: 20px;
+}
+
+/* space-between, not the face's space-evenly: at this width the even thirds
+   left each pair huddled in the middle of its section with the dividers far
+   off to either side. */
+.pa-delay .pui-stage-group__knobs {
+  justify-content: space-between;
+}
+
 /* Both side modules' footers hold the same height whether or not there is a
    Mix knob in them - Tape has none (it runs fully wet), and without this its
    footer would collapse to its padding and pull the module out of step with

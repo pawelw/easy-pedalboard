@@ -507,8 +507,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::dlyHiCut, 1 }, "Delay High Cut",
                                                              hiCutRange, kHiCutMaxHz, withText (hertzToText)));
 
+    // false = Post. No control on the face reaches this (see DelayFace's
+    // tapeRouter) - Peak Alpine's Mod module is where a tape machine is chosen.
     layout.add (
-        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::dlyTapePre, 1 }, "Tape Placement", true));
+        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::dlyTapePre, 1 }, "Tape Placement", false));
 
     // ----------------------------------------------------------------- reverb
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::revOn, 1 }, "Reverb On", true));

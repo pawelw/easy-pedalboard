@@ -42,18 +42,40 @@ import "./DelayFace.css";
  * the only box these three children need, and adding another would put a
  * second layout box between the card's padding and the content that has been
  * measured against it since the face was written.
+ *
+ * `tapeRouter` is the Tape section's Pre/Post stepper. Peak Delay keeps it;
+ * Peak Alpine hides it, because there the tape machine is a whole module of
+ * its own and this second, smaller copy of "where does the tape sit" only
+ * asked the question twice. Hidden it rests wherever the parameter defaults -
+ * Post in Peak Alpine.
+ *
+ * `stageKnobSize` is the footer knobs' dial. Peak Delay's own 38px is the
+ * default; Peak Alpine passes 36, the size every other small knob on that
+ * panel is.
+ *
+ * `mainKnobSize` is Mix and Feedback. 76px is what Peak Delay's 528px card was
+ * laid out around; Peak Alpine's 490px module passes 60.
  */
-export default function DelayFace({ prefix = "" }) {
+export default function DelayFace({
+  prefix = "",
+  tapeRouter = true,
+  stageKnobSize,
+  mainKnobSize = 76,
+}) {
   return (
     <ParamScope prefix={prefix}>
-      <DelayFaceBody />
+      <DelayFaceBody
+        tapeRouter={tapeRouter}
+        stageKnobSize={stageKnobSize}
+        mainKnobSize={mainKnobSize}
+      />
     </ParamScope>
   );
 }
 
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     DelayFace itself would read the enclosing scope, not the one it declares. */
-function DelayFaceBody() {
+function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76 }) {
   const [leftMs, rightMs] = useDelayTimesMs();
   const [feedback01] = useJuceSliderValue("fb");
   const [mix01] = useJuceSliderValue("mix");
@@ -89,7 +111,7 @@ function DelayFaceBody() {
           parameterId="mix"
           caption="Mix"
           variant="scale"
-          size={76}
+          size={mainKnobSize}
           sweepGap={4}
           showValueBelow
           showValueLabel={false}
@@ -98,7 +120,7 @@ function DelayFaceBody() {
           parameterId="fb"
           caption="Feedback"
           variant="scale"
-          size={76}
+          size={mainKnobSize}
           sweepGap={4}
           showValueBelow
           showValueLabel={false}
@@ -166,13 +188,15 @@ function DelayFaceBody() {
         <div className="pd-footer__section">
           <StageGroup
             header={
-              <StageHeader icon={<TapeIcon size={30} />} name="Tape" accent="var(--pui-stage-tape)">
-                <JuceStageRouter parameterId="tapepre" label="Tape" labels={["Post", "Pre"]} />
+              <StageHeader icon={<TapeIcon size={24} />} name="Tape" accent="var(--pui-stage-tape)">
+                {tapeRouter && (
+                  <JuceStageRouter parameterId="tapepre" label="Tape" labels={["Post", "Pre"]} />
+                )}
               </StageHeader>
             }
           >
-            <JuceStageKnob parameterId="tape" name="Wear" />
-            <JuceStageKnob parameterId="flutter" name="Flutter" />
+            <JuceStageKnob parameterId="tape" name="Wear" size={stageKnobSize} />
+            <JuceStageKnob parameterId="flutter" name="Flutter" size={stageKnobSize} />
           </StageGroup>
         </div>
 
@@ -180,8 +204,8 @@ function DelayFaceBody() {
           <StageGroup
             header={<StageHeader icon={<ModIcon size={30} />} name="Mod" accent="var(--pui-stage-mod)" />}
           >
-            <JuceStageKnob parameterId="mod" name="Drift" />
-            <JuceStageKnob parameterId="phaser" name="Phaser" />
+            <JuceStageKnob parameterId="mod" name="Drift" size={stageKnobSize} />
+            <JuceStageKnob parameterId="phaser" name="Phaser" size={stageKnobSize} />
           </StageGroup>
         </div>
 
@@ -193,8 +217,8 @@ function DelayFaceBody() {
           <StageGroup
             header={<StageHeader icon={<FilterIcon size={30} />} name="Filter" accent="var(--pui-stage-filter)" />}
           >
-            <JuceStageKnob parameterId="locut" name="Low Cut" />
-            <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" />
+            <JuceStageKnob parameterId="locut" name="Low Cut" size={stageKnobSize} />
+            <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" size={stageKnobSize} />
           </StageGroup>
         </div>
       </div>
