@@ -1,6 +1,6 @@
 # Synth Peak — working notes
 
-Twelve JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
+Thirteen JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
 framework. `README.md` is the user-facing manual (what each pedal does, how to
 install it); this file is the map for working on the code.
 
@@ -60,7 +60,10 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
 ./build/tests/ee_grain_host_artefacts/Release/ee_grain_host        # drives the real processor like a host
 ./build/tests/ee_au_host_artefacts/Release/ee_au_host              # runs an *installed* AU, by identifier
-./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp # renders all 11 faces to PNG
+./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp # renders every face to PNG
+./build/tests/ee_sympathy_regress_artefacts/Release/ee_sympathy_regress  # Peak Sympathy, checksum per pass
+./build/tests/ee_sympathy_stress_artefacts/Release/ee_sympathy_stress    # resonator bank runaway / non-finite hunt
+./build/tests/ee_sympathy_match_artefacts/Release/ee_sympathy_match in.wav out.wav  # by-ear voicing renderer
 ```
 
 `auval -v aufx <CODE> Peak` runs Apple's AU validation; the four-letter codes are

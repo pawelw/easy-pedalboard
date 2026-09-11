@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="on" value="1"/>
+  <PARAM id="tune.mode" value="0"/>
+  <PARAM id="tune.key" value="9"/>
+  <PARAM id="octave" value="1"/>
+  <PARAM id="decay" value="48"/>
+  <PARAM id="damping" value="82"/>
+  <PARAM id="coupling" value="20"/>
+  <PARAM id="spread" value="14"/>
+  <PARAM id="bloom" value="0"/>
+  <PARAM id="sensitivity" value="56"/>
+  <PARAM id="mix" value="46"/>
+  <PARAM id="freeze" value="0"/>
+  <PARAM id="learn" value="0"/>
+</PARAMETERS>

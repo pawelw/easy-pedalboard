@@ -245,6 +245,84 @@ target_link_libraries(ee_tape_render
     PRIVATE ee_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
+# Renders a dry file through Peak Sympathy's resonator engine directly (no
+# processor), for A/B-ing the voicing itself by ear. The *_match family (see
+# RegressHarness.h): "is this the sound we want", not "is this the same sound
+# as before". See ee_sympathy_plugin_match below for the same thing through the
+# whole processor - the two can disagree if the wiring around the engine has a
+# bug the engine-only render cannot see.
+juce_add_console_app(ee_sympathy_match PRODUCT_NAME "ee_sympathy_match")
+
+target_sources(ee_sympathy_match PRIVATE SympathyMatch.cpp)
+
+target_compile_definitions(ee_sympathy_match PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_sympathy_match
+    PRIVATE ee_dsp juce::juce_audio_formats
+    PUBLIC juce::juce_recommended_config_flags)
+
+# Hunts non-finite output and runaway level in ee::dsp::ResonatorBank over long
+# runs at maximum Coupling and Decay with Freeze on - the failure mode a bank of
+# near-unity feedback loops plus a coupling matrix most invites.
+juce_add_console_app(ee_sympathy_stress PRODUCT_NAME "ee_sympathy_stress")
+
+target_sources(ee_sympathy_stress PRIVATE SympathyStress.cpp)
+
+target_compile_definitions(ee_sympathy_stress PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_sympathy_stress
+    PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)
+
+if(TARGET PeakSympathy)
+    # The A/B for a change to Peak Sympathy that is meant to change nothing: a
+    # battery of settings through the whole processor, one checksum per pass.
+    # New code, so nothing to diff yet - it is the baseline. See RegressHarness.h.
+    juce_add_console_app(ee_sympathy_regress PRODUCT_NAME "ee_sympathy_regress")
+
+    target_sources(ee_sympathy_regress PRIVATE SympathyRegress.cpp)
+
+    target_compile_definitions(ee_sympathy_regress PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_sympathy_regress
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-sympathy/src)
+
+    target_link_libraries(ee_sympathy_regress
+        PRIVATE PeakSympathy ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+
+    # Renders a dry file through the *whole* Peak Sympathy processor - Mix, the
+    # dry duck, the bypass crossfade, the plugin's own parameter defaults - all
+    # included. ee_sympathy_match above drives ee::dsp::ResonatorBank directly
+    # and skips every bit of that; the two exist so a discrepancy between "the
+    # engine sounds right" and "the finished pedal sounds right" shows up as a
+    # difference between their outputs rather than staying invisible.
+    juce_add_console_app(ee_sympathy_plugin_match PRODUCT_NAME "ee_sympathy_plugin_match")
+
+    target_sources(ee_sympathy_plugin_match PRIVATE SympathyPluginMatch.cpp)
+
+    target_compile_definitions(ee_sympathy_plugin_match PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_sympathy_plugin_match
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-sympathy/src)
+
+    target_link_libraries(ee_sympathy_plugin_match
+        PRIVATE PeakSympathy ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
 if(TARGET PeakSpring)
     # Renders a dry file through the whole spring processor, for voicing it
     # against a reference recording.

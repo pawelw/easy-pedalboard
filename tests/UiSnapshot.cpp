@@ -1192,6 +1192,96 @@ void renderGrain (const juce::File& outputFile)
     writePng (editor, outputFile);
 }
 
+/** Minimal host-free processor carrying the same parameters as Peak Sympathy.
+    Mirrors PeakSympathyProcessor::createParameterLayout - keep the two in step,
+    nothing checks it. */
+class SympathySnapshotProcessor : public SnapshotProcessor
+{
+public:
+    SympathySnapshotProcessor() : SnapshotProcessor (createSympathyLayout()) {}
+
+    static juce::AudioProcessorValueTreeState::ParameterLayout createSympathyLayout()
+    {
+        juce::AudioProcessorValueTreeState::ParameterLayout layout;
+
+        const auto percent = juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f);
+        const auto pct = juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
+        const juce::StringArray modes { "Octaves", "Fifths", "Harmonic", "Major", "Minor", "Chroma" };
+        const juce::StringArray keys { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
+
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "tune.mode", 1 }, "Tuning", modes, 3));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "tune.key", 1 }, "Key", keys, 9));
+        layout.add (std::make_unique<juce::AudioParameterInt> (
+            juce::ParameterID { "octave", 1 }, "Octave", -2, 2, 0,
+            juce::AudioParameterIntAttributes().withStringFromValueFunction (
+                [] (int v, int) { return juce::String (v > 0 ? "+" : "") + juce::String (v); })));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "decay", 1 }, "Decay", percent, 45.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "damping", 1 }, "Damping", percent, 55.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "coupling", 1 }, "Coupling", percent, 25.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "spread", 1 }, "Spread", percent, 25.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "bloom", 1 }, "Bloom", percent, 0.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "sensitivity", 1 }, "Sensitivity", percent, 55.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mix", 1 }, "Mix", percent, 50.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "freeze", 1 }, "Freeze", false));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "learn", 1 }, "Key Learn", false));
+
+        return layout;
+    }
+};
+
+/** A chain-link glyph for the Learn button - copied from
+    PeakSympathyProcessor's own drawLearnIcon so the snapshot matches. */
+void drawSympathyLearnIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
+{
+    const auto box = area.reduced (area.getWidth() * 0.12f);
+    g.setColour (colour);
+    const float t = juce::jmax (1.4f, box.getWidth() * 0.12f);
+    const float w = box.getWidth() * 0.62f;
+    const float h = box.getHeight() * 0.46f;
+    g.drawRoundedRectangle (box.getX(), box.getCentreY() - h, w, h * 2.0f, h, t);
+    g.drawRoundedRectangle (box.getRight() - w, box.getCentreY() - h, w, h * 2.0f, h, t);
+}
+
+ee::ui::PedalSpec makeSympathySpec()
+{
+    ee::ui::PedalSpec spec;
+    spec.name = "Peak Sympathy";
+    spec.tagline = "Sixteen tuned strings ring behind the player";
+    spec.version = "v0.10.0";
+
+    spec.knobs = {
+        { "tune.mode", "Tuning" }, { "tune.key", "Key" }, { "decay", "Decay" }, { "damping", "Damping" },
+        { "coupling", "Coupling" }, { "spread", "Spread" }, { "bloom", "Bloom" },
+        { .parameterID = "octave", .caption = "Octave", .bipolarArc = true, .centreDetent = true },
+        { "sensitivity", "Sens" }, { "mix", "Mix" },
+    };
+    spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "freeze", .labelOff = "Live", .labelOn = "Freeze" };
+    spec.presetBar = ee::ui::PresetBarSpec {
+        .names = [] { return juce::StringArray { "Init", "Sitar Drone", "Piano Soundboard", "Frozen Cathedral" }; },
+        .currentIndex = [] { return 0; },
+        .onSelect = [] (int) {},
+        .onSave = [] {},
+        .onSaveAsNew = [] {},
+        .onPrev = [] {},
+        .onNext = [] {},
+        .width = 300,
+    };
+    spec.toggles = {
+        { .parameterID = "learn", .caption = "Learn", .afterKnobIndex = 1, .icon = drawSympathyLearnIcon },
+    };
+    spec.knobsPerRow = 5;
+    spec.width = ee::ui::knobRowWidth (4);
+    return spec;
+}
+
+void renderSympathy (const juce::File& outputFile)
+{
+    SympathySnapshotProcessor processor;
+    ee::ui::PedalEditor editor (processor, processor.apvts, makeSympathySpec(), ee::ui::PedalTheme::green());
+    writePng (editor, outputFile);
+}
+
 void renderTape (const juce::File& outputFile)
 {
     TapeSnapshotProcessor processor;
@@ -1230,6 +1320,7 @@ int main (int argc, char* argv[])
     if (want ("wah")) renderWah (dir.getChildFile ("wah.png"));
     if (want ("tape")) renderTape (dir.getChildFile ("tape.png"));
     if (want ("grain")) renderGrain (dir.getChildFile ("grain.png"));
+    if (want ("sympathy")) renderSympathy (dir.getChildFile ("sympathy.png"));
 
     return 0;
 }

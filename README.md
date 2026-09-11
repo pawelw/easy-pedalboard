@@ -812,6 +812,47 @@ Flutter was voiced that way: render the dry take with Flutter at 100 and
 everything else at 0, track the result against the dry file, and the 2 Hz line
 lands on the reference recording's (70.1 samples against 70.3).
 
+### Peak Sympathy
+
+A sympathetic-resonance effect. Your signal barely passes through; instead it
+excites a bank of sixteen tuned string resonators that ring, bloom and beat
+against each other — a piano with the sustain pedal down, a sitar's sympathetic
+strings, Rings/Elements or Ableton's Resonators. Scrape a muted string and a
+shimmering chord swells up behind you.
+
+The pedal is about one part resonator bank to four parts exciter, tuning and
+limiting. A bank of tuned comb filters is trivial and sounds like flanged mush;
+what makes this a string being *sympathetically excited* is the exciter — it
+watches for attacks (`ee::dsp::OnsetGate`, the same detector Peak Wah uses),
+fires a short shaped noise burst into the bank on each one, and lets only a
+very weak continuous bleed through the rest of the time.
+
+| Control         | Range         | What it does                                                                                              |
+| --------------- | ------------- | ------------------------------------------------------------------------------------------------------- |
+| **Tuning**      | 6 modes       | Which notes the strings ring at, relative to **Key**: Octaves / Fifths / Harmonic (cannot clash), Major / Minor (just intonation), Chroma |
+| **Key**         | C - B         | The root the tuning is built on. The **Learn** button pitch-tracks your playing and sets it for you     |
+| **Decay**       | 0 - 100 %     | Ring time, 0.2 s to 30 s, pitch-compensated so the top of the bank does not vanish while the bottom drones |
+| **Damping**     | 0 - 100 %     | Dark to bright — a one-pole in each string's loop, phase-compensated so the strings stay in tune as it moves |
+| **Coupling**    | 0 - 100 %     | Cross-links the strings through an energy-preserving matrix: mode movement and a tightening, kept subtle on purpose |
+| **Spread**      | 0 - 100 %     | Micro-detune between the strings — this is where the beating and the lushness come from, not Coupling      |
+| **Bloom**       | 0 - 100 %     | A rising-damping sweep: each note starts dark and opens up behind you over up to ~1.4 s                    |
+| **Octave**      | -2 - +2       | Transposes the whole bank up or down, centre-detented                                                     |
+| **Sens**        | 0 - 100 %     | Exciter drive — how hard attacks hit the bank                                                             |
+| **Mix**         | 0 - 100 %     | Wet / dry. The dry side is also ducked by an envelope while you dig in, so the wash steps forward behind a phrase |
+| **Live / Freeze** | switch      | Freeze holds the bank's energy and lets it ring indefinitely while you play over it                       |
+
+The engine is `ee::dsp::ResonatorBank` (+ `SympathyConfig.h` for the voicing).
+Each string is an integer delay tap plus a single first-order allpass for the
+sub-sample fraction — no interpolator in the loop, so its HF loss cannot become
+the dominant damping and the Damping knob keeps working; tuning error is under
+half a cent across the useful range. It is fully deterministic:
+`ee_sympathy_regress` is its checksum battery, `ee_sympathy_stress` hunts
+runaway and non-finite output over long runs at maximum Coupling and Decay, and
+`ee_sympathy_match` renders a dry file through the engine for voicing by ear.
+
+The face is `PedalTheme::green()` — analog controls, ten knobs on a wide body,
+the preset bar and the Live / Freeze switch sharing the top strip.
+
 ## Requirements
 
 - macOS with Xcode Command Line Tools
@@ -897,6 +938,7 @@ auval -v aufx Povd Peak                                     # Peak Overdrive
 auval -v aufx Pwah Peak                                     # Peak Wah
 auval -v aufx Ptap Peak                                     # Peak Tape
 auval -v aufx Part Peak                                     # Peak Artifact
+auval -v aufx Psym Peak                                     # Peak Sympathy
 ```
 
 The tape machine also has its own sweep, which walks every knob combination and
@@ -904,6 +946,15 @@ a handful of adverse inputs looking for a non-finite or runaway output:
 
 ```bash
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress
+```
+
+Peak Sympathy is a bank of near-unity feedback loops, so it carries both a
+checksum battery and a runaway sweep, plus a by-ear voicing renderer:
+
+```bash
+./build/tests/ee_sympathy_regress_artefacts/Release/ee_sympathy_regress   # checksum per pass; sample-exact A/B
+./build/tests/ee_sympathy_stress_artefacts/Release/ee_sympathy_stress     # non-finite / runaway hunt
+./build/tests/ee_sympathy_match_artefacts/Release/ee_sympathy_match dry.wav out.wav 3 9 0 55 55 20 30 15 55 100 0 1
 ```
 
 `pluginval` (`brew install --cask pluginval`) covers the VST3:
