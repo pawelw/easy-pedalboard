@@ -77,10 +77,10 @@ juce::String ampBitToText (float pct, int)
     return freqText (kCrushRateTextSr / static_cast<float> (n));
 }
 
-/** Amp's Tone rests in the middle and reads 0 there: a bipolar control should
-    print the number it is on, with the sign carrying the direction. Kept in
-    step with plugins/peak-tape's own toneToText. */
-juce::String ampToneToText (float value, int)
+/** A bipolar percent that rests in the middle and reads 0 there, with the sign
+    carrying the direction. Amp's Tone and Ring Mod's Rectify both print this
+    way. Kept in step with plugins/peak-tape's own toneToText. */
+juce::String signedPctToText (float value, int)
 {
     const int rounded = juce::roundToInt (value);
 
@@ -206,7 +206,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
 
     // Ring Mod. Freq and Filter print real units off the ee::dsp::ringmod maps;
     // Tweak is a plain percent (its meaning - carrier wobble or octave blend -
-    // is set by Mode). Blend is the footer Mix, not a knob here.
+    // is set by Mode). Rectify is bipolar and rests dead centre, doing nothing
+    // there. Blend is the footer Mix, not a knob here.
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ringFreq, 1 }, "Ring Freq",
                                                              percent, ee::dsp::ringmod::kDefaultFreqPct,
                                                              withText (ringFreqToText)));
@@ -215,6 +216,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ringLp, 1 }, "Ring Filter",
                                                              percent, ee::dsp::ringmod::kDefaultLpPct,
                                                              withText (ringLpToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::ringRect, 1 }, "Rectify", juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+        ee::dsp::ringmod::kDefaultRectifyPct, withText (signedPctToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::ringMode, 1 }, "Mode",
                                                               juce::StringArray { "Wobble", "Octave" }, 0));
 
@@ -245,7 +249,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
                                                              withText (ampBitToText)));
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ampTone, 1 }, "Amp Tone",
                                                              juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
-                                                             0.0f, withText (ampToneToText)));
+                                                             0.0f, withText (signedPctToText)));
     layout.add (
         std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::ampStereo, 1 }, "Amp Stereo", false));
 
@@ -270,7 +274,8 @@ void PeakArtifactProcessor::pushSettings (double bpm) noexcept
 
     module.setCrush (pct (id::crushBits), pct (id::crushRate), pct (id::crushLp), pct (id::crushJitter));
 
-    module.setRing (pct (id::ringFreq), pct (id::ringTweak), pct (id::ringLp), static_cast<int> (raw (id::ringMode)));
+    module.setRing (pct (id::ringFreq), pct (id::ringTweak), pct (id::ringLp), raw (id::ringRect) * 0.01f,
+                    static_cast<int> (raw (id::ringMode)));
 
     module.setRust (pct (id::rustGrind), pct (id::rustTone), static_cast<int> (raw (id::rustMode)));
 

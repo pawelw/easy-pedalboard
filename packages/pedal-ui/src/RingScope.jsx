@@ -11,6 +11,9 @@ import "./RingScope.css";
  *   - `tweak01`  raw 0..1 Tweak knob - in Earworm it wobbles the carrier
  *                spacing; in Green Lantern it leans the trace toward the
  *                rectified octave-up.
+ *   - `rect`     bipolar -1..+1 Rectify knob - folds the carrier one-sided, so
+ *                the lattice stops alternating and the program's own shape
+ *                shows through it.
  *   - `mode`     0 = Earworm, 1 = Green Lantern.
  */
 
@@ -37,6 +40,7 @@ function lerp(a, b, t) {
 export default function RingScope({
   freq01 = 0,
   tweak01 = 0,
+  rect = 0,
   mode = 0,
   height = 64,
   baseColor = "var(--pui-scope-base)",
@@ -48,6 +52,7 @@ export default function RingScope({
 
   const f = clamp(freq01, 0, 1);
   const t = clamp(tweak01, 0, 1);
+  const r = clamp(rect, -1, 1);
   const greenLantern = mode === 1;
 
   const carrierCycles = Math.exp(lerp(Math.log(CARRIER_MIN), Math.log(CARRIER_MAX), f));
@@ -64,7 +69,10 @@ export default function RingScope({
       // Earworm bends the carrier spacing along x with Tweak; Green Lantern
       // keeps it even and spends Tweak on rectifying the program instead.
       const wob = greenLantern ? 0 : t * 0.35 * Math.sin(u * TWO_PI * 2);
-      const carrier = Math.sin(u * TWO_PI * carrierCycles * (1 + wob));
+      let carrier = Math.sin(u * TWO_PI * carrierCycles * (1 + wob));
+
+      // The same fold the engine applies - see kDefaultRectifyPct.
+      carrier = (1 - Math.abs(r)) * carrier + r * Math.abs(carrier);
 
       let program = Math.sin(u * TWO_PI * PROGRAM_CYCLES);
       if (greenLantern) program = lerp(program, Math.abs(program) * 2 - 1, t);
@@ -76,7 +84,7 @@ export default function RingScope({
 
     const filled = `${top} L ${(plot.x + plot.w).toFixed(1)} ${midY.toFixed(1)} L ${plot.x.toFixed(1)} ${midY.toFixed(1)} Z`;
     return { line: d.trim(), area: filled.trim() };
-  }, [carrierCycles, t, greenLantern, midY, ampY, plot.x, plot.w]);
+  }, [carrierCycles, t, r, greenLantern, midY, ampY, plot.x, plot.w]);
 
   return (
     <div className="pui-scope pui-ring-scope" style={{ height }}>

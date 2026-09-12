@@ -32,6 +32,7 @@ inline constexpr const char* crushJitter = "crush.jitter"; // hold-clock jitter
 inline constexpr const char* ringFreq = "ring.freq";   // carrier frequency
 inline constexpr const char* ringTweak = "ring.tweak"; // meaning set by ringMode
 inline constexpr const char* ringLp = "ring.lp";       // post low-pass, up = open
+inline constexpr const char* ringRect = "ring.rect";   // carrier rectify, bipolar, 0 = off
 inline constexpr const char* ringMode = "ring.mode";   // Wobble / Octave (Earworm / Green Lantern in the DSP)
 
 inline constexpr const char* rustGrind = "rust.grind"; // corrosion character, grime -> breakup

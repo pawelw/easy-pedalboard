@@ -52,6 +52,7 @@ inline constexpr const char* artCrushJitter = "art.crush.jitter";
 inline constexpr const char* artRingFreq = "art.ring.freq";
 inline constexpr const char* artRingTweak = "art.ring.tweak"; // meaning set by artRingMode
 inline constexpr const char* artRingLp = "art.ring.lp";
+inline constexpr const char* artRingRect = "art.ring.rect"; // carrier rectify, bipolar, 0 = off
 inline constexpr const char* artRingMode = "art.ring.mode"; // Wobble / Octave (Earworm / Green Lantern in the DSP)
 inline constexpr const char* artRustGrind = "art.rust.grind";
 inline constexpr const char* artRustTone = "art.rust.tone";

@@ -89,12 +89,11 @@ void setArtifactDefaults (ee::fx::ArtifactModule& m)
 {
     // freq01, q01, range01, waveShape01, one LFO cycle in seconds, stereo
     m.setFilter (0.5f, 0.5f, 0.6f, 0.5f, 0.4f, false);
-    // freq01, tweak01, lp01, mode (0 = Earworm)
-    m.setRing (0.4f, 0.0f, 0.6f, 0);
+    // freq01, tweak01, lp01, rectify (-1..1), mode (0 = Earworm)
+    m.setRing (0.4f, 0.0f, 0.6f, 0.0f, 0);
     // grind01, tone01, mode (0 = Oxide)
     m.setRust (0.5f, 0.65f, 0);
 }
-
 
 // ---------------------------------------------------------------- the checks
 
@@ -103,8 +102,10 @@ void setArtifactDefaults (ee::fx::ArtifactModule& m)
     padded out to meet its longest engine. Zero for a module whose engines have
     none, in which case this is the plain comparison it used to be. */
 template <typename Module>
-bool matchesDelayedInput (Module& module, const juce::AudioBuffer<float>& out,
-                          const juce::AudioBuffer<float>& input, int from)
+bool matchesDelayedInput (Module& module,
+                          const juce::AudioBuffer<float>& out,
+                          const juce::AudioBuffer<float>& input,
+                          int from)
 {
     const int lag = module.latencySamples();
 
@@ -121,8 +122,7 @@ bool matchesDelayedInput (Module& module, const juce::AudioBuffer<float>& out,
     so any drift here is a bug in the mix rather than a rounding cost. Bit for
     bit *at the module's own latency* - the alignment delay is a whole number of
     samples copied through a buffer, which does not change a value. */
-template <typename Module>
-void checkMixZeroIsDry (Module& module, const char* name)
+template <typename Module> void checkMixZeroIsDry (Module& module, const char* name)
 {
     juce::AudioBuffer<float> input (2, 8192);
     fillTestSignal (input, kSampleRate);
@@ -222,8 +222,7 @@ void checkTapeIgnoresMix()
     and Level say - the engage crossfade goes back to the *input*, not to the
     dry side of the mix, so a module turned off cannot be made loud by leaving
     Level up. The first few ms are the ramp and are skipped. */
-template <typename Module>
-void checkBypassIsUnity (Module& module, const char* name)
+template <typename Module> void checkBypassIsUnity (Module& module, const char* name)
 {
     juce::AudioBuffer<float> input (2, 8192);
     fillTestSignal (input, kSampleRate);
@@ -238,17 +237,15 @@ void checkBypassIsUnity (Module& module, const char* name)
 
     const int settled = static_cast<int> (kSampleRate * 0.1);
 
-    check (matchesDelayedInput (module, out, input, settled),
-           "bypassed is the input, whatever Mix and Level say");
-    (void) name;
+    check (matchesDelayedInput (module, out, input, settled), "bypassed is the input, whatever Mix and Level say");
+    (void)name;
 }
 
 /** Switching engines mid-signal must not step. The bound is generous on
     purpose - the test signal has 0.6-amplitude clicks in it, so the honest
     question is whether a switch is worse than the material, not whether the
     output is smooth. */
-template <typename Module>
-void checkSwitchDoesNotClick (Module& module, int from, int to, const char* what)
+template <typename Module> void checkSwitchDoesNotClick (Module& module, int from, int to, const char* what)
 {
     juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate));
 
@@ -256,8 +253,8 @@ void checkSwitchDoesNotClick (Module& module, int from, int to, const char* what
     // measuring the switch, so nothing else in the signal may step.
     for (int i = 0; i < buffer.getNumSamples(); ++i)
     {
-        const float v = 0.4f * std::sin (2.0f * juce::MathConstants<float>::pi * 220.0f
-                                         * static_cast<float> (i) / static_cast<float> (kSampleRate));
+        const float v = 0.4f * std::sin (2.0f * juce::MathConstants<float>::pi * 220.0f * static_cast<float> (i) /
+                                         static_cast<float> (kSampleRate));
         buffer.setSample (0, i, v);
         buffer.setSample (1, i, v * 0.8f);
     }
@@ -386,7 +383,7 @@ void sweepArtifact()
 
                 module.setFilter (a, a, a, a, 0.03f + a * 1.5f, a > 0.5f);
                 module.setCrush (a, a, 1.0f - a, a);
-                module.setRing (a, a, 1.0f - a, a > 0.5f ? 1 : 0);
+                module.setRing (a, a, 1.0f - a, 2.0f * a - 1.0f, a > 0.5f ? 1 : 0);
 
                 juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
                 fillTestSignal (buffer, kSampleRate);
@@ -424,30 +421,32 @@ void sweepArtifact()
                     }
 
     // Ring Mod's own knob space, on the engine that reads it - Freq / Tweak /
-    // Filter at each end and the middle, both modes, each Mix position.
+    // Filter at each end and the middle, Rectify at both ends and off, both
+    // modes, each Mix position.
     for (float freq : { 0.0f, 0.5f, 1.0f })
         for (float tweak : { 0.0f, 0.5f, 1.0f })
             for (float lp : { 0.0f, 1.0f })
-                for (int mode : { 0, 1 })
-                    for (float mix : { 0.0f, 0.5f, 1.0f })
-                    {
-                        ee::fx::ArtifactModule module;
-                        module.prepare (kSampleRate, 512);
-                        module.setEngine (ee::fx::ArtifactModule::RingMod);
-                        module.setMix01 (mix);
-                        module.setLevel (1.0f);
-                        module.setEngaged (true);
+                for (float rect : { -1.0f, 0.0f, 1.0f })
+                    for (int mode : { 0, 1 })
+                        for (float mix : { 0.0f, 0.5f, 1.0f })
+                        {
+                            ee::fx::ArtifactModule module;
+                            module.prepare (kSampleRate, 512);
+                            module.setEngine (ee::fx::ArtifactModule::RingMod);
+                            module.setMix01 (mix);
+                            module.setLevel (1.0f);
+                            module.setEngaged (true);
 
-                        module.setRing (freq, tweak, lp, mode);
+                            module.setRing (freq, tweak, lp, rect, mode);
 
-                        juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
-                        fillTestSignal (buffer, kSampleRate);
-                        run (module, buffer);
+                            juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
+                            fillTestSignal (buffer, kSampleRate);
+                            run (module, buffer);
 
-                        ++cases;
-                        worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
-                        clean = allFinite (buffer) && clean;
-                    }
+                            ++cases;
+                            worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+                            clean = allFinite (buffer) && clean;
+                        }
 
     // Rust's own knob space - Grind and Tone at each end and the middle, both
     // modes, each Mix position. Wear and its recovery are fixed inside the
@@ -606,7 +605,6 @@ int main()
     sweepReverb();
     sweepArtifact();
 
-    std::printf ("\n%s\n", failures == 0 ? "OK - all module checks passed"
-                                         : "MODULE CHECKS FAILED");
+    std::printf ("\n%s\n", failures == 0 ? "OK - all module checks passed" : "MODULE CHECKS FAILED");
     return failures == 0 ? 0 : 1;
 }

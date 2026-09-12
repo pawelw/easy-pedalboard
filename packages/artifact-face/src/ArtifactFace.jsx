@@ -243,16 +243,19 @@ function CrushDisplay() {
 function RingDisplay() {
   const [freq] = useJuceSliderValue("ring.freq");
   const [tweak] = useJuceSliderValue("ring.tweak");
+  const [rect] = useJuceSliderValue("ring.rect");
   const [mode] = useJuceChoiceValue("ring.mode", 2, 0);
 
   return (
     // The DSB-SC lattice: a slow program sine cut into the carrier. Freq sets
     // the lattice density, Tweak wobbles it (Earworm) or leans it toward the
-    // rectified octave (Green Lantern). Picture only, no feed.
+    // rectified octave (Green Lantern), Rectify folds the carrier one-sided so
+    // the program's own shape starts showing through. Picture only, no feed.
     <div className="af-display af-display--ring">
       <RingScope
         freq01={freq}
         tweak01={tweak}
+        rect={rect * 2 - 1}
         mode={mode}
         height={64}
         baseColor={SCOPE.baseColor}
@@ -382,7 +385,7 @@ function CrushBody() {
   );
 }
 
-/* The Ring Mod body: its lattice display, three knobs and the mode switch. */
+/* The Ring Mod body: its lattice display, four knobs and the mode switch. */
 function RingBody() {
   return (
     // Matches the Filter / Crush body height so stepping between engines doesn't
@@ -397,6 +400,15 @@ function RingBody() {
         </div>
         <div className="af-knob-row">
           <JuceKnob parameterId="ring.lp" caption="Filter" variant="soft" size={36} />
+          {/* Bipolar: a plain sine carrier dead centre, so its arc grows out
+              from twelve o'clock in whichever direction it is folded. */}
+          <JuceKnob
+            parameterId="ring.rect"
+            caption="Rectify"
+            variant="soft"
+            size={36}
+            scaleFrom="centre"
+          />
         </div>
       </div>
 

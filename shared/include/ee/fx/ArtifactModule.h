@@ -23,9 +23,9 @@ namespace ee::fx
  * Tape against - so it too keeps the Mix.
  *
  * Ring Mod is `ee::dsp::RingModulator` - a sine-carrier ring modulator with a
- * post low-pass and two voicings (Earworm's carrier wobble, Green Lantern's
- * octave blend), voiced from the JHS 3 Series Ring Modulator. Its Blend is the
- * footer Mix.
+ * post low-pass, a bipolar carrier Rectify and two voicings (Earworm's carrier
+ * wobble, Green Lantern's octave blend), voiced from the JHS 3 Series Ring
+ * Modulator. Its Blend is the footer Mix.
  *
  * Rust is `ee::dsp::Rust` - degradation with a memory. A per-channel wear state
  * follows the recent input level and heals back when it stops, driving a
@@ -223,13 +223,15 @@ public:
 
     /** Every Ring Mod control in one call. `freq01`, `tweak01` and `lp01` are
         raw 0..1 knob positions resolved through the `ee::dsp::ringmod` maps the
-        pedal's readouts share; `mode` is 0 = Earworm, 1 = Green Lantern. The
-        Blend is the module's footer Mix, not a control here. */
-    void setRing (float freq01, float tweak01, float lp01, int mode) noexcept
+        pedal's readouts share; `rectify` is bipolar, -1..+1, resting at 0; `mode`
+        is 0 = Earworm, 1 = Green Lantern. The Blend is the module's footer Mix,
+        not a control here. */
+    void setRing (float freq01, float tweak01, float lp01, float rectify, int mode) noexcept
     {
         ring.setFrequencyHz (ee::dsp::ringmod::freqHzFor (freq01));
         ring.setTweak01 (tweak01);
         ring.setLowpassHz (ee::dsp::ringmod::lpHzFor (lp01));
+        ring.setRectify (rectify);
         ring.setMode (mode);
     }
 

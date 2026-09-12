@@ -13,7 +13,8 @@ namespace ee::dsp
     with a post 2-pole low-pass and two voicings picked by Mode.
 
     Voiced from the JHS 3 Series Ring Modulator (Frequency, Tweak, Mode; its
-    Blend is the owning module's Mix), plus a low-pass the JHS does not have:
+    Blend is the owning module's Mix), plus a low-pass and a Rectify control the
+    JHS does not have:
 
       - Earworm (Mode 0), after the Way Huge Ringworm: a straight carrier
         multiply. Tweak runs a fixed-rate sine LFO on the carrier frequency
@@ -21,6 +22,13 @@ namespace ee::dsp
       - Green Lantern (Mode 1), after the Green Ringer: the carrier steady, and
         Tweak crossfades in a full-wave-rectified octave-up (DC-blocked, with a
         little make-up gain) on top of the ring mod.
+
+    Rectify (bipolar, resting at 0) folds one half of the carrier onto the
+    other before the multiply. That puts DC in the carrier, and a carrier with
+    DC passes the dry note through, so the pedal walks from ring modulation
+    toward amplitude modulation and the player's pitch comes back under the
+    ring - see kDefaultRectifyPct in the config for the full reasoning. It
+    applies in both modes: it is a property of the carrier, not of the voicing.
 
     Chain per channel: carrier multiply (+ optional octave blend) -> post
     low-pass. With the Filter knob fully up the low-pass stage is skipped.
@@ -40,12 +48,11 @@ public:
         sr = sampleRate > 0.0 ? sampleRate : 44100.0;
 
         targetFreqHz = ringmod::freqHzFor (0.0f);
-        targetLpHz   = ringmod::kLpMaxHz;
+        targetLpHz = ringmod::kLpMaxHz;
 
         // One-pole glide on the carrier frequency and the low-pass corner,
         // evaluated once per control block.
-        smoothCoeff = onePoleCoeff (1000.0f / ringmod::kSmoothMs,
-                                    sr / static_cast<double> (ringmod::kControlBlock));
+        smoothCoeff = onePoleCoeff (1000.0f / ringmod::kSmoothMs, sr / static_cast<double> (ringmod::kControlBlock));
 
         reset();
     }
@@ -53,7 +60,7 @@ public:
     void reset() noexcept
     {
         carrierPhase = 0.0f;
-        lfoPhase     = 0.0f;
+        lfoPhase = 0.0f;
 
         for (auto& ch : channels)
         {
@@ -63,9 +70,10 @@ public:
             ch.dcY1 = 0.0f;
         }
 
-        blockCounter  = 0;
+        blockCounter = 0;
         currentFreqHz = targetFreqHz;
-        currentLpHz   = targetLpHz;
+        currentLpHz = targetLpHz;
+        currentRectify = targetRectify;
         updateCoeffs();
     }
 
@@ -82,6 +90,10 @@ public:
 
     void setTweak01 (float t) noexcept { tweak = std::clamp (t, 0.0f, 1.0f); }
 
+    /** Carrier rectification, -1..+1. 0 is a plain bipolar sine and changes
+        nothing; +1 folds the negative half up, -1 the positive half down. */
+    void setRectify (float r) noexcept { targetRectify = std::clamp (r, -1.0f, 1.0f); }
+
     /** 0 = Earworm (Tweak wobbles the carrier), 1 = Green Lantern (Tweak
         crossfades in a rectified octave-up). Anything else is treated as
         Earworm. */
@@ -92,10 +104,7 @@ public:
 
     /** Post low-pass corner in Hz. At or above kLpBypassHz the filter is
         skipped. */
-    void setLowpassHz (float hz) noexcept
-    {
-        targetLpHz = std::clamp (hz, ringmod::kLpMinHz, ringmod::kLpMaxHz);
-    }
+    void setLowpassHz (float hz) noexcept { targetLpHz = std::clamp (hz, ringmod::kLpMinHz, ringmod::kLpMaxHz); }
 
     void setLowpass01 (float knob01) noexcept { setLowpassHz (ringmod::lpHzFor (knob01)); }
 
@@ -105,17 +114,17 @@ public:
     {
         float* io[2] = { left, right };
 
-        const float lfoInc      = ringmod::kTweakLfoHz / static_cast<float> (sr);
-        const bool  greenLantern = mode == ringmod::kModeGreenLantern;
-        const bool  bypassLp     = targetLpHz >= ringmod::kLpBypassHz
-                                && currentLpHz >= ringmod::kLpBypassHz;
+        const float lfoInc = ringmod::kTweakLfoHz / static_cast<float> (sr);
+        const bool greenLantern = mode == ringmod::kModeGreenLantern;
+        const bool bypassLp = targetLpHz >= ringmod::kLpBypassHz && currentLpHz >= ringmod::kLpBypassHz;
 
         for (int i = 0; i < numSamples; ++i)
         {
             if (blockCounter == 0)
             {
                 currentFreqHz += smoothCoeff * (targetFreqHz - currentFreqHz);
-                currentLpHz   += smoothCoeff * (targetLpHz - currentLpHz);
+                currentLpHz += smoothCoeff * (targetLpHz - currentLpHz);
+                currentRectify += smoothCoeff * (targetRectify - currentRectify);
                 updateCoeffs();
             }
             if (++blockCounter >= ringmod::kControlBlock)
@@ -131,7 +140,13 @@ public:
             }
             fc = std::clamp (fc, 0.0f, 0.49f * static_cast<float> (sr));
 
-            const float carrier = std::sin (carrierPhase * kTwoPi);
+            float carrier = std::sin (carrierPhase * kTwoPi);
+
+            if (currentRectify != 0.0f)
+            {
+                const float a = std::fabs (currentRectify);
+                carrier = (1.0f - a) * carrier + currentRectify * std::fabs (carrier);
+            }
 
             carrierPhase += fc / static_cast<float> (sr);
             carrierPhase -= std::floor (carrierPhase);
@@ -151,7 +166,7 @@ public:
                     // Full-wave rectify -> octave up, DC-blocked so the
                     // rectifier's offset does not pump the mix.
                     const float rect = std::fabs (x);
-                    const float oct  = rect - ch.dcX1 + ringmod::kDcBlockR * ch.dcY1;
+                    const float oct = rect - ch.dcX1 + ringmod::kDcBlockR * ch.dcY1;
                     ch.dcX1 = rect;
                     ch.dcY1 = oct;
 
@@ -174,9 +189,9 @@ private:
         float dcX1 = 0.0f, dcY1 = 0.0f; // DC blocker on the rectified octave
     };
 
-    static constexpr float kPi    = 3.14159265359f;
+    static constexpr float kPi = 3.14159265359f;
     static constexpr float kTwoPi = 6.28318530718f;
-    static constexpr float kQ     = 0.70710678f; // Butterworth
+    static constexpr float kQ = 0.70710678f; // Butterworth
 
     static float onePoleCoeff (float cornerHz, double sampleRate) noexcept
     {
@@ -187,9 +202,9 @@ private:
     void updateCoeffs() noexcept
     {
         const float nyq = 0.49f * static_cast<float> (sr);
-        const float fc  = std::clamp (currentLpHz, 10.0f, nyq);
-        const float g   = std::tan (kPi * fc / static_cast<float> (sr));
-        const float k   = 1.0f / kQ;
+        const float fc = std::clamp (currentLpHz, 10.0f, nyq);
+        const float g = std::tan (kPi * fc / static_cast<float> (sr));
+        const float k = 1.0f / kQ;
 
         lp1 = 1.0f / (1.0f + g * (g + k));
         lp2 = g * lp1;
@@ -208,17 +223,20 @@ private:
 
     double sr = 44100.0;
 
-    float targetFreqHz  = 125.0f;
+    float targetFreqHz = 125.0f;
     float currentFreqHz = 125.0f;
-    float targetLpHz    = ringmod::kLpMaxHz;
-    float currentLpHz   = ringmod::kLpMaxHz;
-    float smoothCoeff   = 1.0f;
+    float targetLpHz = ringmod::kLpMaxHz;
+    float currentLpHz = ringmod::kLpMaxHz;
+    float smoothCoeff = 1.0f;
+
+    float targetRectify = 0.0f;
+    float currentRectify = 0.0f;
 
     float tweak = 0.0f;
-    int   mode  = ringmod::kModeEarworm;
+    int mode = ringmod::kModeEarworm;
 
     float carrierPhase = 0.0f; // 0..1
-    float lfoPhase     = 0.0f; // 0..1
+    float lfoPhase = 0.0f;     // 0..1
 
     float lp1 = 0.0f, lp2 = 0.0f, lp3 = 0.0f;
 

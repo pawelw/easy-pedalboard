@@ -394,7 +394,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
 
     // Ring Mod. Freq and Filter spell out real Hz off the ee::dsp::ringmod maps
     // (like the Filter's Freq); Tweak is a plain percent, its meaning set by
-    // Mode. Blend is Artifact Mix, not a knob of its own.
+    // Mode; Rectify is bipolar and rests dead centre, doing nothing there.
+    // Blend is Artifact Mix, not a knob of its own.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { id::artRingFreq, 1 }, "Artifact Ring Freq", percent, ee::dsp::ringmod::kDefaultFreqPct,
         withText (artRingFreqToText)));
@@ -402,6 +403,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { id::artRingLp, 1 }, "Artifact Ring Filter", percent, ee::dsp::ringmod::kDefaultLpPct,
         withText (artRingLpToText)));
+    layout.add (
+        std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::artRingRect, 1 }, "Artifact Rectify",
+                                                     juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+                                                     ee::dsp::ringmod::kDefaultRectifyPct, withText (toneToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artRingMode, 1 }, "Artifact Mode",
                                                               juce::StringArray { "Wobble", "Octave" }, 0));
 
@@ -682,7 +687,7 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
 
     artifact.setCrush (pct (id::artCrushBits), pct (id::artCrushRate), pct (id::artCrushLp), pct (id::artCrushJitter));
 
-    artifact.setRing (pct (id::artRingFreq), pct (id::artRingTweak), pct (id::artRingLp),
+    artifact.setRing (pct (id::artRingFreq), pct (id::artRingTweak), pct (id::artRingLp), raw (id::artRingRect) * 0.01f,
                       static_cast<int> (raw (id::artRingMode)));
 
     artifact.setRust (pct (id::artRustGrind), pct (id::artRustTone), static_cast<int> (raw (id::artRustMode)));

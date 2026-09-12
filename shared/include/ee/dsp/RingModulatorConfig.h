@@ -40,8 +40,8 @@ namespace ee::dsp::ringmod
 // tremolo-like pulse; knob up = kFreqMaxHz, well into the bell-like metallic
 // range. kFreqKnobSkew < 1 keeps the low, musical end spread across the first
 // half of the travel rather than bunched at the bottom.
-constexpr float kFreqMinHz   = 2.0f;
-constexpr float kFreqMaxHz   = 3000.0f;
+constexpr float kFreqMinHz = 2.0f;
+constexpr float kFreqMaxHz = 3000.0f;
 constexpr float kFreqKnobSkew = 0.6f;
 
 // ============================================================================
@@ -58,7 +58,34 @@ constexpr float kTweakDepth = 0.6f;
 // but the crossfade still reads as a small dip without a touch of make-up; a DC
 // blocker removes the rectifier's offset.
 constexpr float kOctaveMakeupGain = 1.4f;
-constexpr float kDcBlockR         = 0.999f;
+constexpr float kDcBlockR = 0.999f;
+
+// ============================================================================
+// RECTIFY (the Rectify knob)
+// ============================================================================
+// Bipolar, resting dead centre where it does nothing. It folds one half of the
+// carrier over onto the other:
+//
+//     m = (1 - |r|) * sin + r * |sin|
+//
+// r = +1 is a full-wave rectified carrier, r = -1 the same upside down, and
+// r = +/-0.5 a half-wave one. What makes it musical is what the fold puts in
+// the carrier's spectrum. A plain sine has no DC, which is exactly why a ring
+// modulator suppresses the carrier and the player's own pitch disappears - the
+// clangorous, robotic result. |sin| has a mean of 2/pi, so a rectified carrier
+// carries a DC term of |r| * 2/pi, and multiplying by a constant is just
+// passing the input through: the note comes back, at up to -3.9 dB, riding
+// under the ring. The fold also replaces the carrier's single line at f with a
+// series at 2f, 4f, 6f..., so the sidebands move from the sparse inharmonic
+// pair a bare sine makes to a denser set clustered around the note.
+//
+// Both together are why a little rectification reads as "more human": it is a
+// continuous morph from ring modulation (DSB-SC, carrier suppressed) toward
+// amplitude modulation (carrier present), without reaching for the Mix knob
+// and without losing the ring. The sign matters once any dry is in play - the
+// leaked copy is in phase at +r and inverted at -r, so at a partial Mix one
+// end thickens the note and the other thins it.
+constexpr float kDefaultRectifyPct = 0.0f;
 
 // ============================================================================
 // FILTER (the Filter knob)
@@ -68,8 +95,8 @@ constexpr float kDcBlockR         = 0.999f;
 // runs unfiltered; knob down sweeps the corner to kLpMinHz. It rests engaged
 // (see kDefaultLpPct): a ring modulator throws a lot of energy above the guitar
 // and a gentle roll-off there is what makes it sit in a mix.
-constexpr float kLpMinHz    = 300.0f;
-constexpr float kLpMaxHz    = 20000.0f;
+constexpr float kLpMinHz = 300.0f;
+constexpr float kLpMaxHz = 20000.0f;
 constexpr float kLpKnobSkew = 0.4f;
 constexpr float kLpBypassHz = 19000.0f;
 
@@ -83,12 +110,12 @@ constexpr int kControlBlock = 16;
 // ============================================================================
 // DEFAULTS (knob positions the engine opens on, 0..100)
 // ============================================================================
-constexpr float kDefaultFreqPct  = 40.0f;  // ~125 Hz - a clear ring, not a pulse
+constexpr float kDefaultFreqPct = 40.0f; // ~125 Hz - a clear ring, not a pulse
 constexpr float kDefaultTweakPct = 0.0f;
-constexpr float kDefaultLpPct    = 60.0f;  // ~10 kHz - engaged, tames the fizz
+constexpr float kDefaultLpPct = 60.0f; // ~10 kHz - engaged, tames the fizz
 
 // Mode 0 = Earworm, Mode 1 = Green Lantern.
-constexpr int kModeEarworm     = 0;
+constexpr int kModeEarworm = 0;
 constexpr int kModeGreenLantern = 1;
 
 // ============================================================================
