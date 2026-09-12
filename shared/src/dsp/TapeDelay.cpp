@@ -88,6 +88,13 @@ void TapeDelay::setDelaySeconds (float left, float right) noexcept
 {
     const float maxSamples = kMaxDelaySeconds * static_cast<float> (sr);
 
+    // std::clamp does not sanitise NaN - every comparison against it is false,
+    // so it falls through and returns the NaN untouched - and targetSamples
+    // glides toward whatever it is handed, so one non-finite call poisons it
+    // for good rather than for one block.
+    if (! std::isfinite (left))  left  = 0.0f;
+    if (! std::isfinite (right)) right = 0.0f;
+
     channels[0].targetSamples = std::clamp (left * static_cast<float> (sr), 2.0f, maxSamples);
     channels[1].targetSamples = std::clamp (right * static_cast<float> (sr), 2.0f, maxSamples);
 }
@@ -157,6 +164,14 @@ void TapeDelay::process (const float* inL, const float* inR,
 
     for (int i = 0; i < numSamples; ++i)
     {
+        // A non-finite sample can only arrive from outside - unlike
+        // TapeTransport, which sits in the same position in the tape chain and
+        // already does this, nothing here stopped one reaching the feedback
+        // line, where it would circulate for as long as the loop keeps
+        // repeating it rather than for one sample.
+        const float inSafe[2] = { std::isfinite (in[0][i]) ? in[0][i] : 0.0f,
+                                  std::isfinite (in[1][i]) ? in[1][i] : 0.0f };
+
         // Both channels are read before either is written, which is what lets
         // pingPong feed one line from the other's loop tap inside the same
         // sample. The lines are separate objects, so in every other mode this
@@ -247,7 +262,7 @@ void TapeDelay::process (const float* inL, const float* inR,
                 // Both lines hear the whole input, so the width comes from
                 // where they are read rather than from what happens to be on
                 // one side of the source.
-                const float mono = 0.5f * (in[0][i] + in[1][i]);
+                const float mono = 0.5f * (inSafe[0] + inSafe[1]);
 
                 feed[0] = mono + loopOut[0] * feedbackGain;
                 feed[1] = mono + loopOut[1] * feedbackGain;
@@ -259,7 +274,7 @@ void TapeDelay::process (const float* inL, const float* inR,
                 // One loop through both lines: the input enters on the left
                 // only, and each hop across costs one feedback gain, so the
                 // repeats alternate sides and fall away evenly.
-                const float mono = 0.5f * (in[0][i] + in[1][i]);
+                const float mono = 0.5f * (inSafe[0] + inSafe[1]);
 
                 feed[0] = mono + loopOut[1] * feedbackGain;
                 feed[1] = loopOut[0] * feedbackGain;
@@ -268,8 +283,8 @@ void TapeDelay::process (const float* inL, const float* inR,
 
             case Routing::normal:
             default:
-                feed[0] = in[0][i] + loopOut[0] * feedbackGain;
-                feed[1] = in[1][i] + loopOut[1] * feedbackGain;
+                feed[0] = inSafe[0] + loopOut[0] * feedbackGain;
+                feed[1] = inSafe[1] + loopOut[1] * feedbackGain;
                 break;
         }
 

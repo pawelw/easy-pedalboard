@@ -76,6 +76,10 @@ public:
             g.active = false;
 
         spawnCountdown = 1;
+        spawnPhase = 0.0;
+        expectedSpawnPpq = 0.0;
+        haveExpectedSpawnPpq = false;
+        wasSpawnPlaying = false;
         rngState = kRngSeed;
         smoothedNorm = normTarget;
         feedbackSample = 0.0f;
@@ -212,15 +216,58 @@ public:
         updateDerived();
     }
 
+    /** What the host transport is doing this block, for the Density spawn timer
+        alone - Size, Time and everything else stay exactly as their knobs say.
+        Mirrors ee::dsp::Tremolo::Transport: `synced` is the caller's decision
+        ("the Density Sync switch is on AND the host gave us a finite ppq AND it
+        is playing"), not a parameter, and `playing` is the transport's own state
+        so a run of unsynced-but-playing blocks still counts as playing when Sync
+        is switched on mid-take. A default-constructed Transport, `{}`, gets a
+        caller that never touches sync exactly the old free-running spawn timer. */
+    struct Transport
+    {
+        bool synced = false;
+        bool playing = false;
+        double ppqStart = 0.0;
+        double cyclesPerQuarter = 1.0;
+        double ppqPerSample = 0.0;
+    };
+
     //==========================================================================
+
+    /** Writes the wet grain cloud to outL/outR, spawn timer free-running off
+        Density and Scatter exactly as it always has - the overload below is the
+        one to reach for once a caller cares about locking that timer to a host
+        transport. `inR` may be null for a mono source. */
+    void process (const float* inL, const float* inR, float* outL, float* outR, int numSamples) noexcept
+    {
+        process (inL, inR, outL, outR, numSamples, Transport {});
+    }
 
     /** Writes the wet grain cloud to outL/outR. The caller keeps its own dry.
         In and out may alias: every input sample is read before its output slot
-        is written. `inR` may be null for a mono source. */
-    void process (const float* inL, const float* inR, float* outL, float* outR, int numSamples) noexcept
+        is written. `inR` may be null for a mono source.
+
+        `transport` only matters while Density is synced: it phase-locks the
+        spawn timer to the host grid (a hard snap on the first playing block or
+        after a relocate, otherwise a gentle per-block pull) so the same bar
+        always spawns a grain on the same beat, the way ee::dsp::Tremolo locks
+        its LFO. A default-constructed `Transport{}`, as the overload above
+        passes, leaves the timer free-running exactly as before sync existed. */
+    void process (const float* inL, const float* inR, float* outL, float* outR, int numSamples,
+                  const Transport& transport) noexcept
     {
         if (size <= 0 || outL == nullptr || outR == nullptr)
             return;
+
+        const bool spawnSynced = transport.synced;
+
+        double spawnPhaseInc = spawnSynced ? transport.cyclesPerQuarter * transport.ppqPerSample : 0.0;
+        if (! std::isfinite (spawnPhaseInc) || spawnPhaseInc < 0.0)
+            spawnPhaseInc = 0.0;
+        spawnPhaseInc = std::min (spawnPhaseInc, 1.0);
+
+        const bool spawnOnArrival = alignSpawnToTransport (transport, numSamples, spawnPhaseInc);
 
         for (int i = 0; i < numSamples; ++i)
         {
@@ -297,11 +344,33 @@ public:
                 readHead = std::fmod (static_cast<double> (freezeLoopStart) + scanPos, static_cast<double> (size));
             }
 
-            if (--spawnCountdown <= 0)
+            bool spawnNow = false;
+
+            if (i == 0 && spawnOnArrival)
             {
-                spawnGrain();
+                // Starting or relocating landed (to within a sample) right on
+                // the beat Density is synced to - drop a grain there instead of
+                // leaving the first cycle silent while spawnPhase counts up from
+                // the top all over again.
+                spawnNow = true;
+            }
+            else if (spawnSynced)
+            {
+                spawnPhase += spawnPhaseInc;
+                if (spawnPhase >= 1.0)
+                {
+                    spawnPhase -= std::floor (spawnPhase);
+                    spawnNow = true;
+                }
+            }
+            else if (--spawnCountdown <= 0)
+            {
+                spawnNow = true;
                 spawnCountdown = nextInterval();
             }
+
+            if (spawnNow)
+                spawnGrain();
 
             float sumL = 0.0f;
             float sumR = 0.0f;
@@ -473,6 +542,61 @@ private:
     float nextBipolar() noexcept
     {
         return nextFloat() * 2.0f - 1.0f;
+    }
+
+    /** The spawn phase always free-runs (see the per-sample loop); this only
+        nudges it onto the host grid while Density is synced to a running
+        transport. A hard snap on the first playing block or a transport jump
+        (loop / relocate), otherwise a gentle per-block pull capped small - the
+        same reasoning as ee::dsp::Tremolo::alignToTransport, applied to a spawn
+        instant instead of an LFO phase.
+
+        Returns true when a snap has landed (to within one sample) right on the
+        beat Density is synced to - starting or relocating exactly on a bar - so
+        the caller can drop a grain there immediately rather than leaving the
+        first cycle silent while spawnPhase counts up from the top all over
+        again. A snap that lands mid-cycle (an ordinary relocate) does not: the
+        next grain is still wherever the grid's next boundary falls. */
+    bool alignSpawnToTransport (const Transport& transport, int numSamples, double phaseInc) noexcept
+    {
+        bool spawnOnArrival = false;
+
+        if (transport.synced)
+        {
+            double target = transport.ppqStart * transport.cyclesPerQuarter;
+            target -= std::floor (target);
+
+            const bool jumped = ! wasSpawnPlaying
+                                 || (haveExpectedSpawnPpq
+                                     && std::abs (transport.ppqStart - expectedSpawnPpq) > config::kSpawnJumpPpq);
+
+            if (jumped)
+            {
+                spawnPhase = target;
+                spawnOnArrival = phaseInc > 0.0 && target < phaseInc;
+            }
+            else
+            {
+                double err = target - spawnPhase;
+                err -= std::round (err); // wrap to [-0.5, 0.5]
+                spawnPhase += std::clamp (config::kSpawnPhasePullFraction * err, -config::kSpawnPhasePullMax,
+                                          config::kSpawnPhasePullMax);
+            }
+
+            expectedSpawnPpq = transport.ppqStart + numSamples * transport.ppqPerSample;
+            haveExpectedSpawnPpq = true;
+        }
+        else
+        {
+            haveExpectedSpawnPpq = false; // next playing block re-aligns from scratch
+        }
+
+        wasSpawnPlaying = transport.playing;
+
+        if (! std::isfinite (spawnPhase))
+            spawnPhase = 0.0;
+
+        return spawnOnArrival;
     }
 
     int nextInterval() noexcept
@@ -724,6 +848,13 @@ private:
 
     std::array<Grain, config::kMaxGrains> grains {};
     int spawnCountdown = 1;
+
+    // The synced spawn timer's own phase accumulator [0, 1) - see
+    // alignSpawnToTransport(). Unused, and untouched, while free-running.
+    double spawnPhase = 0.0;
+    double expectedSpawnPpq = 0.0;
+    bool haveExpectedSpawnPpq = false;
+    bool wasSpawnPlaying = false;
 
     int minGrainSamples = 1;
     int maxGrainSamples = 1;

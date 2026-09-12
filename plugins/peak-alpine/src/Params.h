@@ -52,7 +52,7 @@ inline constexpr const char* artCrushJitter = "art.crush.jitter";
 inline constexpr const char* artRingFreq = "art.ring.freq";
 inline constexpr const char* artRingTweak = "art.ring.tweak"; // meaning set by artRingMode
 inline constexpr const char* artRingLp = "art.ring.lp";
-inline constexpr const char* artRingMode = "art.ring.mode"; // Earworm / Green Lantern
+inline constexpr const char* artRingMode = "art.ring.mode"; // Wobble / Octave (Earworm / Green Lantern in the DSP)
 inline constexpr const char* artRustGrind = "art.rust.grind";
 inline constexpr const char* artRustTone = "art.rust.tone";
 inline constexpr const char* artRustMode = "art.rust.mode"; // Oxide / Contact
@@ -115,5 +115,10 @@ inline constexpr const char* revSpaceReso = "rev.space.reso";
 inline constexpr const char* revSpringDecay = "rev.spring.decay";
 inline constexpr const char* revSpringTension = "rev.spring.tension";
 inline constexpr const char* revSpringLoCut = "rev.spring.locut";
+
+// -------------------------------------------------------------------- chain
+// A Lehmer-code index into the 24 permutations of the four modules - see
+// ChainOrder.h. Index 0 is Artifact, Modulation, Delay, Reverb: today's order.
+inline constexpr const char* chainOrder = "chain.order";
 
 } // namespace ee::alpine::id

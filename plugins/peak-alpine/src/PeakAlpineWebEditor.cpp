@@ -15,6 +15,20 @@ using namespace ee::alpine;
 // id, so they arrive here already carrying the module prefix.
 const juce::String kLeftTimeMs = juce::String (id::dlyLeftTime) + "Ms";
 const juce::String kRightTimeMs = juce::String (id::dlyRightTime) + "Ms";
+
+/** juce::String (v, 3) has no width cap, so a stage peak that has run away to
+    something in the 1e20+ range (finite, but not audio - see AlpineWatchdog's
+    incident reports) prints dozens of digits and runs straight into the next
+    column with no separator, reading as one garbled number instead of two.
+    Scientific notation once the fixed form would not stay inside the column
+    keeps every field legible and the table aligned. */
+juce::String formatPeak (float v)
+{
+    if (std::abs (v) < 1.0e7f)
+        return juce::String (v, 3);
+
+    return juce::String (v, 3, true);
+}
 } // namespace
 
 #if JUCE_ANDROID
@@ -261,8 +275,8 @@ juce::String PeakAlpineWebEditor::formatIncident (const AlpineWatchdog::Incident
 
         t << juce::String (static_cast<juce::int64> (f.block)).paddedLeft (' ', 9);
         for (int s = 0; s < AlpineWatchdog::numStages; ++s)
-            t << juce::String (f.stagePeak[static_cast<size_t> (s)], 3).paddedLeft (' ', 10);
-        t << juce::String (f.outPeak, 3).paddedLeft (' ', 10) << "   ";
+            t << formatPeak (f.stagePeak[static_cast<size_t> (s)]).paddedLeft (' ', 10);
+        t << formatPeak (f.outPeak).paddedLeft (' ', 10) << "   ";
 
         if ((f.flags & 1) != 0)
             t << "NON-FINITE ";

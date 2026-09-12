@@ -189,7 +189,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
                                                              percent, ee::dsp::ringmod::kDefaultLpPct,
                                                              withText (ringLpToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::ringMode, 1 }, "Mode",
-                                                              juce::StringArray { "Earworm", "Green Lantern" }, 0));
+                                                              juce::StringArray { "Wobble", "Octave" }, 0));
 
     // Rust. Two knobs only - Grind (a plain percent) and Tone (real units off
     // the ee::dsp::rust map). Wear and its recovery are fixed inside the engine.

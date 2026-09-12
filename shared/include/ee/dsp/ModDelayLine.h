@@ -34,6 +34,17 @@ public:
 
     float read (float delaySamples) const noexcept
     {
+        // A non-finite delaySamples reaches `static_cast<int>` below with
+        // neither clamp able to catch it - every comparison against NaN is
+        // false, so both `if`s are skipped - which is undefined behaviour and
+        // can come back as an out-of-bounds buffer index read as an arbitrary
+        // bit pattern. Every caller is expected to hand this a sane value, but
+        // a delay line is exactly where a NaN from anywhere upstream turns
+        // into that kind of garbage rather than staying a NaN, so it gets its
+        // own guard rather than trusting all of them.
+        if (! std::isfinite (delaySamples))
+            delaySamples = 2.0f;
+
         const float maxDelay = static_cast<float> (size - 3);
         if (delaySamples < 2.0f)      delaySamples = 2.0f;
         if (delaySamples > maxDelay)  delaySamples = maxDelay;

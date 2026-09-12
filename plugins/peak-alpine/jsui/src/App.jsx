@@ -1,9 +1,14 @@
 import { useEffect } from "react";
+import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
+import { arrayMove, horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { Card, JucePresetBar, ModulePanel, PowerToggle } from "@synthpeak/pedal-ui";
 import { JuceFader, JuceKnob, installAutoResize, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
 import { DelayFace } from "@synthpeak/delay-face";
 import { ArtifactFace } from "@synthpeak/artifact-face";
+import ChainSlot from "./ChainSlot.jsx";
 import SideModule from "./SideModule.jsx";
+import { MODULE_ARTIFACT, MODULE_MODULATION, MODULE_DELAY, MODULE_REVERB } from "./chainOrder.js";
+import { useChainOrder } from "./useChainOrder.js";
 import { ARTIFACT_EASY, MOD_ENGINES, REVERB_ENGINES } from "./engines.jsx";
 import "./index.css";
 
@@ -43,6 +48,34 @@ function HostControls({ on, onToggle }) {
   );
 }
 
+/** Renders each of the four modules exactly as they always have; what decides
+    which order they appear in is chain.order (useChainOrder), not this map.
+    A function per entry, not the element itself, so building the map doesn't
+    call any of the four components before React is the one rendering them. */
+const MODULE_RENDERERS = {
+  [MODULE_ARTIFACT]: () => (
+    <ArtifactFace
+      prefix="art."
+      headerRight={<ModuleLevel parameterId="level" />}
+      easyTab
+      easyConfig={ARTIFACT_EASY}
+    />
+  ),
+  [MODULE_MODULATION]: () => (
+    <SideModule name="Mod" accent="var(--pui-accent-mod)" engines={MOD_ENGINES} engineId="mod.engine" prefix="mod." />
+  ),
+  [MODULE_DELAY]: () => <DelayModule />,
+  [MODULE_REVERB]: () => (
+    <SideModule
+      name="Reverb"
+      accent="var(--pui-accent-reverb)"
+      engines={REVERB_ENGINES}
+      engineId="rev.engine"
+      prefix="rev."
+    />
+  ),
+};
+
 /**
  * Peak Alpine: three effect modules under one chrome.
  *
@@ -58,7 +91,10 @@ function HostControls({ on, onToggle }) {
  * own face, the same way the Delay module is Peak Delay's.
  *
  * What is actually written here is only what is unique: the enclosure, the
- * header, and which four modules sit in the row.
+ * header, which four modules are in the row, and - through ChainSlot's grip
+ * and chain.order - what order they run in. Dragging one doesn't touch the
+ * module components themselves; MODULE_RENDERERS below still builds the
+ * exact same four elements it always did.
  */
 export default function App() {
   useEffect(() => installAutoResize(), []);
@@ -66,6 +102,26 @@ export default function App() {
   // Engaged unless told otherwise - see useJuceToggleValue's note on why the
   // default matters for a power switch.
   const [on, setOn] = useJuceToggleValue("on", true);
+
+  // Which of the four modules runs first, second, third, fourth - see
+  // useChainOrder and plugins/peak-alpine/src/ChainOrder.h. Dragging a
+  // module's grip (ChainSlot) reorders this; the modules themselves render
+  // exactly as they always have (MODULE_RENDERERS above).
+  const [order, setOrder] = useChainOrder();
+
+  // A small move threshold before a pointer-down on the grip counts as a
+  // drag, so a click-through doesn't misfire - the same guard Mantine's own
+  // dnd-list-handle example uses. Keyboard reordering (arrow keys once a grip
+  // has focus) comes from KeyboardSensor for free.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
+
+  function handleDragEnd({ active, over }) {
+    if (!over || active.id === over.id) return;
+    setOrder(arrayMove(order, order.indexOf(active.id), order.indexOf(over.id)));
+  }
 
   return (
     <div className="page">
@@ -81,42 +137,15 @@ export default function App() {
             the modules keep saying what they individually are, and the row
             says none of it is running. */}
         <div className={`pa-modules${on ? "" : " pa-modules--bypassed"}`}>
-          {/* First in the chain: Peak Artifact's whole face, bound through an
-              "art." prefix. Same component the pedal renders - a fix lands in
-              both. Its own Mix sits in its footer; the Level trim in its header
-              is this plugin's chrome, handed in rather than drawn by the shared
-              face, so that face still binds only to names Peak Artifact has. */}
-          <ArtifactFace
-            prefix="art."
-            headerRight={<ModuleLevel parameterId="art.level" />}
-            easyTab
-            easyConfig={ARTIFACT_EASY}
-          />
-
-          {/* "Mod", not "Modulation": a 180px module's header has the toggle,
-              the name and a Level knob in it, and the long word left the knob
-              no room to breathe. The engine underneath says which modulation
-              it is anyway. */}
-          <SideModule
-            name="Mod"
-            accent="var(--pui-accent-mod)"
-            engines={MOD_ENGINES}
-            engineId="mod.engine"
-            prefix="mod."
-          />
-
-          {/* No footer Mix - the face inside it already carries a 76px Mix of
-              its own - but a Level trim in its header, this plugin's chrome the
-              same as the other three modules' Level. */}
-          <DelayModule />
-
-          <SideModule
-            name="Reverb"
-            accent="var(--pui-accent-reverb)"
-            engines={REVERB_ENGINES}
-            engineId="rev.engine"
-            prefix="rev."
-          />
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={order} strategy={horizontalListSortingStrategy}>
+              {order.map((moduleId) => (
+                <ChainSlot key={moduleId} moduleId={moduleId}>
+                  {MODULE_RENDERERS[moduleId]()}
+                </ChainSlot>
+              ))}
+            </SortableContext>
+          </DndContext>
         </div>
       </Card>
     </div>

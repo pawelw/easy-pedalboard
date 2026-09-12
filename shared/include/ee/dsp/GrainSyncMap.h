@@ -57,6 +57,15 @@ struct GrainSyncMap
         return kTempoDivisions[divisionIndex (v01)].beats * static_cast<float> (60.0 / juce::jmax (1.0, bpm));
     }
 
+    /** Length of the selected division in quarter notes - tempo-independent, for
+        a caller that needs to phase-lock a cycle to the host's ppq rather than
+        just match its rate (see ee::dsp::Grainer::Transport::cyclesPerQuarter,
+        one over this). */
+    float divisionBeats (float v01) const noexcept
+    {
+        return kTempoDivisions[divisionIndex (v01)].beats;
+    }
+
     /** The value the DSP should use. A duration map returns milliseconds (scale
         by 0.001 for seconds); a rate map returns events per second. */
     float value (float v01, bool synced, double bpm) const noexcept
@@ -77,6 +86,21 @@ struct GrainSyncMap
 
         if (! durationLike)
             return juce::String (f, f < 10.0f ? 1 : 0) + " /s";
+
+        if (f >= 1000.0f)
+            return juce::String (f * 0.001f, 2) + " s";
+
+        return juce::String (juce::roundToInt (f)) + " ms";
+    }
+
+    /** The duration reading, always in real time - never the division label
+        toText() shows once synced. For a caller whose knob should stay legible
+        in milliseconds no matter what Sync is doing (Peak Grain's Size: the
+        grain length a listener hears is a duration, not a rhythmic position).
+        Duration maps only - meaningless for a rate map. */
+    juce::String toMsText (float v01, bool synced, double bpm) const
+    {
+        const float f = value (v01, synced, bpm);
 
         if (f >= 1000.0f)
             return juce::String (f * 0.001f, 2) + " s";

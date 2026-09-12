@@ -48,7 +48,9 @@ function tremBars(amount01, shape01) {
     bar always lands on BAR_MIN, so the display's floor is the floor rather
     than wherever the maths happened to end. */
 function decayBars(decay01) {
-  const curve = 0.45 + decay01 * 1.6;
+  // The exponent runs the opposite way to Decay: a short tail wants the steep
+  // curve, so the bars are already on the floor by the end of the well.
+  const curve = 0.45 + (1 - decay01) * 1.6;
   return Array.from({ length: DECAY_BARS }, (_, i) =>
     BAR_MIN + BAR_SPAN * Math.pow(1 - i / (DECAY_BARS - 1), curve),
   );

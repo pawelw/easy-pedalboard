@@ -420,7 +420,10 @@ double PeakGrainProcessor::currentBpm() const
 
 juce::String PeakGrainProcessor::sizeReadout() const
 {
-    return sizeMap.toText (sizeParam->load(), sizeSyncParam->load() > 0.5f, currentBpm());
+    // Always milliseconds, synced or not - a grain's length is a duration a
+    // listener hears, not a rhythmic position, so the note-division label
+    // toText() would show once synced is not what belongs here.
+    return sizeMap.toMsText (sizeParam->load(), sizeSyncParam->load() > 0.5f, currentBpm());
 }
 
 juce::String PeakGrainProcessor::densityReadout() const
@@ -601,6 +604,31 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const bool densitySynced = densitySyncParam->load() > 0.5f;
     const bool delaySynced = delaySyncParam->load() > 0.5f;
 
+    // Same three transport facts PeakTremPanProcessor reads for its own synced
+    // LFO: a finite ppq and whether the transport is actually rolling, so the
+    // grain spawn timer can be phase-locked to the beat rather than merely
+    // rate-matched to it (see ee::dsp::Grainer::Transport).
+    bool havePpq = false;
+    bool isPlaying = false;
+    double ppqStart = 0.0;
+    if (auto* playHead = getPlayHead())
+        if (const auto position = playHead->getPosition())
+        {
+            if (const auto ppq = position->getPpqPosition())
+            {
+                ppqStart = *ppq;
+                havePpq = std::isfinite (ppqStart);
+            }
+            isPlaying = position->getIsPlaying();
+        }
+
+    ee::dsp::Grainer::Transport grainTransport;
+    grainTransport.synced = densitySynced && havePpq && isPlaying;
+    grainTransport.playing = isPlaying;
+    grainTransport.cyclesPerQuarter =
+        1.0 / juce::jmax (1.0e-4, static_cast<double> (densityMap.divisionBeats (densityParam->load())));
+    grainTransport.ppqPerSample = bpm / (60.0 * getSampleRate());
+
     // Each face module has an enable switch. Off leaves the knobs alone but
     // feeds the engine that section's no-op values: Random flat, Pitch pure
     // unison, and (below) the grain / delay / reverb blends fully dry.
@@ -695,7 +723,8 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             grainR[i] = (inR != nullptr ? inR[i] : inL[i]) * g;
         }
 
-        grainer.process (grainL, grainR, grainL, grainR, chunk);
+        grainTransport.ppqStart = ppqStart + static_cast<double> (offset) * grainTransport.ppqPerSample;
+        grainer.process (grainL, grainR, grainL, grainR, chunk, grainTransport);
 
         // Grain stage: the equal-power blend of the dry note and the cloud - the
         // signal an outboard delay would see at the grain pedal's output. The

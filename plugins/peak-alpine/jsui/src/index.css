@@ -89,6 +89,41 @@
   opacity: 0.42;
 }
 
+/* ChainSlot's wrapper. It holds one module and nothing else - the drag handle
+   is that module's own header (see ChainSlot) - so it is a plain column whose
+   child takes all of it, and the row's heights come out exactly as they did
+   before reordering existed (`align-items: stretch` on .pa-modules). */
+.pa-chain-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.pa-chain-slot > .pui-module {
+  flex: 1;
+  min-height: 0;
+}
+
+/* The header is the handle. `touch-action: none` is dnd-kit's own requirement
+   for PointerSensor to see a drag rather than the browser claiming it as a
+   scroll/pan - and the Level knob in this strip wants the same, so it is set
+   on the whole header rather than carved around the controls in it.
+
+   The power toggle and that knob set their own cursors, which beats this
+   inherited one, so both keep saying they are controls rather than handles. */
+.pa-chain-slot .pui-module__header {
+  cursor: grab;
+  touch-action: none;
+}
+
+.pa-chain-slot .pui-module__header:active {
+  cursor: grabbing;
+}
+
+.pa-chain-slot--dragging {
+  opacity: 0.42;
+}
+
 /* How far DelayFace's footer has to travel to reach the Delay module's edges.
    One padding to clear rather than the Card's two, and none at the bottom -
    ModulePanel's body already ends flush there. */

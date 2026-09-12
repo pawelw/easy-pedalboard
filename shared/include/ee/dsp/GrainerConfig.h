@@ -233,6 +233,15 @@ constexpr float kDefaultDensity01 = 0.5f;
 constexpr bool  kDefaultSizeSync    = false;
 constexpr bool  kDefaultDensitySync = false;
 
+// How hard the grain-spawn phase is pulled back onto the host grid, per block,
+// while Density is synced and playing. Same numbers and the same reasoning as
+// ee::dsp::tremolo's pull/snap pair (TremoloConfig.h) - a fraction of the
+// error rather than the whole of it, and capped, so host ppq jitter re-settles
+// without a click; a jump bigger than kSpawnJumpPpq snaps instead of easing.
+constexpr double kSpawnPhasePullFraction = 0.15;
+constexpr double kSpawnPhasePullMax      = 0.006;
+constexpr double kSpawnJumpPpq           = 0.25;
+
 // ============================================================================
 // MIX
 // ============================================================================

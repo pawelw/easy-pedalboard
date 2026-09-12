@@ -101,6 +101,9 @@ public:
     {
         float* io[2] = { left, right };
 
+        for (auto& c : channels)
+            scrubIfBroken (c);
+
         for (int i = 0; i < numSamples; ++i)
         {
             smoothedDepth += depthCoeff * (amount - smoothedDepth);
@@ -150,6 +153,13 @@ private:
     // tunable: it sets the buffer size and the reported latency.
     static constexpr float kNominalDelaySeconds = 0.0015f;
 
+    // Hard ceiling on the gap-loss biquad's feedback state (see colour()).
+    // Real audio through this stage never approaches order 1; this sits
+    // ~36 dB above that, so a healthy signal is untouched and only a
+    // divergent mode ever meets it, at which point it parks there instead of
+    // climbing decade after decade.
+    static constexpr float kStateCeiling = 64.0f;
+
     static float onePoleCoeff (float cornerHz, double sampleRate) noexcept
     {
         const float w = kTwoPi * cornerHz / static_cast<float> (sampleRate);
@@ -197,11 +207,53 @@ private:
 
         // Gap loss. Mixed in rather than switched, so it arrives with the knob
         // and never touches a signal the stage is not already colouring.
+        //
+        // The coefficients are computed once, in float, from a fixed corner
+        // and Q - close enough to marginal that float32 rounding can leave
+        // this biquad's round-trip gain a hair over unity. Left alone that
+        // grows hiCutZ1/hiCutZ2 exponentially without ever going non-finite,
+        // the same failure FdnReverb.cpp documents (kRunawayCeiling) for its
+        // feedback network, so the state gets the same hard gate rather than
+        // trusting an isfinite check downstream to catch it.
         const float lp = hiCutB0 * y + ch.hiCutZ1;
-        ch.hiCutZ1 = hiCutB1 * y - hiCutA1 * lp + ch.hiCutZ2;
-        ch.hiCutZ2 = hiCutB2 * y - hiCutA2 * lp;
+        ch.hiCutZ1 = std::clamp (hiCutB1 * y - hiCutA1 * lp + ch.hiCutZ2, -kStateCeiling, kStateCeiling);
+        ch.hiCutZ2 = std::clamp (hiCutB2 * y - hiCutA2 * lp, -kStateCeiling, kStateCeiling);
 
-        return y + (lp - y) * amount;
+        y = y + (lp - y) * amount;
+
+        if (! std::isfinite (y))
+        {
+            scrub (ch);
+            return 0.0f;
+        }
+
+        return y;
+    }
+
+    /** A non-finite sample can only arrive from outside, but the filters
+        store it once it does - and the gap-loss biquad above can drift into
+        its own marginal instability with no outside help at all. Caught at
+        the top of every block as well as per sample (in colour()), so
+        nothing can ring on forever. */
+    static void scrubIfBroken (Channel& ch) noexcept
+    {
+        const bool ok = std::isfinite (ch.shelfState) && std::isfinite (ch.dcState)
+                        && std::isfinite (ch.envState) && std::isfinite (ch.noiseHpState)
+                        && std::isfinite (ch.noiseLpState) && std::isfinite (ch.noiseLpState2)
+                        && std::isfinite (ch.hiCutZ1) && std::isfinite (ch.hiCutZ2);
+
+        if (! ok)
+            scrub (ch);
+    }
+
+    static void scrub (Channel& ch) noexcept
+    {
+        ch.line.reset();
+        ch.shelfState = 0.0f;
+        ch.dcState = 0.0f;
+        ch.envState = 0.0f;
+        ch.noiseHpState = ch.noiseLpState = ch.noiseLpState2 = 0.0f;
+        ch.hiCutZ1 = ch.hiCutZ2 = 0.0f;
     }
 
     float modulator() noexcept

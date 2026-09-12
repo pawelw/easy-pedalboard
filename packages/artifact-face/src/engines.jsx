@@ -1,4 +1,4 @@
-import { CrushIcon, FilterIcon, ModIcon, TapeIcon } from "@synthpeak/pedal-ui";
+import { CrushIcon, FilterIcon, ModIcon, RustIcon } from "@synthpeak/pedal-ui";
 
 /**
  * The four engines the module steps through, each with its own body. The order
@@ -8,7 +8,7 @@ export const ENGINES = [
   { name: "Ring", icon: <ModIcon size={22} />, body: "ring" },
   { name: "Crasher", icon: <CrushIcon size={22} />, body: "crush" },
   { name: "Filter", icon: <FilterIcon size={22} />, body: "filter" },
-  { name: "Rust", icon: <TapeIcon size={22} />, body: "rust" },
+  { name: "Rust", icon: <RustIcon size={22} />, body: "rust" },
 ];
 
 /**

@@ -29,8 +29,8 @@ import "./ArtifactFace.css";
  * stepper, and then the selected engine's body, with Mix in the footer. Filter
  * has a response scope, two rows of knobs, the wave picker and a Mono/Stereo
  * switch; Bit Crush has a stepped-wave display and two rows of knobs; Ring Mod
- * has a lattice display, its three knobs and an Earworm / Green Lantern switch;
- * Rust has a corrosion display, two rows of knobs and an Oxide / Contact
+ * has a lattice display, its three knobs and a Wobble / Octave switch; Rust
+ * has a corrosion display, two rows of knobs and an Oxide / Contact
  * switch. The footer Mix doubles as the Ring Mod's and Rust's Blend.
  *
  * One component, two hosts. Peak Artifact wraps this in its own Card; Peak
@@ -374,8 +374,10 @@ function RingBody() {
   );
 }
 
-/* Pinned to the foot of the module body, like Mono/Stereo. Earworm is the
-   carrier-wobble voicing, Green Lantern the octave-up one. */
+/* Pinned to the foot of the module body, like Mono/Stereo. Wobble is the
+   Ringworm's carrier-wobble voicing (Earworm in the DSP), Octave the Green
+   Ringer's rectified one - named for what each does rather than for the pedal
+   behind it, because "Green Lantern" wrapped to two lines in a 168px module. */
 function RingModeSwitch() {
   const [mode, setMode] = useJuceChoiceValue("ring.mode", 2, 0);
   const green = mode === 1;
@@ -383,15 +385,15 @@ function RingModeSwitch() {
   return (
     <div className="af-inline-switch af-mode-switch">
       <span className="af-switch-label" data-active={!green || undefined}>
-        Earworm
+        Wobble
       </span>
       <Toggle
         checked={green}
         onChange={(v) => setMode(v ? 1 : 0)}
-        ariaLabel="Earworm / Green Lantern"
+        ariaLabel="Wobble / Octave"
       />
       <span className="af-switch-label" data-active={green || undefined}>
-        Green Lantern
+        Octave
       </span>
     </div>
   );

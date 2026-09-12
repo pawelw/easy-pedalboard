@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 
+#include "ChainOrder.h"
 #include "Params.h"
 #include "PeakAlpineWebEditor.h"
 
@@ -207,6 +208,24 @@ void addTrimDb (juce::AudioProcessorValueTreeState::ParameterLayout& layout, con
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id, 1 }, name, range, 0.0f,
                                                              withText (gainDbToText)));
 }
+
+/** The 24 chain.order choice labels, one per permutation, built from
+    ChainOrder.h rather than typed out by hand so they cannot drift from
+    what permutationForIndex actually decodes each index to. */
+juce::StringArray chainOrderLabels()
+{
+    static constexpr const char* shortName[chainOrder::kNumModules] = { "Art", "Mod", "Dly", "Rev" };
+
+    juce::StringArray labels;
+    for (int i = 0; i < chainOrder::kNumPermutations; ++i)
+    {
+        juce::StringArray parts;
+        for (int moduleId : chainOrder::permutationForIndex (i))
+            parts.add (shortName[moduleId]);
+        labels.add (parts.joinIntoString ("-"));
+    }
+    return labels;
+}
 } // namespace
 
 PeakAlpineProcessor::PeakAlpineProcessor()
@@ -383,7 +402,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
         juce::ParameterID { id::artRingLp, 1 }, "Artifact Ring Filter", percent, ee::dsp::ringmod::kDefaultLpPct,
         withText (artRingLpToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artRingMode, 1 }, "Artifact Mode",
-                                                              juce::StringArray { "Earworm", "Green Lantern" }, 0));
+                                                              juce::StringArray { "Wobble", "Octave" }, 0));
 
     // Rust. Two knobs - Grind (plain percent) and Tone (real units off the
     // ee::dsp::rust map). Wear and its recovery are fixed inside the engine.
@@ -547,6 +566,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::revSpringLoCut, 1 },
                                                              "Spring Low Cut", springLoCut,
                                                              ee::dsp::spring::kOutputLowCutHz, withText (hertzToText)));
+
+    // The signal-chain order, appended rather than slotted into its own
+    // section: AU addresses parameters by index, not name, so inserting this
+    // one earlier would shift the index of every parameter after it. Index 0 - its
+    // default - is Artifact, Modulation, Delay, Reverb: today's fixed order,
+    // so a session or preset that predates this parameter is unaffected.
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::chainOrder, 1 }, "Chain Order",
+                                                              chainOrderLabels(), 0));
 
     return layout;
 }
@@ -918,32 +945,50 @@ void PeakAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         modulation.setTremoloTransport (transport);
     }
 
-    // The chain. Fixed order, and each module is responsible for its own
-    // dry/wet and its own power toggle - all this does is hand the signal on.
+    // The chain. chain.order picks who's fed to whom, in the order it names -
+    // each module is still responsible for its own dry/wet and its own power
+    // toggle, all this does is hand the signal on. See ChainOrder.h.
+    const auto chainOrderNow =
+        chainOrder::permutationForIndex (static_cast<int> (apvts.getRawParameterValue (id::chainOrder)->load()));
+
 #if EE_ALPINE_WATCHDOG
     watchdog.beginBlock();
     watchdog.setStagePeak (AlpineWatchdog::stageInput, buffer, numCh, numSamples);
 #endif
 
-    artifact.process (buffer, numCh, numSamples);
+    for (const int moduleId : chainOrderNow)
+    {
+        switch (moduleId)
+        {
+        case chainOrder::moduleArtifact:
+            artifact.process (buffer, numCh, numSamples);
 #if EE_ALPINE_WATCHDOG
-    watchdog.setStagePeak (AlpineWatchdog::stageArtifact, buffer, numCh, numSamples);
+            watchdog.setStagePeak (AlpineWatchdog::stageArtifact, buffer, numCh, numSamples);
 #endif
+            break;
 
-    modulation.process (buffer, numCh, numSamples);
+        case chainOrder::moduleModulation:
+            modulation.process (buffer, numCh, numSamples);
 #if EE_ALPINE_WATCHDOG
-    watchdog.setStagePeak (AlpineWatchdog::stageModulation, buffer, numCh, numSamples);
+            watchdog.setStagePeak (AlpineWatchdog::stageModulation, buffer, numCh, numSamples);
 #endif
+            break;
 
-    delay.process (buffer, numCh, numCh, numSamples);
+        case chainOrder::moduleDelay:
+            delay.process (buffer, numCh, numCh, numSamples);
 #if EE_ALPINE_WATCHDOG
-    watchdog.setStagePeak (AlpineWatchdog::stageDelay, buffer, numCh, numSamples);
+            watchdog.setStagePeak (AlpineWatchdog::stageDelay, buffer, numCh, numSamples);
 #endif
+            break;
 
-    reverb.process (buffer, numCh, numSamples);
+        default: // chainOrder::moduleReverb
+            reverb.process (buffer, numCh, numSamples);
 #if EE_ALPINE_WATCHDOG
-    watchdog.setStagePeak (AlpineWatchdog::stageReverb, buffer, numCh, numSamples);
+            watchdog.setStagePeak (AlpineWatchdog::stageReverb, buffer, numCh, numSamples);
 #endif
+            break;
+        }
+    }
 
     // The Artifact Filter engine's live sweep position, for the editor's scope.
     artifactModL.store (artifact.filterModL(), std::memory_order_relaxed);

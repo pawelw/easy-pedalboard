@@ -10,6 +10,7 @@
 
 #include <cstdio>
 
+#include "ChainOrder.h"
 #include "Params.h"
 #include "PluginProcessor.h"
 #include "RegressHarness.h"
@@ -238,6 +239,42 @@ void checkLatencyLedger()
     std::printf ("  %-26s %4d samples\n", "Tape, module bypassed", tapeBypassed);
     check (tapeBypassed == reported, "the Tape dry path is aligned to the reported latency");
 }
+
+/** ChainOrder.h's Lehmer code is the whole mechanism chain.order relies on -
+    every index must decode to a genuine permutation, decoding must be the
+    exact inverse of encoding, and index 0 (the parameter's default) must be
+    today's fixed order, or an old session that has never touched this
+    parameter would replay differently than it always has. */
+void checkChainOrderRoundTrip()
+{
+    using namespace ee::alpine::chainOrder;
+
+    bool everyIndexIsAPermutation = true;
+    bool encodingIsTheInverse = true;
+
+    for (int i = 0; i < kNumPermutations; ++i)
+    {
+        const auto order = permutationForIndex (i);
+
+        std::array<bool, kNumModules> seen {};
+        for (const int moduleId : order)
+        {
+            if (moduleId < 0 || moduleId >= kNumModules || seen[static_cast<size_t> (moduleId)])
+                everyIndexIsAPermutation = false;
+            else
+                seen[static_cast<size_t> (moduleId)] = true;
+        }
+
+        if (indexForPermutation (order) != i)
+            encodingIsTheInverse = false;
+    }
+
+    check (everyIndexIsAPermutation, "every chain.order index decodes to a genuine permutation of the four modules");
+    check (encodingIsTheInverse, "...and indexForPermutation is its exact inverse");
+    check (permutationForIndex (0)
+               == std::array<int, kNumModules> { moduleArtifact, moduleModulation, moduleDelay, moduleReverb },
+           "index 0 is Artifact, Modulation, Delay, Reverb - today's fixed order");
+}
 } // namespace
 
 int main (int argc, char* argv[])
@@ -250,6 +287,9 @@ int main (int argc, char* argv[])
     std::printf ("=== Peak Alpine host ===\n\n");
 
     checkLatencyLedger();
+    std::printf ("\n");
+
+    checkChainOrderRoundTrip();
     std::printf ("\n");
 
     // What the plugin tells a host to compensate, across the rates it runs at.
@@ -344,6 +384,27 @@ int main (int argc, char* argv[])
                         writer->writeFromAudioSampleBuffer (out, 0, kLength);
             }
         }
+
+    // The chain actually reorders, not merely accepts the parameter: reversing
+    // it must sound different from the default order above.
+    std::printf ("\nReversed chain order:\n");
+    {
+        using namespace ee::alpine::chainOrder;
+        const int reversedIndex =
+            indexForPermutation ({ moduleReverb, moduleDelay, moduleModulation, moduleArtifact });
+
+        juce::AudioBuffer<float> out (2, kLength);
+        out.makeCopyOf (input);
+        render (out,
+                [reversedIndex] (juce::AudioProcessorValueTreeState& s)
+                { setChoice (s, ee::alpine::id::chainOrder, reversedIndex); });
+
+        std::printf ("  %s  reversed  %s  peak %.6f  rms %.6f\n", allFinite (out) ? "ok  " : "FAIL",
+                     checksum (out).toRawUTF8(), out.getMagnitude (0, kLength), out.getRMSLevel (0, 0, kLength));
+        check (allFinite (out), "reversed chain order is finite");
+        check (difference (out, plain) > 0.001f,
+               "...and audibly differs from the default order - the DSP actually reorders, not just the parameter");
+    }
 
     std::printf ("\nEverything up:\n");
     {

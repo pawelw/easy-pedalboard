@@ -69,7 +69,13 @@ constexpr float kWearHealSec  = 1.5f;
 // saturation), 1 is full breakup (hard quantise, sample-rate crumble). Wear *
 // Grind is the amount actually applied, so a stage only bites once you lean in.
 constexpr float kGritDrive     = 7.0f;    // extra tanh drive at Wear*Grind = 1
-constexpr float kGritTrim      = 0.55f;   // level pulled back by this * Wear*Grind
+// The tanh stage's saturation raises RMS (harmonics filling in a squarer wave)
+// faster than a trim scaling linearly with Wear*Grind pulls it back down, so
+// the loudest point isn't at Wear*Grind = 1 - it's around Grind 50%, where
+// Rust measured a couple of dB louder than Bit Crush or Ring Mod at matched
+// settings. 0.80 (was 0.55) was picked by sweeping Grind 0..1 against those
+// two siblings and landing the worst case under +1 dB rather than +2.25 dB.
+constexpr float kGritTrim      = 0.80f;   // level pulled back by this * Wear*Grind
 constexpr float kMinBits       = 5.0f;    // word length at Wear*Grind = 1
 constexpr int   kMaxDecimate   = 12;      // sample-and-hold length at Wear*Grind = 1
 

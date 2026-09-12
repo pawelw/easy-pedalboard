@@ -39,8 +39,10 @@
  * engine its own pedal uses, so nothing can drift from the pedal it came from
  * and a fix lands in both.
  *
- * The order is fixed. Nothing in the design offers to reorder it, and a router
- * would be a second and larger feature.
+ * Which runs first, second, third, fourth is `chain.order`, a Lehmer-coded
+ * index into the 24 permutations of the four (see ChainOrder.h). Index 0 - its
+ * default - is this order, Artifact then Modulation then Delay then Reverb,
+ * so a session or preset that predates this parameter plays back unchanged.
  *
  * This class is parameters and plumbing. It owns no DSP of its own: what it
  * does is read the knobs, turn them into the real units the three modules take,
