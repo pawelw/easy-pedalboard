@@ -120,6 +120,17 @@ PeakAlpineWebEditor::PeakAlpineWebEditor (PeakAlpineProcessor& p)
                   // delay time, and what a knob position means in milliseconds
                   // depends on the Sync pill and the host tempo, neither of
                   // which the web view knows.
+                  // Which binary is actually running, so a rebuild can be told
+                  // apart from a stale one still loaded in an open project or
+                  // a DAW's own plugin cache - see useJuceBuildInfo. __DATE__ /
+                  // __TIME__ are this translation unit's own compile time, so
+                  // the stamp only moves when this file (or a header it
+                  // depends on - PluginProcessor.h, and through it every DSP
+                  // header) is actually recompiled.
+                  .withNativeFunction ("getBuildInfo",
+                                       [] (const juce::Array<juce::var>&,
+                                           juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                       { complete (juce::String (__DATE__) + " " + __TIME__); })
                   .withNativeFunction ("getDelayTimesMs",
                                        [this] (const juce::Array<juce::var>&,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)

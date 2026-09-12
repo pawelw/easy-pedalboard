@@ -477,6 +477,22 @@ target_link_libraries(ee_module_stress
     PRIVATE ee_dsp juce::juce_audio_processors juce::juce_dsp
     PUBLIC juce::juce_recommended_config_flags)
 
+# Checks two specific claims about Peak Artifact's Bit engine (see BitCheck.cpp):
+# its Crush/Rate knobs at 100 % are bit-identical to Bit Crush's own engine at
+# 50 %, and its Drive knob adds no more than ~4 dB at 100 % on real audio.
+juce_add_console_app(ee_bit_check PRODUCT_NAME "ee_bit_check")
+
+target_sources(ee_bit_check PRIVATE BitCheck.cpp)
+
+target_compile_definitions(ee_bit_check PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_bit_check
+    PRIVATE ee_dsp juce::juce_audio_processors juce::juce_dsp juce::juce_audio_formats
+    PUBLIC juce::juce_recommended_config_flags)
+
 if(TARGET PeakAlpine)
     # Drives the real Peak Alpine processor like a host: does it make sound, do
     # the three power toggles reach the audio, is a bypassed plugin unity, and

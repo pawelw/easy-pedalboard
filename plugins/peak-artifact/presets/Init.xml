@@ -22,4 +22,9 @@
   <PARAM id="rust.grind" value="50"/>
   <PARAM id="rust.tone" value="65"/>
   <PARAM id="rust.mode" value="0"/>
+  <PARAM id="amp.drive" value="35"/>
+  <PARAM id="amp.mids" value="0"/>
+  <PARAM id="amp.bit" value="50"/>
+  <PARAM id="amp.tone" value="0"/>
+  <PARAM id="amp.stereo" value="0"/>
 </PARAMETERS>

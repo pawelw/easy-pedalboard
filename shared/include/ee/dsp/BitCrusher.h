@@ -48,8 +48,8 @@ public:
         targetAaHz = 0.49f * static_cast<float> (sr);
 
         // One-pole glide on the two corners, evaluated once per control block.
-        smoothCoeff = onePoleCoeff (1000.0f / bitcrush::kLpSmoothMs,
-                                    sr / static_cast<double> (bitcrush::kControlBlock));
+        smoothCoeff =
+            onePoleCoeff (1000.0f / bitcrush::kLpSmoothMs, sr / static_cast<double> (bitcrush::kControlBlock));
 
         reset();
     }
@@ -90,31 +90,29 @@ public:
     void setDecimation (int n) noexcept
     {
         baseN = std::clamp (n, 1, 512);
-        targetAaHz = std::clamp (bitcrush::kAntiAliasFrac * static_cast<float> (sr)
-                                     / static_cast<float> (baseN),
-                                 20.0f, 0.49f * static_cast<float> (sr));
+        targetAaHz = std::clamp (bitcrush::kAntiAliasFrac * static_cast<float> (sr) / static_cast<float> (baseN), 20.0f,
+                                 0.49f * static_cast<float> (sr));
     }
 
     /** Convenience for callers that think in Hz (tests, tuning tools): the
         nearest integer decimation to host / hz. */
-    void setRateHz (float hz) noexcept
-    {
-        setDecimation (static_cast<int> (std::lround (sr / std::max (1.0f, hz))));
-    }
+    void setRateHz (float hz) noexcept { setDecimation (static_cast<int> (std::lround (sr / std::max (1.0f, hz)))); }
 
     /** Post low-pass corner in Hz. At or above kLpBypassHz the filter is
         skipped. */
-    void setLowpassHz (float hz) noexcept
-    {
-        targetLpHz = std::clamp (hz, bitcrush::kLpMinHz, bitcrush::kLpMaxHz);
-    }
+    void setLowpassHz (float hz) noexcept { targetLpHz = std::clamp (hz, bitcrush::kLpMinHz, bitcrush::kLpMaxHz); }
 
     /** 0 = a fixed hold length, 1 = it swings up to kJitterDepth of N either
         side. */
-    void setJitter01 (float j) noexcept
-    {
-        jitter = std::clamp (j, 0.0f, 1.0f);
-    }
+    void setJitter01 (float j) noexcept { jitter = std::clamp (j, 0.0f, 1.0f); }
+
+    /** Whether the tracking anti-alias low-pass runs ahead of the hold. On by
+        default, which is what makes the Bit Crush engine read as lost bandwidth
+        rather than hash. Peak Artifact's Amp turns it off: the reference that
+        engine is measured against holds the raw signal, images and all, and a
+        pre-filter there moves the result off the target by more than it tidies
+        up. */
+    void setAntiAlias (bool shouldFilter) noexcept { antiAlias = shouldFilter; }
 
     // -------------------------------------------------------------- the audio
 
@@ -122,10 +120,9 @@ public:
     {
         float* io[2] = { left, right };
 
-        const bool bypassHold  = baseN <= 1;
+        const bool bypassHold = baseN <= 1;
         const bool bypassQuant = bits >= bitcrush::kBitsClean;
-        const bool bypassLp    = targetLpHz >= bitcrush::kLpBypassHz
-                              && currentLpHz >= bitcrush::kLpBypassHz;
+        const bool bypassLp = targetLpHz >= bitcrush::kLpBypassHz && currentLpHz >= bitcrush::kLpBypassHz;
 
         if (bypassHold && bypassQuant && bypassLp)
             return; // bit-exact pass-through
@@ -150,7 +147,7 @@ public:
                 {
                     // Anti-alias before the hold - band-limit to the decimated
                     // stream's Nyquist so the images fold cleanly.
-                    const float aa = svfLowpass (ch.aaZ1, ch.aaZ2, aa1, aa2, aa3, x);
+                    const float aa = antiAlias ? svfLowpass (ch.aaZ1, ch.aaZ2, aa1, aa2, aa3, x) : x;
 
                     if (ch.hold <= 0)
                     {
@@ -185,8 +182,8 @@ private:
         uint32_t rng = 1u;
     };
 
-    static constexpr float kPi  = 3.14159265359f;
-    static constexpr float kQ   = 0.70710678f; // Butterworth
+    static constexpr float kPi = 3.14159265359f;
+    static constexpr float kQ = 0.70710678f; // Butterworth
 
     static float onePoleCoeff (float cornerHz, double sampleRate) noexcept
     {
@@ -209,17 +206,17 @@ private:
             return baseN;
 
         const float u = nextUniform (ch.rng) * 2.0f - 1.0f;
-        const int delta = static_cast<int> (std::lround (
-            jitter * bitcrush::kJitterDepth * static_cast<float> (baseN) * u));
+        const int delta =
+            static_cast<int> (std::lround (jitter * bitcrush::kJitterDepth * static_cast<float> (baseN) * u));
         return std::max (1, baseN + delta);
     }
 
     void svfCoeffs (float hz, float& c1, float& c2, float& c3) const noexcept
     {
         const float nyq = 0.49f * static_cast<float> (sr);
-        const float fc  = std::clamp (hz, 10.0f, nyq);
-        const float g   = std::tan (kPi * fc / static_cast<float> (sr));
-        const float k   = 1.0f / kQ;
+        const float fc = std::clamp (hz, 10.0f, nyq);
+        const float g = std::tan (kPi * fc / static_cast<float> (sr));
+        const float k = 1.0f / kQ;
 
         c1 = 1.0f / (1.0f + g * (g + k));
         c2 = g * c1;
@@ -248,6 +245,7 @@ private:
     float quantStep = 2.0f / 65536.0f; // 2 / 2^16
     int baseN = 1;
     float jitter = 0.0f;
+    bool antiAlias = true;
 
     float targetLpHz = bitcrush::kLpMaxHz;
     float currentLpHz = bitcrush::kLpMaxHz;

@@ -11,11 +11,11 @@
 #endif
 
 /**
- * Peak Artifact: one switchable module - Ring Mod / Bit Crush / Filter / Rust -
- * as a pedal of its own, the way Peak Delay is its own plugin as well as a
- * module inside Peak Alpine.
+ * Peak Artifact: one switchable module - Ring Mod / Bit Crush / Filter / Rust /
+ * Amp - as a pedal of its own, the way Peak Delay is its own plugin as well as
+ * a module inside Peak Alpine.
  *
- * All four engines are voiced - see ee::fx::ArtifactModule. The processor is
+ * All five engines are voiced - see ee::fx::ArtifactModule. The processor is
  * parameters and plumbing: it reads the knobs, turns the Filter Time knob into
  * an LFO period the way Peak Wah does, and hands the module a global bypass.
  */

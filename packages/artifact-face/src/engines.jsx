@@ -1,14 +1,16 @@
-import { CrushIcon, FilterIcon, ModIcon, RustIcon } from "@synthpeak/pedal-ui";
+import { BitIcon, CrushIcon, FilterIcon, ModIcon, RustIcon } from "@synthpeak/pedal-ui";
 
 /**
- * The four engines the module steps through, each with its own body. The order
- * is the order of the processor's `engine` choice parameter.
+ * The five engines the module steps through, each with its own body. The order
+ * is the order of the processor's `engine` choice parameter - Amp is last so
+ * an existing session's saved engine index keeps its old meaning.
  */
 export const ENGINES = [
   { name: "Ring", icon: <ModIcon size={22} />, body: "ring" },
   { name: "Crasher", icon: <CrushIcon size={22} />, body: "crush" },
   { name: "Filter", icon: <FilterIcon size={22} />, body: "filter" },
   { name: "Rust", icon: <RustIcon size={22} />, body: "rust" },
+  { name: "Amp", icon: <BitIcon size={22} />, body: "amp" },
 ];
 
 /**

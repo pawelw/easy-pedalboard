@@ -227,3 +227,20 @@
 .pa-tape-switch__label[data-active] {
   color: var(--pui-ink);
 }
+
+/* The native build stamp (App.jsx's BuildStamp) - fixed outside the card so
+   it never enters installAutoResize's size measurement, low-contrast so it
+   reads as debug chrome rather than part of the pedal's own face. */
+.pa-build-stamp {
+  position: fixed;
+  right: 6px;
+  bottom: 4px;
+  font-family: var(--pui-font-label, monospace);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  color: var(--pui-ink-dim, rgba(255, 255, 255, 0.4));
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+  z-index: 9999;
+}

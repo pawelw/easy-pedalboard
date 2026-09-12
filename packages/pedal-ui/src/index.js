@@ -58,6 +58,7 @@ export { default as TremoloIcon } from "./TremoloIcon.jsx";
 export { default as PhaserIcon } from "./PhaserIcon.jsx";
 export { default as CrushIcon } from "./CrushIcon.jsx";
 export { default as RustIcon } from "./RustIcon.jsx";
+export { default as BitIcon } from "./BitIcon.jsx";
 export { default as SpaceIcon } from "./SpaceIcon.jsx";
 export { default as SpringIcon } from "./SpringIcon.jsx";
 export { default as PowerIcon } from "./PowerIcon.jsx";

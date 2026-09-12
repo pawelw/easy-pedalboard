@@ -15,6 +15,7 @@
 #include "ee/dsp/TapeMachineConfig.h"
 #include "ee/dsp/Tremolo.h"
 #include "ee/dsp/TremoloConfig.h"
+#include "ee/dsp/TubeDriveConfig.h"
 #include "ee/plugin/Bypass.h"
 #include "ee/plugin/ParamText.h"
 
@@ -352,11 +353,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
 
     // --------------------------------------------------------------- artifact
     // Every id, range and default is Peak Artifact's, because the module is
-    // Peak Artifact's. All four engines are voiced (see ee::fx::ArtifactModule).
+    // Peak Artifact's. All five engines are voiced (see ee::fx::ArtifactModule).
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artOn, 1 }, "Artifact On", true));
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
-        juce::StringArray { "Ring Mod", "Bit Crush", "Filter", "Rust" }, 2));
+        juce::StringArray { "Ring Mod", "Bit Crush", "Filter", "Rust", "Amp" }, 2));
     addTrimDb (layout, id::artLevel, "Artifact Level");
     addPercent (layout, id::artMix, "Artifact Mix", 50.0f);
 
@@ -413,6 +414,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
         withText (artRustToneToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { id::artRustMode, 1 }, "Artifact Rust Mode", juce::StringArray { "Oxide", "Contact" }, 0));
+
+    // Amp. Drive is a tube-style analog drive, plain percent, unchanged since
+    // the engine's first cut. Mids and Bit are also plain percent host text
+    // (like Bit Crush's own knobs above) - the real unit (dB, the hold rate)
+    // is Peak Artifact's own readout, not this file's. Tone is the same
+    // bipolar tilt Peak Tape's Tone is: -100 dark, 0 flat and bypassed, +100
+    // bright, resting in the middle. Stereo switches a fixed Haas delay on the
+    // right channel on or off.
+    addPercent (layout, id::artAmpDrive, "Artifact Amp Drive", ee::dsp::tubedrive::kDefaultDrivePct);
+    addPercent (layout, id::artAmpMids, "Artifact Amp Mids", 0.0f);
+    addPercent (layout, id::artAmpBit, "Artifact Amp Bit", ee::fx::ArtifactModule::kAmpDefaultBitPct);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::artAmpTone, 1 }, "Artifact Amp Tone",
+        juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f), 0.0f, withText (toneToText)));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artAmpStereo, 1 },
+                                                            "Artifact Amp Stereo", false));
 
     // ------------------------------------------------------------- modulation
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modOn, 1 }, "Modulation On", true));
@@ -669,6 +686,9 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
                       static_cast<int> (raw (id::artRingMode)));
 
     artifact.setRust (pct (id::artRustGrind), pct (id::artRustTone), static_cast<int> (raw (id::artRustMode)));
+
+    artifact.setAmp (pct (id::artAmpDrive), pct (id::artAmpMids), pct (id::artAmpBit), raw (id::artAmpTone) * 0.01f,
+                     flag (id::artAmpStereo));
 
     // --------------------------------------------------------------- modulation
     modulation.setEngine (static_cast<int> (raw (id::modEngine)));

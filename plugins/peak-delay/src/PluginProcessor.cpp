@@ -231,10 +231,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakDelayProcessor::createPa
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (hiCutToText)));
 
     // A boolean rather than a choice: two states, and the face's router just
-    // flips the flag. Named for the side it defaults to; the host text reads
-    // Pre/Post, so that never shows up in a DAW.
+    // flips the flag. The host text reads Pre/Post, so the id's sense never
+    // shows up in a DAW. Defaults to Post: Pre colours the dry signal, so a
+    // fresh instance was audibly tape even at Mix 0.
     layout.add (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { kTapePreID, 1 }, "Tape Placement", true,
+        juce::ParameterID { kTapePreID, 1 }, "Tape Placement", false,
         juce::AudioParameterBoolAttributes().withStringFromValueFunction (
             [] (bool pre, int) { return juce::String (pre ? "Pre" : "Post"); })));
 

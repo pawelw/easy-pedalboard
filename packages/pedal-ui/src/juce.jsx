@@ -474,3 +474,29 @@ export function installAutoResize({ padding = 4 } = {}) {
   const observer = new ResizeObserver(report);
   observer.observe(card);
 }
+
+/** The native build stamp - `getBuildInfo()`, when the processor registers it
+ * - so a face can show which binary is actually running. `__DATE__ __TIME__`
+ * only ever changes when that translation unit is actually recompiled, so
+ * this is the one thing in the UI that cannot be lying about a stale build:
+ * a rebuilt-but-not-reloaded host (an old plugin instance sitting in an
+ * already-open project, a DAW's own plugin cache) still shows the old stamp.
+ *
+ * Generic rather than a per-pedal binding because any WebView pedal can wire
+ * the same native function up the same way; which ones actually have is up
+ * to each pedal's own editor. Empty outside a real host, or on a processor
+ * that has not registered the function - callers should render nothing then,
+ * not a placeholder that could be mistaken for a real stamp.
+ */
+export function useJuceBuildInfo() {
+  const [info, setInfo] = useState("");
+
+  useEffect(() => {
+    if (typeof window.__JUCE__?.initialisationData?.__juce__functions?.includes !== "function") return;
+    if (!window.__JUCE__.initialisationData.__juce__functions.includes("getBuildInfo")) return;
+
+    Juce.getNativeFunction("getBuildInfo")().then(setInfo);
+  }, []);
+
+  return info;
+}

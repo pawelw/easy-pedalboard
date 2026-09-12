@@ -342,8 +342,8 @@ public:
             for (int i = 0; i < chunk; ++i)
             {
                 const float e = engage[i];
-                const float l = mixL[i] + (postL[i] - mixL[i]) * e;
-                const float r = mixR[i] + (postR[i] - mixR[i]) * e;
+                const float l = scrub (mixL[i] + (postL[i] - mixL[i]) * e);
+                const float r = scrub (mixR[i] + (postR[i] - mixR[i]) * e);
 
                 if (outR != nullptr)
                 {
@@ -424,12 +424,22 @@ private:
         return juce::jmax (delaymodule::kMinDelaySeconds, seconds - postLatencySeconds);
     }
 
+    /** Anything past this at the module output is a runaway, not audio - the
+        same ceiling, for the same reason, as ee::fx::MultiEngineModule's. ~+36
+        dBFS, well clear of any legitimate wet-plus-level peak. */
+    static constexpr float kRunawayCeiling = 64.0f;
+
+    /** The module's own containment. Every other module in Peak Alpine's chain
+        has one (MultiEngineModule applies it to Artifact, Modulation and
+        Reverb alike); without it this one handed whatever its wet path had
+        gone to straight on to the next module, which is not a stage that can
+        be expected to survive it - and switching the module off did not stop
+        it, because bypass here leaves the repeats ringing out on purpose. */
+    static float scrub (float x) noexcept { return std::isfinite (x) && std::abs (x) <= kRunawayCeiling ? x : 0.0f; }
+
     /** Trails: bypassing leaves the dry path at unity rather than at the mix's
         dry side, so what fades out is the wet only. */
-    float dryTarget() const noexcept
-    {
-        return engaged ? std::cos (mix01 * juce::MathConstants<float>::halfPi) : 1.0f;
-    }
+    float dryTarget() const noexcept { return engaged ? std::cos (mix01 * juce::MathConstants<float>::halfPi) : 1.0f; }
 
     float wetTarget() const noexcept { return std::sin (mix01 * juce::MathConstants<float>::halfPi); }
 

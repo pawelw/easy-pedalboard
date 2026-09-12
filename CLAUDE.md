@@ -54,6 +54,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_delay_regress_artefacts/Release/ee_delay_regress [outDir]
 ./build/tests/ee_spring_regress_artefacts/Release/ee_spring_regress [outDir]
 ./build/tests/ee_module_stress_artefacts/Release/ee_module_stress    # Peak Alpine's switchable modules
+./build/tests/ee_bit_check_artefacts/Release/ee_bit_check [outDir] [dry.wav]  # Amp's Bit calibration and Drive's dB
 ./build/tests/ee_alpine_host_artefacts/Release/ee_alpine_host        # drives the real Peak Alpine processor
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt

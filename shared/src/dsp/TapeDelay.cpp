@@ -13,6 +13,17 @@ namespace
     // what "reasonable" means here - no self-oscillation on a clean setting.
     constexpr float kMaxFeedback = 0.86f;
 
+    // Last-ditch magnitude gate for the feedback line, the same one FdnReverb
+    // and SpringReverb carry. kMaxFeedback alone is not the guarantee it looks
+    // like: it bounds what this loop *multiplies* by, not what gets written
+    // into the line, and a single absurd-but-finite sample arriving from
+    // upstream is stored and then read out for the whole length of the tail -
+    // one that a bypassed module keeps exporting, because bypass closes the
+    // input and deliberately leaves the repeats running. Non-finite was already
+    // scrubbed on the way in; this is its finite twin. ~+36 dBFS, so no real
+    // repeat comes near it.
+    constexpr float kRunawayCeiling = 64.0f;
+
     // Mod is the slow, wide movement. Fast flutter belongs to the tape stage in
     // front of the delay, not in here.
     constexpr float kWowHz = 0.42f;
@@ -55,7 +66,7 @@ namespace
         const float w = kTwoPi * cornerHz / static_cast<float> (sampleRate);
         return std::clamp (1.0f - std::exp (-w), 0.0f, 1.0f);
     }
-}
+} // namespace
 
 void TapeDelay::prepare (double sampleRate)
 {
@@ -92,8 +103,10 @@ void TapeDelay::setDelaySeconds (float left, float right) noexcept
     // so it falls through and returns the NaN untouched - and targetSamples
     // glides toward whatever it is handed, so one non-finite call poisons it
     // for good rather than for one block.
-    if (! std::isfinite (left))  left  = 0.0f;
-    if (! std::isfinite (right)) right = 0.0f;
+    if (! std::isfinite (left))
+        left = 0.0f;
+    if (! std::isfinite (right))
+        right = 0.0f;
 
     channels[0].targetSamples = std::clamp (left * static_cast<float> (sr), 2.0f, maxSamples);
     channels[1].targetSamples = std::clamp (right * static_cast<float> (sr), 2.0f, maxSamples);
@@ -156,8 +169,7 @@ void TapeDelay::updateCharacter() noexcept
     wowDepth = modAmount * kWowSeconds * static_cast<float> (sr);
 }
 
-void TapeDelay::process (const float* inL, const float* inR,
-                         float* outL, float* outR, int numSamples) noexcept
+void TapeDelay::process (const float* inL, const float* inR, float* outL, float* outR, int numSamples) noexcept
 {
     const float* in[2] = { inL, inR };
     float* out[2] = { outL, outR };
@@ -200,7 +212,8 @@ void TapeDelay::process (const float* inL, const float* inR,
             if (wowDepth > 0.0f)
             {
                 ch.wowPhase += wowInc * kRateScale[c];
-                if (ch.wowPhase >= 1.0f) ch.wowPhase -= 1.0f;
+                if (ch.wowPhase >= 1.0f)
+                    ch.wowPhase -= 1.0f;
 
                 wobble += wowDepth * std::sin (kTwoPi * ch.wowPhase);
             }
@@ -257,35 +270,51 @@ void TapeDelay::process (const float* inL, const float* inR,
 
         switch (routing)
         {
-            case Routing::wide:
-            {
-                // Both lines hear the whole input, so the width comes from
-                // where they are read rather than from what happens to be on
-                // one side of the source.
-                const float mono = 0.5f * (inSafe[0] + inSafe[1]);
+        case Routing::wide:
+        {
+            // Both lines hear the whole input, so the width comes from
+            // where they are read rather than from what happens to be on
+            // one side of the source.
+            const float mono = 0.5f * (inSafe[0] + inSafe[1]);
 
-                feed[0] = mono + loopOut[0] * feedbackGain;
-                feed[1] = mono + loopOut[1] * feedbackGain;
-                break;
-            }
+            feed[0] = mono + loopOut[0] * feedbackGain;
+            feed[1] = mono + loopOut[1] * feedbackGain;
+            break;
+        }
 
-            case Routing::pingPong:
-            {
-                // One loop through both lines: the input enters on the left
-                // only, and each hop across costs one feedback gain, so the
-                // repeats alternate sides and fall away evenly.
-                const float mono = 0.5f * (inSafe[0] + inSafe[1]);
+        case Routing::pingPong:
+        {
+            // One loop through both lines: the input enters on the left
+            // only, and each hop across costs one feedback gain, so the
+            // repeats alternate sides and fall away evenly.
+            const float mono = 0.5f * (inSafe[0] + inSafe[1]);
 
-                feed[0] = mono + loopOut[1] * feedbackGain;
-                feed[1] = loopOut[0] * feedbackGain;
-                break;
-            }
+            feed[0] = mono + loopOut[1] * feedbackGain;
+            feed[1] = loopOut[0] * feedbackGain;
+            break;
+        }
 
-            case Routing::normal:
-            default:
-                feed[0] = inSafe[0] + loopOut[0] * feedbackGain;
-                feed[1] = inSafe[1] + loopOut[1] * feedbackGain;
-                break;
+        case Routing::normal:
+        default:
+            feed[0] = inSafe[0] + loopOut[0] * feedbackGain;
+            feed[1] = inSafe[1] + loopOut[1] * feedbackGain;
+            break;
+        }
+
+        // Checked before the write, so nothing past the gate ever reaches the
+        // line: once it is in there it circulates for the length of the tail
+        // and no amount of guarding downstream clears it. Silence the rest of
+        // the block and flush both lines - one glitched block, then recovery,
+        // rather than a stuck roar handed to whatever comes next.
+        if (! std::isfinite (out[0][i]) || ! std::isfinite (out[1][i]) || std::abs (out[0][i]) > kRunawayCeiling ||
+            std::abs (out[1][i]) > kRunawayCeiling || std::abs (feed[0]) > kRunawayCeiling ||
+            std::abs (feed[1]) > kRunawayCeiling)
+        {
+            for (int k = i; k < numSamples; ++k)
+                out[0][k] = out[1][k] = 0.0f;
+
+            reset();
+            return;
         }
 
         for (size_t c = 0; c < channels.size(); ++c)
@@ -298,8 +327,7 @@ void TapeDelay::process (const float* inL, const float* inR,
 
 float TapeDelay::getTailSeconds() const noexcept
 {
-    const float longest = std::max (channels[0].targetSamples, channels[1].targetSamples)
-                          / static_cast<float> (sr);
+    const float longest = std::max (channels[0].targetSamples, channels[1].targetSamples) / static_cast<float> (sr);
 
     if (feedbackGain <= 0.001f)
         return longest * 1.5f;

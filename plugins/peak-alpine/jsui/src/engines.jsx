@@ -221,6 +221,14 @@ export const ARTIFACT_EASY = {
       { id: "rust.tone", min: 0.35, max: 0.9 },
     ],
   },
+  Amp: {
+    name: "Drive",
+    targets: [
+      { id: "amp.drive", min: 0.2, max: 0.9 },
+      { id: "amp.bit", min: 0.2, max: 0.8 },
+      { id: "amp.mids", min: 0.0, max: 0.7 },
+    ],
+  },
 };
 
 /** Two knobs per row, so neither side module ever runs past two. */

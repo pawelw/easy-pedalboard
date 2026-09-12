@@ -8,6 +8,7 @@
 #include "ee/dsp/BitCrusherConfig.h"
 #include "ee/dsp/RingModulatorConfig.h"
 #include "ee/dsp/RustConfig.h"
+#include "ee/dsp/TubeDriveConfig.h"
 #include "ee/plugin/ParamText.h"
 
 #include <cmath>
@@ -61,6 +62,32 @@ juce::String crushLpToText (float pct, int)
     if (hz >= ee::dsp::bitcrush::kLpBypassHz)
         return "Off";
     return freqText (hz);
+}
+
+// Amp's Bit readout - the sample-and-hold rate, off
+// ee::fx::ArtifactModule::ampRateHzFor (not ee::dsp::bitcrush's map - a
+// different curve and a different floor, see ArtifactModule.h's kAmpCrush*
+// constants). Resolved at the same nominal 48 kHz the Bit Crush Rate text is.
+juce::String ampBitToText (float pct, int)
+{
+    const float hz = ee::fx::ArtifactModule::ampRateHzFor (pct * 0.01f, kCrushRateTextSr);
+    const int n = juce::jmax (1, juce::roundToInt (kCrushRateTextSr / hz));
+    if (n <= 1)
+        return "Off";
+    return freqText (kCrushRateTextSr / static_cast<float> (n));
+}
+
+/** Amp's Tone rests in the middle and reads 0 there: a bipolar control should
+    print the number it is on, with the sign carrying the direction. Kept in
+    step with plugins/peak-tape's own toneToText. */
+juce::String ampToneToText (float value, int)
+{
+    const int rounded = juce::roundToInt (value);
+
+    if (rounded == 0)
+        return "0 %";
+
+    return (rounded > 0 ? "+" : "") + juce::String (rounded) + " %";
 }
 
 // Ring Mod readouts, off the same ee::dsp::ringmod maps ee::fx::ArtifactModule
@@ -131,10 +158,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::on, 1 }, "On", true));
 
-    // All four engines are voiced; the pedal opens on Filter.
+    // All five engines are voiced; the pedal opens on Filter.
     layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { id::engine, 1 }, "Engine", juce::StringArray { "Ring Mod", "Bit Crush", "Filter", "Rust" },
-        2));
+        juce::ParameterID { id::engine, 1 }, "Engine",
+        juce::StringArray { "Ring Mod", "Bit Crush", "Filter", "Rust", "Amp" }, 2));
 
     layout.add (
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::mix, 1 }, "Mix", percent, 50.0f, pctAttr));
@@ -202,6 +229,26 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakArtifactProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::rustMode, 1 }, "Rust Mode",
                                                               juce::StringArray { "Oxide", "Contact" }, 0));
 
+    // Amp. A tube-style analog drive (its own knob, plain percent, unchanged
+    // from the engine's first cut) into a sample-rate reducer (Bit - see
+    // ee::fx::ArtifactModule::ampRateHzFor) with no bit-depth quantisation and
+    // no anti-alias filter, a Mids peaking boost (Peak EQ's own Mid band/Q,
+    // 0..4 dB) and a bipolar Tone tilt (Peak Tape's, flat and bypassed dead
+    // centre). Stereo switches a fixed Haas delay on the right channel on or
+    // off. Its dry/wet is the footer Mix.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ampDrive, 1 }, "Amp Drive",
+                                                             percent, ee::dsp::tubedrive::kDefaultDrivePct, pctAttr));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ampMids, 1 }, "Amp Mids", percent,
+                                                             0.0f, pctAttr));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ampBit, 1 }, "Amp Bit", percent,
+                                                             ee::fx::ArtifactModule::kAmpDefaultBitPct,
+                                                             withText (ampBitToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ampTone, 1 }, "Amp Tone",
+                                                             juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+                                                             0.0f, withText (ampToneToText)));
+    layout.add (
+        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::ampStereo, 1 }, "Amp Stereo", false));
+
     return layout;
 }
 
@@ -226,6 +273,9 @@ void PeakArtifactProcessor::pushSettings (double bpm) noexcept
     module.setRing (pct (id::ringFreq), pct (id::ringTweak), pct (id::ringLp), static_cast<int> (raw (id::ringMode)));
 
     module.setRust (pct (id::rustGrind), pct (id::rustTone), static_cast<int> (raw (id::rustMode)));
+
+    module.setAmp (pct (id::ampDrive), pct (id::ampMids), pct (id::ampBit), raw (id::ampTone) * 0.01f,
+                   flag (id::ampStereo));
 }
 
 juce::String PeakArtifactProcessor::timeReadout() const

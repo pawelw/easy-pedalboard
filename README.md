@@ -224,6 +224,9 @@ Post is the other way round: it is on the delay's output alone, so the wear and
 the flutter are on the repeats and the note you are playing stays clean. The two
 settings are the two ways a tape echo can be built, and which one you want is
 usually decided by whether you want to hear the machine on your own playing.
+**Post is the default**, because it is the one that keeps the Tape knobs inside
+the Mix control - a pedal fresh out of the box should not be altering a signal
+it is not being asked to delay.
 
 The router moves the section over about a quarter of a second rather than
 switching it, and what actually travels is Wear and Flutter: there is a tape

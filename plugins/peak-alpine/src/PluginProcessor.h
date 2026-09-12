@@ -32,8 +32,8 @@
 /**
  * Peak Alpine: four effect modules under one chrome.
  *
- * Artifact (Ring Mod / Bit Crush / Filter / Rust - `ee::fx::ArtifactModule`, which is
- * what Peak Artifact runs), then Modulation (Tape / Tremolo / Chorus / Phaser),
+ * Artifact (Ring Mod / Bit Crush / Filter / Rust / Amp - `ee::fx::ArtifactModule`,
+ * which is what Peak Artifact runs), then Modulation (Tape / Tremolo / Chorus / Phaser),
  * then Delay - which is Peak Delay's entire chain, the same `ee::fx::DelayModule`
  * that pedal runs - then Reverb (Space / Spring). Every engine in here is the
  * engine its own pedal uses, so nothing can drift from the pedal it came from

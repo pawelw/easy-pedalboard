@@ -132,12 +132,14 @@
   pointer-events: none;
 }
 
-/* Bit Crush, Ring Mod and Rust bodies: a display and their knob rows. Held to
-   the same height as the Filter body so stepping engines never resizes the
-   module. The display is a plain well - no infinity mark, no swept band. */
+/* Bit Crush, Ring Mod, Rust and Amp bodies: a display and their knob rows.
+   Held to the same height as the Filter body so stepping engines never
+   resizes the module. The display is a plain well - no infinity mark, no
+   swept band. */
 .af-crush,
 .af-ring,
-.af-rust {
+.af-rust,
+.af-amp {
   display: flex;
   flex-direction: column;
   min-height: 220px;

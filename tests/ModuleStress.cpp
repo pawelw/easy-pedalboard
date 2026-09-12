@@ -362,7 +362,7 @@ void sweepReverb()
 }
 
 /** ee::fx::ArtifactModule - Peak Alpine's first module and Peak Artifact's
-    whole processor. All four engines are voiced; the interesting cases are
+    whole processor. All five engines are voiced; the interesting cases are
     each engine's own parameter space and that stepping between them does not
     step the signal. */
 void sweepArtifact()
@@ -474,6 +474,33 @@ void sweepArtifact()
                     worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
                     clean = allFinite (buffer) && clean;
                 }
+
+    // Amp's own knob space - Drive, Mids, Bit and Tone at each end and the
+    // middle, both Stereo positions, each Mix position.
+    for (float drive : { 0.0f, 0.5f, 1.0f })
+        for (float mids : { 0.0f, 0.5f, 1.0f })
+            for (float bit : { 0.0f, 0.5f, 1.0f })
+                for (float tone : { 0.0f, 1.0f })
+                    for (bool stereo : { false, true })
+                        for (float mix : { 0.0f, 0.5f, 1.0f })
+                        {
+                            ee::fx::ArtifactModule module;
+                            module.prepare (kSampleRate, 512);
+                            module.setEngine (ee::fx::ArtifactModule::Amp);
+                            module.setMix01 (mix);
+                            module.setLevel (1.0f);
+                            module.setEngaged (true);
+
+                            module.setAmp (drive, mids, bit, tone, stereo);
+
+                            juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
+                            fillTestSignal (buffer, kSampleRate);
+                            run (module, buffer);
+
+                            ++cases;
+                            worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+                            clean = allFinite (buffer) && clean;
+                        }
 
     std::printf ("  %d cases, worst peak %.3f\n", cases, worstPeak);
     check (clean, "every Artifact case finite");

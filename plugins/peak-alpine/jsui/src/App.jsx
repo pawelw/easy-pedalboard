@@ -2,7 +2,13 @@ import { useEffect } from "react";
 import { closestCenter, DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { arrayMove, horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { Card, JucePresetBar, ModulePanel, PowerToggle } from "@synthpeak/pedal-ui";
-import { JuceFader, JuceKnob, installAutoResize, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
+import {
+  JuceFader,
+  JuceKnob,
+  installAutoResize,
+  useJuceBuildInfo,
+  useJuceToggleValue,
+} from "@synthpeak/pedal-ui/juce";
 import { DelayFace } from "@synthpeak/delay-face";
 import { ArtifactFace } from "@synthpeak/artifact-face";
 import ChainSlot from "./ChainSlot.jsx";
@@ -35,6 +41,18 @@ function ModuleLevel({ parameterId }) {
     would hold two independent copies of it, and outside a real host there is no
     relay echo to bring them back together - so the ring would read off over an
     undimmed row. */
+/** A quiet corner stamp of the native build's own compile time - see
+    useJuceBuildInfo. Fixed-position and outside the Card, so it never enters
+    installAutoResize's measurement of `.pui-card`; it exists only so a
+    rebuilt AU/VST3 can be told apart from a stale one still sitting in an
+    already-open project or a DAW's own plugin cache. Renders nothing outside
+    a real host or on a processor that has not wired the function up. */
+function BuildStamp() {
+  const build = useJuceBuildInfo();
+  if (!build) return null;
+  return <div className="pa-build-stamp">{build}</div>;
+}
+
 function HostControls({ on, onToggle }) {
   return (
     <div className="pa-host-controls">
@@ -148,6 +166,7 @@ export default function App() {
           </DndContext>
         </div>
       </Card>
+      <BuildStamp />
     </div>
   );
 }

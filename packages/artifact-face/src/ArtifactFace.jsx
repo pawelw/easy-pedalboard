@@ -30,14 +30,22 @@ import "./ArtifactFace.css";
  * has a response scope, two rows of knobs, the wave picker and a Mono/Stereo
  * switch; Bit Crush has a stepped-wave display and two rows of knobs; Ring Mod
  * has a lattice display, its three knobs and a Wobble / Octave switch; Rust
- * has a corrosion display, two rows of knobs and an Oxide / Contact
- * switch. The footer Mix doubles as the Ring Mod's and Rust's Blend.
+ * has a corrosion display, two rows of knobs and an Oxide / Contact switch;
+ * Amp has a display, two rows of knobs and a Mono/Stereo switch of its own
+ * (a Haas widener, not the Filter engine's channel-diversity one - see
+ * `MonoStereoSwitch`'s `parameterId`). The footer Mix doubles as the Ring
+ * Mod's and Rust's Blend.
  *
  * One component, two hosts. Peak Artifact wraps this in its own Card; Peak
  * Alpine drops it into its module row as the first module. The whole reason
  * this package exists is that the Artifact module in the multi-effect host is
  * not a re-draw of Peak Artifact's face, it *is* that face - so a fix lands in
  * both and neither can drift.
+ *
+ * Amp's display reuses `CrushScope` (see `AmpDisplay`) with its Bits input
+ * pinned to 0 - Amp's Bit knob is sample-rate reduction only, no amplitude
+ * reduction, so the picture is a held sine with no amplitude bands, truthful
+ * to what the engine actually does (see ee::fx::ArtifactModule's class note).
  *
  * `prefix` is the parameter-id prefix its controls bind through: "" for Peak
  * Artifact, whose parameters are plain (`mix`, `flt.freq`), and "art." for Peak
@@ -165,6 +173,8 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
         <CrushBody />
       ) : engine.body === "rust" ? (
         <RustBody />
+      ) : engine.body === "amp" ? (
+        <AmpBody />
       ) : (
         <RingBody />
       )}
@@ -252,6 +262,26 @@ function RingDisplay() {
   );
 }
 
+function AmpDisplay() {
+  const [bit] = useJuceSliderValue("amp.bit");
+
+  return (
+    // CrushScope with Bits pinned to 0 - a held (sample-rate-reduced) sine with
+    // no amplitude bands, since Amp's Bit knob never touches the word length.
+    // The tube drive and Mids/Tone shaping ahead of and after it aren't shown.
+    <div className="af-display af-display--crush">
+      <CrushScope
+        bits01={0}
+        rate01={bit}
+        jitter01={0}
+        height={64}
+        baseColor={SCOPE.baseColor}
+        fillColor={SCOPE.fillColor}
+      />
+    </div>
+  );
+}
+
 function RustDisplay() {
   const [grind] = useJuceSliderValue("rust.grind");
   const [mode] = useJuceChoiceValue("rust.mode", 2, 0);
@@ -277,6 +307,7 @@ function ArtifactEngineDisplay({ engine }) {
   if (engine === "Crasher") return <CrushDisplay />;
   if (engine === "Ring") return <RingDisplay />;
   if (engine === "Rust") return <RustDisplay />;
+  if (engine === "Amp") return <AmpDisplay />;
   return <FilterDisplay />;
 }
 
@@ -421,6 +452,35 @@ function RustBody() {
   );
 }
 
+/* The Amp body: its display well, two knob rows - Drive / Mids, then Bit /
+   Tone, the order the signal actually runs through (drive, then the
+   sample-and-hold, then the Mids lift, then Tone) - and the Mono/Stereo Haas
+   switch at the foot, the same slot Filter's own Mono/Stereo occupies. */
+function AmpBody() {
+  return (
+    // Matches the other engine bodies' height so stepping between engines
+    // doesn't resize the module.
+    <div className="af-amp">
+      <AmpDisplay />
+
+      <div className="af-knobs">
+        <div className="af-knob-row">
+          <JuceKnob parameterId="amp.drive" caption="Drive" variant="soft" size={36} />
+          <JuceKnob parameterId="amp.mids" caption="Mids" variant="soft" size={36} />
+        </div>
+        <div className="af-knob-row">
+          <JuceKnob parameterId="amp.bit" caption="Bit" variant="soft" size={36} />
+          {/* Bipolar: flat dead centre, so its arc grows out from twelve
+              o'clock the way Tape's Tone does. */}
+          <JuceKnob parameterId="amp.tone" caption="Tone" variant="soft" size={36} scaleFrom="centre" />
+        </div>
+      </div>
+
+      <MonoStereoSwitch parameterId="amp.stereo" />
+    </div>
+  );
+}
+
 /* Pinned to the foot of the module body, like Mono/Stereo. Oxide is the soft
    magnetic-decay voicing (full warble, wear darkens the tone); Contact is
    harder and more electrical (little warble, wear squares the peaks with a
@@ -446,9 +506,12 @@ function RustModeSwitch() {
   );
 }
 
-/* Pinned to the foot of the module body, just above the footer. */
-function MonoStereoSwitch() {
-  const [stereo, setStereo] = useJuceToggleValue("flt.stereo", false);
+/* Pinned to the foot of the module body, just above the footer. Filter's own
+   Mono/Stereo picks which channels the LFO diverges on; Amp's does a Haas
+   widen on the right channel instead (see ee::fx::ArtifactModule) - same
+   switch, same slot, a different `parameterId` for each. */
+function MonoStereoSwitch({ parameterId = "flt.stereo" }) {
+  const [stereo, setStereo] = useJuceToggleValue(parameterId, false);
 
   return (
     <div className="af-inline-switch af-ms-switch">

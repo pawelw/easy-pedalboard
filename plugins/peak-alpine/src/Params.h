@@ -35,7 +35,7 @@ inline constexpr const char* on = "on";
 // The leaf names are that pedal's own, exactly - drop the `art.` and you have
 // its parameter list, which is what lets one `ArtifactFace` bind to both.
 inline constexpr const char* artOn = "art.on";
-inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Filter / Rust
+inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Filter / Rust / Amp
 inline constexpr const char* artLevel = "art.level";   // module chrome, not Peak Artifact's
 inline constexpr const char* artMix = "art.mix";
 inline constexpr const char* artFltFreq = "art.flt.freq";
@@ -56,6 +56,11 @@ inline constexpr const char* artRingMode = "art.ring.mode"; // Wobble / Octave (
 inline constexpr const char* artRustGrind = "art.rust.grind";
 inline constexpr const char* artRustTone = "art.rust.tone";
 inline constexpr const char* artRustMode = "art.rust.mode"; // Oxide / Contact
+inline constexpr const char* artAmpDrive = "art.amp.drive";
+inline constexpr const char* artAmpMids = "art.amp.mids";
+inline constexpr const char* artAmpBit = "art.amp.bit";
+inline constexpr const char* artAmpTone = "art.amp.tone";
+inline constexpr const char* artAmpStereo = "art.amp.stereo";
 
 // --------------------------------------------------------------- modulation
 inline constexpr const char* modOn = "mod.on";
