@@ -66,16 +66,22 @@ import "./ArtifactFace.css";
  * `easyTab` is on: `{ [engineName]: { name, targets } }`, handed in from the
  * host rather than kept on this package's engine table (which the standalone
  * pedal has no use for). See Peak Alpine's engines.jsx `ARTIFACT_EASY`.
+ *
+ * `knobVariant` is Knob's own `variant`, forwarded to every knob this face
+ * draws - Peak Artifact's default is "concave"; Peak Alpine passes "flat"
+ * for the copy it embeds as its own module, so the same component can read
+ * differently in each host without a second copy of it.
  */
 export default function ArtifactFace({
   prefix = "",
   headerRight = null,
   easyTab = false,
   easyConfig = null,
+  knobVariant = "concave",
 }) {
   return (
     <ParamScope prefix={prefix}>
-      <ArtifactFaceBody headerRight={headerRight} easyTab={easyTab} easyConfig={easyConfig} />
+      <ArtifactFaceBody headerRight={headerRight} easyTab={easyTab} easyConfig={easyConfig} knobVariant={knobVariant} />
     </ParamScope>
   );
 }
@@ -123,7 +129,7 @@ const SHOW_EASY_TABS = false;
 
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     ArtifactFace itself would read the enclosing scope, not the one it declares. */
-function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = null }) {
+function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = null, knobVariant = "concave" }) {
   // Default index 2 (Filter) with no backend - the processor opens on Filter
   // too, since it is the only voiced engine.
   const [engineIndex, setEngine] = useJuceChoiceValue("engine", ENGINES.length, 2);
@@ -143,7 +149,7 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
       onToggle={setOn}
       headerRight={headerRight}
       className="af-module"
-      footer={<JuceKnob parameterId="mix" caption="Mix" variant="concave" size={38} />}
+      footer={<JuceKnob parameterId="mix" caption="Mix" variant={knobVariant} size={38} />}
     >
       <EngineStepper
         engines={ENGINES.map((e) => e.name)}
@@ -164,19 +170,19 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
           <div className="af-easy">
             {/* Keyed by engine so the macro re-centres on an engine change
                 rather than carrying its position across. */}
-            <JuceMacroKnob key={engine.name} caption={easy.name} targets={easy.targets} />
+            <JuceMacroKnob key={engine.name} caption={easy.name} targets={easy.targets} variant={knobVariant} />
           </div>
         </>
       ) : engine.body === "filter" ? (
-        <FilterBody />
+        <FilterBody knobVariant={knobVariant} />
       ) : engine.body === "crush" ? (
-        <CrushBody />
+        <CrushBody knobVariant={knobVariant} />
       ) : engine.body === "rust" ? (
-        <RustBody />
+        <RustBody knobVariant={knobVariant} />
       ) : engine.body === "amp" ? (
-        <AmpBody />
+        <AmpBody knobVariant={knobVariant} />
       ) : (
-        <RingBody />
+        <RingBody knobVariant={knobVariant} />
       )}
 
       {SHOW_EASY_TABS && easy && <ModuleTabs value={tab} onChange={setTab} />}
@@ -316,7 +322,7 @@ function ArtifactEngineDisplay({ engine }) {
 
 /* Its own component so the Filter-only hooks don't run for the other two
    engines - the same reason Peak Alpine splits its displays out. */
-function FilterBody() {
+function FilterBody({ knobVariant }) {
   const [waveIndex, setWave] = useJuceChoiceValue("flt.wave", WAVES.length);
   const wave = WAVES[waveIndex] ?? WAVES[0];
 
@@ -326,8 +332,8 @@ function FilterBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="flt.freq" caption="Freq" variant="concave" size={36} />
-          <JuceKnob parameterId="flt.q" caption="Q" variant="concave" size={36} />
+          <JuceKnob parameterId="flt.freq" caption="Freq" variant={knobVariant} size={36} />
+          <JuceKnob parameterId="flt.q" caption="Q" variant={knobVariant} size={36} />
         </div>
         {/* Range and Time each carry a small control directly under them: the
             wave <> picker (glyph only, no name - it is small enough to sit here
@@ -335,7 +341,7 @@ function FilterBody() {
             short) and the SYNC pill, the same control Peak Delay uses. */}
         <div className="af-knob-row">
           <div className="af-subcol">
-            <JuceKnob parameterId="flt.range" caption="Range" variant="concave" size={36} />
+            <JuceKnob parameterId="flt.range" caption="Range" variant={knobVariant} size={36} />
             <div className="af-sub af-sub--wave">
               <EngineStepper
                 engines={WAVES.map((w) => w.name)}
@@ -348,7 +354,7 @@ function FilterBody() {
           </div>
 
           <div className="af-subcol">
-            <JuceKnob parameterId="flt.time" caption="Time" variant="concave" size={36} />
+            <JuceKnob parameterId="flt.time" caption="Time" variant={knobVariant} size={36} />
             <div className="af-sub af-sub--sync">
               {/* flt.sync's own sense is already "synced to tempo", so it
                   lights when on with no invert. */}
@@ -364,7 +370,7 @@ function FilterBody() {
 }
 
 /* The Bit Crush body: its display well and two knob rows. */
-function CrushBody() {
+function CrushBody({ knobVariant }) {
   return (
     // Matches the Filter body's height so stepping between engines doesn't
     // resize the module - the same job .af-blank does for Ring Mod.
@@ -373,12 +379,12 @@ function CrushBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="crush.bits" caption="Bits" variant="concave" size={36} />
-          <JuceKnob parameterId="crush.rate" caption="Rate" variant="concave" size={36} />
+          <JuceKnob parameterId="crush.bits" caption="Bits" variant={knobVariant} size={36} />
+          <JuceKnob parameterId="crush.rate" caption="Rate" variant={knobVariant} size={36} />
         </div>
         <div className="af-knob-row">
-          <JuceKnob parameterId="crush.lp" caption="Filter" variant="concave" size={36} />
-          <JuceKnob parameterId="crush.jitter" caption="Jitter" variant="concave" size={36} />
+          <JuceKnob parameterId="crush.lp" caption="Filter" variant={knobVariant} size={36} />
+          <JuceKnob parameterId="crush.jitter" caption="Jitter" variant={knobVariant} size={36} />
         </div>
       </div>
     </div>
@@ -386,7 +392,7 @@ function CrushBody() {
 }
 
 /* The Ring Mod body: its lattice display, four knobs and the mode switch. */
-function RingBody() {
+function RingBody({ knobVariant }) {
   return (
     // Matches the Filter / Crush body height so stepping between engines doesn't
     // resize the module.
@@ -395,17 +401,17 @@ function RingBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="ring.freq" caption="Freq" variant="concave" size={36} />
-          <JuceKnob parameterId="ring.tweak" caption="Tweak" variant="concave" size={36} />
+          <JuceKnob parameterId="ring.freq" caption="Freq" variant={knobVariant} size={36} />
+          <JuceKnob parameterId="ring.tweak" caption="Tweak" variant={knobVariant} size={36} />
         </div>
         <div className="af-knob-row">
-          <JuceKnob parameterId="ring.lp" caption="Filter" variant="concave" size={36} />
+          <JuceKnob parameterId="ring.lp" caption="Filter" variant={knobVariant} size={36} />
           {/* Bipolar: a plain sine carrier dead centre, so its arc grows out
               from twelve o'clock in whichever direction it is folded. */}
           <JuceKnob
             parameterId="ring.rect"
             caption="Rectify"
-            variant="concave"
+            variant={knobVariant}
             size={36}
             scaleFrom="centre"
           />
@@ -445,7 +451,7 @@ function RingModeSwitch() {
 /* The Rust body: its corrosion display, one knob row (Grind / Tone) and the
    mode switch. Wear and its recovery are fixed inside the engine, so there is
    no knob for them. */
-function RustBody() {
+function RustBody({ knobVariant }) {
   return (
     // Matches the other engine bodies' height so stepping between engines
     // doesn't resize the module.
@@ -454,8 +460,8 @@ function RustBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="rust.grind" caption="Grind" variant="concave" size={36} />
-          <JuceKnob parameterId="rust.tone" caption="Tone" variant="concave" size={36} />
+          <JuceKnob parameterId="rust.grind" caption="Grind" variant={knobVariant} size={36} />
+          <JuceKnob parameterId="rust.tone" caption="Tone" variant={knobVariant} size={36} />
         </div>
       </div>
 
@@ -468,7 +474,7 @@ function RustBody() {
    Tone, the order the signal actually runs through (drive, then the
    sample-and-hold, then the Mids lift, then Tone) - and the Mono/Stereo Haas
    switch at the foot, the same slot Filter's own Mono/Stereo occupies. */
-function AmpBody() {
+function AmpBody({ knobVariant }) {
   return (
     // Matches the other engine bodies' height so stepping between engines
     // doesn't resize the module.
@@ -477,14 +483,14 @@ function AmpBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="amp.drive" caption="Drive" variant="concave" size={36} />
-          <JuceKnob parameterId="amp.mids" caption="Mids" variant="concave" size={36} />
+          <JuceKnob parameterId="amp.drive" caption="Drive" variant={knobVariant} size={36} />
+          <JuceKnob parameterId="amp.mids" caption="Mids" variant={knobVariant} size={36} />
         </div>
         <div className="af-knob-row">
-          <JuceKnob parameterId="amp.bit" caption="Bit" variant="concave" size={36} />
+          <JuceKnob parameterId="amp.bit" caption="Bit" variant={knobVariant} size={36} />
           {/* Bipolar: flat dead centre, so its arc grows out from twelve
               o'clock the way Tape's Tone does. */}
-          <JuceKnob parameterId="amp.tone" caption="Tone" variant="concave" size={36} scaleFrom="centre" />
+          <JuceKnob parameterId="amp.tone" caption="Tone" variant={knobVariant} size={36} scaleFrom="centre" />
         </div>
       </div>
 

@@ -249,11 +249,11 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
    anything for a theme that isn't onyx (this cap used to be onyx-black
    under every theme, not just onyx). */
 .pui-knob__soft-cap {
-    position: absolute;
+position: absolute;
     inset: 2px;
     border-radius: 50%;
-    background: var(--pui-soft-face-bottom);
-    box-shadow: inset 0 -1px 0.5px var(--pui-soft-rim-lo), inset 0 0.5px 1px var(--pui-soft-face-hi), var(--pui-soft-shadow);
+    background: #0a0d0e;
+    box-shadow: inset 0 -1px 0.5px rgb(0 0 0 / 93%), inset 0 1px 0px var(--pui-soft-face-hi), var(--pui-soft-shadow);
 }
 
 /* ==========================================================================

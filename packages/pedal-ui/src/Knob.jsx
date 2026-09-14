@@ -138,9 +138,9 @@ function Sweep({
 // below). At 60px and up it is thicker than the collar's 3.2; the small pair is
 // for the 42px-class knobs and goes the other way, to a hairline, because at
 // that diameter anything wider reads as a band rather than a line.
-const SOFT_SWEEP_GAP = 3.5;
+const SOFT_SWEEP_GAP = 0;
 const SOFT_SWEEP_WIDTH = 4;
-const SOFT_SWEEP_WIDTH_SMALL = 2;
+const SOFT_SWEEP_WIDTH_SMALL = 3;
 
 // variant="concave" - "2a" of design_handoff_flat_knobs: one continuous arc
 // hugging the rim, drawn by the same Sweep every other variant's arc uses.
@@ -557,7 +557,6 @@ export default function Knob({
   };
 
   const angle = angleFor(value);
-  const radius = size / 2;
 
   const isScale = variant === "scale";
   // "flat" is "soft" under a name some callers already use - see the
@@ -566,12 +565,18 @@ export default function Knob({
   const isConcave = variant === "concave";
   const isSpoke = variant === "spoke";
 
+  // Soft/flat's cap reads slightly small next to the other variants at the
+  // same `size`, so it draws 2px larger while every call site keeps asking
+  // for the same size as before.
+  const dialSize = isSoft ? size + 6 : size;
+  const radius = dialSize / 2;
+
   return (
     <div
       className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}${isSoft ? " pui-knob--soft" : ""}${isConcave ? " pui-knob--concave" : ""}${isSpoke ? " pui-knob--spoke" : ""}`}
       style={{ width: bare ? size : size + 28 }}
     >
-      <div className="pui-knob__dial" style={{ width: size, height: size }}>
+      <div className="pui-knob__dial" style={{ width: dialSize, height: dialSize }}>
         {isSpoke ? (
           <SpokeKnob diameter={size} value={value} from={scaleFrom} />
         ) : isConcave ? (
@@ -590,7 +595,7 @@ export default function Knob({
           // nothing between the arc and the knob, so the old 6px gap read as
           // a detached circle rather than the knob's own value.
           <Sweep
-            diameter={size}
+            diameter={dialSize}
             value={value}
             gap={sweepGap ?? SOFT_SWEEP_GAP}
             width={size >= 60 ? SOFT_SWEEP_WIDTH : SOFT_SWEEP_WIDTH_SMALL}
@@ -632,7 +637,7 @@ export default function Knob({
         <div
           ref={bodyRef}
           className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${isSoft ? " pui-knob__body--soft" : ""}${isConcave ? " pui-knob__body--concave" : ""}${isSpoke ? " pui-knob__body--spoke" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
-          style={{ width: size, height: size }}
+          style={{ width: dialSize, height: dialSize }}
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
           onDoubleClick={onDoubleClick}
@@ -658,7 +663,7 @@ export default function Knob({
                   there is no ring here, so the cap itself carries both the
                   face gradient and the raised shadow. */}
               <div className="pui-knob__soft-cap">
-                <Pointer angle={angle} diameter={size} soft />
+                <Pointer angle={angle} diameter={dialSize} soft />
                 {icon && <div className="pui-knob__icon">{icon(value)}</div>}
               </div>
             </>

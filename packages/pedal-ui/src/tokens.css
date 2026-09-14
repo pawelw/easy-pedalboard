@@ -232,7 +232,7 @@
      thing on both faces. The cap (Knob.css) reads -bottom only, flat, rather
      than the gradient this pair used to describe. */
   --pui-soft-face-top: #333f43;
-  --pui-soft-face-bottom: #151a1d;
+  --pui-soft-face-bottom: #0a0d0e;
   --pui-soft-face-hi: rgba(185, 211, 217, 0.3);
   --pui-soft-rim: rgb(5, 5, 5);
   --pui-soft-rim-hi: rgba(245, 245, 245, 0.278);

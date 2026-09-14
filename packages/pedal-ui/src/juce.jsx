@@ -186,6 +186,7 @@ export function JuceMacroKnob({
   targets,
   idPrefix,
   size = 68,
+  variant = "concave",
   defaultValue = 0.5,
 }) {
   const scopePrefix = useContext(ParamScopeContext);
@@ -204,7 +205,7 @@ export function JuceMacroKnob({
 
   return (
     <Knob
-      variant="concave"
+      variant={variant}
       size={size}
       caption={caption}
       subLabel={`${Math.round(pos * 100)} %`}
