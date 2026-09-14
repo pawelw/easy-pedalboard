@@ -2,7 +2,7 @@ import Knob from "./Knob.jsx";
 import "./StageControl.css";
 
 /**
- * One knob in a footer stage (COMPONENTS.md #5): a 42px `variant="flat"` knob
+ * One knob in a footer stage (COMPONENTS.md #5): a 42px `variant="concave"` knob
  * with its name printed underneath.
  *
  * The name sits below rather than beside, and the value is not shown at all
@@ -37,7 +37,7 @@ export default function StageControl({
   return (
     <div className="pui-reset pui-stage">
       <Knob
-        variant="flat"
+        variant="concave"
         size={size}
         caption={name}
         valueLabel={valueLabel}

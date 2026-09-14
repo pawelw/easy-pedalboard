@@ -23,7 +23,7 @@ import "./index.css";
     arc drawn out from twelve o'clock in whichever direction it has been moved. */
 function ModuleLevel({ parameterId }) {
   return (
-    <JuceKnob parameterId={parameterId} variant="flat" size={30} scaleFrom="centre" bare />
+    <JuceKnob parameterId={parameterId} variant="concave" size={30} scaleFrom="centre" bare />
   );
 }
 

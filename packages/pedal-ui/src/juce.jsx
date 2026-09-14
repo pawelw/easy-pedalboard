@@ -204,7 +204,7 @@ export function JuceMacroKnob({
 
   return (
     <Knob
-      variant="flat"
+      variant="concave"
       size={size}
       caption={caption}
       subLabel={`${Math.round(pos * 100)} %`}

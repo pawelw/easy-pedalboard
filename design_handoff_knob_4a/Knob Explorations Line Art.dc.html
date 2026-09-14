@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#0e1214;font-family:"Space Grotesk",-apple-system,sans-serif}*{box-sizing:border-box;user-select:none;-webkit-user-select:none}a{color:#d0342c;text-decoration:none}a:hover{color:#dce6ea}</style></helmet>
+
+<section style="padding:36px 32px 56px">
+  <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+    <h1 style="margin:0;font-size:16px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#dce6ea">Round 4 · line art</h1>
+    <span style="font-size:11px;font-weight:500;color:#8ba3a9">Six takes on <a href="Knob Explorations Round 3.dc.html#3e">3e</a>, dot removed, value carried by a continuous arc</span>
+  </div>
+  <p style="max-width:680px;margin:0 0 26px;font-size:12px;line-height:1.6;color:#8ba3a9;text-wrap:pretty">No body, no shading — strokes only. What varies is how the pointer is expressed and how much weight contrast the arc carries.</p>
+
+  <div style="display:flex;flex-wrap:wrap;gap:16px">
+
+    <div id="4a" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">4a</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Spoke</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">3e with the dot replaced by the arc. The spoke reaches the rim and ends where the arc ends.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ spokeS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <svg width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-linecap="round">
+              <circle cx="0" cy="0" r="{{ s.rc }}" stroke-width="1.2" style="stroke:#2a343a"></circle>
+              <path d="{{ s.track }}" stroke-width="2.4" style="stroke:#1c2427"></path>
+              <path d="{{ s.lit }}" stroke-width="2.4" style="stroke:#d0342c"></path>
+              <line x1="0" y1="0" x2="{{ s.px }}" y2="{{ s.py }}" stroke-width="1.6" style="stroke:#8ba3a9"></line>
+            </svg>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="4b" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">4b</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Stub</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">Pointer detached from the centre — a short radial mark riding just inside the arc.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ stubS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <svg width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-linecap="round">
+              <circle cx="0" cy="0" r="{{ s.rc }}" stroke-width="1.2" style="stroke:#2a343a"></circle>
+              <path d="{{ s.track }}" stroke-width="2.4" style="stroke:#1c2427"></path>
+              <path d="{{ s.lit }}" stroke-width="2.4" style="stroke:#d0342c"></path>
+              <line x1="{{ s.sx1 }}" y1="{{ s.sy1 }}" x2="{{ s.sx2 }}" y2="{{ s.sy2 }}" stroke-width="2" style="stroke:#e6f0f4"></line>
+            </svg>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="4c" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">4c</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Weightless</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">No pointer at all. The arc's own end is the reading, so the graphic is a single stroke.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ bareS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <svg width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-linecap="round">
+              <path d="{{ s.track }}" stroke-width="1.2" style="stroke:#2a343a"></path>
+              <path d="{{ s.lit }}" stroke-width="3.2" style="stroke:#d0342c"></path>
+            </svg>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="4d" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">4d</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Crosshair</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">A tick crossing the arc at the value. Precise to read, and the end of travel stays obvious.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ crossS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <svg width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-linecap="round">
+              <path d="{{ s.track }}" stroke-width="1.2" style="stroke:#2a343a"></path>
+              <path d="{{ s.lit }}" stroke-width="2.4" style="stroke:#d0342c"></path>
+              <line x1="{{ s.sx1 }}" y1="{{ s.sy1 }}" x2="{{ s.sx2 }}" y2="{{ s.sy2 }}" stroke-width="2" style="stroke:#e6f0f4"></line>
+            </svg>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="4e" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">4e</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Double ring</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">Value on the outer ring, pointer drawn as a gap in the inner one. Two thin lines, no fills.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ dualS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <svg width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-linecap="round">
+              <path d="{{ s.track }}" stroke-width="2.4" style="stroke:#1c2427"></path>
+              <path d="{{ s.lit }}" stroke-width="2.4" style="stroke:#d0342c"></path>
+              <path d="{{ s.inner }}" stroke-width="1.3" style="stroke:#8ba3a9"></path>
+            </svg>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="4f" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">4f</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Readout</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">The number sits where the cap was. Costs a value display elsewhere on the panel.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ readS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <div style="position:relative;width:56px;height:56px;display:flex;align-items:center;justify-content:center">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-linecap="round">
+                <path d="{{ s.track }}" stroke-width="1.2" style="stroke:#2a343a"></path>
+                <path d="{{ s.lit }}" stroke-width="2.4" style="stroke:#d0342c"></path>
+              </svg>
+              <span style="position:relative;font-size:13px;font-weight:700;color:#dce6ea;font-variant-numeric:tabular-nums">{{ s.num }}</span>
+            </div>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:980,&quot;height&quot;:560}}">
+const A0 = -135, A1 = 135, VALS = [0.18, 0.55, 0.88];
+
+const pt = (r, d) => {
+  const rad = ((d - 90) * Math.PI) / 180;
+  return [+(Math.cos(rad) * r).toFixed(2), +(Math.sin(rad) * r).toFixed(2)];
+};
+
+const arc = (r, from, to) => {
+  if (Math.abs(to - from) < 0.4) return "";
+  const [x1, y1] = pt(r, from);
+  const [x2, y2] = pt(r, to);
+  return `M ${x1} ${y1} A ${r} ${r} 0 ${Math.abs(to - from) > 180 ? 1 : 0} ${to > from ? 1 : 0} ${x2} ${y2}`;
+};
+
+const frame = (r, pad) => {
+  const box = r + pad;
+  return { box: box * 2, vb: `${-box} ${-box} ${box * 2} ${box * 2}` };
+};
+
+/** A radial mark between two radii at one angle. */
+const spur = (a, r1, r2) => {
+  const [sx1, sy1] = pt(r1, a);
+  const [sx2, sy2] = pt(r2, a);
+  return { sx1, sy1, sx2, sy2 };
+};
+
+class Component extends DCLogic {
+  renderVals() {
+    const build = (fn) =>
+      VALS.map((v) => ({
+        pct: `${Math.round(v * 100)} %`,
+        num: `${Math.round(v * 100)}`,
+        ...fn(v, A0 + v * 270),
+      }));
+
+    return {
+      spokeS: build((v, a) => {
+        const r = 25;
+        const [px, py] = pt(r - 5, a);
+        return { ...frame(r, 3), rc: r - 8, track: arc(r, A0, A1), lit: arc(r, A0, a), px, py };
+      }),
+
+      stubS: build((v, a) => {
+        const r = 25;
+        return { ...frame(r, 3), rc: 9, track: arc(r, A0, A1), lit: arc(r, A0, a), ...spur(a, r - 10, r - 4) };
+      }),
+
+      bareS: build((v, a) => {
+        const r = 25;
+        return { ...frame(r, 3), track: arc(r, A0, A1), lit: arc(r, A0, a) };
+      }),
+
+      crossS: build((v, a) => {
+        const r = 25;
+        return { ...frame(r, 6), track: arc(r, A0, A1), lit: arc(r, A0, a), ...spur(a, r - 5, r + 5) };
+      }),
+
+      dualS: build((v, a) => {
+        const r = 25, ri = 16, gap = 14;
+        // The inner ring is a near-complete circle whose opening points at the
+        // value, so the break itself reads as the pointer.
+        return {
+          ...frame(r, 3),
+          track: arc(r, A0, A1),
+          lit: arc(r, A0, a),
+          inner: `${arc(ri, a + gap, a + 180)} ${arc(ri, a + 180, a + 360 - gap)}`,
+        };
+      }),
+
+      readS: build((v, a) => {
+        const r = 25;
+        return { ...frame(r, 3), track: arc(r, A0, A1), lit: arc(r, A0, a) };
+      }),
+    };
+  }
+}
+
+</script>
+</body>
+</html>

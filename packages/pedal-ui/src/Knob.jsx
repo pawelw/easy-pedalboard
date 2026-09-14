@@ -142,15 +142,100 @@ const SOFT_SWEEP_GAP = 3.5;
 const SOFT_SWEEP_WIDTH = 4;
 const SOFT_SWEEP_WIDTH_SMALL = 2;
 
-// variant="flat" - "2a" of design_handoff_flat_knobs: one continuous arc
+// variant="concave" - "2a" of design_handoff_flat_knobs: one continuous arc
 // hugging the rim, drawn by the same Sweep every other variant's arc uses.
-// FLAT_REF_* are the handoff's own numbers at its 52px reference size (radius
+// CONCAVE_REF_* are the handoff's own numbers at its 52px reference size (radius
 // 28.5, stroke 5) - gap/width below scale those linearly for any other
 // `size`, the way the handoff scales everything.
-const FLAT_REF_DIAMETER = 52;
-const FLAT_REF_RADIUS = 28.5;
-const FLAT_REF_STROKE = 5;
-const FLAT_GAP = FLAT_REF_RADIUS - FLAT_REF_DIAMETER / 2;
+const CONCAVE_REF_DIAMETER = 52;
+const CONCAVE_REF_RADIUS = 28.5;
+const CONCAVE_REF_STROKE = 5;
+const CONCAVE_GAP = CONCAVE_REF_RADIUS - CONCAVE_REF_DIAMETER / 2;
+
+// variant="spoke" - "4a" of design_handoff_knob_4a: no cap, no body at all -
+// a thin outline circle, a track/lit arc, and a hairline spoke from the
+// centre out to the value, the whole thing four SVG strokes. Every number is
+// the handoff's own, at its 56px reference size; SPOKE_REF_* is what the rest
+// scale against for any other `size`.
+const SPOKE_REF_DIAMETER = 56;
+const SPOKE_REF_RADIUS = 25;
+const SPOKE_REF_OUTLINE_RADIUS = 17;
+const SPOKE_REF_SPOKE_RADIUS = 20;
+const SPOKE_OUTLINE_WIDTH = 1.2;
+// The handoff's own floor: below ~60px the arc/spoke hold these widths rather
+// than scaling down with the rest, "or the control disappears".
+const SPOKE_ARC_WIDTH = 2.4;
+const SPOKE_ARC_WIDTH_LARGE = 3;
+const SPOKE_WIDTH = 1.6;
+const SPOKE_WIDTH_LARGE = 2;
+// The bipolar detent tick at 0deg (design_handoff_knob_4a's "Bipolar variant").
+const SPOKE_DETENT_WIDTH = 1.4;
+const SPOKE_DETENT_INNER = 5; // r - 5
+const SPOKE_DETENT_OUTER = 1.5; // r - 1.5
+
+/** The whole "spoke" knob face: an SVG with no filled body under it, so the
+    knob reads as line art over whatever ground it sits on rather than as an
+    object of its own. Draw order is the handoff's own, back to front: static
+    outline, track, lit arc, then the spoke on top.
+
+    `from` is the same three readings every other variant's arc takes -
+    "min" (default) lights from the bottom of travel, "max" from the top down,
+    "centre" out from 12 o'clock in whichever direction the knob has turned
+    (the handoff's own "Bipolar variant"), with a fixed tick at 12 marking the
+    rest position no lit arc would otherwise show. */
+function SpokeKnob({ diameter, value, from = "min" }) {
+  const scale = diameter / SPOKE_REF_DIAMETER;
+  const r = SPOKE_REF_RADIUS * scale;
+  const outlineR = SPOKE_REF_OUTLINE_RADIUS * scale;
+  const spokeR = SPOKE_REF_SPOKE_RADIUS * scale;
+  const large = diameter >= 60;
+  const arcWidth = large ? SPOKE_ARC_WIDTH_LARGE : SPOKE_ARC_WIDTH;
+  const spokeWidth = large ? SPOKE_WIDTH_LARGE : SPOKE_WIDTH;
+
+  const angle = angleFor(value);
+  const toRad = (d) => ((d - 90) * Math.PI) / 180;
+
+  const fromMax = from === "max";
+  const fromCentre = from === "centre";
+  const litFrom = fromMax ? angle : fromCentre ? Math.min(0, angle) : MIN_ANGLE;
+  const litTo = fromMax ? MAX_ANGLE : fromCentre ? Math.max(0, angle) : angle;
+  const showLit = Math.abs(litTo - litFrom) >= 0.4;
+
+  const box = r + arcWidth;
+
+  return (
+    <svg
+      className="pui-knob__sweep"
+      viewBox={`${-box} ${-box} ${box * 2} ${box * 2}`}
+      width={box * 2}
+      height={box * 2}
+    >
+      <circle r={outlineR} fill="none" stroke="var(--pui-outline)" strokeWidth={SPOKE_OUTLINE_WIDTH} />
+      <g fill="none" strokeLinecap="round">
+        <path d={arcPath(r, MIN_ANGLE, MAX_ANGLE)} stroke="var(--pui-concave-track)" strokeWidth={arcWidth} />
+        {showLit && <path d={arcPath(r, litFrom, litTo)} stroke="var(--pui-soft-lit)" strokeWidth={arcWidth} />}
+        {fromCentre && (
+          <line
+            x1={Math.cos(toRad(0)) * (r - SPOKE_DETENT_INNER)}
+            y1={Math.sin(toRad(0)) * (r - SPOKE_DETENT_INNER)}
+            x2={Math.cos(toRad(0)) * (r - SPOKE_DETENT_OUTER)}
+            y2={Math.sin(toRad(0)) * (r - SPOKE_DETENT_OUTER)}
+            stroke="var(--pui-ink-dim)"
+            strokeWidth={SPOKE_DETENT_WIDTH}
+          />
+        )}
+        <line
+          x1={0}
+          y1={0}
+          x2={Math.cos(toRad(angle)) * spokeR}
+          y2={Math.sin(toRad(angle)) * spokeR}
+          stroke="var(--pui-ink-soft)"
+          strokeWidth={spokeWidth}
+        />
+      </g>
+    </svg>
+  );
+}
 
 const TICK_COUNT = 20;
 const TICK_LENGTH = 6;
@@ -260,15 +345,15 @@ function TickScale({ diameter, value, gap = SWEEP_GAP, from = "min" }) {
     rotated to the value angle, the way `.pui-knob__dot` pins a dot in the
     collar variant - same wrapper-rotates-not-the-bar trick, so the bar's own
     box can be positioned in plain top/left percentages instead of trig. */
-function Pointer({ angle, diameter, soft = false, flat = false }) {
+function Pointer({ angle, diameter, soft = false, concave = false }) {
   // `soft`: variant="soft"'s needle instead - one hairline running from the
   // cap's centre out towards the rim, rather than a stub parked near the
   // edge. Same wrapper and the same rotation; only the bar's own geometry
   // (set in Knob.css) differs, so there is one place that knows how a
-  // pointer is pinned and rotated. `flat` is variant="flat"'s own bar, the
-  // handoff's own geometry (design_handoff_flat_knobs).
-  const cls = flat
-    ? "pui-knob__pointer pui-knob__pointer--flat"
+  // pointer is pinned and rotated. `concave` is variant="concave"'s own bar,
+  // the handoff's own geometry (design_handoff_flat_knobs).
+  const cls = concave
+    ? "pui-knob__pointer pui-knob__pointer--concave"
     : soft
       ? `pui-knob__pointer pui-knob__pointer--needle${diameter < 60 ? " pui-knob__pointer--needle-thin" : ""}`
       : `pui-knob__pointer${diameter < 60 ? " pui-knob__pointer--thin" : ""}`;
@@ -312,11 +397,20 @@ function EndMarker({ label, radius, lit }) {
  * fills the whole dial, a hairline needle from its centre, and one continuous
  * accent arc hugging the rim - the tick ring's information without the twenty
  * dashes, for a face that wants the control to read as one quiet disc.
- * "flat" is "2a" of design_handoff_flat_knobs: a turned-rim cap with a
+ * "flat" renders exactly as "soft" does - a separate name only because
+ * callers already ask for it by that one, not a second rendering to keep in
+ * sync.
+ * "concave" is "2a" of design_handoff_flat_knobs: a turned-rim cap with a
  * shallow dish (a light counterpart in :root, the handoff's own dark numbers
  * moved into onyx's block) and a continuous accent arc hugging the rim, the
  * simpler of the two treatments tried here ("2c"'s segmented ring was the
- * first pass).
+ * first pass) - what every small knob in Peak Alpine/Peak Artifact was
+ * carrying under the name "flat" before it moved to this one.
+ * "spoke" is "4a" of design_handoff_knob_4a: no cap and no body at all - a
+ * thin static outline circle, the same continuous arc "concave" draws, and a
+ * hairline spoke from the centre out to the value, all four strokes in one
+ * SVG. A second treatment tried alongside "concave" so switching between them
+ * is a one-word `variant` change, not a rewrite.
  * Same controlled API, same drag/keyboard handling below, only the dial's
  * own markup and CSS differ.
  *
@@ -466,22 +560,27 @@ export default function Knob({
   const radius = size / 2;
 
   const isScale = variant === "scale";
-  const isSoft = variant === "soft";
-  const isFlat = variant === "flat";
+  // "flat" is "soft" under a name some callers already use - see the
+  // `variant` doc above.
+  const isSoft = variant === "soft" || variant === "flat";
+  const isConcave = variant === "concave";
+  const isSpoke = variant === "spoke";
 
   return (
     <div
-      className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}${isSoft ? " pui-knob--soft" : ""}${isFlat ? " pui-knob--flat" : ""}`}
+      className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}${isSoft ? " pui-knob--soft" : ""}${isConcave ? " pui-knob--concave" : ""}${isSpoke ? " pui-knob--spoke" : ""}`}
       style={{ width: bare ? size : size + 28 }}
     >
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
-        {isFlat ? (
+        {isSpoke ? (
+          <SpokeKnob diameter={size} value={value} from={scaleFrom} />
+        ) : isConcave ? (
           <Sweep
             diameter={size}
             value={value}
-            gap={FLAT_GAP * (size / FLAT_REF_DIAMETER)}
-            width={FLAT_REF_STROKE * (size / FLAT_REF_DIAMETER)}
-            trackColor="var(--pui-flat-track)"
+            gap={CONCAVE_GAP * (size / CONCAVE_REF_DIAMETER)}
+            width={CONCAVE_REF_STROKE * (size / CONCAVE_REF_DIAMETER)}
+            trackColor="var(--pui-concave-track)"
             litColor="var(--pui-soft-lit)"
             from={scaleFrom}
           />
@@ -532,7 +631,7 @@ export default function Knob({
 
         <div
           ref={bodyRef}
-          className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${isSoft ? " pui-knob__body--soft" : ""}${isFlat ? " pui-knob__body--flat" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
+          className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${isSoft ? " pui-knob__body--soft" : ""}${isConcave ? " pui-knob__body--concave" : ""}${isSpoke ? " pui-knob__body--spoke" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
           style={{ width: size, height: size }}
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
@@ -544,9 +643,13 @@ export default function Knob({
           aria-valuemax={1}
           aria-valuenow={value}
         >
-          {isFlat ? (
-            <div className="pui-knob__flat-face">
-              <Pointer angle={angle} diameter={size} flat />
+          {isSpoke ? (
+            // No cap under the spoke's own SVG - the hit area is the bare
+            // body div, styled fully transparent (Knob.css).
+            icon && <div className="pui-knob__icon">{icon(value)}</div>
+          ) : isConcave ? (
+            <div className="pui-knob__concave-face">
+              <Pointer angle={angle} diameter={size} concave />
               {icon && <div className="pui-knob__icon">{icon(value)}</div>}
             </div>
           ) : isSoft ? (
