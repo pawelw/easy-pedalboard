@@ -95,16 +95,17 @@
   line-height: 30px;
   padding: 0 28px 0 12px; /* right side clears the overlaid chevron */
   font-size: 10px;
-  border-color: #55534c;
-  background: #ffffff;
+  border: 1px solid var(--pui-outline);
+  background: var(--pui-chrome);
+  color: var(--pui-chrome-field-ink);
 }
 
 /* Same specificity as the shared component's own :hover/:active (one class
-   plus one pseudo-class each), so without these the white background above
+   plus one pseudo-class each), so without these the chrome background above
    would win the tie by cascade order and the shared hover/press feedback
    would silently never show on this pedal's buttons/dropdown. */
 .pw-presets .pui-dropdown__input:hover {
-  background: var(--pui-panel-edge);
+  background: var(--pui-chrome-hover);
 }
 
 .pw-presets .pui-dropdown__input:active {
@@ -116,12 +117,14 @@
   width: 30px;
   padding: 0;
   border-radius: 4px; /* was 8px - a flatter, less rounded corner */
-  border-color: #55534c;
-  background: #ffffff;
+  border: 1px solid var(--pui-outline);
+  background: var(--pui-chrome);
+  color: var(--pui-chrome-ink);
 }
 
 .pw-presets .pui-button:hover {
-  background: var(--pui-panel-edge);
+  background: var(--pui-chrome-hover);
+  color: var(--pui-chrome-ink-hover);
 }
 
 .pw-presets .pui-button:active {

@@ -59,7 +59,7 @@ bool runPass (const Pass& pass, const juce::AudioBuffer<float>& input, juce::Aud
 {
     PeakArtifactProcessor processor;
 
-    setChoice (processor.apvts, "engine", 1); // Ring Mod / Bit Crush / Filter
+    setChoice (processor.apvts, "engine", 1); // Ring Mod / Bit Crush / Rust / Amp
     setPercent (processor.apvts, "crush.bits", pass.bits);
     setPercent (processor.apvts, "crush.rate", pass.rate);
     setPercent (processor.apvts, "crush.lp", pass.lp);

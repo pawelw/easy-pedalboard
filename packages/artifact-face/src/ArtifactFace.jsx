@@ -1,40 +1,26 @@
-import { useEffect, useState } from "react";
-import {
-  CrushScope,
-  EngineStepper,
-  FilterScope,
-  ModulePanel,
-  ModuleTabs,
-  RingScope,
-  RustScope,
-  Toggle,
-  WaveIcon,
-  freqHzFor01,
-} from "@synthpeak/pedal-ui";
+import { useState } from "react";
+import { CrushScope, EngineStepper, ModulePanel, ModuleTabs, RingScope, RustScope, Toggle } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceMacroKnob,
-  JucePill,
   ParamScope,
   useJuceChoiceValue,
   useJuceSliderValue,
   useJuceToggleValue,
 } from "@synthpeak/pedal-ui/juce";
-import { ENGINES, WAVES } from "./engines.jsx";
+import { ENGINES } from "./engines.jsx";
 import "./ArtifactFace.css";
 
 /**
  * Peak Artifact's face, minus its pedal enclosure: one switchable module drawn
  * as a `ModulePanel` - a power toggle and name in the header, an engine
- * stepper, and then the selected engine's body, with Mix in the footer. Filter
- * has a response scope, two rows of knobs, the wave picker and a Mono/Stereo
- * switch; Bit Crush has a stepped-wave display and two rows of knobs; Ring Mod
- * has a lattice display, its three knobs and a Wobble / Octave switch; Rust
- * has a corrosion display, two rows of knobs and an Oxide / Contact switch;
- * Amp has a display, two rows of knobs and a Mono/Stereo switch of its own
- * (a Haas widener, not the Filter engine's channel-diversity one - see
- * `MonoStereoSwitch`'s `parameterId`). The footer Mix doubles as the Ring
- * Mod's and Rust's Blend.
+ * stepper, and then the selected engine's body, with Mix in the footer. Bit
+ * Crush has a stepped-wave display and two rows of knobs; Ring Mod has a
+ * lattice display, its four knobs and a Wobble / Octave switch; Rust has a
+ * corrosion display, one row of knobs and an Oxide / Contact switch; Amp has a
+ * display, two rows of knobs and a Mono/Stereo (Haas) switch. The footer Mix
+ * doubles as the Ring Mod's and Rust's Blend. (The Filter engine that used to
+ * be here is now Peak Alpine's Modulation module's.)
  *
  * One component, two hosts. Peak Artifact wraps this in its own Card; Peak
  * Alpine drops it into its module row as the first module. The whole reason
@@ -48,7 +34,7 @@ import "./ArtifactFace.css";
  * to what the engine actually does (see ee::fx::ArtifactModule's class note).
  *
  * `prefix` is the parameter-id prefix its controls bind through: "" for Peak
- * Artifact, whose parameters are plain (`mix`, `flt.freq`), and "art." for Peak
+ * Artifact, whose parameters are plain (`mix`, `ring.freq`), and "art." for Peak
  * Alpine, whose are namespaced by module. Nothing below takes an id map; the
  * `ParamScope` does the whole job, and the leaf names are identical in both
  * plugins on purpose.
@@ -90,38 +76,12 @@ export default function ArtifactFace({
 // knob value arcs through the one `accent` prop on ModulePanel.
 const ACCENT = "#c00001";
 
-// The response scope's ink, keeping Peak Wah's scope shapes but in this face's
-// red rather than its blue/grey. The well's own background and grid come from
-// the --pui-scope-* overrides on .af-display (ArtifactFace.css).
+// The display wells' ink, in this face's red. The wells' own background and
+// grid come from the --pui-scope-* overrides on .af-display (ArtifactFace.css).
 const SCOPE = {
-  baseColor: "#e5504e", // the resting curve - bright enough to read on the dark well
-  sweepColor: "#c00001", // the swept L/R curves and the Range band
-  fillColor: "rgba(224, 72, 70, 0.16)", // wash under the swept curves
+  baseColor: "#e5504e", // the trace - bright enough to read on the dark well
+  fillColor: "rgba(224, 72, 70, 0.16)", // wash under the trace
 };
-
-/**
- * The Filter engine's live cutoff-sweep exponent for both channels, pushed from
- * the processor as the one "filterMod" event (the editor's Timer) - the same
- * feed Peak Wah's scope rides on. Outside a real host there is no backend to
- * send it, so it stays at 0 and the two swept curves rest on the base curve.
- *
- * The event name is not scoped the way parameter ids are: it is one feed per
- * editor, so a host embedding this face (Peak Alpine) emits it under the same
- * name rather than the component learning a second one.
- */
-function useFilterMod() {
-  const [mod, setMod] = useState({ modL: 0, modR: 0 });
-
-  useEffect(() => {
-    if (typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;
-    const id = window.__JUCE__.backend.addEventListener("filterMod", (event) =>
-      setMod({ modL: event.modL ?? 0, modR: event.modR ?? 0 }),
-    );
-    return () => window.__JUCE__.backend.removeEventListener(id);
-  }, []);
-
-  return mod;
-}
 
 // The Easy / Adv strip is hidden for now and every face opens on Adv. The Easy
 // path below is kept whole so flipping this back is the only change needed.
@@ -130,9 +90,8 @@ const SHOW_EASY_TABS = false;
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     ArtifactFace itself would read the enclosing scope, not the one it declares. */
 function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = null, knobVariant = "concave" }) {
-  // Default index 2 (Filter) with no backend - the processor opens on Filter
-  // too, since it is the only voiced engine.
-  const [engineIndex, setEngine] = useJuceChoiceValue("engine", ENGINES.length, 2);
+  // Default index 0 (Ring) with no backend - the processor opens on Ring Mod too.
+  const [engineIndex, setEngine] = useJuceChoiceValue("engine", ENGINES.length, 0);
   const [on, setOn] = useJuceToggleValue("on", true);
   // "adv" is the full engine body, "easy" the single macro knob. Only reached
   // when `easyTab` is on and `easyConfig` has an entry for this engine.
@@ -173,8 +132,6 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
             <JuceMacroKnob key={engine.name} caption={easy.name} targets={easy.targets} variant={knobVariant} />
           </div>
         </>
-      ) : engine.body === "filter" ? (
-        <FilterBody knobVariant={knobVariant} />
       ) : engine.body === "crush" ? (
         <CrushBody knobVariant={knobVariant} />
       ) : engine.body === "rust" ? (
@@ -194,36 +151,6 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
    the engine that is actually showing one - and so the Easy view can render
    the same well above its macro knob without also mounting that engine's body.
    The same reason Peak Alpine splits its displays out. */
-function FilterDisplay() {
-  const [freq] = useJuceSliderValue("flt.freq");
-  const [q] = useJuceSliderValue("flt.q");
-  const [range] = useJuceSliderValue("flt.range");
-  const { modL, modR } = useFilterMod();
-
-  return (
-    // The same component Peak Wah's scope is: a resting curve whose peak rises
-    // and narrows with Q and slides with Freq, a translucent band showing how
-    // far Range lets it sweep, and two curves riding the live L/R sweep inside
-    // it. Only the ink changes here.
-    <div className="af-display">
-      <FilterScope
-        baseFreqHz={freqHzFor01(freq)}
-        resonance01={q}
-        sweepDepth01={range}
-        modL={modL}
-        modR={modR}
-        height={64}
-        baseColor={SCOPE.baseColor}
-        sweepColor={SCOPE.sweepColor}
-        fillColor={SCOPE.fillColor}
-      />
-      <span className="af-inf" aria-label="Decay: always on">
-        &#8734;
-      </span>
-    </div>
-  );
-}
-
 function CrushDisplay() {
   const [bits] = useJuceSliderValue("crush.bits");
   const [rate] = useJuceSliderValue("crush.rate");
@@ -231,8 +158,8 @@ function CrushDisplay() {
 
   return (
     // A picture of the three destructive knobs: the reference sine held in time
-    // by Rate, quantised by Bits, and knocked out of step by Jitter. The Filter
-    // knob shapes what comes after, so it is not in the trace.
+    // by Rate, quantised by Bits, and knocked out of step by Jitter. The post
+    // low-pass shapes what comes after, so it is not in the trace.
     <div className="af-display af-display--crush">
       <CrushScope
         bits01={bits}
@@ -314,66 +241,16 @@ function RustDisplay() {
    its macro knob, the same well the Adv body carries. */
 function ArtifactEngineDisplay({ engine }) {
   if (engine === "Crasher") return <CrushDisplay />;
-  if (engine === "Ring") return <RingDisplay />;
   if (engine === "Rust") return <RustDisplay />;
   if (engine === "Amp") return <AmpDisplay />;
-  return <FilterDisplay />;
-}
-
-/* Its own component so the Filter-only hooks don't run for the other two
-   engines - the same reason Peak Alpine splits its displays out. */
-function FilterBody({ knobVariant }) {
-  const [waveIndex, setWave] = useJuceChoiceValue("flt.wave", WAVES.length);
-  const wave = WAVES[waveIndex] ?? WAVES[0];
-
-  return (
-    <>
-      <FilterDisplay />
-
-      <div className="af-knobs">
-        <div className="af-knob-row">
-          <JuceKnob parameterId="flt.freq" caption="Freq" variant={knobVariant} size={36} />
-          <JuceKnob parameterId="flt.q" caption="Q" variant={knobVariant} size={36} />
-        </div>
-        {/* Range and Time each carry a small control directly under them: the
-            wave <> picker (glyph only, no name - it is small enough to sit here
-            rather than on a row of its own, which is what keeps the module
-            short) and the SYNC pill, the same control Peak Delay uses. */}
-        <div className="af-knob-row">
-          <div className="af-subcol">
-            <JuceKnob parameterId="flt.range" caption="Range" variant={knobVariant} size={36} />
-            <div className="af-sub af-sub--wave">
-              <EngineStepper
-                engines={WAVES.map((w) => w.name)}
-                value={wave.name}
-                icon={<WaveIcon shape01={wave.shape01} size={15} />}
-                label="Wave"
-                onChange={(next) => setWave(WAVES.findIndex((w) => w.name === next))}
-              />
-            </div>
-          </div>
-
-          <div className="af-subcol">
-            <JuceKnob parameterId="flt.time" caption="Time" variant={knobVariant} size={36} />
-            <div className="af-sub af-sub--sync">
-              {/* flt.sync's own sense is already "synced to tempo", so it
-                  lights when on with no invert. */}
-              <JucePill parameterId="flt.sync" label="Sync" />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <MonoStereoSwitch />
-    </>
-  );
+  return <RingDisplay />;
 }
 
 /* The Bit Crush body: its display well and two knob rows. */
 function CrushBody({ knobVariant }) {
   return (
-    // Matches the Filter body's height so stepping between engines doesn't
-    // resize the module - the same job .af-blank does for Ring Mod.
+    // Matches the other engine bodies' height so stepping between engines
+    // doesn't resize the module.
     <div className="af-crush">
       <CrushDisplay />
 
@@ -394,8 +271,8 @@ function CrushBody({ knobVariant }) {
 /* The Ring Mod body: its lattice display, four knobs and the mode switch. */
 function RingBody({ knobVariant }) {
   return (
-    // Matches the Filter / Crush body height so stepping between engines doesn't
-    // resize the module.
+    // Matches the other engine bodies' height so stepping between engines
+    // doesn't resize the module.
     <div className="af-ring">
       <RingDisplay />
 
@@ -473,7 +350,7 @@ function RustBody({ knobVariant }) {
 /* The Amp body: its display well, two knob rows - Drive / Mids, then Bit /
    Tone, the order the signal actually runs through (drive, then the
    sample-and-hold, then the Mids lift, then Tone) - and the Mono/Stereo Haas
-   switch at the foot, the same slot Filter's own Mono/Stereo occupies. */
+   switch at the foot. */
 function AmpBody({ knobVariant }) {
   return (
     // Matches the other engine bodies' height so stepping between engines
@@ -524,11 +401,9 @@ function RustModeSwitch() {
   );
 }
 
-/* Pinned to the foot of the module body, just above the footer. Filter's own
-   Mono/Stereo picks which channels the LFO diverges on; Amp's does a Haas
-   widen on the right channel instead (see ee::fx::ArtifactModule) - same
-   switch, same slot, a different `parameterId` for each. */
-function MonoStereoSwitch({ parameterId = "flt.stereo" }) {
+/* Pinned to the foot of the module body, just above the footer. Amp's is a
+   Haas widen on the right channel (see ee::fx::ArtifactModule). */
+function MonoStereoSwitch({ parameterId }) {
   const [stereo, setStereo] = useJuceToggleValue(parameterId, false);
 
   return (

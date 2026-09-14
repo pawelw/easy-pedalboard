@@ -14,10 +14,10 @@
 //      first cut - a bit-depth quantiser - failed, and failed loudest where it
 //      mattered, gating a note's tail to digital silence once the signal fell
 //      below one step.
-//   3. Its Drive knob, run alone through ee::dsp::TubeDrive, still adds no
-//      more than ~4 dB at 100 % on real program material - unchanged from
-//      when this was Bit's own Drive knob, re-checked here because Amp reuses
-//      the same engine.
+//   3. Its Drive knob, run alone through ee::dsp::TubeDrive, leaves the level
+//      where it was (TubeDriveConfig.h's LEVEL section) - printed here across
+//      the knob for quiet, medium and loud tones; the real-file mode below is
+//      where kLevelTrimDb is measured.
 //
 // Prints the numbers either way; give it a directory to also get a .wav per
 // case - Amp's Bit knob isolated (Drive/Mids off, Tone flat) at 0/50/100 %,
@@ -26,7 +26,9 @@
 // third argument (`ee_bit_check outDir dry.wav`) to render Amp's Bit knob
 // over it instead, at 50 % and 100 %, for A/B against an actual reference
 // recording of the same material - that mode skips the checks above and
-// just writes real_bit_50pct.wav / real_bit_100pct.wav.
+// just writes real_bit_50pct.wav / real_bit_100pct.wav, plus Drive alone at
+// real_drive_50pct.wav / real_drive_100pct.wav (TubeDriveConfig.h's voicing
+// was fitted against a reference's own wet take of dist-dry.wav at 100 %).
 #include "RegressHarness.h"
 
 #include "ee/dsp/TubeDrive.h"
@@ -34,6 +36,7 @@
 
 #include <juce_audio_formats/juce_audio_formats.h>
 
+#include <array>
 #include <cmath>
 #include <cstdio>
 
@@ -118,19 +121,12 @@ double rms (const juce::AudioBuffer<float>& buffer)
     return std::sqrt (sum / static_cast<double> (juce::jmax (juce::int64 { 1 }, count)));
 }
 
-double peak (const juce::AudioBuffer<float>& buffer)
-{
-    return static_cast<double> (buffer.getMagnitude (0, buffer.getNumSamples()));
-}
-
 double toDb (double ratio)
 {
     return 20.0 * std::log10 (juce::jmax (1.0e-9, ratio));
 }
 
-/** A single clean tone at a moderate, guitar-ish peak - the level TubeDrive's
-    own make-up gain is solved against (tubedrive::kMakeupRefAmplitude), so
-    this is the case the +4 dB claim should hold most exactly on. */
+/** A single clean 220 Hz tone at `peakAmplitude`, the same on both channels. */
 juce::AudioBuffer<float> renderTone (int numSamples, float peakAmplitude)
 {
     juce::AudioBuffer<float> buffer (2, numSamples);
@@ -145,15 +141,47 @@ juce::AudioBuffer<float> renderTone (int numSamples, float peakAmplitude)
     return buffer;
 }
 
+/** How much further the knob moving may push the worst kink than any setting
+    it visits does on its own. A click is a step or a corner in the waveform -
+    a spike in the second difference - where a steady driven tone keeps it
+    small. */
+constexpr double kMaxKinkRatio = 1.5;
+
+/** The largest |x[n] - 2 x[n-1] + x[n-2]| on channel 0 over [from, to). */
+double maxKink (const juce::AudioBuffer<float>& buffer, int from, int to)
+{
+    const float* d = buffer.getReadPointer (0);
+    double worst = 0.0;
+    for (int i = juce::jmax (2, from); i < juce::jmin (to, buffer.getNumSamples()); ++i)
+        worst = juce::jmax (worst, std::abs (static_cast<double> (d[i]) - 2.0 * d[i - 1] + d[i - 2]));
+    return worst;
+}
+
 juce::AudioBuffer<float> applyDrive (const juce::AudioBuffer<float>& in, float drive01)
 {
     ee::dsp::TubeDrive drive;
+    drive.setDrive01 (drive01); // ahead of prepare(), which snaps the glide onto it
     drive.prepare (kSampleRate);
-    drive.setDrive01 (drive01);
 
     juce::AudioBuffer<float> out (in);
     drive.process (out.getWritePointer (0), out.getWritePointer (1), out.getNumSamples());
     return out;
+}
+
+/** TubeDrive alone over `dry`, in host-sized blocks. */
+juce::AudioBuffer<float> renderDrive (const juce::AudioBuffer<float>& dry, double sampleRate, float drive01)
+{
+    ee::dsp::TubeDrive drive;
+    drive.setDrive01 (drive01);
+    drive.prepare (sampleRate);
+
+    juce::AudioBuffer<float> wet (dry);
+    for (int start = 0; start < wet.getNumSamples(); start += kBlockSize)
+    {
+        const int n = juce::jmin (kBlockSize, wet.getNumSamples() - start);
+        drive.process (wet.getWritePointer (0, start), wet.getWritePointer (1, start), n);
+    }
+    return wet;
 }
 
 /** Amp's Bit knob alone (Drive/Mids off, Tone flat), run over a real file
@@ -178,6 +206,21 @@ bool renderRealFile (const juce::String& path, const juce::String& outDir)
     if (reader->numChannels == 1)
         dry.copyFrom (1, 0, dry, 0, 0, dry.getNumSamples());
 
+    const auto write = [&] (const juce::String& name, const juce::AudioBuffer<float>& wet)
+    {
+        juce::File outFile (outDir + "/" + name);
+        outFile.getParentDirectory().createDirectory();
+        outFile.deleteFile();
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::FileOutputStream> stream (outFile.createOutputStream());
+        if (stream == nullptr)
+            return;
+        std::unique_ptr<juce::AudioFormatWriter> writer (
+            wav.createWriterFor (stream.release(), reader->sampleRate, 2, 24, {}, 0));
+        if (writer != nullptr)
+            writer->writeFromAudioSampleBuffer (wet, 0, wet.getNumSamples());
+    };
+
     for (float bit01 : { 0.5f, 1.0f })
     {
         ee::fx::ArtifactModule module;
@@ -190,19 +233,31 @@ bool renderRealFile (const juce::String& path, const juce::String& outDir)
 
         juce::AudioBuffer<float> wet (dry);
         module.process (wet, 2, wet.getNumSamples());
-
-        juce::File outFile (outDir + "/real_bit_" + juce::String (juce::roundToInt (bit01 * 100.0f)) + "pct.wav");
-        outFile.getParentDirectory().createDirectory();
-        outFile.deleteFile();
-        juce::WavAudioFormat wav;
-        std::unique_ptr<juce::FileOutputStream> stream (outFile.createOutputStream());
-        if (stream == nullptr)
-            continue;
-        std::unique_ptr<juce::AudioFormatWriter> writer (
-            wav.createWriterFor (stream.release(), reader->sampleRate, 2, 24, {}, 0));
-        if (writer != nullptr)
-            writer->writeFromAudioSampleBuffer (wet, 0, wet.getNumSamples());
+        write ("real_bit_" + juce::String (juce::roundToInt (bit01 * 100.0f)) + "pct.wav", wet);
     }
+
+    // Drive alone, through ee::dsp::TubeDrive, in blocks the way a host runs
+    // it - real_drive_100pct.wav is the one to A/B against the reference's
+    // own wet take (see TubeDriveConfig.h).
+    for (float drive01 : { 0.5f, 1.0f })
+        write ("real_drive_" + juce::String (juce::roundToInt (drive01 * 100.0f)) + "pct.wav",
+               renderDrive (dry, reader->sampleRate, drive01));
+
+    // Drive's level against the dry at every entry of kLevelTrimDb, and what
+    // each entry should become to land on 0 dB - exact in one pass, since the
+    // trim scales the output linearly (see TubeDriveConfig.h).
+    std::printf ("Drive level on %s (RMS out vs in, target 0 dB):\n", file.getFileName().toRawUTF8());
+    const auto& trim = ee::dsp::tubedrive::kLevelTrimDb;
+    juce::String table;
+    for (size_t k = 0; k < trim.size(); ++k)
+    {
+        const float drive01 = static_cast<float> (k) / static_cast<float> (trim.size() - 1);
+        const double levelDb =
+            toDb (rms (renderDrive (dry, reader->sampleRate, drive01)) / juce::jmax (1.0e-12, rms (dry)));
+        std::printf ("  Drive %3d %%  %+.2f dB\n", juce::roundToInt (drive01 * 100.0f), levelDb);
+        table << juce::String (trim[k] - levelDb, 2) << "f" << (k + 1 < trim.size() ? ", " : "");
+    }
+    std::printf ("  kLevelTrimDb { %s }\n", table.toRawUTF8());
     return true;
 }
 } // namespace
@@ -271,27 +326,108 @@ int main (int argc, char* argv[])
     }
 
     // ----------------------------------------------------------------- drive
-    std::printf ("Drive level (target: +4 dB or less at 100%%, measured on real audio):\n");
+    std::printf ("Drive level against the dry (RMS; kLevelTrimDb holds real playing near 0 dB):\n");
     {
         const int numSamples = static_cast<int> (kSampleRate * 1.0);
+        const float peaks[] = { 0.05f, 0.15f, 0.5f };
 
-        for (float peakAmplitude : { 0.3f, 0.5f, 0.7f })
+        std::printf ("  220 Hz tone, peak      0.05      0.15      0.50\n");
+        for (float drive01 : { 0.25f, 0.5f, 0.75f, 1.0f })
         {
-            auto tone = renderTone (numSamples, peakAmplitude);
-            auto off = applyDrive (tone, 0.0f);
-            auto full = applyDrive (tone, 1.0f);
-
-            const double rmsDb = toDb (rms (full) / juce::jmax (1.0e-9, rms (off)));
-            const double peakDb = toDb (peak (full) / juce::jmax (1.0e-9, peak (off)));
-
-            std::printf ("  peak in %.1f  ->  RMS %+.2f dB   Peak %+.2f dB\n", peakAmplitude, rmsDb, peakDb);
-
-            if (juce::approximatelyEqual (peakAmplitude, 0.5f))
+            std::printf ("  Drive %3d %%       ", juce::roundToInt (drive01 * 100.0f));
+            for (float peakAmplitude : peaks)
             {
-                writeWav (outDir.isNotEmpty() ? outDir + "/tubedrive_off.wav" : juce::String(), off);
-                writeWav (outDir.isNotEmpty() ? outDir + "/tubedrive_full.wav" : juce::String(), full);
+                const auto tone = renderTone (numSamples, peakAmplitude);
+                std::printf ("  %+6.2f dB",
+                             toDb (rms (applyDrive (tone, drive01)) / juce::jmax (1.0e-9, rms (tone))));
             }
+            std::printf ("\n");
         }
+
+        const auto tone = renderTone (numSamples, 0.5f);
+        writeWav (outDir.isNotEmpty() ? outDir + "/tubedrive_off.wav" : juce::String(), tone);
+        writeWav (outDir.isNotEmpty() ? outDir + "/tubedrive_full.wav" : juce::String(), applyDrive (tone, 1.0f));
+        std::printf ("\n");
+    }
+
+    // ----------------------------------------------------------------- mids
+    std::printf ("Mids at 100 %% (target +%.1f dB at its own centre, %.0f Hz):\n",
+                 ee::fx::ArtifactModule::kAmpMidsMaxDb, ee::fx::ArtifactModule::kAmpMidsFreqHz);
+    {
+        // Drive and Bit off, Tone flat - only the Mids knob differs between the
+        // two renders, so the blend's own fixed make-up cancels out.
+        const auto midsRms = [] (float mids01)
+        {
+            const int numSamples = static_cast<int> (kSampleRate);
+            ee::fx::ArtifactModule module;
+            module.setEngine (ee::fx::ArtifactModule::Amp);
+            module.setMix01 (1.0f);
+            module.setLevel (1.0f);
+            module.setEngaged (true);
+            module.prepare (kSampleRate, kBlockSize);
+            module.setAmp (0.0f, mids01, 0.0f, 0.0f, false);
+
+            juce::AudioBuffer<float> buffer (2, numSamples);
+            for (int i = 0; i < numSamples; ++i)
+            {
+                const float v = 0.25f * static_cast<float> (std::sin (juce::MathConstants<double>::twoPi
+                                                                      * ee::fx::ArtifactModule::kAmpMidsFreqHz * i
+                                                                      / kSampleRate));
+                buffer.setSample (0, i, v);
+                buffer.setSample (1, i, v);
+            }
+            module.process (buffer, 2, numSamples);
+
+            juce::AudioBuffer<float> settled (2, numSamples / 2);
+            for (int ch = 0; ch < 2; ++ch)
+                settled.copyFrom (ch, 0, buffer, ch, numSamples / 2, numSamples / 2);
+            return rms (settled);
+        };
+
+        const double gainDb = toDb (midsRms (1.0f) / juce::jmax (1.0e-12, midsRms (0.0f)));
+        const bool pass = std::abs (gainDb - ee::fx::ArtifactModule::kAmpMidsMaxDb) < 0.3;
+        std::printf ("  Mids 0 %% -> 100 %%  %+.2f dB%s\n\n", gainDb, pass ? "" : "  <- FAIL");
+        ok = ok && pass;
+    }
+
+    // ---------------------------------------------------------- drive moves
+    std::printf ("Drive knob moves without clicks (host-style jumps at block boundaries, through 0):\n");
+    {
+        const std::array<float, 8> steps { 0.0f, 1.0f, 0.3f, 0.0f, 0.8f, 0.05f, 1.0f, 0.0f };
+        const int holdBlocks = 10;
+        const int stepSamples = holdBlocks * kBlockSize;
+        const int numSamples = static_cast<int> (steps.size()) * stepSamples;
+
+        // Opens on the first step, as a host would: the check is about moves,
+        // not about the stage starting from cold under a signal.
+        ee::dsp::TubeDrive drive;
+        drive.setDrive01 (steps[0]);
+        drive.prepare (kSampleRate);
+        auto swept = renderTone (numSamples, 0.5f);
+        for (int start = 0, b = 0; start < numSamples; start += kBlockSize, ++b)
+        {
+            drive.setDrive01 (steps[static_cast<size_t> (b / holdBlocks)]);
+            drive.process (swept.getWritePointer (0, start), swept.getWritePointer (1, start),
+                           juce::jmin (kBlockSize, numSamples - start));
+        }
+
+        // Every visited setting on its own, settled: the kink a clean driven
+        // tone has anyway, which the sweep may not exceed by much.
+        double staticKink = 0.0;
+        for (float s : steps)
+        {
+            const auto settled = applyDrive (renderTone (2 * stepSamples, 0.5f), s);
+            staticKink = juce::jmax (staticKink, maxKink (settled, stepSamples, 2 * stepSamples));
+        }
+
+        const double sweptKink = maxKink (swept, 0, numSamples);
+        const double ratio = sweptKink / juce::jmax (1.0e-12, staticKink);
+        const bool pass = ratio < kMaxKinkRatio;
+        std::printf ("  worst kink while moving %.5f, settled %.5f  (x%.2f, limit x%.1f)%s\n", sweptKink, staticKink,
+                     ratio, kMaxKinkRatio, pass ? "" : "  <- FAIL");
+        ok = ok && pass;
+
+        writeWav (outDir.isNotEmpty() ? outDir + "/tubedrive_knob_moves.wav" : juce::String(), swept);
         std::printf ("\n");
     }
 

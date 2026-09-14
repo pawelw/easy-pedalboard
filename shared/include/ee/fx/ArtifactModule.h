@@ -1,6 +1,5 @@
 #pragma once
 
-#include "ee/dsp/AutoWah.h"
 #include "ee/dsp/BitCrusher.h"
 #include "ee/dsp/RingModulator.h"
 #include "ee/dsp/Rust.h"
@@ -15,9 +14,9 @@
 namespace ee::fx
 {
 
-/** Peak Artifact's module: five engines, one at a time.
+/** Peak Artifact's module: four engines, one at a time.
  *
- * All five are voiced. Each takes the footer Mix as its dry/wet. Rust's warble
+ * All four are voiced. Each takes the footer Mix as its dry/wet. Rust's warble
  * has a wet path that wanders in time, but only under wear and gently - it is
  * wow, the intended movement, not the tremolo artefact `engineUsesMix` guards
  * Tape against - so it too keeps the Mix.
@@ -33,19 +32,18 @@ namespace ee::fx
  * depth is wear * Grind. Two voicings: Oxide (a decaying magnetic coating) and
  * Contact (a failing jack). Its dry/wet is the footer Mix.
  *
- * Filter is `ee::dsp::AutoWah`, the Peak Wah engine, with its per-note envelope
- * taken out of the picture: Decay is pinned fully up (the engine latches on and
- * the wave just runs) and the tap morph is pinned to low-pass. The module owns
- * the dry/wet, so the engine's own Mix is left fully wet.
+ * There was a fifth, Filter (Peak Wah's swept filter), until it moved to
+ * ModulationModule - an LFO sweep is modulation, not an artefact.
  *
  * Bit Crush is `ee::dsp::BitCrusher` - sample-and-hold downsampling, bit-depth
- * quantisation, a post low-pass and hold-clock jitter. It takes the footer Mix
- * like Filter does: its wet does not wander in time, so a fixed dry alongside it
- * combs harmlessly rather than sweeping.
+ * quantisation, a post low-pass and hold-clock jitter. It takes the footer Mix:
+ * its wet does not wander in time, so a fixed dry alongside it combs harmlessly
+ * rather than sweeping.
  *
  * Amp is a driven, degraded voice built from `ee::dsp::TubeDrive` (an
- * asymmetric analog drive stage, deliberately not the same shape as Peak
- * Overdrive's diode clipper - unchanged since it first shipped) into a second
+ * emphasis distortion - pre-emphasis, a logarithmic curve, de-emphasis -
+ * fitted to a real reference unit at full drive, see TubeDriveConfig.h, and
+ * deliberately not Peak Overdrive's diode clipper) into a second
  * `ee::dsp::BitCrusher` instance repurposed for one thing only: sample-rate
  * reduction. Its Bit knob's calibration (kAmpCrushRateHz and the blend) comes
  * from measuring a real reference unit against a dry recording of the same
@@ -71,14 +69,12 @@ class ArtifactModule final : public MultiEngineModule
 {
 public:
     /** In the order the face steps through them, which is also the order of the
-        owner's choice parameter. Amp is appended after Rust rather than sorted
-        in among the others so an existing session's saved engine index keeps
-        meaning what it meant before this engine existed. */
+        owner's choice parameter. Filter used to sit between Bit Crush and Rust;
+        taking it out moved Rust and Amp down one. */
     enum Engine
     {
         RingMod = 0,
         BitCrush,
-        Filter,
         Rust,
         Amp,
         NumEngines
@@ -119,7 +115,7 @@ public:
         lift reads as the same boost rather than a face of its own. */
     static constexpr float kAmpMidsFreqHz = 1600.0f;
     static constexpr float kAmpMidsQ = 1.4f;
-    static constexpr float kAmpMidsMaxDb = 4.0f;
+    static constexpr float kAmpMidsMaxDb = 7.0f;
 
     /** Amp's Tone is a tilt around kAmpTonePivotHz on a knob that rests dead
         centre: -1 leans into the lows, 0 is flat and the stage is bypassed
@@ -153,26 +149,6 @@ public:
 
     // -------------------------------------------------------------- the knobs
 
-    /** Every Filter control in one call, in the units the engine takes. `freq01`,
-        `q01`, `range01` and `waveShape01` are 0..1; `periodSeconds` is one LFO
-        cycle, already resolved from the Time knob and the Sync switch by the
-        owner. Decay and tap morph are not offered - see the class note. */
-    void
-    setFilter (float freq01, float q01, float range01, float waveShape01, float periodSeconds, bool stereo) noexcept
-    {
-        wah.setFreq01 (freq01);
-        wah.setQ01 (q01);
-        wah.setRange01 (range01);
-        wah.setShape01 (waveShape01);
-        wah.setPeriodSeconds (juce::jmax (1.0e-4f, periodSeconds));
-        wah.setStereo (stereo);
-    }
-
-    /** The LFO free-runs; when the owner is synced to a running transport it
-        also aligns the phase to the host grid, exactly as Peak Wah does. */
-    void snapFilterPhase (double target01) noexcept { wah.snapPhase (target01); }
-    void nudgeFilterPhase (double target01) noexcept { wah.nudgePhase (target01); }
-
     /** Every Bit Crush control in one call. `bits01`, `rate01`, `lp01` and
         `jitter01` are the raw 0..1 knob positions; the maps to real units are
         `ee::dsp::bitcrush`'s, shared with the pedal's printed readouts. */
@@ -185,8 +161,8 @@ public:
     }
 
     /** Every Amp control in one call. `drive01` is the raw 0..1 Drive knob,
-        fed straight to `ee::dsp::TubeDrive`, unchanged from the engine's
-        first cut. `mids01` is 0..1 across the 0..kAmpMidsMaxDb peaking boost
+        fed straight to `ee::dsp::TubeDrive`, whose 100 % is the matched
+        reference. `mids01` is 0..1 across the 0..kAmpMidsMaxDb peaking boost
         at kAmpMidsFreqHz / kAmpMidsQ. `bit01` is sample-rate reduction only
         (ampRateHzFor) - no bit-depth quantisation, no anti-alias filter, see
         the class note. `tone` is bipolar, -1..1, and rests flat at 0.
@@ -246,32 +222,16 @@ public:
         rust.setMode (mode);
     }
 
-    /** The Filter engine's signed cutoff-sweep exponent per channel at the last
-        processed sample (Range * gate * lfo) - what the face's response scope
-        rides on, the same feed Peak Wah pushes. The engine stays warm even when
-        it is not the selected one, so these keep moving; the face only reads
-        them while Filter is showing. */
-    float filterModL() const noexcept { return wah.modL(); }
-    float filterModR() const noexcept { return wah.modR(); }
-
 protected:
     int engineCount() const noexcept override { return NumEngines; }
 
-    /** All five engines are summed against the dry - the footer Mix is their
+    /** All four engines are summed against the dry - the footer Mix is their
         Blend. Rust's warble wanders in time but only gently and only under
         wear, so it keeps the Mix like the rest (see the class note). */
     bool engineUsesMix (int) const noexcept override { return true; }
 
     void prepareEngines (double sampleRate, int maxBlock) override
     {
-        wah.prepare (sampleRate);
-
-        // Fixed for the life of the engine: latched on, low-pass tap, and the
-        // module's dry/wet rather than the engine's own.
-        wah.setDecay01 (1.0f);
-        wah.setTypeMorph01 (0.0f);
-        wah.setMix01 (1.0f);
-
         crusher.prepare (sampleRate);
         ring.prepare (sampleRate);
         rust.prepare (sampleRate);
@@ -299,9 +259,7 @@ protected:
 
         copyDry (inL, inR, wet, numSamples);
 
-        if (index == Filter)
-            wah.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
-        else if (index == BitCrush)
+        if (index == BitCrush)
             crusher.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
         else if (index == RingMod)
             ring.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
@@ -362,9 +320,7 @@ protected:
 
     void resetEngine (int index) noexcept override
     {
-        if (index == Filter)
-            wah.reset();
-        else if (index == BitCrush)
+        if (index == BitCrush)
             crusher.reset();
         else if (index == RingMod)
             ring.reset();
@@ -395,7 +351,6 @@ private:
         juce::FloatVectorOperations::copy (wet.getWritePointer (1), inR, numSamples);
     }
 
-    ee::dsp::AutoWah wah;
     ee::dsp::BitCrusher crusher;
     ee::dsp::RingModulator ring;
     ee::dsp::Rust rust;

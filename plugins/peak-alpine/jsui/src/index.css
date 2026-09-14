@@ -164,8 +164,8 @@
 .pa-knobs {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  margin-top: 22px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 /* The Easy tab's single macro knob, centred. A touch more air above it than
@@ -200,6 +200,89 @@
   margin-top: 16px;
   display: flex;
   justify-content: center;
+}
+
+/* The Filter engine's response scope. FilterScope reads the --pui-scope-*
+   group, which onyx leaves on the light-theme values, so the well is pointed
+   at the same recess the bar displays sit in and the curves at the module's
+   accent - it reads as one of this module's displays, not as Peak Wah's. */
+.pa-display--filter {
+  position: relative;
+  --pui-scope-bg: var(--pui-recess);
+  --pui-scope-base: var(--pui-accent);
+  --pui-scope-sweep: var(--pui-accent);
+  --pui-scope-fill: color-mix(in srgb, var(--pui-accent) 16%, transparent);
+}
+
+.pa-display--filter .pui-scope {
+  border-radius: 12px;
+  box-shadow: var(--pui-well-shadow);
+}
+
+/* The infinity mark standing in for the Decay knob the Filter engine pins
+   fully up. Tucked into the well's top-right. */
+.pa-inf {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--pui-accent);
+  pointer-events: none;
+}
+
+/* Filter's Range and Time each carry a small control directly under them - the
+   wave <> picker and the SYNC pill. Both are wider than the 36px knob, so each
+   is taken out of flow (the padding stands in for its height) - in flow it
+   would widen its column and pull the row's knobs out of line with Freq / Q. */
+.pa-subcol {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 32px;
+}
+
+.pa-sub {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+}
+
+.pa-sub--wave {
+  bottom: -2px;
+}
+
+.pa-sub--sync {
+  bottom: 2px;
+}
+
+/* The wave glyph traces one cycle from the peak (lfoValue's phase 0 = +1), so
+   a standalone triangle reads upside down. Flip it. */
+.pa-sub .pui-wave-icon {
+  transform: scaleY(-1);
+}
+
+/* The wave picker: chevrons and glyph, no name, in the panel's own ink so it
+   reads as secondary to the engine stepper up top. */
+.pa-sub .pui-stepper {
+  --pui-accent: var(--pui-ink);
+  gap: 2px;
+  padding: 3px 3px;
+}
+
+.pa-sub .pui-stepper__value {
+  gap: 0;
+}
+
+.pa-sub .pui-stepper__name {
+  display: none;
+}
+
+.pa-sub .pui-stepper__arrow {
+  width: 15px;
+  height: 15px;
 }
 
 /* Tape's Mono/Stereo switch. `margin-top: auto` drops it to the foot of the

@@ -125,8 +125,8 @@ PeakAlpineWebEditor::PeakAlpineWebEditor (PeakAlpineProcessor& p)
                                                text = processorRef.timeMsReadout (id::dlyLeftTime);
                                            else if (queried == kRightTimeMs)
                                                text = processorRef.timeMsReadout (id::dlyRightTime);
-                                           else if (queried == id::artFltTime)
-                                               text = processorRef.artifactTimeReadout();
+                                           else if (queried == id::modFilterTime)
+                                               text = processorRef.filterTimeReadout();
                                            else if (queried == id::modTremRate)
                                                text = processorRef.tremoloRateReadout();
                                            else if (auto* param = processorRef.apvts.getParameter (queried))
@@ -217,12 +217,11 @@ void PeakAlpineWebEditor::timerCallback()
     payload->setProperty ("bpm", processorRef.hostBpm());
     webView.emitEventIfBrowserIsVisible ("delayMeter", juce::var (payload));
 
-    // The Artifact module's Filter response scope rides on this, exactly as
-    // Peak Artifact's own editor feeds it - one feed per editor, same name, so
-    // the embedded ArtifactFace listens for it unchanged.
+    // The Modulation module's Filter response scope rides on this - the same
+    // event name Peak Wah's editor feeds its own scope under.
     auto* filterPayload = new juce::DynamicObject();
-    filterPayload->setProperty ("modL", processorRef.artifactModL.load (std::memory_order_relaxed));
-    filterPayload->setProperty ("modR", processorRef.artifactModR.load (std::memory_order_relaxed));
+    filterPayload->setProperty ("modL", processorRef.filterModL.load (std::memory_order_relaxed));
+    filterPayload->setProperty ("modR", processorRef.filterModR.load (std::memory_order_relaxed));
     webView.emitEventIfBrowserIsVisible ("filterMod", juce::var (filterPayload));
 
 #if EE_ALPINE_WATCHDOG

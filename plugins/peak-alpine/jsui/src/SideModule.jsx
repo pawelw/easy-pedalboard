@@ -1,5 +1,15 @@
-import { useState } from "react";
-import { BarDisplay, EngineStepper, ModulePanel, ModuleTabs, Toggle, lfoValue } from "@synthpeak/pedal-ui";
+import { useEffect, useState } from "react";
+import {
+  BarDisplay,
+  EngineStepper,
+  FilterScope,
+  ModulePanel,
+  ModuleTabs,
+  Toggle,
+  WaveIcon,
+  freqHzFor01,
+  lfoValue,
+} from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceMacroKnob,
@@ -8,13 +18,19 @@ import {
   useJuceSliderValue,
   useJuceToggleValue,
 } from "@synthpeak/pedal-ui/juce";
-import { knobRows } from "./engines.jsx";
+import { FILTER_WAVES, knobRows } from "./engines.jsx";
 
 // The display wells are 63px tall and their bars run 8px to 34px, which is the
 // range the handoff specifies for both. Named because two unrelated formulas
 // below have to land in the same window or the two modules stop matching.
 const BAR_MIN = 8;
 const BAR_SPAN = 26;
+
+// The Filter scope is shorter than the 63px bar wells on purpose: its body
+// carries a wave picker and a Sync pill under two knobs, and at full height the
+// module grew ~10px taller than it is on Tape, so the whole row (and the
+// window) would jump every time the engine stepped onto Filter.
+const FILTER_SCOPE_HEIGHT = 53;
 
 const TREM_BARS = 26;
 const DECAY_BARS = 7;
@@ -91,7 +107,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
          what a 0..100 % level looks like - it said "turned all the way up"
          about a module that was doing nothing to the level at all. */
       headerRight={
-        <JuceKnob parameterId={`${prefix}level`} variant="flat" size={30} scaleFrom="centre" bare />
+        <JuceKnob parameterId={`${prefix}level`} variant="flat" size={24} scaleFrom="centre" bare />
       }
       /* Tape runs fully wet and is not offered a Mix (see engines.jsx) - the
          footer strip stays for the row to keep its shape, held to height in
@@ -114,6 +130,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
 
       {engine.display === "tremolo" && <TremoloDisplay prefix={engine.prefix} />}
       {engine.display === "decay" && <DecayDisplay parameterId={engine.decayId} />}
+      {engine.display === "filter" && <FilterDisplay prefix={engine.prefix} />}
 
       {tab === "easy" ? (
         /* The Easy face: one macro knob that rides this engine's own Adv
@@ -131,6 +148,8 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
             variant="flat"
           />
         </div>
+      ) : engine.body === "filter" ? (
+        <FilterBody prefix={engine.prefix} />
       ) : (
         <>
       <div className="pa-knobs">
@@ -171,7 +190,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
 
       {/* The Tremolo engine's tempo-sync pill, centred under the knob grid.
           `mod.trem.sync`'s own sense is already "synced to tempo", so it lights
-          when on with no invert - the same as the Artifact Filter's Sync pill.
+          when on with no invert - the same as the Filter engine's Sync pill.
           The Rate knob's mid-drag readout re-fetches off its own value, so it
           picks the new unit up on the next turn. */}
       {engine.sync && (
@@ -198,16 +217,17 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
 }
 
 /* Its own component so its hook only runs for the engine that actually has a
-   switch - the same reason the two displays below are split out. */
-function TapeSwitch({ parameterId, labelOff, labelOn }) {
-  const [on, setOn] = useJuceToggleValue(parameterId, true);
+   switch - the same reason the displays below are split out. Tape's rests on
+   (Stereo), Filter's off (Mono), hence `defaultOn`. */
+function TapeSwitch({ parameterId, labelOff, labelOn, defaultOn = true, owner = "Tape" }) {
+  const [on, setOn] = useJuceToggleValue(parameterId, defaultOn);
 
   return (
     <div className="pa-tape-switch">
       <span className="pa-tape-switch__label" data-active={!on || undefined}>
         {labelOff}
       </span>
-      <Toggle checked={on} onChange={setOn} ariaLabel={`Tape: ${labelOff} / ${labelOn}`} />
+      <Toggle checked={on} onChange={setOn} ariaLabel={`${owner}: ${labelOff} / ${labelOn}`} />
       <span className="pa-tape-switch__label" data-active={on || undefined}>
         {labelOn}
       </span>
@@ -215,7 +235,7 @@ function TapeSwitch({ parameterId, labelOff, labelOn }) {
   );
 }
 
-/* Both displays are their own components purely so their hooks only run for
+/* The displays are their own components purely so their hooks only run for
    the engine that is actually showing one - a hook in SideModule would have to
    subscribe to a parameter that the selected engine may not have. */
 
@@ -237,5 +257,98 @@ function DecayDisplay({ parameterId }) {
     <div className="pa-display">
       <BarDisplay heights={decayBars(decay)} align="bottom" ariaLabel="Reverb decay" />
     </div>
+  );
+}
+
+/**
+ * The Filter engine's live cutoff-sweep exponent for both channels, pushed from
+ * the processor as the one "filterMod" event (the editor's Timer) - the same
+ * feed Peak Wah's scope rides on. Outside a real host there is no backend to
+ * send it, so it stays at 0 and the two swept curves rest on the base curve.
+ */
+function useFilterMod() {
+  const [mod, setMod] = useState({ modL: 0, modR: 0 });
+
+  useEffect(() => {
+    if (typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;
+    const id = window.__JUCE__.backend.addEventListener("filterMod", (event) =>
+      setMod({ modL: event.modL ?? 0, modR: event.modR ?? 0 }),
+    );
+    return () => window.__JUCE__.backend.removeEventListener(id);
+  }, []);
+
+  return mod;
+}
+
+/* Peak Wah's response scope in the module's own ink: a resting curve whose peak
+   rises and narrows with Q and slides with Freq, a band showing how far Range
+   lets it sweep, and two curves riding the live L/R sweep inside it. The
+   infinity mark stands in for the Decay knob this engine does not have - it is
+   pinned fully up, so the sweep runs forever. */
+function FilterDisplay({ prefix }) {
+  const [freq] = useJuceSliderValue(`${prefix}freq`);
+  const [q] = useJuceSliderValue(`${prefix}q`);
+  const [range] = useJuceSliderValue(`${prefix}range`);
+  const { modL, modR } = useFilterMod();
+
+  return (
+    <div className="pa-display pa-display--filter">
+      <FilterScope
+        baseFreqHz={freqHzFor01(freq)}
+        resonance01={q}
+        sweepDepth01={range}
+        modL={modL}
+        modR={modR}
+        height={FILTER_SCOPE_HEIGHT}
+      />
+      <span className="pa-inf" aria-label="Decay: always on">
+        &#8734;
+      </span>
+    </div>
+  );
+}
+
+/* Filter's Adv body: Freq / Q, then Range and Time each with a small control
+   directly under it - the <> wave picker and the Sync pill - and a Mono/Stereo
+   switch at the foot. Not the knob grid, because the grid has nowhere to hang
+   a control under one knob. */
+function FilterBody({ prefix }) {
+  const [waveIndex, setWave] = useJuceChoiceValue(`${prefix}wave`, FILTER_WAVES.length);
+  const wave = FILTER_WAVES[waveIndex] ?? FILTER_WAVES[0];
+
+  return (
+    <>
+      <div className="pa-knobs">
+        <div className="pa-knob-row">
+          <JuceKnob parameterId={`${prefix}freq`} caption="Freq" variant="flat" size={36} />
+          <JuceKnob parameterId={`${prefix}q`} caption="Q" variant="flat" size={36} />
+        </div>
+        <div className="pa-knob-row">
+          <div className="pa-subcol">
+            <JuceKnob parameterId={`${prefix}range`} caption="Range" variant="flat" size={36} />
+            <div className="pa-sub pa-sub--wave">
+              <EngineStepper
+                engines={FILTER_WAVES.map((w) => w.name)}
+                value={wave.name}
+                icon={<WaveIcon shape01={wave.shape01} size={15} />}
+                label="Filter wave"
+                onChange={(next) => setWave(FILTER_WAVES.findIndex((w) => w.name === next))}
+              />
+            </div>
+          </div>
+
+          <div className="pa-subcol">
+            <JuceKnob parameterId={`${prefix}time`} caption="Time" variant="flat" size={36} />
+            <div className="pa-sub pa-sub--sync">
+              {/* sync's own sense is already "synced to tempo", so it lights
+                  when on with no invert. */}
+              <JucePill parameterId={`${prefix}sync`} label="Sync" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <TapeSwitch parameterId={`${prefix}stereo`} labelOff="Mono" labelOn="Stereo" defaultOn={false} owner="Filter" />
+    </>
   );
 }

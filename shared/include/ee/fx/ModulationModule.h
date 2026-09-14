@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ee/dsp/AutoWah.h"
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/Phaser.h"
 #include "ee/dsp/TapeMachine.h"
@@ -9,12 +10,19 @@
 namespace ee::fx
 {
 
-/** Peak Alpine's Modulation module: four engines, one at a time.
+/** Peak Alpine's Modulation module: five engines, one at a time.
  *
  * Each is the same engine its own pedal runs - Peak Tape's machine, Peak Trem &
- * Pan's tremolo, Peak Chorus's chorus, Peak Phase's phaser - so a fix to any of
- * them lands in both places. This class is only which one is selected and what
- * it is set to.
+ * Pan's tremolo, Peak Chorus's chorus, Peak Phase's phaser, Peak Wah's filter -
+ * so a fix to any of them lands in both places. This class is only which one is
+ * selected and what it is set to.
+ *
+ * Filter is `ee::dsp::AutoWah` with its per-note envelope taken out of the
+ * picture: Decay is pinned fully up (the engine latches on and the wave just
+ * runs) and the tap morph is pinned to low-pass. What is left is an LFO-swept
+ * filter, which is modulation rather than an artefact - it lived in Peak
+ * Artifact until it moved here. The module owns the dry/wet, so the engine's own
+ * Mix is left fully wet.
  *
  * Values are per-engine and live in the owner's parameters, not here: switching
  * Chorus to Phaser and back restores the Chorus settings because each engine
@@ -31,6 +39,7 @@ public:
         Tremolo,
         Chorus,
         Phaser,
+        Filter, // appended, so a saved engine index keeps meaning what it did
         NumEngines
     };
 
@@ -83,6 +92,34 @@ public:
         phaser.setDepth01 (depth01);
     }
 
+    /** Every Filter control in one call, in the units the engine takes. `freq01`,
+        `q01`, `range01` and `waveShape01` are 0..1; `periodSeconds` is one LFO
+        cycle, already resolved from the Time knob and the Sync switch by the
+        owner. Decay and tap morph are not offered - see the class note. */
+    void
+    setFilter (float freq01, float q01, float range01, float waveShape01, float periodSeconds, bool stereo) noexcept
+    {
+        wah.setFreq01 (freq01);
+        wah.setQ01 (q01);
+        wah.setRange01 (range01);
+        wah.setShape01 (waveShape01);
+        wah.setPeriodSeconds (juce::jmax (1.0e-4f, periodSeconds));
+        wah.setStereo (stereo);
+    }
+
+    /** The LFO free-runs; when the owner is synced to a running transport it
+        also aligns the phase to the host grid, exactly as Peak Wah does. */
+    void snapFilterPhase (double target01) noexcept { wah.snapPhase (target01); }
+    void nudgeFilterPhase (double target01) noexcept { wah.nudgePhase (target01); }
+
+    /** The Filter engine's signed cutoff-sweep exponent per channel at the last
+        processed sample (Range * gate * lfo) - what the face's response scope
+        rides on, the same feed Peak Wah pushes. The engine stays warm even when
+        it is not the selected one, so these keep moving; the face only reads
+        them while Filter is showing. */
+    float filterModL() const noexcept { return wah.modL(); }
+    float filterModR() const noexcept { return wah.modR(); }
+
 protected:
     int engineCount() const noexcept override { return NumEngines; }
 
@@ -91,7 +128,7 @@ protected:
         sweeps at the wow rate - audible as tremolo, clean only at the ends. So
         Tape is not offered a Mix at all: it runs fully wet, matching Peak Tape,
         which has no mix control either, and the face drops the Mix knob for it.
-        The other three engines are unchanged. */
+        The other engines are unchanged. */
     bool engineUsesMix (int index) const noexcept override { return index != Tape; }
 
     void prepareEngines (double sampleRate, int maxBlockSize) override
@@ -100,6 +137,13 @@ protected:
         tremolo.prepare (sampleRate, maxBlockSize);
         chorus.prepare (sampleRate);
         phaser.prepare (sampleRate);
+        wah.prepare (sampleRate);
+
+        // Fixed for the life of the engine: latched on, low-pass tap, and the
+        // module's dry/wet rather than the engine's own.
+        wah.setDecay01 (1.0f);
+        wah.setTypeMorph01 (0.0f);
+        wah.setMix01 (1.0f);
 
         // The module owns the dry/wet, so the chorus runs fully wet and its own
         // internal blend stays out of the way. Peak Chorus keeps its Mix knob;
@@ -124,8 +168,9 @@ protected:
         const float* inL = dry.getReadPointer (0);
         const float* inR = dry.getReadPointer (numChannels > 1 ? 1 : 0);
 
-        // Tape and Tremolo work in place, so they get a copy to chew on; Chorus
-        // and Phaser read one buffer and write another, which is what `wet` is.
+        // Tape, Tremolo and Filter work in place, so they get a copy to chew on;
+        // Chorus and Phaser read one buffer and write another, which is what
+        // `wet` is.
         switch (index)
         {
             case Tape:
@@ -144,6 +189,11 @@ protected:
 
             case Phaser:
                 phaser.process (inL, inR, wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
+                break;
+
+            case Filter:
+                copyDry (inL, inR, wet, numSamples);
+                wah.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
                 break;
 
             default:
@@ -170,6 +220,7 @@ protected:
             case Tremolo: tremolo.reset(); break;
             case Chorus: chorus.reset(); break;
             case Phaser: phaser.reset(); break;
+            case Filter: wah.reset(); break;
             default: break;
         }
     }
@@ -185,6 +236,7 @@ private:
     ee::dsp::Tremolo tremolo;
     ee::dsp::Chorus chorus;
     ee::dsp::Phaser phaser;
+    ee::dsp::AutoWah wah;
 
     ee::dsp::Tremolo::Transport transport;
 };

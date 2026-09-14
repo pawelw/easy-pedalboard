@@ -479,7 +479,7 @@ target_link_libraries(ee_module_stress
 
 # Checks two specific claims about Peak Artifact's Bit engine (see BitCheck.cpp):
 # its Crush/Rate knobs at 100 % are bit-identical to Bit Crush's own engine at
-# 50 %, and its Drive knob adds no more than ~4 dB at 100 % on real audio.
+# 50 %, and its Drive knob leaves the level where it was on real audio.
 juce_add_console_app(ee_bit_check PRODUCT_NAME "ee_bit_check")
 
 target_sources(ee_bit_check PRIVATE BitCheck.cpp)

@@ -1,4 +1,5 @@
 import {
+  FilterIcon,
   ModIcon,
   PhaserIcon,
   SpaceIcon,
@@ -24,6 +25,10 @@ import {
  * switch pinned to the bottom of the body, just above the footer. Both are
  * Tape-only for now - an engine that wants either needs a look at the layout,
  * not just a line here.
+ *
+ * `body: "filter"` swaps the knob grid for SideModule's FilterBody - Filter's
+ * controls carry a wave picker and a Sync pill under two of its knobs, which a
+ * flat list cannot describe.
  *
  * `easy` is the module's "Easy" tab: `{ name, targets }`, where `targets` is
  * the set of this engine's own knobs the one macro knob rides, each with the
@@ -126,6 +131,37 @@ export const MOD_ENGINES = [
       ],
     },
   },
+  {
+    // Peak Wah's engine as an LFO-swept low-pass, Decay pinned fully up. It was
+    // Peak Artifact's third engine until it moved here - appended, so a saved
+    // mod.engine index keeps its meaning.
+    name: "Filter",
+    icon: <FilterIcon size={22} />,
+    prefix: "mod.filter.",
+    display: "filter",
+    body: "filter",
+    // Time is left out, like Tremolo's Rate - the tempo feel is the player's.
+    easy: {
+      name: "Sweep",
+      targets: [
+        { id: "freq", min: 0.2, max: 0.75 },
+        { id: "q", min: 0.2, max: 0.7 },
+        { id: "range", min: 0.25, max: 0.85 },
+      ],
+    },
+  },
+];
+
+/**
+ * The Filter engine's <> wave picker. `shape01` is fed straight to the LFO
+ * (ee::dsp::lfoValue's morph) and MUST match the processor's kFilterWaveShape01
+ * table (PluginProcessor.cpp) - the face draws its glyph from this value and the
+ * audio path reads the same number the other side.
+ */
+export const FILTER_WAVES = [
+  { name: "Triangle", shape01: 0.5 },
+  { name: "Ramp", shape01: 0.25 },
+  { name: "Square", shape01: 1.0 },
 ];
 
 // Both reverbs show the decay display: what a reverb does is a tail, and the
@@ -186,8 +222,8 @@ export const REVERB_ENGINES = [
  * as a prop rather than living on that package's own engine table, which the
  * standalone pedal (no Easy tab) has no use for.
  *
- * Leaf ids carry the engine's own sub-prefix (`flt.`, `crush.`, `ring.`); the
- * face resolves them through its `art.` ParamScope.
+ * Leaf ids carry the engine's own sub-prefix (`crush.`, `ring.`, `rust.`,
+ * `amp.`); the face resolves them through its `art.` ParamScope.
  */
 export const ARTIFACT_EASY = {
   Ring: {
@@ -204,14 +240,6 @@ export const ARTIFACT_EASY = {
       { id: "crush.bits", min: 0.2, max: 0.8 },
       { id: "crush.rate", min: 0.25, max: 0.8 },
       { id: "crush.jitter", min: 0.0, max: 0.4 },
-    ],
-  },
-  Filter: {
-    name: "Sweep",
-    targets: [
-      { id: "flt.freq", min: 0.2, max: 0.75 },
-      { id: "flt.q", min: 0.2, max: 0.7 },
-      { id: "flt.range", min: 0.25, max: 0.85 },
     ],
   },
   Rust: {

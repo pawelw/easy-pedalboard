@@ -208,12 +208,12 @@ void checkLatencyLedger()
                      arrival ([&silent, &off] (juce::AudioProcessorValueTreeState& s)
                               { silent (s); setFlag (s, off.id, false); }));
 
-    // The contract: one figure, whichever engine is selected. Engines 1-3 mix
-    // their wet against the dry, so at Mix 0 the impulse returns down the dry
+    // The contract: one figure, whichever engine is selected. Every engine but
+    // Tape mixes its wet against the dry, so at Mix 0 the impulse returns down the dry
     // path and has to land on `reported`. Tape (0) runs fully wet, so its row
     // is its own output and is printed, not asserted.
     bool flat = true;
-    for (int engine = 0; engine < 4; ++engine)
+    for (int engine = 0; engine < ee::fx::ModulationModule::NumEngines; ++engine)
     {
         const int at = arrival ([&silent, engine] (juce::AudioProcessorValueTreeState& s)
                                 { silent (s); setChoice (s, ee::alpine::id::modEngine, engine); });
@@ -348,7 +348,7 @@ int main (int argc, char* argv[])
     std::printf ("\nEngines:\n");
     juce::WavAudioFormat wav;
 
-    for (int mod = 0; mod < 4; ++mod)
+    for (int mod = 0; mod < ee::fx::ModulationModule::NumEngines; ++mod)
         for (int rev = 0; rev < 2; ++rev)
         {
             juce::AudioBuffer<float> out (2, kLength);

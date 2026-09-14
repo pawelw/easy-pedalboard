@@ -77,6 +77,8 @@ void setModulationDefaults (ee::fx::ModulationModule& m)
     m.setTremolo (0.7f, 0.25f, 0.5f, 0.3f);
     m.setChorus (0.6f, 0.5f, 90.0f);
     m.setPhaser (0.4f, 0.6f);
+    // freq01, q01, range01, waveShape01, one LFO cycle in seconds, stereo
+    m.setFilter (0.5f, 0.5f, 0.6f, 0.5f, 0.4f, false);
 }
 
 void setReverbDefaults (ee::fx::ReverbModule& m)
@@ -87,8 +89,6 @@ void setReverbDefaults (ee::fx::ReverbModule& m)
 
 void setArtifactDefaults (ee::fx::ArtifactModule& m)
 {
-    // freq01, q01, range01, waveShape01, one LFO cycle in seconds, stereo
-    m.setFilter (0.5f, 0.5f, 0.6f, 0.5f, 0.4f, false);
     // freq01, tweak01, lp01, rectify (-1..1), mode (0 = Earworm)
     m.setRing (0.4f, 0.0f, 0.6f, 0.0f, 0);
     // grind01, tone01, mode (0 = Oxide)
@@ -306,6 +306,7 @@ void sweepModulation()
                     module.setTremolo (a, 0.01f + b * 1.5f, a, b);
                     module.setChorus (0.05f + a * 8.0f, b, a * 180.0f);
                     module.setPhaser (0.05f + a * 8.0f, b);
+                    module.setFilter (a, a, b, a, 0.03f + b * 1.5f, b > 0.5f);
 
                     juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
                     fillTestSignal (buffer, kSampleRate);
@@ -359,7 +360,7 @@ void sweepReverb()
 }
 
 /** ee::fx::ArtifactModule - Peak Alpine's first module and Peak Artifact's
-    whole processor. All five engines are voiced; the interesting cases are
+    whole processor. All four engines are voiced; the interesting cases are
     each engine's own parameter space and that stepping between them does not
     step the signal. */
 void sweepArtifact()
@@ -381,7 +382,6 @@ void sweepArtifact()
                 module.setLevel (1.0f);
                 module.setEngaged (true);
 
-                module.setFilter (a, a, a, a, 0.03f + a * 1.5f, a > 0.5f);
                 module.setCrush (a, a, 1.0f - a, a);
                 module.setRing (a, a, 1.0f - a, 2.0f * a - 1.0f, a > 0.5f ? 1 : 0);
 
@@ -543,10 +543,10 @@ int main()
     }
     {
         ee::fx::ArtifactModule module;
-        // Filter honours the "Mix 0 is the dry input" contract cleanly (no LFO
-        // phase to worry about at rest). Set before prepare so there is no
+        // Every Artifact engine takes the Mix, so any of them carries the
+        // "Mix 0 is the dry input" contract. Set before prepare so there is no
         // engine crossfade to ramp through.
-        module.setEngine (ee::fx::ArtifactModule::Filter);
+        module.setEngine (ee::fx::ArtifactModule::RingMod);
         module.prepare (kSampleRate, 512);
         setArtifactDefaults (module);
         checkMixZeroIsDry (module, "Artifact");
@@ -561,7 +561,7 @@ int main()
     std::printf ("\nEngine switches:\n");
 
     // Every neighbouring pair the stepper can reach, plus the wrap.
-    const int modPairs[][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 0, 2 } };
+    const int modPairs[][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 0 }, { 0, 2 } };
     for (const auto& pair : modPairs)
     {
         ee::fx::ModulationModule module;
@@ -587,7 +587,7 @@ int main()
     }
 
     // Every neighbouring Artifact pair plus the wrap - Ring Mod, Bit Crush,
-    // Filter, Rust - since a crossfade between two engines that voice the signal
+    // Rust, Amp - since a crossfade between two engines that voice the signal
     // very differently is exactly where a step would show.
     const int artPairs[][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 0, 2 } };
     for (const auto& pair : artPairs)

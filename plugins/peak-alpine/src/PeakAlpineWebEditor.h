@@ -50,12 +50,11 @@ private:
 
         - "delayMeter": the input level, note-onset count and host tempo, for the
           Delay module's scope and the chrome's tempo readout.
-        - "filterMod": the Artifact module's Filter engine live modL / modR, for
-          its response scope.
+        - "filterMod": the Modulation module's Filter engine live modL / modR,
+          for its response scope.
 
-        Both keep the names their own pedals' editors emit - the faces inside
-        the modules are those pedals' faces, listening for exactly those: one
-        feed per editor, not one per module. */
+        Both keep the names their own pedals' editors emit (Peak Delay's and
+        Peak Wah's): one feed per editor, not one per module. */
     void timerCallback() override;
 
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);

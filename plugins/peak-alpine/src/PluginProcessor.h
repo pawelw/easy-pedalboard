@@ -103,23 +103,23 @@ public:
     juce::String timeMsReadout (const char* parameterId) const;
     float timeMs (const char* parameterId) const;
 
-    /** The Artifact module's Filter Time knob: the LFO period in ms when free,
-        the note value when synced. The web view has no Sync pill or host tempo,
-        so the processor answers this - the same reason Peak Artifact does. */
-    juce::String artifactTimeReadout() const;
+    /** The Modulation module's Filter Time knob: the LFO period in ms when
+        free, the note value when synced. The web view has no Sync pill or host
+        tempo, so the processor answers this. */
+    juce::String filterTimeReadout() const;
 
     /** The Modulation module's Tremolo Rate knob: the LFO period in ms when
         free, the note value when synced. The processor answers it for the same
-        reason it answers the Artifact one - no Sync switch or host tempo in the
+        reason it answers the Filter one - no Sync switch or host tempo in the
         web view. */
     juce::String tremoloRateReadout() const;
 
-    /** The Artifact module's Filter engine live cutoff-sweep exponent per
+    /** The Modulation module's Filter engine live cutoff-sweep exponent per
         channel (Range * gate * lfo), for the face's response scope. Written
         from the audio thread, read by the editor's Timer as one "filterMod"
-        event - the same feed Peak Wah and Peak Artifact push. */
-    std::atomic<float> artifactModL { 0.0f };
-    std::atomic<float> artifactModR { 0.0f };
+        event - the same feed Peak Wah pushes. */
+    std::atomic<float> filterModL { 0.0f };
+    std::atomic<float> filterModR { 0.0f };
 
     double hostBpm() const { return currentBpm(); }
 
@@ -211,12 +211,12 @@ private:
     ee::fx::DelayModule delay;
     ee::fx::ReverbModule reverb;
 
-    // The Artifact Filter LFO free-runs; when its Sync pill is on and the
+    // The Modulation Filter LFO free-runs; when its Sync pill is on and the
     // transport is running it is also aligned to the host grid, exactly as Peak
-    // Artifact and Peak Wah do it. These are that alignment's state.
-    double artExpectedPpq = 0.0;
-    bool artHaveExpectedPpq = false;
-    bool artWasPlaying = false;
+    // Wah does it. These are that alignment's state.
+    double filterExpectedPpq = 0.0;
+    bool filterHaveExpectedPpq = false;
+    bool filterWasPlaying = false;
 
     /** Stops the two Delay-module time parameters echoing each other forever. */
     std::atomic<bool> mirroring { false };

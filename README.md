@@ -571,40 +571,37 @@ size, per-type make-up, grit, output filtering, knob defaults - lives in
 
 ### Peak Artifact
 
-A switchable module - **Ring Mod**, **Bit Crush**, **Filter**, **Rust** - as a
+A switchable module - **Ring Mod**, **Bit Crush**, **Rust**, **Amp** - as a
 pedal of its own, drawn as one narrow compartment in the style of Peak Alpine's
 Modulation side-module but in red. A `<>` stepper picks the engine.
 
 All four engines are voiced. The module keeps every engine warm, so switching
 between them never clicks.
 
-Filter is Peak Wah's engine - `ee::dsp::AutoWah` - with its per-note envelope
-taken out: **Decay is pinned fully up** (the red infinity mark in the display
-says so), so the LFO just runs, and the tap is fixed at **low-pass**. What is
-left is a plain tempo- or free-running swept filter. It inherits the engine's
-fixed output low-cut (90 Hz), which keeps the downswing from booming in the
-sub-bass at high **Range** and **Q**.
+Like the other pedals it has no on/off switch of its own - the `on` parameter
+crossfades to the dry signal so the host's device on/off never clicks. The face
+uses the onyx theme with a `#c00001` module accent.
+
+The swept **Filter** that used to be its third engine now lives in Peak Alpine's
+**Modulation** module (`mod.filter.*`), since an LFO sweep is modulation rather
+than an artefact. It is still Peak Wah's engine - `ee::dsp::AutoWah` - with its
+per-note envelope taken out: **Decay is pinned fully up** (the infinity mark in
+the display says so), so the LFO just runs, and the tap is fixed at
+**low-pass**. It inherits the engine's fixed output low-cut (90 Hz), which keeps
+the downswing from booming in the sub-bass at high **Range** and **Q**.
 
 | Knob      | Range         | What it does                                                          |
 | --------- | ------------- | ------------------------------------------------------------------- |
 | **Freq**  | 200 - 1600 Hz | Centre cutoff the LFO sweeps around                                  |
 | **Q**     | 0 - 100 %     | Resonance of the tank                                                |
 | **Range** | 0 - 100 %     | Depth of the sweep either side of Freq                               |
-| **Time**  | -             | LFO rate. The **ms / Sync** switch under it locks the knob to the host tempo (note divisions) or reads one cycle in ms (30 ms - 3 s) |
-| **Mix**   | 0 - 100 %     | Dry / wet blend, in the footer                                       |
+| **Time**  | -             | LFO rate. The **Sync** pill under it locks the knob to the host tempo (note divisions) or reads one cycle in ms (30 ms - 3 s) |
+| **Mix**   | 0 - 100 %     | The Modulation module's dry / wet, in the footer                     |
 
-A **Wave** `<>` picker (Triangle / Ramp / Square) sets the LFO shape - the same
-`ee::dsp::lfoValue` morph the display and the audio path both read - and a
-**Mono / Stereo** switch runs the right channel half a cycle out of phase.
-
-The display above the knobs is the same size as Peak Alpine's tremolo display
-and traces the swept wave, scaled by Range, over two cycles.
-
-Like the other pedals it has no on/off switch of its own - the `on` parameter
-crossfades to the dry signal so the host's device on/off never clicks. The face
-uses the onyx theme with a `#c00001` module accent. The Filter voicing lives in
-`shared/include/ee/dsp/AutoWahConfig.h` (LFO rate range in
-`plugins/peak-artifact/src/RateMap.h`).
+A **Wave** `<>` picker (Triangle / Ramp / Square) sets the LFO shape and a
+**Mono / Stereo** switch runs the right channel half a cycle out of phase. The
+voicing lives in `shared/include/ee/dsp/AutoWahConfig.h`; the LFO rate range is
+`kFilterRateMap` in `plugins/peak-alpine/src/PluginProcessor.cpp`.
 
 **Rust** - `ee::dsp::Rust` - is degradation with a memory. A per-channel *wear*
 state tracks the recent input level: it climbs while you play and heals back

@@ -11,13 +11,13 @@
 #endif
 
 /**
- * Peak Artifact: one switchable module - Ring Mod / Bit Crush / Filter / Rust /
- * Amp - as a pedal of its own, the way Peak Delay is its own plugin as well as
- * a module inside Peak Alpine.
+ * Peak Artifact: one switchable module - Ring Mod / Bit Crush / Rust / Amp - as
+ * a pedal of its own, the way Peak Delay is its own plugin as well as a module
+ * inside Peak Alpine.
  *
- * All five engines are voiced - see ee::fx::ArtifactModule. The processor is
- * parameters and plumbing: it reads the knobs, turns the Filter Time knob into
- * an LFO period the way Peak Wah does, and hands the module a global bypass.
+ * All four engines are voiced - see ee::fx::ArtifactModule. The processor is
+ * parameters and plumbing: it reads the knobs and hands the module a global
+ * bypass.
  */
 class PeakArtifactProcessor : public juce::AudioProcessor
 {
@@ -54,23 +54,11 @@ public:
         to it - see ee/plugin/PresetBridge.h. */
     ee::plugin::PresetStore presets { apvts, "Peak Artifact", EE_FACTORY_PRESETS };
 
-    /** Text under the Filter Time knob - the LFO period in ms when free, the
-        note value when synced. The web view has no Sync pill or host tempo, so
-        the processor answers this rather than the parameter's own text. */
-    juce::String timeReadout() const;
-
-    /** Live per-channel cutoff-sweep exponent (Range * gate * lfo) for the
-        Filter engine, for the editor's response scope. Written from the audio
-        thread, read by PeakArtifactWebEditor's Timer - the same "filterMod"
-        feed Peak Wah has. */
-    std::atomic<float> lfoModLUi { 0.0f };
-    std::atomic<float> lfoModRUi { 0.0f };
-
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
     /** Reads the knobs and pushes them to the module in real units. */
-    void pushSettings (double bpm) noexcept;
+    void pushSettings() noexcept;
 
     /** Every route a whole APVTS tree can arrive by goes through this - a host
         restoring a session and the preset store both. Bare replaceState here;
@@ -82,11 +70,6 @@ private:
     ee::fx::ArtifactModule module;
 
     double sampleRate = 44100.0;
-
-    // LFO transport alignment, as Peak Wah does it.
-    double expectedPpq = 0.0;
-    bool haveExpectedPpq = false;
-    bool wasPlaying = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PeakArtifactProcessor)
 };

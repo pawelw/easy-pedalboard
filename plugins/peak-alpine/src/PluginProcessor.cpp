@@ -47,61 +47,13 @@ constexpr ee::dsp::RateMap kTremRateMap { ee::dsp::tremolo::kRateMinPeriodMs, ee
                                           ee::dsp::tremolo::kRateSkewCentreMs };
 
 // ------------------------------------------------------------------- artifact
-// The Artifact module's Filter Time knob: one LFO cycle from 30 ms (knob down)
-// to 3 s (knob up) - a filter wobble, the same travel Peak Wah's Time knob has.
-// This is the inverted-knob wrapper Peak Artifact's own RateMap.h is, its
-// {30, 3000, 450} kept in step by hand (the same way Peak Wah keeps its copy).
-// Knob down is the shortest period, so every entry flips the position before
-// handing it to the shared map.
-constexpr ee::dsp::RateMap kArtFilterRateMap { 30.0f, 3000.0f, 450.0f };
-
-float artInvert (float rate01) noexcept
-{
-    return 1.0f - juce::jlimit (0.0f, 1.0f, rate01);
-}
-
-float artRateToPeriodSeconds (float rate01, bool synced, double bpm) noexcept
-{
-    return kArtFilterRateMap.rateToPeriodSeconds (artInvert (rate01), synced, bpm);
-}
-
-float artSyncedDivisionBeats (float rate01) noexcept
-{
-    return ee::dsp::RateMap::syncedDivisionBeats (artInvert (rate01));
-}
-
-juce::String artRateToText (float rate01, bool synced)
-{
-    return kArtFilterRateMap.rateToText (artInvert (rate01), synced);
-}
-
-/** The Artifact Filter's Freq knob -> Hz, log spaced with the low end given
-    more travel (kFreqKnobSkew < 1). Peak Artifact's freqHzFor, verbatim. */
-float artFreqHzFor (float pct) noexcept
-{
-    const float t = std::pow (juce::jlimit (0.0f, 1.0f, pct * 0.01f), ee::dsp::autowah::kFreqKnobSkew);
-    return ee::dsp::autowah::kFreqMinHz * std::pow (ee::dsp::autowah::kFreqMaxHz / ee::dsp::autowah::kFreqMinHz, t);
-}
-
-/** The Artifact Filter's Freq readout: a bare rounded "440 Hz", no kHz. Kept
-    separate from this file's `hertzToText` on purpose - that one folds to kHz
-    above 1000, and Peak Artifact's own readout does not (see CLAUDE.md on
+/** A bare rounded "440 Hz", no kHz - the Artifact module's and the Filter
+    engine's readouts. Kept separate from this file's `hertzToText` on purpose -
+    that one folds to kHz above 1000, and these do not (see CLAUDE.md on
     formatters that share a name but not a behaviour). */
 juce::String artHzToText (float value, int)
 {
     return juce::String (juce::roundToInt (value)) + " Hz";
-}
-
-/** The <> wave picker's three positions as ee::dsp::lfoValue shape morphs -
-    triangle mid-morph, ramp a quarter down, hard square at the top. In step
-    with @synthpeak/artifact-face's WAVES table and Peak Artifact's
-    kWaveShape01. */
-constexpr float kArtWaveShape01[] = { 0.50f, 0.25f, 1.00f };
-
-float artWaveShape01 (int waveIndex) noexcept
-{
-    const int last = static_cast<int> (std::size (kArtWaveShape01)) - 1;
-    return kArtWaveShape01[juce::jlimit (0, last, waveIndex)];
 }
 
 /** The Artifact Ring Mod's Freq and Filter readouts, off the ee::dsp::ringmod
@@ -131,6 +83,53 @@ juce::String artRustToneToText (float pct, int)
     if (hz >= ee::dsp::rust::kToneBypassHz)
         return "Off";
     return artHzToText (hz, 0);
+}
+
+// ------------------------------------------------------------ modulation filter
+// The Modulation module's Filter Time knob: one LFO cycle from 30 ms (knob down)
+// to 3 s (knob up) - a filter wobble, the same travel Peak Wah's Time knob has,
+// its {30, 3000, 450} kept in step by hand (the same way Peak Wah keeps its
+// copy). Knob down is the shortest period, so every entry flips the position
+// before handing it to the shared map.
+constexpr ee::dsp::RateMap kFilterRateMap { 30.0f, 3000.0f, 450.0f };
+
+float filterInvert (float rate01) noexcept
+{
+    return 1.0f - juce::jlimit (0.0f, 1.0f, rate01);
+}
+
+float filterRateToPeriodSeconds (float rate01, bool synced, double bpm) noexcept
+{
+    return kFilterRateMap.rateToPeriodSeconds (filterInvert (rate01), synced, bpm);
+}
+
+float filterSyncedDivisionBeats (float rate01) noexcept
+{
+    return ee::dsp::RateMap::syncedDivisionBeats (filterInvert (rate01));
+}
+
+juce::String filterRateToText (float rate01, bool synced)
+{
+    return kFilterRateMap.rateToText (filterInvert (rate01), synced);
+}
+
+/** The Filter's Freq knob -> Hz, log spaced with the low end given more travel
+    (kFreqKnobSkew < 1). */
+float filterFreqHzFor (float pct) noexcept
+{
+    const float t = std::pow (juce::jlimit (0.0f, 1.0f, pct * 0.01f), ee::dsp::autowah::kFreqKnobSkew);
+    return ee::dsp::autowah::kFreqMinHz * std::pow (ee::dsp::autowah::kFreqMaxHz / ee::dsp::autowah::kFreqMinHz, t);
+}
+
+/** The <> wave picker's three positions as ee::dsp::lfoValue shape morphs -
+    triangle mid-morph, ramp a quarter down, hard square at the top. In step
+    with the jsui's FILTER_WAVES table (engines.jsx). */
+constexpr float kFilterWaveShape01[] = { 0.50f, 0.25f, 1.00f };
+
+float filterWaveShape01 (int waveIndex) noexcept
+{
+    const int last = static_cast<int> (std::size (kFilterWaveShape01)) - 1;
+    return kFilterWaveShape01[juce::jlimit (0, last, waveIndex)];
 }
 
 // The Input/Output trims' range. Asymmetric on purpose, exactly as Peak
@@ -353,47 +352,23 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
 
     // --------------------------------------------------------------- artifact
     // Every id, range and default is Peak Artifact's, because the module is
-    // Peak Artifact's. All five engines are voiced (see ee::fx::ArtifactModule).
+    // Peak Artifact's. All four engines are voiced (see ee::fx::ArtifactModule).
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artOn, 1 }, "Artifact On", true));
-    layout.add (std::make_unique<juce::AudioParameterChoice> (
-        juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
-        juce::StringArray { "Ring Mod", "Bit Crush", "Filter", "Rust", "Amp" }, 2));
+    layout.add (
+        std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
+                                                      juce::StringArray { "Ring Mod", "Bit Crush", "Rust", "Amp" }, 0));
     addTrimDb (layout, id::artLevel, "Artifact Level");
     addPercent (layout, id::artMix, "Artifact Mix", 50.0f);
 
-    // Freq prints as a bare rounded "Hz" - Peak Artifact's own readout, not
-    // this file's kHz-folding hertzToText - so it is spelled out rather than
-    // going through addPercent.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { id::artFltFreq, 1 }, "Artifact Freq", percent, ee::dsp::autowah::kDefaultFreqPct,
-        withText ([] (float v, int) { return artHzToText (artFreqHzFor (v), 0); })));
-
-    addPercent (layout, id::artFltQ, "Artifact Q", ee::dsp::autowah::kDefaultQPct);
-    addPercent (layout, id::artFltRange, "Artifact Range", ee::dsp::autowah::kDefaultRangePct);
-
-    // One normalised knob; the Sync switch decides what it means. Knob down =
-    // fastest in both modes (see kArtFilterRateMap). Host text is the synced
-    // reading; the editor overrides it live.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { id::artFltTime, 1 }, "Artifact Time", juce::NormalisableRange<float> (0.0f, 1.0f, 0.0001f),
-        0.5f, withText ([] (float v, int) { return artRateToText (v, true); })));
-
-    layout.add (
-        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artFltSync, 1 }, "Artifact Sync", false));
-    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artFltWave, 1 }, "Artifact Wave",
-                                                              juce::StringArray { "Triangle", "Ramp", "Square" }, 0));
-    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artFltStereo, 1 },
-                                                            "Artifact Stereo", false));
-
-    // Bit Crush knobs, 0..100 like the Filter's - percent host text, resolved to
+    // Bit Crush knobs, 0..100 - percent host text, resolved to
     // real units by ee::fx::ArtifactModule through the ee::dsp::bitcrush maps.
     addPercent (layout, id::artCrushBits, "Artifact Bits", ee::dsp::bitcrush::kDefaultBitsPct);
     addPercent (layout, id::artCrushRate, "Artifact Rate", ee::dsp::bitcrush::kDefaultRatePct);
     addPercent (layout, id::artCrushLp, "Artifact Crush Filter", ee::dsp::bitcrush::kDefaultLpPct);
     addPercent (layout, id::artCrushJitter, "Artifact Jitter", ee::dsp::bitcrush::kDefaultJitterPct);
 
-    // Ring Mod. Freq and Filter spell out real Hz off the ee::dsp::ringmod maps
-    // (like the Filter's Freq); Tweak is a plain percent, its meaning set by
+    // Ring Mod. Freq and Filter spell out real Hz off the ee::dsp::ringmod maps;
+    // Tweak is a plain percent, its meaning set by
     // Mode; Rectify is bipolar and rests dead centre, doing nothing there.
     // Blend is Artifact Mix, not a knob of its own.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -420,8 +395,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { id::artRustMode, 1 }, "Artifact Rust Mode", juce::StringArray { "Oxide", "Contact" }, 0));
 
-    // Amp. Drive is a tube-style analog drive, plain percent, unchanged since
-    // the engine's first cut. Mids and Bit are also plain percent host text
+    // Amp. Drive is matched to a real reference unit at 100 %, plain percent
+    // (see ee/dsp/TubeDriveConfig.h). Mids and Bit are also plain percent host text
     // (like Bit Crush's own knobs above) - the real unit (dB, the hold rate)
     // is Peak Artifact's own readout, not this file's. Tone is the same
     // bipolar tilt Peak Tape's Tone is: -100 dark, 0 flat and bypassed, +100
@@ -438,9 +413,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
 
     // ------------------------------------------------------------- modulation
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modOn, 1 }, "Modulation On", true));
-    layout.add (
-        std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::modEngine, 1 }, "Modulation Engine",
-                                                      juce::StringArray { "Tape", "Tremolo", "Chorus", "Phaser" }, 1));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { id::modEngine, 1 }, "Modulation Engine",
+        juce::StringArray { "Tape", "Tremolo", "Chorus", "Phaser", "Filter" }, 1));
     addTrimDb (layout, id::modLevel, "Modulation Level");
     addPercent (layout, id::modMix, "Modulation Mix", 40.0f);
 
@@ -469,7 +444,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
     // on the Tremolo Sync switch - a free LFO period in ms, or a tempo-locked
     // note division. Host text is the synced reading (a host has no pill to say
     // which mode the knob is in) and the editor overrides it live, the same
-    // choice the Artifact Time knob and Peak Trem & Pan make.
+    // choice the Filter Time knob and Peak Trem & Pan make.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { id::modTremRate, 1 }, "Tremolo Rate", juce::NormalisableRange<float> (0.0f, 1.0f), 0.5f,
         withText ([] (float v, int) { return kTremRateMap.rateToText (v, true); })));
@@ -495,6 +470,28 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
                                                              phaserRate, ee::dsp::phaser::kDefaultRateHz,
                                                              withText (ee::plugin::hzToText)));
     addPercent (layout, id::modPhaseDepth, "Phaser Depth", ee::dsp::phaser::kDefaultDepthPct);
+
+    // Filter. Freq prints as a bare rounded "Hz" (artHzToText, not this file's
+    // kHz-folding hertzToText), so it is spelled out rather than going through
+    // addPercent.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::modFilterFreq, 1 }, "Filter Freq", percent, ee::dsp::autowah::kDefaultFreqPct,
+        withText ([] (float v, int) { return artHzToText (filterFreqHzFor (v), 0); })));
+    addPercent (layout, id::modFilterQ, "Filter Q", ee::dsp::autowah::kDefaultQPct);
+    addPercent (layout, id::modFilterRange, "Filter Range", ee::dsp::autowah::kDefaultRangePct);
+
+    // One normalised knob; the Sync switch decides what it means. Knob down =
+    // fastest in both modes (see kFilterRateMap). Host text is the synced
+    // reading; the editor overrides it live.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::modFilterTime, 1 }, "Filter Time", juce::NormalisableRange<float> (0.0f, 1.0f, 0.0001f),
+        0.5f, withText ([] (float v, int) { return filterRateToText (v, true); })));
+    layout.add (
+        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modFilterSync, 1 }, "Filter Sync", false));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::modFilterWave, 1 }, "Filter Wave",
+                                                              juce::StringArray { "Triangle", "Ramp", "Square" }, 0));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modFilterStereo, 1 },
+                                                            "Filter Stereo", false));
 
     // ------------------------------------------------------------------ delay
     // Every id, range and default is Peak Delay's, because the module behind
@@ -648,11 +645,11 @@ juce::String PeakAlpineProcessor::timeMsReadout (const char* parameterId) const
     return ee::peakdelay::timeMap().toText (time01, false, currentBpm());
 }
 
-juce::String PeakAlpineProcessor::artifactTimeReadout() const
+juce::String PeakAlpineProcessor::filterTimeReadout() const
 {
-    const float time01 = apvts.getRawParameterValue (id::artFltTime)->load();
-    const bool synced = apvts.getRawParameterValue (id::artFltSync)->load() > 0.5f;
-    return artRateToText (time01, synced);
+    const float time01 = apvts.getRawParameterValue (id::modFilterTime)->load();
+    const bool synced = apvts.getRawParameterValue (id::modFilterSync)->load() > 0.5f;
+    return filterRateToText (time01, synced);
 }
 
 juce::String PeakAlpineProcessor::tremoloRateReadout() const
@@ -675,15 +672,6 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
     artifact.setEngaged (flag (id::artOn));
     artifact.setLevel (juce::Decibels::decibelsToGain (raw (id::artLevel)));
     artifact.setMix01 (pct (id::artMix));
-
-    {
-        const bool artSynced = flag (id::artFltSync);
-        const float artPeriod = juce::jmax (1.0e-4f, artRateToPeriodSeconds (raw (id::artFltTime), artSynced, bpm));
-
-        artifact.setFilter (pct (id::artFltFreq), pct (id::artFltQ), pct (id::artFltRange),
-                            artWaveShape01 (static_cast<int> (raw (id::artFltWave))), artPeriod,
-                            flag (id::artFltStereo));
-    }
 
     artifact.setCrush (pct (id::artCrushBits), pct (id::artCrushRate), pct (id::artCrushLp), pct (id::artCrushJitter));
 
@@ -716,6 +704,16 @@ void PeakAlpineProcessor::pushSettings (double bpm) noexcept
 
     modulation.setChorus (raw (id::modChorusRate), pct (id::modChorusDepth), raw (id::modChorusPhase));
     modulation.setPhaser (raw (id::modPhaseRate), pct (id::modPhaseDepth));
+
+    {
+        const bool filterSynced = flag (id::modFilterSync);
+        const float filterPeriod =
+            juce::jmax (1.0e-4f, filterRateToPeriodSeconds (raw (id::modFilterTime), filterSynced, bpm));
+
+        modulation.setFilter (pct (id::modFilterFreq), pct (id::modFilterQ), pct (id::modFilterRange),
+                              filterWaveShape01 (static_cast<int> (raw (id::modFilterWave))), filterPeriod,
+                              flag (id::modFilterStereo));
+    }
 
     // -------------------------------------------------------------------- delay
     const bool synced = delayIsSynced();
@@ -780,8 +778,8 @@ void PeakAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
     delay.prepare (sampleRate, maxBlock);
     reverb.prepare (sampleRate, maxBlock);
 
-    artHaveExpectedPpq = false;
-    artWasPlaying = false;
+    filterHaveExpectedPpq = false;
+    filterWasPlaying = false;
 
     // Re-hand the tape floor after prepare, the same belt-and-braces
     // PeakTapeProcessor uses - the read rate is worked out from both the sample
@@ -891,14 +889,14 @@ void PeakAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
             buffer.getWritePointer (ch)[i] *= g;
     }
 
-    // The Artifact Filter LFO free-runs; when its Sync pill is on and the
+    // The Modulation Filter LFO free-runs; when its Sync pill is on and the
     // transport is running it is also aligned to the host grid - a hard snap on
     // the first playing block or a jump, a gentle per-block pull otherwise. The
-    // same shape Peak Artifact and Peak Wah use; the other three modules carry
-    // their own sync internally.
+    // same shape Peak Wah uses; the other modules carry their own sync
+    // internally.
     {
-        const float artTime01 = apvts.getRawParameterValue (id::artFltTime)->load();
-        const bool artSynced = apvts.getRawParameterValue (id::artFltSync)->load() > 0.5f;
+        const float filterTime01 = apvts.getRawParameterValue (id::modFilterTime)->load();
+        const bool filterSynced = apvts.getRawParameterValue (id::modFilterSync)->load() > 0.5f;
 
         double ppqStart = 0.0;
         bool havePpq = false;
@@ -914,28 +912,29 @@ void PeakAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
                 isPlaying = position->getIsPlaying();
             }
 
-        if (artSynced && havePpq && isPlaying)
+        if (filterSynced && havePpq && isPlaying)
         {
             const double cyclesPerQuarter =
-                1.0 / juce::jmax (1.0e-4, static_cast<double> (artSyncedDivisionBeats (artTime01)));
+                1.0 / juce::jmax (1.0e-4, static_cast<double> (filterSyncedDivisionBeats (filterTime01)));
             const double ppqPerSample = bpm / (60.0 * sr);
 
             const double target = ppqStart * cyclesPerQuarter;
-            const bool jumped = ! artWasPlaying || (artHaveExpectedPpq && std::abs (ppqStart - artExpectedPpq) > 0.25);
+            const bool jumped =
+                ! filterWasPlaying || (filterHaveExpectedPpq && std::abs (ppqStart - filterExpectedPpq) > 0.25);
 
             if (jumped)
-                artifact.snapFilterPhase (target);
+                modulation.snapFilterPhase (target);
             else
-                artifact.nudgeFilterPhase (target);
+                modulation.nudgeFilterPhase (target);
 
-            artExpectedPpq = ppqStart + numSamples * ppqPerSample;
-            artHaveExpectedPpq = true;
+            filterExpectedPpq = ppqStart + numSamples * ppqPerSample;
+            filterHaveExpectedPpq = true;
         }
         else
         {
-            artHaveExpectedPpq = false;
+            filterHaveExpectedPpq = false;
         }
-        artWasPlaying = isPlaying;
+        filterWasPlaying = isPlaying;
     }
 
     // The Modulation module's Tremolo LFO: free-running, and when its Sync
@@ -1015,9 +1014,9 @@ void PeakAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
         }
     }
 
-    // The Artifact Filter engine's live sweep position, for the editor's scope.
-    artifactModL.store (artifact.filterModL(), std::memory_order_relaxed);
-    artifactModR.store (artifact.filterModR(), std::memory_order_relaxed);
+    // The Modulation Filter engine's live sweep position, for the editor's scope.
+    filterModL.store (modulation.filterModL(), std::memory_order_relaxed);
+    filterModR.store (modulation.filterModR(), std::memory_order_relaxed);
 
     // The global bypass crossfades back to the input as it was before the
     // Input trim, so a bypassed plugin is unity whatever either trim says.

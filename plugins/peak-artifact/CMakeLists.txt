@@ -2,7 +2,7 @@ peak_add_plugin(PeakArtifact
     CODE       Part
     PRODUCT    "Peak Artifact"
     BUNDLE     com.synthpeak.peakartifact
-    CATEGORIES "Fx Filter"
+    CATEGORIES "Fx Distortion"
     SOURCES    src/PeakArtifactWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra
     WEBVIEW

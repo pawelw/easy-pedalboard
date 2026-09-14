@@ -35,16 +35,9 @@ inline constexpr const char* on = "on";
 // The leaf names are that pedal's own, exactly - drop the `art.` and you have
 // its parameter list, which is what lets one `ArtifactFace` bind to both.
 inline constexpr const char* artOn = "art.on";
-inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Filter / Rust / Amp
+inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Rust / Amp
 inline constexpr const char* artLevel = "art.level";   // module chrome, not Peak Artifact's
 inline constexpr const char* artMix = "art.mix";
-inline constexpr const char* artFltFreq = "art.flt.freq";
-inline constexpr const char* artFltQ = "art.flt.q";
-inline constexpr const char* artFltRange = "art.flt.range";
-inline constexpr const char* artFltTime = "art.flt.time"; // meaning set by artFltSync
-inline constexpr const char* artFltSync = "art.flt.sync"; // false = ms, true = tempo
-inline constexpr const char* artFltWave = "art.flt.wave"; // Triangle / Ramp / Square
-inline constexpr const char* artFltStereo = "art.flt.stereo";
 inline constexpr const char* artCrushBits = "art.crush.bits";
 inline constexpr const char* artCrushRate = "art.crush.rate";
 inline constexpr const char* artCrushLp = "art.crush.lp";
@@ -65,7 +58,7 @@ inline constexpr const char* artAmpStereo = "art.amp.stereo";
 
 // --------------------------------------------------------------- modulation
 inline constexpr const char* modOn = "mod.on";
-inline constexpr const char* modEngine = "mod.engine";
+inline constexpr const char* modEngine = "mod.engine"; // Tape / Tremolo / Chorus / Phaser / Filter
 inline constexpr const char* modLevel = "mod.level";
 inline constexpr const char* modMix = "mod.mix";
 
@@ -88,6 +81,16 @@ inline constexpr const char* modChorusPhase = "mod.chorus.phase";
 
 inline constexpr const char* modPhaseRate = "mod.phase.rate";
 inline constexpr const char* modPhaseDepth = "mod.phase.depth";
+
+// Peak Wah's engine as a swept filter - it was Peak Artifact's `flt.` engine
+// until it moved here.
+inline constexpr const char* modFilterFreq = "mod.filter.freq";
+inline constexpr const char* modFilterQ = "mod.filter.q";
+inline constexpr const char* modFilterRange = "mod.filter.range";
+inline constexpr const char* modFilterTime = "mod.filter.time"; // meaning set by modFilterSync
+inline constexpr const char* modFilterSync = "mod.filter.sync"; // false = ms, true = tempo
+inline constexpr const char* modFilterWave = "mod.filter.wave"; // Triangle / Ramp / Square
+inline constexpr const char* modFilterStereo = "mod.filter.stereo";
 
 // -------------------------------------------------------------------- delay
 inline constexpr const char* dlyOn = "dly.on";
