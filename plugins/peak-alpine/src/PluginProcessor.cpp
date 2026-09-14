@@ -20,6 +20,7 @@
 #include "ee/plugin/ParamText.h"
 
 #include "ee/fx/DelayTimeMap.h"
+#include "ee/fx/ModulationControls.h"
 
 #include "TapeAssets.h"
 
@@ -31,6 +32,7 @@
 namespace
 {
 using namespace ee::alpine;
+using namespace ee::fx::modulation; // the Mod module's knob maps, shared with Peak Modulation
 using ee::plugin::kRampSeconds;
 using ee::plugin::percentToText;
 
@@ -40,11 +42,6 @@ static_assert (ee::fx::delaymodule::kGainRampSeconds == kRampSeconds,
                "ee::fx::delaymodule::kGainRampSeconds must track ee::plugin::kRampSeconds");
 static_assert (ee::fx::MultiEngineModule::kGainRampSeconds == kRampSeconds,
                "MultiEngineModule::kGainRampSeconds must track ee::plugin::kRampSeconds");
-
-/** The Rate knob's map, shared with Peak Trem & Pan through the tremolo's own
-    voicing header so the same knob position means the same rate on both. */
-constexpr ee::dsp::RateMap kTremRateMap { ee::dsp::tremolo::kRateMinPeriodMs, ee::dsp::tremolo::kRateMaxPeriodMs,
-                                          ee::dsp::tremolo::kRateSkewCentreMs };
 
 // ------------------------------------------------------------------- artifact
 /** A bare rounded "440 Hz", no kHz - the Artifact module's and the Filter
@@ -83,53 +80,6 @@ juce::String artRustToneToText (float pct, int)
     if (hz >= ee::dsp::rust::kToneBypassHz)
         return "Off";
     return artHzToText (hz, 0);
-}
-
-// ------------------------------------------------------------ modulation filter
-// The Modulation module's Filter Time knob: one LFO cycle from 30 ms (knob down)
-// to 3 s (knob up) - a filter wobble, the same travel Peak Wah's Time knob has,
-// its {30, 3000, 450} kept in step by hand (the same way Peak Wah keeps its
-// copy). Knob down is the shortest period, so every entry flips the position
-// before handing it to the shared map.
-constexpr ee::dsp::RateMap kFilterRateMap { 30.0f, 3000.0f, 450.0f };
-
-float filterInvert (float rate01) noexcept
-{
-    return 1.0f - juce::jlimit (0.0f, 1.0f, rate01);
-}
-
-float filterRateToPeriodSeconds (float rate01, bool synced, double bpm) noexcept
-{
-    return kFilterRateMap.rateToPeriodSeconds (filterInvert (rate01), synced, bpm);
-}
-
-float filterSyncedDivisionBeats (float rate01) noexcept
-{
-    return ee::dsp::RateMap::syncedDivisionBeats (filterInvert (rate01));
-}
-
-juce::String filterRateToText (float rate01, bool synced)
-{
-    return kFilterRateMap.rateToText (filterInvert (rate01), synced);
-}
-
-/** The Filter's Freq knob -> Hz, log spaced with the low end given more travel
-    (kFreqKnobSkew < 1). */
-float filterFreqHzFor (float pct) noexcept
-{
-    const float t = std::pow (juce::jlimit (0.0f, 1.0f, pct * 0.01f), ee::dsp::autowah::kFreqKnobSkew);
-    return ee::dsp::autowah::kFreqMinHz * std::pow (ee::dsp::autowah::kFreqMaxHz / ee::dsp::autowah::kFreqMinHz, t);
-}
-
-/** The <> wave picker's three positions as ee::dsp::lfoValue shape morphs -
-    triangle mid-morph, ramp a quarter down, hard square at the top. In step
-    with the jsui's FILTER_WAVES table (engines.jsx). */
-constexpr float kFilterWaveShape01[] = { 0.50f, 0.25f, 1.00f };
-
-float filterWaveShape01 (int waveIndex) noexcept
-{
-    const int last = static_cast<int> (std::size (kFilterWaveShape01)) - 1;
-    return kFilterWaveShape01[juce::jlimit (0, last, waveIndex)];
 }
 
 // The Input/Output trims' range. Asymmetric on purpose, exactly as Peak
@@ -778,8 +728,7 @@ void PeakAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpectedS
     delay.prepare (sampleRate, maxBlock);
     reverb.prepare (sampleRate, maxBlock);
 
-    filterHaveExpectedPpq = false;
-    filterWasPlaying = false;
+    modSync.reset();
 
     // Re-hand the tape floor after prepare, the same belt-and-braces
     // PeakTapeProcessor uses - the read rate is worked out from both the sample
@@ -889,85 +838,14 @@ void PeakAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
             buffer.getWritePointer (ch)[i] *= g;
     }
 
-    // The Modulation Filter LFO free-runs; when its Sync pill is on and the
-    // transport is running it is also aligned to the host grid - a hard snap on
-    // the first playing block or a jump, a gentle per-block pull otherwise. The
-    // same shape Peak Wah uses; the other modules carry their own sync
-    // internally.
-    {
-        const float filterTime01 = apvts.getRawParameterValue (id::modFilterTime)->load();
-        const bool filterSynced = apvts.getRawParameterValue (id::modFilterSync)->load() > 0.5f;
-
-        double ppqStart = 0.0;
-        bool havePpq = false;
-        bool isPlaying = false;
-        if (auto* playHead = getPlayHead())
-            if (const auto position = playHead->getPosition())
-            {
-                if (const auto ppq = position->getPpqPosition())
-                {
-                    ppqStart = *ppq;
-                    havePpq = std::isfinite (ppqStart);
-                }
-                isPlaying = position->getIsPlaying();
-            }
-
-        if (filterSynced && havePpq && isPlaying)
-        {
-            const double cyclesPerQuarter =
-                1.0 / juce::jmax (1.0e-4, static_cast<double> (filterSyncedDivisionBeats (filterTime01)));
-            const double ppqPerSample = bpm / (60.0 * sr);
-
-            const double target = ppqStart * cyclesPerQuarter;
-            const bool jumped =
-                ! filterWasPlaying || (filterHaveExpectedPpq && std::abs (ppqStart - filterExpectedPpq) > 0.25);
-
-            if (jumped)
-                modulation.snapFilterPhase (target);
-            else
-                modulation.nudgeFilterPhase (target);
-
-            filterExpectedPpq = ppqStart + numSamples * ppqPerSample;
-            filterHaveExpectedPpq = true;
-        }
-        else
-        {
-            filterHaveExpectedPpq = false;
-        }
-        filterWasPlaying = isPlaying;
-    }
-
-    // The Modulation module's Tremolo LFO: free-running, and when its Sync
-    // switch is on and the transport is rolling, also pulled onto the host
-    // grid. Peak Trem & Pan drives its engine's Transport exactly this way -
-    // `synced` for the engine is the switch AND a finite ppq AND playing.
-    {
-        const float tremRate01 = apvts.getRawParameterValue (id::modTremRate)->load();
-        const bool tremSyncSwitch = apvts.getRawParameterValue (id::modTremSync)->load() > 0.5f;
-
-        double ppqStart = 0.0;
-        bool havePpq = false;
-        bool isPlaying = false;
-        if (auto* playHead = getPlayHead())
-            if (const auto position = playHead->getPosition())
-            {
-                if (const auto ppq = position->getPpqPosition())
-                {
-                    ppqStart = *ppq;
-                    havePpq = std::isfinite (ppqStart);
-                }
-                isPlaying = position->getIsPlaying();
-            }
-
-        ee::dsp::Tremolo::Transport transport;
-        transport.synced = tremSyncSwitch && havePpq && isPlaying;
-        transport.playing = isPlaying;
-        transport.ppqStart = ppqStart;
-        transport.cyclesPerQuarter =
-            1.0 / juce::jmax (1.0e-4, static_cast<double> (ee::dsp::RateMap::syncedDivisionBeats (tremRate01)));
-        transport.ppqPerSample = bpm / (60.0 * sr);
-        modulation.setTremoloTransport (transport);
-    }
+    // The Modulation module's two tempo-locked LFOs, kept on the host grid when
+    // their Sync switches are on and the transport is rolling - see
+    // ee::fx::modulation::HostSync, which Peak Modulation drives the same way.
+    // The other modules carry their own sync internally.
+    modSync.process (modulation, getPlayHead(), apvts.getRawParameterValue (id::modFilterTime)->load(),
+                     apvts.getRawParameterValue (id::modFilterSync)->load() > 0.5f,
+                     apvts.getRawParameterValue (id::modTremRate)->load(),
+                     apvts.getRawParameterValue (id::modTremSync)->load() > 0.5f, bpm, sr, numSamples);
 
     // The chain. chain.order picks who's fed to whom, in the order it names -
     // each module is still responsible for its own dry/wet and its own power

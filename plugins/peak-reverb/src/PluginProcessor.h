@@ -1,14 +1,29 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_dsp/juce_dsp.h>
 
-#include "ee/dsp/FdnReverb.h"
+#include "ee/fx/ReverbModule.h"
+#include "ee/plugin/PresetStore.h"
 
+#if EE_HAS_FACTORY_PRESETS
+#include EE_FACTORY_PRESETS_HEADER
+#endif
+
+/**
+ * Peak Reverb: Peak Alpine's Reverb module - Space / Spring - as a pedal of its
+ * own, the way Peak Artifact is Alpine's first module.
+ *
+ * Space is the FDN this pedal used to be on its own, Spring is Peak Spring's
+ * tank; both run inside ee::fx::ReverbModule, the same object Alpine runs, so
+ * the same knob position sounds the same in both. The processor is parameters
+ * and plumbing: it reads the knobs and hands the module a global bypass.
+ */
 class PeakReverbProcessor : public juce::AudioProcessor
 {
 public:
     PeakReverbProcessor();
-    ~PeakReverbProcessor() override = default;
+    ~PeakReverbProcessor() override;
 
     void prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock) override;
     void releaseResources() override;
@@ -22,7 +37,7 @@ public:
     bool acceptsMidi() const override { return false; }
     bool producesMidi() const override { return false; }
     bool isMidiEffect() const override { return false; }
-    double getTailLengthSeconds() const override;
+    double getTailLengthSeconds() const override { return module.tailSeconds(); }
 
     int getNumPrograms() override { return 1; }
     int getCurrentProgram() override { return 0; }
@@ -35,25 +50,26 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
+    /** Both preset banks. Public because the editor's bridge takes a reference
+        to it - see ee/plugin/PresetBridge.h. */
+    ee::plugin::PresetStore presets { apvts, "Peak Reverb", EE_FACTORY_PRESETS };
+
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-    ee::dsp::FdnReverb reverb;
+    /** Reads the knobs and pushes them to the module in real units. */
+    void pushSettings() noexcept;
 
-    std::atomic<float>* decayParam = nullptr;
-    std::atomic<float>* mixParam = nullptr;
-    std::atomic<float>* lowCutParam = nullptr;
-    std::atomic<float>* resonanceParam = nullptr;
-    std::atomic<float>* shimmerParam = nullptr;
-    std::atomic<float>* onParam = nullptr;
+    /** Every route a whole APVTS tree can arrive by goes through this - a host
+        restoring a session and the preset store both. Bare replaceState here;
+        the hook exists so a later linked control could stand down for it. */
+    void installState (const juce::ValueTree& tree);
 
-    juce::SmoothedValue<float> dryGain;
-    juce::SmoothedValue<float> wetGain;
-    juce::SmoothedValue<float> inputGain;
+    static constexpr int kMaxChannels = 2;
 
-    juce::AudioBuffer<float> monoBuffer;
-    juce::AudioBuffer<float> wetBuffer;
-    int maxBlock = 512;
+    ee::fx::ReverbModule module;
+
+    double sampleRate = 44100.0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PeakReverbProcessor)
 };

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="on" value="1"/>
+  <PARAM id="engine" value="1"/>
+  <PARAM id="mix" value="40"/>
+  <PARAM id="tape.sat" value="35"/>
+  <PARAM id="tape.flutter" value="25"/>
+  <PARAM id="tape.wear" value="30"/>
+  <PARAM id="tape.noise" value="50"/>
+  <PARAM id="tape.tone" value="0"/>
+  <PARAM id="tape.stereo" value="1"/>
+  <PARAM id="trem.amount" value="50"/>
+  <PARAM id="trem.rate" value="0.5"/>
+  <PARAM id="trem.sync" value="0"/>
+  <PARAM id="trem.shape" value="50"/>
+  <PARAM id="trem.tube" value="0"/>
+  <PARAM id="chorus.rate" value="0.6"/>
+  <PARAM id="chorus.depth" value="45"/>
+  <PARAM id="chorus.phase" value="110"/>
+  <PARAM id="phase.rate" value="0.35"/>
+  <PARAM id="phase.depth" value="75"/>
+  <PARAM id="filter.freq" value="48.7"/>
+  <PARAM id="filter.q" value="58"/>
+  <PARAM id="filter.range" value="61"/>
+  <PARAM id="filter.time" value="0.5"/>
+  <PARAM id="filter.sync" value="0"/>
+  <PARAM id="filter.wave" value="0"/>
+  <PARAM id="filter.stereo" value="0"/>
+</PARAMETERS>

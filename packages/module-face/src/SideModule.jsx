@@ -14,11 +14,14 @@ import {
   JuceKnob,
   JuceMacroKnob,
   JucePill,
+  ParamScope,
   useJuceChoiceValue,
   useJuceSliderValue,
   useJuceToggleValue,
+  useParamId,
 } from "@synthpeak/pedal-ui/juce";
 import { FILTER_WAVES, knobRows } from "./engines.jsx";
+import "./SideModule.css";
 
 // The display wells are 63px tall and their bars run 8px to 34px, which is the
 // range the handoff specifies for both. Named because two unrelated formulas
@@ -73,25 +76,61 @@ function decayBars(decay01) {
 }
 
 /**
- * One of the two narrow modules - Modulation on the left, Reverb on the right.
- * They are the same object at two settings: a power toggle and a Level knob in
- * the header, an engine stepper over that engine's parameter rows, and a Mix
- * knob in the footer. Only the engine list differs, so they are one component
- * rather than two files that would drift.
+ * One narrow switchable module - Modulation or Reverb. They are the same object
+ * at two settings: a power toggle and a name in the header, an engine stepper
+ * over that engine's parameter rows, and a Mix knob in the footer. Only the
+ * engine list differs, so they are one component rather than two files that
+ * would drift. `ModulationFace` and `ReverbFace` are this with their list.
+ *
+ * One component, two hosts per module, the way `ArtifactFace` is: Peak
+ * Modulation and Peak Reverb each wrap theirs in a Card of their own, and Peak
+ * Alpine drops both into its module row. The Alpine modules are not re-draws
+ * of those pedals' faces, they *are* those faces - so a fix lands in both.
+ *
+ * `prefix` is the parameter-id prefix every control binds through: "" for the
+ * standalone pedals, whose ids are plain (`mix`, `trem.rate`), and "mod." or
+ * "rev." for Peak Alpine, whose are namespaced by module. Nothing below takes
+ * an id map; the ParamScope does the whole job, and the leaf names are
+ * identical in both plugins on purpose.
+ *
+ * `headerRight` is whatever the host wants in the header's right-hand slot -
+ * Peak Alpine puts its Level trim there, the same one each of its modules
+ * carries; the standalone pedals pass nothing. It is the host's to supply
+ * because that Level is the host's chrome, not one of the pedal's parameters.
+ *
+ * `easyTab` lets the Easy / Adv strip read each engine's `easy` macro (Peak
+ * Alpine turns it on; the standalone pedals do not). `knobVariant` is Knob's
+ * own `variant`, forwarded to every knob this face draws - "concave" on its
+ * own, as Peak Artifact's is; Peak Alpine passes "flat".
  *
  * The Delay module is not one of these and does not try to be: it is
  * `<DelayFace>` in a wide `ModulePanel`, and sharing a shell with these two
  * would mean a shell shaped like nothing in particular.
  */
-export default function SideModule({ name, accent, engines, engineId, prefix }) {
-  const [engineIndex, setEngine] = useJuceChoiceValue(engineId, engines.length);
-  const [on, setOn] = useJuceToggleValue(`${prefix}on`, true);
+export default function SideModule({ prefix = "", ...props }) {
+  return (
+    <ParamScope prefix={prefix}>
+      <SideModuleBody {...props} />
+    </ParamScope>
+  );
+}
+
+/** Split out so its hooks resolve *inside* the ParamScope above - a hook in
+    SideModule itself would read the enclosing scope, not the one it declares. */
+function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = false, knobVariant = "concave" }) {
+  const [engineIndex, setEngine] = useJuceChoiceValue("engine", engines.length);
+  const [on, setOn] = useJuceToggleValue("on", true);
   const engine = engines[engineIndex] ?? engines[0];
+  const easy = easyTab ? engine.easy : null;
+
+  // JuceMacroKnob's `idPrefix` replaces the enclosing scope rather than adding
+  // to it, so the engine's own prefix is resolved through the scope here first.
+  const macroPrefix = useParamId(engine.prefix);
 
   // Which face this module shows: "adv" is the full parameter set, "easy" the
-  // single macro knob. Per-module rather than shared - the three narrow
-  // modules are switched independently. Not backed by a parameter (the macro
-  // itself isn't either yet), so it re-opens on Adv each session.
+  // single macro knob. Per-module rather than shared - the modules are switched
+  // independently. Not backed by a parameter (the macro itself isn't either
+  // yet), so it re-opens on Adv each session.
   const [tab, setTab] = useState("adv");
 
   return (
@@ -101,22 +140,16 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
       width={168}
       on={on}
       onToggle={setOn}
-      /* Level is a trim, not a fader: it rests at unity in the middle of its
-         travel, so the arc reads out from twelve o'clock in whichever
-         direction it has been moved. Wound fully clockwise at rest - which is
-         what a 0..100 % level looks like - it said "turned all the way up"
-         about a module that was doing nothing to the level at all. */
-      headerRight={
-        <JuceKnob parameterId={`${prefix}level`} variant="flat" size={24} scaleFrom="centre" bare />
-      }
+      headerRight={headerRight}
+      className="sm-module"
       /* Tape runs fully wet and is not offered a Mix (see engines.jsx) - the
-         footer strip stays for the row to keep its shape, held to height in
+         footer strip stays for the module to keep its shape, held to height in
          CSS, but empty. */
       footer={
         engine.hideMix ? (
-          <div className="pa-footer-empty" aria-hidden="true" />
+          <div className="sm-footer-empty" aria-hidden="true" />
         ) : (
-          <JuceKnob parameterId={`${prefix}mix`} variant="flat" size={38} caption="Mix" />
+          <JuceKnob parameterId="mix" variant={knobVariant} size={38} caption="Mix" />
         )
       }
     >
@@ -132,86 +165,87 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
       {engine.display === "decay" && <DecayDisplay parameterId={engine.decayId} />}
       {engine.display === "filter" && <FilterDisplay prefix={engine.prefix} />}
 
-      {tab === "easy" ? (
+      {easy && tab === "easy" ? (
         /* The Easy face: one macro knob that rides this engine's own Adv
            knobs (engines.jsx's `easy.targets`). The display above stays -
            it reads the same parameters the macro is moving, so it answers
            to the Easy knob too. */
-        <div className="pa-easy">
+        <div className="sm-easy">
           {/* Keyed by engine so the macro re-centres when the engine changes,
               rather than carrying one engine's position onto the next. */}
           <JuceMacroKnob
             key={engine.prefix}
-            caption={engine.easy.name}
-            targets={engine.easy.targets}
-            idPrefix={engine.prefix}
-            variant="flat"
+            caption={easy.name}
+            targets={easy.targets}
+            idPrefix={macroPrefix}
+            variant={knobVariant}
           />
         </div>
       ) : engine.body === "filter" ? (
-        <FilterBody prefix={engine.prefix} />
+        <FilterBody prefix={engine.prefix} knobVariant={knobVariant} />
       ) : (
         <>
-      <div className="pa-knobs">
-        {knobRows(engine.knobs).map((row) => (
-          /* Keyed by the *scoped* id rather than the leaf name: two engines
-             can put a knob called "decay" in the same place, and a key that
-             only says "decay" has React hand the old knob the new engine's
-             props rather than mount a new one. The hooks survive that now
-             (see useJuceSliderValue), but the identity should be honest. */
-          <div className="pa-knob-row" key={engine.prefix + row[0][0]}>
-            {row.map(([id, caption]) => (
-              <JuceKnob
-                key={engine.prefix + id}
-                parameterId={engine.prefix + id}
-                caption={caption}
-                variant="flat"
-                size={36}
-              />
+          <div className="sm-knobs">
+            {knobRows(engine.knobs).map((row) => (
+              /* Keyed by the engine-qualified id rather than the leaf name:
+                 two engines can put a knob called "decay" in the same place,
+                 and a key that only says "decay" has React hand the old knob
+                 the new engine's props rather than mount a new one. The hooks
+                 survive that now (see useJuceSliderValue), but the identity
+                 should be honest. */
+              <div className="sm-knob-row" key={engine.prefix + row[0][0]}>
+                {row.map(([id, caption]) => (
+                  <JuceKnob
+                    key={engine.prefix + id}
+                    parameterId={engine.prefix + id}
+                    caption={caption}
+                    variant={knobVariant}
+                    size={36}
+                  />
+                ))}
+              </div>
             ))}
-          </div>
-        ))}
 
-        {/* One knob on a row of its own, centred under the pairs - Tape's
-            Tone. `scaleFrom="centre"` draws its arc out from twelve o'clock,
-            the way the bipolar tilt reads. */}
-        {engine.centre && (
-          <div className="pa-knob-row pa-knob-row--centre" key={engine.prefix + engine.centre[0]}>
-            <JuceKnob
-              parameterId={engine.prefix + engine.centre[0]}
-              caption={engine.centre[1]}
-              variant="flat"
-              size={36}
-              scaleFrom="centre"
+            {/* One knob on a row of its own, centred under the pairs - Tape's
+                Tone. `scaleFrom="centre"` draws its arc out from twelve o'clock,
+                the way the bipolar tilt reads. */}
+            {engine.centre && (
+              <div className="sm-knob-row sm-knob-row--centre" key={engine.prefix + engine.centre[0]}>
+                <JuceKnob
+                  parameterId={engine.prefix + engine.centre[0]}
+                  caption={engine.centre[1]}
+                  variant={knobVariant}
+                  size={36}
+                  scaleFrom="centre"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* The Tremolo engine's tempo-sync pill, centred under the knob grid.
+              `trem.sync`'s own sense is already "synced to tempo", so it lights
+              when on with no invert - the same as the Filter engine's Sync pill.
+              The Rate knob's mid-drag readout re-fetches off its own value, so it
+              picks the new unit up on the next turn. */}
+          {engine.sync && (
+            <div className="sm-sync-row">
+              <JucePill parameterId={engine.sync} label="Sync" />
+            </div>
+          )}
+
+          {/* Pinned to the bottom of the body, just above the footer, however many
+              knob rows are above it - Tape's Mono/Stereo switch. */}
+          {engine.toggle && (
+            <TapeSwitch
+              parameterId={engine.prefix + engine.toggle[0]}
+              labelOff={engine.toggle[1]}
+              labelOn={engine.toggle[2]}
             />
-          </div>
-        )}
-      </div>
-
-      {/* The Tremolo engine's tempo-sync pill, centred under the knob grid.
-          `mod.trem.sync`'s own sense is already "synced to tempo", so it lights
-          when on with no invert - the same as the Filter engine's Sync pill.
-          The Rate knob's mid-drag readout re-fetches off its own value, so it
-          picks the new unit up on the next turn. */}
-      {engine.sync && (
-        <div className="pa-sync-row">
-          <JucePill parameterId={engine.sync} label="Sync" />
-        </div>
-      )}
-
-      {/* Pinned to the bottom of the body, just above the footer, however many
-          knob rows are above it - Tape's Mono/Stereo switch. */}
-      {engine.toggle && (
-        <TapeSwitch
-          parameterId={engine.prefix + engine.toggle[0]}
-          labelOff={engine.toggle[1]}
-          labelOn={engine.toggle[2]}
-        />
-      )}
+          )}
         </>
       )}
 
-      {SHOW_EASY_TABS && <ModuleTabs value={tab} onChange={setTab} />}
+      {SHOW_EASY_TABS && easy && <ModuleTabs value={tab} onChange={setTab} />}
     </ModulePanel>
   );
 }
@@ -223,12 +257,12 @@ function TapeSwitch({ parameterId, labelOff, labelOn, defaultOn = true, owner = 
   const [on, setOn] = useJuceToggleValue(parameterId, defaultOn);
 
   return (
-    <div className="pa-tape-switch">
-      <span className="pa-tape-switch__label" data-active={!on || undefined}>
+    <div className="sm-tape-switch">
+      <span className="sm-tape-switch__label" data-active={!on || undefined}>
         {labelOff}
       </span>
       <Toggle checked={on} onChange={setOn} ariaLabel={`${owner}: ${labelOff} / ${labelOn}`} />
-      <span className="pa-tape-switch__label" data-active={on || undefined}>
+      <span className="sm-tape-switch__label" data-active={on || undefined}>
         {labelOn}
       </span>
     </div>
@@ -236,15 +270,15 @@ function TapeSwitch({ parameterId, labelOff, labelOn, defaultOn = true, owner = 
 }
 
 /* The displays are their own components purely so their hooks only run for
-   the engine that is actually showing one - a hook in SideModule would have to
-   subscribe to a parameter that the selected engine may not have. */
+   the engine that is actually showing one - a hook in SideModuleBody would have
+   to subscribe to a parameter that the selected engine may not have. */
 
 function TremoloDisplay({ prefix }) {
   const [amount] = useJuceSliderValue(`${prefix}amount`);
   const [shape] = useJuceSliderValue(`${prefix}shape`);
 
   return (
-    <div className="pa-display">
+    <div className="sm-display">
       <BarDisplay heights={tremBars(amount, shape)} ariaLabel="Tremolo envelope" />
     </div>
   );
@@ -254,7 +288,7 @@ function DecayDisplay({ parameterId }) {
   const [decay] = useJuceSliderValue(parameterId);
 
   return (
-    <div className="pa-display">
+    <div className="sm-display">
       <BarDisplay heights={decayBars(decay)} align="bottom" ariaLabel="Reverb decay" />
     </div>
   );
@@ -292,7 +326,7 @@ function FilterDisplay({ prefix }) {
   const { modL, modR } = useFilterMod();
 
   return (
-    <div className="pa-display pa-display--filter">
+    <div className="sm-display sm-display--filter">
       <FilterScope
         baseFreqHz={freqHzFor01(freq)}
         resonance01={q}
@@ -301,7 +335,7 @@ function FilterDisplay({ prefix }) {
         modR={modR}
         height={FILTER_SCOPE_HEIGHT}
       />
-      <span className="pa-inf" aria-label="Decay: always on">
+      <span className="sm-inf" aria-label="Decay: always on">
         &#8734;
       </span>
     </div>
@@ -312,21 +346,21 @@ function FilterDisplay({ prefix }) {
    directly under it - the <> wave picker and the Sync pill - and a Mono/Stereo
    switch at the foot. Not the knob grid, because the grid has nowhere to hang
    a control under one knob. */
-function FilterBody({ prefix }) {
+function FilterBody({ prefix, knobVariant }) {
   const [waveIndex, setWave] = useJuceChoiceValue(`${prefix}wave`, FILTER_WAVES.length);
   const wave = FILTER_WAVES[waveIndex] ?? FILTER_WAVES[0];
 
   return (
     <>
-      <div className="pa-knobs">
-        <div className="pa-knob-row">
-          <JuceKnob parameterId={`${prefix}freq`} caption="Freq" variant="flat" size={36} />
-          <JuceKnob parameterId={`${prefix}q`} caption="Q" variant="flat" size={36} />
+      <div className="sm-knobs">
+        <div className="sm-knob-row">
+          <JuceKnob parameterId={`${prefix}freq`} caption="Freq" variant={knobVariant} size={36} />
+          <JuceKnob parameterId={`${prefix}q`} caption="Q" variant={knobVariant} size={36} />
         </div>
-        <div className="pa-knob-row">
-          <div className="pa-subcol">
-            <JuceKnob parameterId={`${prefix}range`} caption="Range" variant="flat" size={36} />
-            <div className="pa-sub pa-sub--wave">
+        <div className="sm-knob-row">
+          <div className="sm-subcol">
+            <JuceKnob parameterId={`${prefix}range`} caption="Range" variant={knobVariant} size={36} />
+            <div className="sm-sub sm-sub--wave">
               <EngineStepper
                 engines={FILTER_WAVES.map((w) => w.name)}
                 value={wave.name}
@@ -337,9 +371,9 @@ function FilterBody({ prefix }) {
             </div>
           </div>
 
-          <div className="pa-subcol">
-            <JuceKnob parameterId={`${prefix}time`} caption="Time" variant="flat" size={36} />
-            <div className="pa-sub pa-sub--sync">
+          <div className="sm-subcol">
+            <JuceKnob parameterId={`${prefix}time`} caption="Time" variant={knobVariant} size={36} />
+            <div className="sm-sub sm-sub--sync">
               {/* sync's own sense is already "synced to tempo", so it lights
                   when on with no invert. */}
               <JucePill parameterId={`${prefix}sync`} label="Sync" />

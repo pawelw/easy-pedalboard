@@ -19,69 +19,24 @@
 #include "TapeTunerPanel.h"
 #endif
 
-#if EE_SHIMMER_TUNER
-#include "ShimmerTunerPanel.h"
-#endif
-
 namespace
 {
-juce::String secondsToText (float value, int)
-{
-    return juce::String (value, value < 1.0f ? 2 : 1) + " s";
-}
-
 juce::String percentToText (float value, int)
 {
     return juce::String (juce::roundToInt (value)) + " %";
 }
 
-juce::String hertzToText (float value, int)
-{
-    if (value <= 20.5f)
-        return "off";
-    return juce::String (juce::roundToInt (value)) + " Hz";
-}
-
-/** Minimal host-free processor carrying the same parameters as Peak Reverb. */
+/** Minimal host-free processor: a pedal's parameter layout and nothing else.
+    Each face below derives one with its own pedal's layout. */
 class SnapshotProcessor : public juce::AudioProcessor
 {
 public:
-    explicit SnapshotProcessor (juce::AudioProcessorValueTreeState::ParameterLayout layout = createLayout())
+    explicit SnapshotProcessor (juce::AudioProcessorValueTreeState::ParameterLayout layout)
         : juce::AudioProcessor (BusesProperties()
                                     .withInput ("In", juce::AudioChannelSet::stereo(), true)
                                     .withOutput ("Out", juce::AudioChannelSet::stereo(), true)),
           apvts (*this, nullptr, "PARAMETERS", std::move (layout))
     {
-    }
-
-    static juce::AudioProcessorValueTreeState::ParameterLayout createLayout()
-    {
-        juce::AudioProcessorValueTreeState::ParameterLayout layout;
-
-        auto decayRange = juce::NormalisableRange<float> (0.3f, 8.0f);
-        decayRange.setSkewForCentre (2.0f);
-
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "decay", 1 }, "Decay Time", decayRange, 3.2f,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (secondsToText)));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "mix", 1 }, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 30.0f,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
-        auto lowCutRange = juce::NormalisableRange<float> (20.0f, 800.0f);
-        lowCutRange.setSkewForCentre (180.0f);
-
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "locut", 1 }, "Low Cut", lowCutRange, 20.0f,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (hertzToText)));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "res", 1 }, "Resonance", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 50.0f,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "shimmer", 1 }, "Shimmer", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
-        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
-
-        return layout;
     }
 
     void prepareToPlay (double, int) override {}
@@ -103,20 +58,6 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 };
-
-ee::ui::PedalSpec makeSpec()
-{
-    ee::ui::PedalSpec spec;
-    spec.name = "Peak Reverb";
-    spec.tagline = "Decay drives room size and predelay";
-    spec.version = "v0.10.0";
-    spec.knobs = { { "decay", "Decay" }, { "mix", "Mix" }, { "shimmer", "Shimmer" }, { "locut", "Low Cut" } };
-    spec.centreKnob =
-        ee::ui::KnobSpec { .parameterID = "res", .caption = "reso", .compact = true, .compactCaption = true };
-    spec.knobsPerRow = 2;
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
-    return spec;
-}
 
 /** Minimal host-free processor carrying the same parameters as Peak Delay. */
 class DelaySnapshotProcessor : public SnapshotProcessor
@@ -1091,35 +1032,6 @@ void writePng (juce::Component& editor, const juce::File& outputFile)
     std::printf ("wrote %s (%d x %d)\n", outputFile.getFullPathName().toRawUTF8(), w, h);
 }
 
-void render (const juce::File& outputFile)
-{
-    SnapshotProcessor processor;
-    // Mirror PeakReverbProcessor::createEditor: blue palette, silver-bezel caps,
-    // sky background, black lettering.
-    auto theme = ee::ui::PedalTheme::blue();
-    theme.controlStyle = ee::ui::ControlStyle::analogSilver;
-    theme.backgroundImage =
-        juce::ImageCache::getFromMemory (BinaryData::reverbbg_jpeg, BinaryData::reverbbg_jpegSize);
-    theme.textPrimary = juce::Colours::black;
-    theme.textSecondary = juce::Colour (0xff3a3a3a);
-    theme.title = juce::Colours::black;
-    theme.logoTint = juce::Colours::black;
-
-    // Swap the value arc and its background track.
-    const auto arcLine = theme.knobTrack;
-    theme.knobTrack = theme.accent;
-    theme.accent = arcLine;
-    ee::ui::PedalEditor editor (processor, processor.apvts, makeSpec(), theme);
-
-#if EE_SHIMMER_TUNER
-    editor.setSidePanel (
-        std::make_unique<ShimmerTunerPanel> (ee::dsp::ShimmerTuning {}, [] (const ee::dsp::ShimmerTuning&) {}),
-        ShimmerTunerPanel::preferredWidth);
-#endif
-
-    writePng (editor, outputFile);
-}
-
 void renderDelay (const juce::File& outputFile)
 {
     DelaySnapshotProcessor processor;
@@ -1309,7 +1221,6 @@ int main (int argc, char* argv[])
     const auto want = [&only] (juce::StringRef name)
     { return only.isEmpty() || juce::String (name).containsIgnoreCase (only); };
 
-    if (want ("reverb pedal")) render (dir.getChildFile ("pedal.png"));
     if (want ("delay")) renderDelay (dir.getChildFile ("delay.png"));
     if (want ("eq")) renderEq (dir.getChildFile ("eq.png"));
     if (want ("trempan")) renderTremPan (dir.getChildFile ("trempan.png"));

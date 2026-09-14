@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<PARAMETERS>
+  <PARAM id="on" value="1"/>
+  <PARAM id="engine" value="0"/>
+  <PARAM id="mix" value="30"/>
+  <PARAM id="space.decay" value="2"/>
+  <PARAM id="space.shimmer" value="0"/>
+  <PARAM id="space.locut" value="20"/>
+  <PARAM id="space.reso" value="50"/>
+  <PARAM id="spring.decay" value="1.8"/>
+  <PARAM id="spring.tension" value="50"/>
+  <PARAM id="spring.locut" value="60"/>
+</PARAMETERS>

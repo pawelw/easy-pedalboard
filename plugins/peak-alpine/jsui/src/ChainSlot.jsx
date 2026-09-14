@@ -7,7 +7,7 @@ const CONTROLS = 'button, input, [role="slider"], [role="switch"], [role="button
 
 /**
  * One module's slot in the drag-to-reorder row, wrapping whichever module
- * (ArtifactFace, SideModule, DelayModule) is rendered inside it.
+ * (ArtifactFace, ModulationFace, DelayModule, ReverbFace) is rendered inside it.
  *
  * **The module's own header is the handle.** There is no separate grip strip:
  * the header is at the top of all four modules, is mostly empty, and already

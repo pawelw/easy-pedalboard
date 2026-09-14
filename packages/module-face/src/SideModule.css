@@ -1,0 +1,174 @@
+/* The Modulation and Reverb modules' own body. Everything here was Peak
+   Alpine's host stylesheet (`plugins/peak-alpine/jsui/src/index.css`) and moved
+   with SideModule; what stayed behind is Alpine's module row.
+
+   The classes are `sm-` rather than Alpine's `pa-` for the reason ArtifactFace's
+   are `af-`: this face now renders inside more than one host, and a host's own
+   stylesheet is not its to share a namespace with. */
+
+/* A footer holds its height whether or not there is a Mix knob in it - Tape
+   has none (it runs fully wet), and without this its footer would collapse to
+   its padding and stepping onto Tape would resize the module. 87px is the
+   height a 38px knob with its caption takes. Peak Alpine's row sets the same
+   floor on every one of its modules; this is the copy that travels with the
+   face to the standalone pedals, where there is no row. */
+.sm-module .pui-module__footer {
+  box-sizing: border-box;
+  min-height: 87px;
+}
+
+.sm-footer-empty {
+  height: 0;
+}
+
+/* A module's parameter rows. The gap to the stepper (or to the display under
+   it) is the handoff's 22px; between the two rows it is 18px. */
+.sm-knobs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+/* The Easy tab's single macro knob, centred. A touch more air above it than
+   the Adv grid's 22px - one knob on its own wants the room. */
+.sm-easy {
+  margin-top: 26px;
+  display: flex;
+  justify-content: center;
+}
+
+.sm-knob-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-evenly;
+  gap: 8px;
+}
+
+/* One knob on its own row (Tape's Tone) - held to the middle rather than
+   spread, so it lines up under the gap between the pair above it. */
+.sm-knob-row--centre {
+  justify-content: center;
+}
+
+.sm-display {
+  margin-top: 16px;
+}
+
+/* The Tremolo engine's tempo-sync pill, on a centred row under the knob grid.
+   16px clears the second knob row's captions; the pill flips the Rate knob's
+   readout between a period in ms and a note division. */
+.sm-sync-row {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+/* The Filter engine's response scope. FilterScope reads the --pui-scope-*
+   group, which onyx leaves on the light-theme values, so the well is pointed
+   at the same recess the bar displays sit in and the curves at the module's
+   accent - it reads as one of this module's displays, not as Peak Wah's. */
+.sm-display--filter {
+  position: relative;
+  --pui-scope-bg: var(--pui-recess);
+  --pui-scope-base: var(--pui-accent);
+  --pui-scope-sweep: var(--pui-accent);
+  --pui-scope-fill: color-mix(in srgb, var(--pui-accent) 16%, transparent);
+}
+
+.sm-display--filter .pui-scope {
+  border-radius: 12px;
+  box-shadow: var(--pui-well-shadow);
+}
+
+/* The infinity mark standing in for the Decay knob the Filter engine pins
+   fully up. Tucked into the well's top-right. */
+.sm-inf {
+  position: absolute;
+  top: 5px;
+  right: 10px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--pui-accent);
+  pointer-events: none;
+}
+
+/* Filter's Range and Time each carry a small control directly under them - the
+   wave <> picker and the SYNC pill. Both are wider than the 36px knob, so each
+   is taken out of flow (the padding stands in for its height) - in flow it
+   would widen its column and pull the row's knobs out of line with Freq / Q. */
+.sm-subcol {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 32px;
+}
+
+.sm-sub {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  transform: translateX(-50%);
+}
+
+.sm-sub--wave {
+  bottom: -2px;
+}
+
+.sm-sub--sync {
+  bottom: 2px;
+}
+
+/* The wave glyph traces one cycle from the peak (lfoValue's phase 0 = +1), so
+   a standalone triangle reads upside down. Flip it. */
+.sm-sub .pui-wave-icon {
+  transform: scaleY(-1);
+}
+
+/* The wave picker: chevrons and glyph, no name, in the panel's own ink so it
+   reads as secondary to the engine stepper up top. */
+.sm-sub .pui-stepper {
+  --pui-accent: var(--pui-ink);
+  gap: 2px;
+  padding: 3px 3px;
+}
+
+.sm-sub .pui-stepper__value {
+  gap: 0;
+}
+
+.sm-sub .pui-stepper__name {
+  display: none;
+}
+
+.sm-sub .pui-stepper__arrow {
+  width: 15px;
+  height: 15px;
+}
+
+/* Tape's Mono/Stereo switch. `margin-top: auto` drops it to the foot of the
+   module body whatever is above it, so it sits just clear of the footer's top
+   border - the row of knobs keeps its own top alignment and this fills the
+   slack between. */
+.sm-tape-switch {
+  margin-top: auto;
+  padding: 16px 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.sm-tape-switch__label {
+  font-family: var(--pui-font-label);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pui-ink-dim);
+  transition: color 120ms ease;
+}
+
+.sm-tape-switch__label[data-active] {
+  color: var(--pui-ink);
+}

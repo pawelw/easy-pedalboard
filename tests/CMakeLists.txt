@@ -32,14 +32,6 @@ if(EE_TAPE_TUNER)
     target_compile_definitions(ee_ui_snapshot PUBLIC EE_TAPE_TUNER=1)
 endif()
 
-if(EE_SHIMMER_TUNER)
-    target_sources(ee_ui_snapshot PRIVATE
-        ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src/ShimmerTunerPanel.cpp)
-    target_include_directories(ee_ui_snapshot
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src)
-    target_compile_definitions(ee_ui_snapshot PUBLIC EE_SHIMMER_TUNER=1)
-endif()
-
 if(TARGET PeakReverb)
     # Renders a dry file through the real processor so its output can be scored
     # against a reference recording.
@@ -456,6 +448,49 @@ if(TARGET PeakArtifact)
 
     target_link_libraries(ee_bitcrush_regress
         PRIVATE PeakArtifact ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+if(TARGET PeakModulation)
+    # Drives the real Peak Modulation processor like a host: every engine makes
+    # sound and stays finite, the power toggle reaches the audio, the dry path
+    # lands where the reported latency says, and the Init preset names every
+    # parameter. A checksum per case, so it is also the A/B for the next change
+    # that means to leave the pedal alone. See RegressHarness.h.
+    juce_add_console_app(ee_modulation_host PRODUCT_NAME "ee_modulation_host")
+
+    target_sources(ee_modulation_host PRIVATE ModulationHost.cpp)
+
+    target_compile_definitions(ee_modulation_host PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_modulation_host
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-modulation/src)
+
+    target_link_libraries(ee_modulation_host
+        PRIVATE PeakModulation ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endif()
+
+if(TARGET PeakReverb)
+    # The same for Peak Reverb: both engines, the power toggle, bypass, and the
+    # Init preset. A checksum per case - Shimmer stays at 0 so it reproduces.
+    juce_add_console_app(ee_reverb_host PRODUCT_NAME "ee_reverb_host")
+
+    target_sources(ee_reverb_host PRIVATE ReverbHost.cpp)
+
+    target_compile_definitions(ee_reverb_host PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_reverb_host
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src)
+
+    target_link_libraries(ee_reverb_host
+        PRIVATE PeakReverb ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 

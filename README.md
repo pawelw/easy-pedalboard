@@ -11,23 +11,37 @@ Builds as **VST3**, **AU** and a **Standalone** app.
 
 ### Peak Reverb
 
-A modulated feedback delay network reverb. Mono in, stereo out. Four knobs, plus
-a small **Resonance** cap in the middle of them:
+Peak Alpine's **Reverb** module as a pedal of its own, drawn the way Peak
+Artifact is: one narrow compartment, a `<>` stepper between two engines -
+**Space** and **Spring** - and a **Mix** knob in the footer. Mono in (a stereo
+input is summed before the send - a room has no left and right input), stereo
+out. It is the same `ee::fx::ReverbModule` Peak Alpine runs, behind the same
+face (`ReverbFace`, `packages/module-face`), so the pedal and the Alpine module
+cannot drift apart. The face uses the onyx theme with the reverb module's cyan
+accent, and a bar display above the knobs draws the tail falling away as Decay
+moves.
 
-| Knob         | Range        | What it does                                                                 |
-| ------------ | ------------ | ---------------------------------------------------------------------------- |
-| **Decay**    | 0.5 - 8 s    | Sets the tail length, and derives room size and predelay from it behind the scenes |
-| **Mix**      | 0 - 100 %    | Blend of dry signal and wet tail                                              |
-| **Shimmer**  | 0 - 100 %    | Feeds an octave-up copy of the tail back into the reverb. 0 % is off; up high each pass stacks another octave into a rising pad |
-| **Low Cut**  | off - 800 Hz | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
-| **Resonance** (centre) | 0 - 100 % | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
+**Space** is the modulated feedback delay network - the whole of what this
+pedal used to be:
 
-Resonance sits on a small cap between the four main knobs, marked `RESO` with no
-value printed — it is a voicing trim, not a headline control.
+| Knob        | Range       | What it does                                                                 |
+| ----------- | ----------- | ---------------------------------------------------------------------------- |
+| **Decay**   | 0.5 - 8 s   | Sets the tail length, and derives room size and predelay from it behind the scenes |
+| **Shimmer** | 0 - 100 %   | Feeds an octave-up copy of the tail back into the reverb. 0 % is off; up high each pass stacks another octave into a rising pad |
+| **Low Cut** | 20 - 800 Hz | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
+| **Reso**    | 0 - 100 %   | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
 
-Modulation is not a knob. It rides the Mix control: dry-heavy settings leave the
-tail still, and as the wet takes over the extra movement smears the modes that
-would otherwise ring through.
+**Spring** is Peak Spring's dispersive tank with its stereo pair always on, plus
+the two controls that pedal leaves off its own face:
+
+| Knob        | Range       | What it does                                                                 |
+| ----------- | ----------- | ---------------------------------------------------------------------------- |
+| **Decay**   | 0.4 - 8 s   | How long the springs ring on after the note stops                            |
+| **Tension** | 0 - 100 %   | A slack spring disperses gently and boings low and soft; a taut one chirps hard and sweeps. 50 % is Peak Spring's own voicing |
+| **Low Cut** | 20 - 800 Hz | Highpass on the finished tank output, resting at 60 Hz                        |
+
+**Mix** (0 - 100 %, equal power) is shared by both engines. Each engine keeps
+its own settings, so stepping away and back restores them.
 
 **Shimmer** is a stereo pair of time-domain pitch shifters (DaisySP's), fed a
 tap of the wet output through a predelay that grows with the decay knob, so the
@@ -43,17 +57,20 @@ gutting a mono sum. The knob is the feedback gain, tapered and capped below
 unity. At 0 % neither shifter runs and the reverb is exactly what it was.
 
 The full shimmer voicing lives in `shared/include/ee/dsp/ShimmerTuning.h`; the
-defaults there are a tuned setting. Configure with `-DEE_SHIMMER_TUNER=ON` (and
-flip `showTuner` in `PluginProcessor.cpp`) to open Peak Reverb with a side panel
-of live sliders for every value plus a copy-paste-ready readout of the struct —
-a development build only, the way `-DEE_TAPE_TUNER=ON` works for Peak Delay.
-
-The pedal carries no on/off switch of its own — use the host's device on/off.
-The `on` parameter has **trails**: bypassing stops feeding the network but leaves
-the wet path open, so the existing tail rings out instead of being cut off.
+defaults there are a tuned setting.
 
 High and low frequency decay rates are fixed internally (lows ring slightly
 longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
+
+**It replaced the native Peak Reverb** - the silver-knob face on a sky
+background - on 2026-09-14. The plugin code is still `Prvb`, so a host loads
+the new pedal where the old one was, but the parameter ids moved under their
+engine (`decay` is now `space.decay`): a session saved with the old pedal brings
+back only **Mix** and **on**, and everything else opens on its default. Two
+behaviours changed with it. Mix is the module's plain equal-power law rather
+than the old curved one, and the `on` parameter crossfades to the dry signal
+like every other module - there are no **trails** any more, so the tail stops
+with it.
 
 ### Peak Spring
 
@@ -73,7 +90,7 @@ what to use if the mix has to fold down. **Stereo** runs a second tank whose
 springs differ by about three per cent and crosses the two into each other, which
 opens the tail out without either side sounding detuned or hollow in mono.
 
-Where Peak Reverb models a plate, this models the steel box bolted into the
+Where Peak Reverb's Space engine models a plate, this models the steel box bolted into the
 bottom of an amp. Three springs run in parallel, each a short delay loop with a
 cascade of stretched all-pass sections *inside* the feedback path. Those
 sections are flat in magnitude but not in group delay, so the top of the
@@ -113,8 +130,8 @@ with the trade-offs and the measurements written next to each value.
 `tests/SpringMatch.cpp` (`ee_spring_match`) renders a file through the whole
 processor for A/B-ing against a reference.
 
-Like Peak Reverb, the pedal has no on/off switch of its own and the `on`
-parameter has **trails**: bypassing stops driving the tank but leaves the wet
+The pedal has no on/off switch of its own, and the `on` parameter has
+**trails**: bypassing stops driving the tank but leaves the wet
 path open, so whatever is still ringing rings out.
 
 ### Peak Delay
@@ -353,7 +370,7 @@ device on/off. The `on` parameter crossfades to the clean dry signal so
 toggling it never clicks.
 
 The face reuses Peak Delay's `silver()` theme, and is the same width and height
-as Peak Reverb, so the pedals line up on a rack.
+as the other two-column analog faces, so the pedals line up on a rack.
 
 ### Peak Trem & Pan
 
@@ -443,7 +460,7 @@ it there and rebuild.
 ### Peak Overdrive
 
 A diode-clipper overdrive with a Boss-OD voicing. Mono or stereo, in and out -
-each channel is driven independently. Three knobs, on the small Peak Reverb
+each channel is driven independently. Three knobs, on the small two-column
 footprint: **Level** and **Drive** across the top, **Tone** centred in a row of
 its own below.
 
@@ -582,26 +599,9 @@ Like the other pedals it has no on/off switch of its own - the `on` parameter
 crossfades to the dry signal so the host's device on/off never clicks. The face
 uses the onyx theme with a `#c00001` module accent.
 
-The swept **Filter** that used to be its third engine now lives in Peak Alpine's
-**Modulation** module (`mod.filter.*`), since an LFO sweep is modulation rather
-than an artefact. It is still Peak Wah's engine - `ee::dsp::AutoWah` - with its
-per-note envelope taken out: **Decay is pinned fully up** (the infinity mark in
-the display says so), so the LFO just runs, and the tap is fixed at
-**low-pass**. It inherits the engine's fixed output low-cut (90 Hz), which keeps
-the downswing from booming in the sub-bass at high **Range** and **Q**.
-
-| Knob      | Range         | What it does                                                          |
-| --------- | ------------- | ------------------------------------------------------------------- |
-| **Freq**  | 200 - 1600 Hz | Centre cutoff the LFO sweeps around                                  |
-| **Q**     | 0 - 100 %     | Resonance of the tank                                                |
-| **Range** | 0 - 100 %     | Depth of the sweep either side of Freq                               |
-| **Time**  | -             | LFO rate. The **Sync** pill under it locks the knob to the host tempo (note divisions) or reads one cycle in ms (30 ms - 3 s) |
-| **Mix**   | 0 - 100 %     | The Modulation module's dry / wet, in the footer                     |
-
-A **Wave** `<>` picker (Triangle / Ramp / Square) sets the LFO shape and a
-**Mono / Stereo** switch runs the right channel half a cycle out of phase. The
-voicing lives in `shared/include/ee/dsp/AutoWahConfig.h`; the LFO rate range is
-`kFilterRateMap` in `plugins/peak-alpine/src/PluginProcessor.cpp`.
+The swept **Filter** that used to be its third engine now lives in **Peak
+Modulation** (and Peak Alpine's Modulation module), since an LFO sweep is
+modulation rather than an artefact.
 
 **Rust** - `ee::dsp::Rust` - is degradation with a memory. A per-channel *wear*
 state tracks the recent input level: it climbs while you play and heals back
@@ -625,6 +625,57 @@ darker - 75 % in Contact lands around where 50 % would in Oxide.
 The voicing lives in `shared/include/ee/dsp/RustConfig.h`. The only RNG is the
 warble's slow random walk, fixed-seeded in `reset()`, so a render repeats bit
 for bit and can be checksummed.
+
+### Peak Modulation
+
+Peak Alpine's **Modulation** module as a pedal of its own, drawn the way Peak
+Artifact is: one narrow compartment, a `<>` stepper through five engines, and a
+**Mix** knob in the footer. It is the same `ee::fx::ModulationModule` Peak Alpine
+runs, behind the same face (`ModulationFace`, `packages/module-face`) and the
+same knob maps and host sync (`shared/include/ee/fx/ModulationControls.h`), so a
+knob position sounds the same in both. The face uses the onyx theme with the
+modulation module's amber accent.
+
+| Engine     | What it is                        | Controls                                                          |
+| ---------- | --------------------------------- | ----------------------------------------------------------------- |
+| **Tape**   | Peak Tape's whole machine         | Saturation, Flutter, Wear, Noise, a bipolar Tone, Mono / Stereo    |
+| **Trem**   | Peak Trem & Pan's tremolo         | Amount, Rate, Shape, Tube, and a **Sync** pill that locks Rate to the host tempo |
+| **Chorus** | Peak Chorus's engine              | Rate, Depth, Phase                                                |
+| **Phaser** | Peak Phase's engine               | Rate, Depth                                                       |
+| **Filter** | Peak Wah's engine as an LFO sweep | Freq, Q, Range, Time with **Sync**, a Wave picker, Mono / Stereo - below |
+
+Every engine keeps running while another is selected, so switching between them
+never clicks, and each keeps its own settings, so stepping away and back
+restores them. Tape reads off a transport delay line; the module pads every other
+engine and its own dry path out to match and reports that one figure to the host
+(6 ms), whichever engine is selected. **Tape has no Mix**: its wow makes the wet
+path wander in time, and any partial blend against a still dry signal combs and
+is heard as tremolo - so it runs fully wet, as Peak Tape does, and the power
+toggle is its dry/wet.
+
+Like the other pedals it has no on/off switch of its own - the `on` parameter
+crossfades to the dry signal, delayed by that same reported latency, so toggling
+it never clicks and never moves the timing.
+
+**Filter** was Peak Artifact's third engine until an LFO sweep was judged
+modulation rather than an artefact. It is Peak Wah's engine - `ee::dsp::AutoWah` - with its
+per-note envelope taken out: **Decay is pinned fully up** (the infinity mark in
+the display says so), so the LFO just runs, and the tap is fixed at
+**low-pass**. It inherits the engine's fixed output low-cut (90 Hz), which keeps
+the downswing from booming in the sub-bass at high **Range** and **Q**.
+
+| Knob      | Range         | What it does                                                          |
+| --------- | ------------- | ------------------------------------------------------------------- |
+| **Freq**  | 200 - 1600 Hz | Centre cutoff the LFO sweeps around                                  |
+| **Q**     | 0 - 100 %     | Resonance of the tank                                                |
+| **Range** | 0 - 100 %     | Depth of the sweep either side of Freq                               |
+| **Time**  | -             | LFO rate. The **Sync** pill under it locks the knob to the host tempo (note divisions) or reads one cycle in ms (30 ms - 3 s) |
+| **Mix**   | 0 - 100 %     | The module's dry / wet, in the footer                                |
+
+A **Wave** `<>` picker (Triangle / Ramp / Square) sets the LFO shape and a
+**Mono / Stereo** switch runs the right channel half a cycle out of phase. The
+voicing lives in `shared/include/ee/dsp/AutoWahConfig.h`; the LFO rate range is
+`kFilterRateMap` in `shared/include/ee/fx/ModulationControls.h`.
 
 ### Peak Grain
 
@@ -938,6 +989,7 @@ auval -v aufx Povd Peak                                     # Peak Overdrive
 auval -v aufx Pwah Peak                                     # Peak Wah
 auval -v aufx Ptap Peak                                     # Peak Tape
 auval -v aufx Part Peak                                     # Peak Artifact
+auval -v aufx Pmod Peak                                     # Peak Modulation
 auval -v aufx Psym Peak                                     # Peak Sympathy
 ```
 
@@ -1006,7 +1058,7 @@ They lay out in one row across the face. `plugins/peak-eq` is the worked
 example.
 
 `spec.centreKnob` drops one small cap into the middle of the knob block for a
-secondary trim (`plugins/peak-reverb` puts Resonance there). Give it
+secondary trim (`plugins/peak-tape` puts Tone there). Give it
 `compact = true` for the small size and `compactCaption = true` to print the
 caption on its one text line instead of the value.
 

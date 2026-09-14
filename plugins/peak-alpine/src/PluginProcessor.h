@@ -20,6 +20,7 @@
 
 #include "ee/fx/ArtifactModule.h"
 #include "ee/fx/DelayModule.h"
+#include "ee/fx/ModulationControls.h"
 #include "ee/fx/ModulationModule.h"
 #include "ee/fx/ReverbModule.h"
 #include "ee/plugin/InputMeter.h"
@@ -211,12 +212,9 @@ private:
     ee::fx::DelayModule delay;
     ee::fx::ReverbModule reverb;
 
-    // The Modulation Filter LFO free-runs; when its Sync pill is on and the
-    // transport is running it is also aligned to the host grid, exactly as Peak
-    // Wah does it. These are that alignment's state.
-    double filterExpectedPpq = 0.0;
-    bool filterHaveExpectedPpq = false;
-    bool filterWasPlaying = false;
+    /** Keeps the Modulation module's Filter and Tremolo LFOs on the host grid
+        while they are synced - the same object Peak Modulation runs. */
+    ee::fx::modulation::HostSync modSync;
 
     /** Stops the two Delay-module time parameters echoing each other forever. */
     std::atomic<bool> mirroring { false };

@@ -10,10 +10,11 @@ namespace ee::dsp
     feedback gain of that path. Two shifters run in parallel, read a predelay a
     Haas offset apart, for a wide, moving image.
 
-    Kept as a struct rather than constants so the development tuning panel can
-    drive them live, and so the whole voicing can be read at a glance. The
-    defaults below are a tuned setting; build with -DEE_SHIMMER_TUNER=ON to
-    bring the live panel back.
+    Kept as a struct rather than constants so a tuning panel can drive them
+    live, and so the whole voicing can be read at a glance. The defaults below
+    are a tuned setting. The panel that drove them (ShimmerTunerPanel) went when
+    Peak Reverb became a WebView module; it is in git history if a retune wants
+    it back.
 */
 struct ShimmerTuning
 {

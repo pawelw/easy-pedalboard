@@ -1,50 +1,47 @@
 #include "PluginProcessor.h"
 
+#include "Params.h"
+#include "PeakReverbWebEditor.h"
+
+#include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SpringConfig.h"
 #include "ee/plugin/ParamText.h"
-#include "ee/ui/PedalEditor.h"
-
-#include "BinaryData.h"
-
-#if EE_SHIMMER_TUNER
-#include "ShimmerTunerPanel.h"
-#endif
 
 namespace
 {
+using namespace ee::reverb;
 using ee::plugin::percentToText;
 
-constexpr const char* kDecayID = "decay";
-constexpr const char* kMixID = "mix";
-constexpr const char* kLowCutID = "locut";
-constexpr const char* kResonanceID = "res";
-constexpr const char* kShimmerID = "shimmer";
-constexpr const char* kOnID = "on";
-
-// The network is normalised to ~0.42 RMS gain. Trimmed against a reference
-// plate so that a 50 % mix lands at the same wet level it does there.
-constexpr float kWetTrim = 1.1f;
-
-// Mix knob shaping. Above 1.0 the wet comes in more gradually, so the
-// useful part of the range is not squeezed into the first third of travel.
-constexpr float kMixCurve = 1.3f;
-
-constexpr float kGainRampSeconds = 0.02f;
-
+/** "480 ms" under a second, "2.40 s" above - the Decay readout Peak Alpine
+    prints for the same two knobs. */
 juce::String secondsToText (float value, int)
 {
-    return juce::String (value, value < 1.0f ? 2 : 1) + " s";
+    return value < 1.0f ? juce::String (juce::roundToInt (value * 1000.0f)) + " ms" : juce::String (value, 2) + " s";
 }
 
+/** "180 Hz" under 1 kHz, "1.2 kHz" above - Peak Alpine's Low Cut readout. */
 juce::String hertzToText (float value, int)
 {
-    if (value <= ee::dsp::FdnReverb::kMinLowCutHz + 0.5f)
-        return "off";
-    return juce::String (juce::roundToInt (value)) + " Hz";
+    return value >= 1000.0f ? juce::String (value / 1000.0f, 1) + " kHz"
+                            : juce::String (juce::roundToInt (value)) + " Hz";
 }
 
-float shapedMix (float percent) noexcept
+using Attributes = juce::AudioParameterFloatAttributes;
+
+Attributes withText (juce::String (*fn) (float, int))
 {
-    return std::pow (juce::jlimit (0.0f, 1.0f, percent * 0.01f), kMixCurve);
+    return Attributes().withStringFromValueFunction (fn);
+}
+
+const juce::NormalisableRange<float> percent { 0.0f, 100.0f, 0.1f };
+
+void addPercent (juce::AudioProcessorValueTreeState::ParameterLayout& layout,
+                 const char* pid,
+                 const char* name,
+                 float defaultPct)
+{
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { pid, 1 }, name, percent, defaultPct,
+                                                             withText (percentToText)));
 }
 } // namespace
 
@@ -54,84 +51,92 @@ PeakReverbProcessor::PeakReverbProcessor()
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
-    decayParam = apvts.getRawParameterValue (kDecayID);
-    mixParam = apvts.getRawParameterValue (kMixID);
-    lowCutParam = apvts.getRawParameterValue (kLowCutID);
-    resonanceParam = apvts.getRawParameterValue (kResonanceID);
-    shimmerParam = apvts.getRawParameterValue (kShimmerID);
-    onParam = apvts.getRawParameterValue (kOnID);
+    presets.installState = [this] (const juce::ValueTree& tree) { installState (tree); };
 }
+
+PeakReverbProcessor::~PeakReverbProcessor() = default;
 
 juce::AudioProcessorValueTreeState::ParameterLayout PeakReverbProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    auto decayRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
-    decayRange.setSkewForCentre (2.0f);
+    // Every id, range and default is Peak Alpine's Reverb module's, minus the
+    // `rev.` - the same module, so the same knob position sounds the same.
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::on, 1 }, "On", true));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::engine, 1 }, "Engine",
+                                                              juce::StringArray { "Space", "Spring" }, 0));
+    addPercent (layout, id::mix, "Mix", 30.0f);
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kDecayID, 1 }, "Decay Time", decayRange, 3.2f,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (secondsToText)));
+    // Space.
+    auto spaceDecay = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
+    spaceDecay.setSkewForCentre (2.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::spaceDecay, 1 }, "Space Decay",
+                                                             spaceDecay, 2.0f, withText (secondsToText)));
+    addPercent (layout, id::spaceShimmer, "Space Shimmer", 0.0f);
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kMixID, 1 }, "Mix", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 30.0f,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
-
-    auto lowCutRange =
+    auto spaceLoCut =
         juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz, ee::dsp::FdnReverb::kMaxLowCutHz);
-    lowCutRange.setSkewForCentre (180.0f);
+    spaceLoCut.setSkewForCentre (180.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::spaceLoCut, 1 }, "Space Low Cut",
+                                                             spaceLoCut, ee::dsp::FdnReverb::kMinLowCutHz,
+                                                             withText (hertzToText)));
+    addPercent (layout, id::spaceReso, "Space Reso", 50.0f);
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kLowCutID, 1 }, "Low Cut", lowCutRange, ee::dsp::FdnReverb::kMinLowCutHz,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (hertzToText)));
+    // Spring. Peak Spring's ranges and defaults.
+    auto springDecay =
+        juce::NormalisableRange<float> (ee::dsp::spring::kMinDecaySeconds, ee::dsp::spring::kMaxDecaySeconds);
+    springDecay.setSkewForCentre (ee::dsp::spring::kDecaySkewCentre);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::springDecay, 1 }, "Spring Decay",
+                                                             springDecay, ee::dsp::spring::kDefaultDecaySeconds,
+                                                             withText (secondsToText)));
+    addPercent (layout, id::springTension, "Spring Tension", ee::dsp::spring::kDefaultTension01 * 100.0f);
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kResonanceID, 1 }, "Resonance", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 50.0f,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
-
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kShimmerID, 1 }, "Shimmer", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 0.0f,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText)));
-
-    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
+    // The same travel Space's Low Cut has, deliberately - see SpringConfig.h.
+    auto springLoCut = juce::NormalisableRange<float> (ee::dsp::spring::kMinLowCutHz, ee::dsp::spring::kMaxLowCutHz);
+    springLoCut.setSkewForCentre (180.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::springLoCut, 1 }, "Spring Low Cut",
+                                                             springLoCut, ee::dsp::spring::kOutputLowCutHz,
+                                                             withText (hertzToText)));
 
     return layout;
 }
 
-void PeakReverbProcessor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
+void PeakReverbProcessor::pushSettings() noexcept
 {
-    maxBlock = juce::jmax (1, maximumExpectedSamplesPerBlock);
+    const auto raw = [this] (const char* pid) { return apvts.getRawParameterValue (pid)->load(); };
+    const auto pct = [&raw] (const char* pid) { return raw (pid) * 0.01f; };
 
-    reverb.prepare (sampleRate);
-    reverb.reset();
+    module.setEngine (static_cast<int> (raw (id::engine)));
+    module.setEngaged (raw (id::on) > 0.5f);
+    module.setMix01 (pct (id::mix));
 
-    monoBuffer.setSize (1, maxBlock, false, true, true);
-    wetBuffer.setSize (2, maxBlock, false, true, true);
+    module.setSpace (raw (id::spaceDecay), pct (id::spaceShimmer), raw (id::spaceLoCut), pct (id::spaceReso));
+    module.setSpring (raw (id::springDecay), pct (id::springTension), raw (id::springLoCut));
+}
 
-    dryGain.reset (sampleRate, kGainRampSeconds);
-    wetGain.reset (sampleRate, kGainRampSeconds);
-    inputGain.reset (sampleRate, kGainRampSeconds);
+void PeakReverbProcessor::installState (const juce::ValueTree& tree)
+{
+    apvts.replaceState (tree);
+}
 
-    const float mix = shapedMix (mixParam->load());
-    const bool engaged = onParam->load() > 0.5f;
+// ---------------------------------------------------------------------- audio
 
-    reverb.setLowCut (lowCutParam->load());
-    reverb.setResonance (resonanceParam->load() * 0.01f);
-    reverb.setShimmer (shimmerParam->load() * 0.01f);
+void PeakReverbProcessor::prepareToPlay (double newSampleRate, int maximumExpectedSamplesPerBlock)
+{
+    sampleRate = newSampleRate > 0.0 ? newSampleRate : 44100.0;
+    const int maxBlock = juce::jmax (1, maximumExpectedSamplesPerBlock);
 
-    dryGain.setCurrentAndTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
-    wetGain.setCurrentAndTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi) * kWetTrim);
-    inputGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
+    pushSettings();
+    module.prepare (sampleRate, maxBlock);
+
+    // Both engines are latency-free, so this is zero - reported anyway, for the
+    // day one is not.
+    setLatencySamples (module.latencySamples());
 }
 
 void PeakReverbProcessor::releaseResources()
 {
-    reverb.reset();
-}
-
-double PeakReverbProcessor::getTailLengthSeconds() const
-{
-    return static_cast<double> (reverb.getTailSeconds());
+    module.reset();
 }
 
 bool PeakReverbProcessor::isBusesLayoutSupported (const BusesLayout& layouts) const
@@ -165,107 +170,22 @@ void PeakReverbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 
     for (int ch = numIn; ch < numOut; ++ch)
         buffer.clear (ch, 0, numSamples);
+    if (numIn == 1)
+        for (int ch = 1; ch < numOut; ++ch)
+            buffer.copyFrom (ch, 0, buffer, 0, 0, numSamples);
 
-    const float mix = shapedMix (mixParam->load());
-    const bool engaged = onParam->load() > 0.5f;
+    const int numCh = juce::jmin (numOut, int { kMaxChannels });
+    if (numCh == 0)
+        return;
 
-    reverb.setDecayTime (decayParam->load());
-    reverb.setLowCut (lowCutParam->load());
-    reverb.setResonance (resonanceParam->load() * 0.01f);
-    reverb.setShimmer (shimmerParam->load() * 0.01f);
+    pushSettings();
 
-    // Trails: bypassing stops feeding the network but leaves the wet path open,
-    // so the existing tail rings out instead of being cut off.
-    dryGain.setTargetValue (engaged ? std::cos (mix * juce::MathConstants<float>::halfPi) : 1.0f);
-    wetGain.setTargetValue (std::sin (mix * juce::MathConstants<float>::halfPi) * kWetTrim);
-    inputGain.setTargetValue (engaged ? 1.0f : 0.0f);
-
-    for (int offset = 0; offset < numSamples; offset += maxBlock)
-    {
-        const int chunk = juce::jmin (maxBlock, numSamples - offset);
-
-        float* mono = monoBuffer.getWritePointer (0);
-        const float* inL = buffer.getReadPointer (0, offset);
-        const float* inR = numIn > 1 ? buffer.getReadPointer (1, offset) : inL;
-
-        for (int i = 0; i < chunk; ++i)
-            mono[i] = 0.5f * (inL[i] + inR[i]) * inputGain.getNextValue();
-
-        float* wetL = wetBuffer.getWritePointer (0);
-        float* wetR = wetBuffer.getWritePointer (1);
-        reverb.process (mono, wetL, wetR, chunk);
-
-        float* outL = buffer.getWritePointer (0, offset);
-        float* outR = numOut > 1 ? buffer.getWritePointer (1, offset) : nullptr;
-
-        for (int i = 0; i < chunk; ++i)
-        {
-            const float dg = dryGain.getNextValue();
-            const float wg = wetGain.getNextValue();
-
-            const float dryL = outL[i];
-
-            if (outR != nullptr)
-            {
-                const float dryR = outR[i];
-                outL[i] = dryL * dg + wetL[i] * wg;
-                outR[i] = dryR * dg + wetR[i] * wg;
-            }
-            else
-            {
-                outL[i] = dryL * dg + 0.5f * (wetL[i] + wetR[i]) * wg;
-            }
-        }
-    }
+    module.process (buffer, numCh, numSamples);
 }
 
 juce::AudioProcessorEditor* PeakReverbProcessor::createEditor()
 {
-    ee::ui::PedalSpec spec;
-    spec.name = "Peak Reverb";
-    spec.tagline = "Decay drives room size and predelay";
-    spec.version = "v" JucePlugin_VersionString;
-    spec.knobs = { { kDecayID, "Decay" }, { kMixID, "Mix" }, { kShimmerID, "Shimmer" }, { kLowCutID, "Low Cut" } };
-
-    // Resonance moves to a small cap in the middle of the four - value on the
-    // face would only crowd it, so the readout is just the "RESO" label.
-    spec.centreKnob =
-        ee::ui::KnobSpec { .parameterID = kResonanceID, .caption = "reso", .compact = true, .compactCaption = true };
-
-    spec.knobsPerRow = 2;
-    spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
-
-    // The blue palette, but the four large caps are fixed silver discs in a
-    // brushed-silver bezel rather than the plain photographic cap, a sky fills
-    // the face behind the frame, and the lettering is black to read on it.
-    auto theme = ee::ui::PedalTheme::blue();
-    theme.controlStyle = ee::ui::ControlStyle::analogSilver;
-    theme.backgroundImage = juce::ImageCache::getFromMemory (BinaryData::reverbbg_jpeg, BinaryData::reverbbg_jpegSize);
-    theme.textPrimary = juce::Colours::black;
-    theme.textSecondary = juce::Colour (0xff3a3a3a);
-    theme.title = juce::Colours::black;
-    theme.logoTint = juce::Colours::black;
-
-    // Swap the value arc and its background track: the line takes the pale
-    // colour, the track takes the blue.
-    const auto arcLine = theme.knobTrack;
-    theme.knobTrack = theme.accent;
-    theme.accent = arcLine;
-
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, theme);
-
-#if EE_SHIMMER_TUNER
-    // Flip to true to bring the panel back without reconfiguring CMake.
-    constexpr bool showTuner = false;
-
-    if (showTuner)
-        editor->setSidePanel (std::make_unique<ShimmerTunerPanel> (reverb.getShimmerTuning(),
-                                                                   [this] (const ee::dsp::ShimmerTuning& t)
-                                                                   { reverb.setShimmerTuning (t); }),
-                              ShimmerTunerPanel::preferredWidth);
-#endif
-
-    return editor;
+    return new PeakReverbWebEditor (*this);
 }
 
 void PeakReverbProcessor::getStateInformation (juce::MemoryBlock& destData)
@@ -278,7 +198,7 @@ void PeakReverbProcessor::setStateInformation (const void* data, int sizeInBytes
 {
     if (auto xml = getXmlFromBinary (data, sizeInBytes))
         if (xml->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xml));
+            installState (juce::ValueTree::fromXml (*xml));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

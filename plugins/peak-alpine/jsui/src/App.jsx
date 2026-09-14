@@ -11,16 +11,18 @@ import {
 } from "@synthpeak/pedal-ui/juce";
 import { DelayFace } from "@synthpeak/delay-face";
 import { ArtifactFace } from "@synthpeak/artifact-face";
+import { ModulationFace, ReverbFace } from "@synthpeak/module-face";
 import ChainSlot from "./ChainSlot.jsx";
-import SideModule from "./SideModule.jsx";
 import { MODULE_ARTIFACT, MODULE_MODULATION, MODULE_DELAY, MODULE_REVERB } from "./chainOrder.js";
 import { useChainOrder } from "./useChainOrder.js";
-import { ARTIFACT_EASY, MOD_ENGINES, REVERB_ENGINES } from "./engines.jsx";
+import { ARTIFACT_EASY } from "./engines.jsx";
 import "./index.css";
 
-/** A module's Level trim for the header's right-hand slot. Identical to the one
-    SideModule gives Modulation and Reverb: a bipolar trim resting at unity, its
-    arc drawn out from twelve o'clock in whichever direction it has been moved. */
+/** A module's Level trim for the header's right-hand slot - the same one on all
+    four modules: a bipolar trim resting at unity, its arc drawn out from twelve
+    o'clock in whichever direction it has been moved. It is this plugin's module
+    chrome, not any one pedal's parameter, so each shared face is handed it as
+    `headerRight` and it resolves through that face's own ParamScope. */
 function ModuleLevel({ parameterId }) {
   return (
     <JuceKnob parameterId={parameterId} variant="flat" size={24} scaleFrom="centre" bare />
@@ -81,17 +83,11 @@ const MODULE_RENDERERS = {
     />
   ),
   [MODULE_MODULATION]: () => (
-    <SideModule name="Mod" accent="var(--pui-accent-mod)" engines={MOD_ENGINES} engineId="mod.engine" prefix="mod." />
+    <ModulationFace prefix="mod." headerRight={<ModuleLevel parameterId="level" />} easyTab knobVariant="flat" />
   ),
   [MODULE_DELAY]: () => <DelayModule />,
   [MODULE_REVERB]: () => (
-    <SideModule
-      name="Reverb"
-      accent="var(--pui-accent-reverb)"
-      engines={REVERB_ENGINES}
-      engineId="rev.engine"
-      prefix="rev."
-    />
+    <ReverbFace prefix="rev." headerRight={<ModuleLevel parameterId="level" />} easyTab knobVariant="flat" />
   ),
 };
 
@@ -103,11 +99,11 @@ const MODULE_RENDERERS = {
  * `prefix` to this plugin's namespaced parameters. A fix to that face lands in
  * both plugins, which is the whole reason it lives in a package of its own.
  *
- * The two side modules are one component too (`SideModule`), because
- * Modulation and Reverb are the same object with a different engine list. And
- * the Artifact module, first in the row, is `ArtifactFace` from
- * `@synthpeak/artifact-face` bound through an `art.` prefix - Peak Artifact's
- * own face, the same way the Delay module is Peak Delay's.
+ * The other three are the same arrangement. Modulation and Reverb are
+ * `ModulationFace` and `ReverbFace` from `@synthpeak/module-face` - Peak
+ * Modulation's and Peak Reverb's own faces, bound through `mod.` and `rev.` -
+ * and the Artifact module, first in the row, is `ArtifactFace` from
+ * `@synthpeak/artifact-face` bound through `art.`, Peak Artifact's own face.
  *
  * What is actually written here is only what is unique: the enclosure, the
  * header, which four modules are in the row, and - through ChainSlot's grip

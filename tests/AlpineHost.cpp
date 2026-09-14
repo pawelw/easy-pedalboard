@@ -88,6 +88,26 @@ void modOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id
 void delayOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::dlyOn, false); }
 void reverbOff (juce::AudioProcessorValueTreeState& s) { setFlag (s, ee::alpine::id::revOn, false); }
 
+/** The Modulation module's two tempo-locked LFOs, each with its Sync switch on
+    and the transport rolling. The engine sweep in main leaves both switches
+    off, so without these the host-grid alignment - the snap on the first
+    playing block, the per-block pull after it - is never reached at all. */
+void tremSynced (juce::AudioProcessorValueTreeState& s)
+{
+    using namespace ee::alpine::id;
+    setChoice (s, modEngine, ee::fx::ModulationModule::Tremolo);
+    setFlag (s, modTremSync, true);
+    setPercent (s, modMix, 60.0f);
+}
+
+void filterSynced (juce::AudioProcessorValueTreeState& s)
+{
+    using namespace ee::alpine::id;
+    setChoice (s, modEngine, ee::fx::ModulationModule::Filter);
+    setFlag (s, modFilterSync, true);
+    setPercent (s, modMix, 60.0f);
+}
+
 /** Every module doing something at once. Note the Shimmer: this case is
     deliberately *not* a reproducible baseline, and its checksum is printed with
     a warning rather than kept.
@@ -384,6 +404,22 @@ int main (int argc, char* argv[])
                         writer->writeFromAudioSampleBuffer (out, 0, kLength);
             }
         }
+
+    // Both synced LFOs, printed with a checksum like the engines above.
+    std::printf ("\nSynced LFOs:\n");
+    for (const auto& c : { Case { "Tremolo, synced", tremSynced }, Case { "Filter, synced", filterSynced } })
+    {
+        juce::AudioBuffer<float> out (2, kLength);
+        out.makeCopyOf (input);
+        render (out, c.configure);
+
+        const bool ok = allFinite (out) && out.getMagnitude (0, kLength) > 0.01f;
+
+        std::printf ("  %s  %-16s %s  peak %.6f  rms %.6f\n", ok ? "ok  " : "FAIL", c.name,
+                     checksum (out).toRawUTF8(), out.getMagnitude (0, kLength), out.getRMSLevel (0, 0, kLength));
+        if (! ok)
+            ++failures;
+    }
 
     // The chain actually reorders, not merely accepts the parameter: reversing
     // it must sound different from the default order above.

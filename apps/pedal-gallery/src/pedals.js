@@ -1,6 +1,8 @@
 import PeakDelayFace from "peak-delay-jsui/src/App.jsx";
 import PeakAlpineFace from "peak-alpine-jsui/src/App.jsx";
 import PeakArtifactFace from "peak-artifact-jsui/src/App.jsx";
+import PeakModulationFace from "peak-modulation-jsui/src/App.jsx";
+import PeakReverbFace from "peak-reverb-jsui/src/App.jsx";
 import PeakWahFace from "peak-wah-jsui/src/App.jsx";
 
 // The shipping plan, not a mirror of plugins/: Peak Alpine, each of its four
@@ -10,7 +12,7 @@ import PeakWahFace from "peak-wah-jsui/src/App.jsx";
 // `face` is the pedal's own real App.jsx, imported straight from its jsui
 // project - nothing here re-implements a pedal's UI, so there's nothing to
 // keep in sync by hand. Leave `face: null` for one whose jsui doesn't exist
-// yet (Reverb and Modulation are, for now, only Alpine side modules).
+// yet.
 //
 // `theme` picks the palette this page renders that face in - App.jsx is
 // imported directly here, bypassing the pedal's own main.jsx entirely, so
@@ -27,9 +29,9 @@ export const pedals = [
   // The multi-effect host - listed first because it is the one that contains
   // the four after it rather than sitting beside them.
   { slug: "peak-alpine", name: "Peak Alpine", group: "alpine", face: PeakAlpineFace, theme: "onyx" },
-  { slug: "peak-reverb", name: "Peak Reverb", group: "alpine", face: null },
+  { slug: "peak-reverb", name: "Peak Reverb", group: "alpine", face: PeakReverbFace, theme: "onyx" },
   { slug: "peak-delay", name: "Peak Delay", group: "alpine", face: PeakDelayFace, theme: "onyx" },
-  { slug: "peak-modulation", name: "Peak Modulation", group: "alpine", face: null },
+  { slug: "peak-modulation", name: "Peak Modulation", group: "alpine", face: PeakModulationFace, theme: "onyx" },
   { slug: "peak-artifact", name: "Peak Artifact", group: "alpine", face: PeakArtifactFace, theme: "onyx" },
 
   { slug: "peak-wah", name: "Peak Wah", group: "standalone", face: PeakWahFace },

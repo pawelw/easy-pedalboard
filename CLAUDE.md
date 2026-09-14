@@ -1,6 +1,6 @@
 # Synth Peak — working notes
 
-Thirteen JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
+Fifteen JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
 framework. `README.md` is the user-facing manual (what each pedal does, how to
 install it); this file is the map for working on the code.
 
@@ -56,6 +56,8 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_module_stress_artefacts/Release/ee_module_stress    # Peak Alpine's switchable modules
 ./build/tests/ee_bit_check_artefacts/Release/ee_bit_check [outDir] [dry.wav]  # Amp's Bit calibration and Drive's dB
 ./build/tests/ee_alpine_host_artefacts/Release/ee_alpine_host        # drives the real Peak Alpine processor
+./build/tests/ee_modulation_host_artefacts/Release/ee_modulation_host  # the real Peak Modulation, checksum per engine
+./build/tests/ee_reverb_host_artefacts/Release/ee_reverb_host      # the real Peak Reverb, both engines
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
@@ -75,13 +77,15 @@ Factory**, which writes the preset into the pedal's own `presets/` folder in the
 source tree for committing. Off by default and refused by the bridge in a normal
 build; never ship one.
 
-Three pedals carry a development side panel that drives the part of their
+Two pedals carry a development side panel that drives the part of their
 voicing that is not on the face, and prints the header lines for whatever you
-dial in: `-DEE_SHIMMER_TUNER=ON` (Peak Reverb), `-DEE_TAPE_TUNER=ON` (Peak
-Delay), `-DEE_GRAIN_TUNER=ON` (Peak Grain). Never ship one.
+dial in: `-DEE_TAPE_TUNER=ON` (Peak Delay), `-DEE_GRAIN_TUNER=ON` (Peak Grain).
+Never ship one. (Peak Reverb's shimmer panel went when it became a WebView
+module - `ShimmerTuning.h` still holds that voicing.)
 
-The two WebView faces (Peak Wah, Peak Delay) read their page out of the
-pedal's `jsui/dist` by default, so an installed plugin renders in a DAW with
+The WebView faces (Peak Wah, Peak Delay, Peak Alpine, Peak Artifact, Peak
+Modulation, Peak Reverb) read their page out of the pedal's `jsui/dist` by
+default, so an installed plugin renders in a DAW with
 nothing else running - **build it once after checkout**, or the editor opens on
 a notice telling you to:
 
@@ -89,8 +93,9 @@ a notice telling you to:
 npm run build --prefix plugins/peak-delay/jsui
 ```
 
-`-DEE_JSUI_DEV_SERVER=ON` points both faces at their Vite dev server instead
-(Wah 3000, Delay 3001) for hot reload while iterating on `jsui/src`. Never
+`-DEE_JSUI_DEV_SERVER=ON` points the faces at their Vite dev servers instead
+(Wah 3000, Delay 3001, Alpine 3002, Artifact 3003, Modulation 3004, Reverb 3005)
+for hot reload while iterating on `jsui/src`. Never
 install one: `EE_INSTALL_PLUGINS` is on outside the `fast` preset, so a full
 build of a dev-server tree overwrites `~/Library/Audio/Plug-Ins` with a face
 that is blank whenever Vite is not running.
@@ -195,7 +200,10 @@ shared/include/ee/fx/     compositions of engines with an opinion about their
                           order - DelayModule is Peak Delay's whole chain, which
                           Peak Alpine's Delay module is a second instance of;
                           ArtifactModule is Peak Artifact's, likewise Alpine's
-                          first module
+                          first module; ModulationModule and ReverbModule are
+                          Peak Modulation's and Peak Reverb's, and
+                          ModulationControls.h holds the Mod knob maps and host
+                          sync both plugins read
 shared/include/ee/plugin/ the bypass crossfade, shared parameter formatters,
                           and the preset store + its WebView bridge
 plugins/peak-*/presets/   that pedal's factory presets - see below
@@ -214,6 +222,10 @@ packages/delay-face/      Peak Delay's face minus its enclosure — the componen
 packages/artifact-face/   the same idea for Peak Artifact: the ArtifactFace
                           component Peak Artifact and Peak Alpine's first module
                           both render, bound through an `art.` prefix in Alpine
+packages/module-face/     and again for Alpine's two narrow modules:
+                          ModulationFace and ReverbFace (one SideModule), which
+                          Peak Modulation and Peak Reverb render standalone and
+                          Alpine binds through `mod.` / `rev.`
 plugins/peak-*/jsui/      a WebView pedal's own page: its enclosure and whatever
                           is specific to it, and nothing else
 apps/pedal-gallery/       dev-only: every face plus the component showcase
@@ -235,7 +247,7 @@ and every control follows it - the families are never mixed on one face.
 
 - **`analog`** (most pedals): the photographic knob cap from `knob.png`,
   a value arc around it, lit bezel buttons, dark recessed displays.
-- **`analogSilver`** (Peak Reverb): `analog` with the knob's black outer collar
+- **`analogSilver`** (Peak Tape): `analog` with the knob's black outer collar
   swapped for a static brushed-silver bezel ring. `silver-knob.png` is
   `knob.png` minus that collar; `silver-knob-base-v1.png` is the ring that takes
   its place, so the whole control stays a normal knob size. Same `plate.png`

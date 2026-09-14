@@ -3,9 +3,12 @@ peak_add_plugin(PeakReverb
     PRODUCT    "Peak Reverb"
     BUNDLE     com.synthpeak.peakreverb
     CATEGORIES "Fx Reverb"
+    SOURCES    src/PeakReverbWebEditor.cpp
+    LIBS       juce::juce_dsp juce::juce_gui_extra
+    WEBVIEW
 )
-if(EE_SHIMMER_TUNER)
-    target_sources(PeakReverb PRIVATE src/ShimmerTunerPanel.cpp)
-    target_compile_definitions(PeakReverb PUBLIC EE_SHIMMER_TUNER=1)
-    message(STATUS "Peak Reverb: shimmer tuning panel enabled - development build")
-endif()
+
+# The React face reads straight off disk in dev (jsui/dist, rebuilt by `npm
+# run build`) rather than through BinaryData - see plugins/peak-delay/jsui.
+target_compile_definitions(PeakReverb PRIVATE
+    PEAKREVERB_JSUI_DIR="${CMAKE_CURRENT_SOURCE_DIR}/jsui")

@@ -7,8 +7,9 @@
 
 /** Offline renderer used to A/B the plugin against a reference recording.
 
-    Runs a dry file through the real PeakReverbProcessor, so the mix law, wet
-    trim and parameter smoothing are all exercised rather than reimplemented.
+    Runs a dry file through the real PeakReverbProcessor's Space engine, so the
+    module's mix law and parameter smoothing are exercised rather than
+    reimplemented.
 
         ee_reverb_match in.wav out.wav <decaySeconds> <mixPercent> <lowCutHz> [midCutPercent]
 */
@@ -59,10 +60,11 @@ int main (int argc, char** argv)
             p->setValueNotifyingHost (p->convertTo0to1 (value));
     };
 
-    set ("decay", decay);
+    set ("engine", 0.0f); // Space
+    set ("space.decay", decay);
     set ("mix", mix);
-    set ("locut", highCut);
-    set ("res", midCut);
+    set ("space.locut", highCut);
+    set ("space.reso", midCut);
     set ("on", 1.0f);
 
     juce::MidiBuffer midi;

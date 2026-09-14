@@ -162,7 +162,7 @@ add_subdirectory(shared)
 # ---------------------------------------------------------------------------
 set(EE_ALL_PLUGINS
     peak-reverb peak-spring peak-delay peak-eq peak-trem-pan peak-chorus peak-alpine
-    peak-artifact peak-phase peak-overdrive peak-wah peak-tape peak-grain peak-sympathy)
+    peak-artifact peak-modulation peak-phase peak-overdrive peak-wah peak-tape peak-grain peak-sympathy)
 
 set(EE_PLUGINS "all" CACHE STRING
     "Semicolon-separated pedals to build, or \"all\". e.g. -DEE_PLUGINS=peak-wah;peak-tape")
@@ -172,7 +172,6 @@ option(EE_LTO "Link with link-time optimisation (slow; for release builds)" ON)
 
 # Bolt a live tuning panel onto a pedal. Never turn these on for a build you hand
 # to anyone.
-option(EE_SHIMMER_TUNER "Add the shimmer tuning panel to Peak Reverb (development only)" OFF)
 option(EE_TAPE_TUNER "Add the tape tuning panel to Peak Delay (development only)" OFF)
 option(EE_JSUI_DEV_SERVER "Point the WebView faces at their Vite dev server instead of jsui/dist (development only)" OFF)
 option(EE_PRESET_AUTHOR "Add the face's \"save into the shipped bank\" button, which writes to a pedal's presets/ source folder (development only)" OFF)

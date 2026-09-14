@@ -65,6 +65,8 @@ run ee_reverb_stress
 run ee_trempan_stress
 run ee_wah_stress
 run ee_grain_stress
+run ee_modulation_host
+run ee_reverb_host
 
 if [[ $status -eq 0 ]]; then
     echo "==> OK"
