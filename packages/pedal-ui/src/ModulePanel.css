@@ -93,7 +93,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 14px 12px 12px;
+  padding: 16px 12px 8px;
   border-top: 1px solid var(--pui-module-divider);
 }
 

@@ -36,7 +36,7 @@ export default function App() {
       {/* 568 + the link bracket's own column - see --pd-link-col. */}
       <Card
         title="Peak Delay"
-        headerCenter={<JucePresetBar />}
+        headerCenter={<JucePresetBar variant="separated" />}
         headerRight={<HeaderLevels />}
         className="pd-card"
         width={548}

@@ -244,13 +244,14 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
    the inner top highlight that keeps the cap from going flat against a dark
    panel. The two offset crescents over that hairline light it from above.
 
-   The fill is a literal rather than a token, so --pui-soft-face-top and
-   --pui-soft-face-bottom are currently unread and this cap is onyx-black under
-   every theme, not just onyx. */
+   Reads --pui-soft-face-bottom, the darker of the pair each theme sets - the
+   flat value onyx already used here as a literal, so this only changes
+   anything for a theme that isn't onyx (this cap used to be onyx-black
+   under every theme, not just onyx). */
 .pui-knob__soft-cap {
     position: absolute;
     inset: 2px;
     border-radius: 50%;
-    background: #111416;
+    background: var(--pui-soft-face-bottom);
     box-shadow: inset 0 -1px 0.5px var(--pui-soft-rim-lo), inset 0 0.5px 1px var(--pui-soft-face-hi), var(--pui-soft-shadow);
 }

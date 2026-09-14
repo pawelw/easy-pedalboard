@@ -206,8 +206,8 @@
      a bright highlight on a dark cap stops it reading as dark at all. The
      arc keeps its green (a lighter one, for the darker ground) rather than
      going teal with the rest of the palette, so the accent means the same
-     thing on both faces. The cap is a flat #111416 in Knob.css rather than
-     this pair, which describes the gradient it replaced. */
+     thing on both faces. The cap (Knob.css) reads -bottom only, flat, rather
+     than the gradient this pair used to describe. */
   --pui-soft-face-top: #333f43;
   --pui-soft-face-bottom: #151a1d;
   --pui-soft-face-hi: rgba(185, 211, 217, 0.3);
@@ -232,6 +232,13 @@
   --pui-chrome-ink: #9fb8bd;
   --pui-chrome-ink-hover: #d6e8ec;
   --pui-chrome-field-ink: #cfe2e6;
+
+  /* Peak Alpine's three module accents, restored to their original brighter
+     numbers - :root darkened these for the light/grey themes, which onyx's
+     near-black panel never needed. */
+  --pui-accent-mod: #e0b23c;
+  --pui-accent-delay: #a3ce7a;
+  --pui-accent-reverb: #7fd2d8;
 
   /* Card, per COMPONENTS.md's panel table: no grain, a bigger radius, a
      softer/deeper shadow with no inset highlight (there's no panel-edge
@@ -369,11 +376,16 @@
    its engine stepper, and the value arcs of its own knobs - which is one
    `--pui-soft-lit` override on the module wrapper plus a `--pui-accent` the
    toggle and the stepper read. ModulePanel does both from its `accent` prop;
-   nothing below it learns which module it is in. */
+   nothing below it learns which module it is in.
+
+   Darker than onyx's own here on purpose - these are pastel enough to wash
+   out against a light panel (the cream/grey themes, both far brighter than
+   onyx's near-black one), so onyx restores its own original, brighter numbers
+   in its own block below rather than reading these. */
 :root {
-  --pui-accent-mod: #e0b23c;
-  --pui-accent-delay: #a3ce7a;
-  --pui-accent-reverb: #7fd2d8;
+  --pui-accent-mod: #a97c1f;
+  --pui-accent-delay: #5c9640;
+  --pui-accent-reverb: #348088;
 }
 
 /* There is deliberately no `--pui-accent` token here. An accent-wearing

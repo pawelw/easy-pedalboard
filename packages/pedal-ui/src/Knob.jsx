@@ -140,7 +140,7 @@ function Sweep({
 // that diameter anything wider reads as a band rather than a line.
 const SOFT_SWEEP_GAP = 3.5;
 const SOFT_SWEEP_WIDTH = 4;
-const SOFT_SWEEP_WIDTH_SMALL = 1.5;
+const SOFT_SWEEP_WIDTH_SMALL = 2;
 
 const TICK_COUNT = 20;
 const TICK_LENGTH = 6;

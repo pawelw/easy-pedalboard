@@ -1,6 +1,7 @@
 import PeakDelayFace from "peak-delay-jsui/src/App.jsx";
 import PeakAlpineFace from "peak-alpine-jsui/src/App.jsx";
 import PeakArtifactFace from "peak-artifact-jsui/src/App.jsx";
+import PeakWahFace from "peak-wah-jsui/src/App.jsx";
 
 // The shipping plan, not a mirror of plugins/: Peak Alpine, each of its four
 // modules as its own product, and two pedals that ship on their own. A pedal
@@ -25,12 +26,13 @@ export const groups = [
 export const pedals = [
   // The multi-effect host - listed first because it is the one that contains
   // the four after it rather than sitting beside them.
-  { slug: "peak-alpine", name: "Peak Alpine", group: "alpine", face: PeakAlpineFace, theme: "onyx" },
+  { slug: "peak-alpine", name: "Peak Alpine", group: "alpine", face: PeakAlpineFace }, // TEMPORARY: light preview, restore theme: "onyx"
   { slug: "peak-reverb", name: "Peak Reverb", group: "alpine", face: null },
   { slug: "peak-delay", name: "Peak Delay", group: "alpine", face: PeakDelayFace, theme: "onyx" },
   { slug: "peak-modulation", name: "Peak Modulation", group: "alpine", face: null },
   { slug: "peak-artifact", name: "Peak Artifact", group: "alpine", face: PeakArtifactFace, theme: "onyx" },
 
+  { slug: "peak-wah", name: "Peak Wah", group: "standalone", face: PeakWahFace },
   { slug: "peak-grain", name: "Peak Grain", group: "standalone", face: null },
   { slug: "peak-eq", name: "Peak EQ", group: "standalone", face: null },
 ];

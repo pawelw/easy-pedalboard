@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet><meta name="design_doc_mode" content="canvas"><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet"><style>body{margin:0;background:#0e1214;font-family:"Space Grotesk",-apple-system,sans-serif}*{box-sizing:border-box;user-select:none;-webkit-user-select:none}a{color:#d0342c;text-decoration:none}a:hover{color:#b9d3d9}</style></helmet>
+
+<section style="padding:36px 32px 56px">
+  <div style="display:flex;align-items:baseline;gap:14px;margin-bottom:6px">
+    <h1 style="margin:0;font-size:16px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:#b9d3d9">Flat knobs</h1>
+    <span style="font-size:11px;font-weight:500;color:#8ba3a9">Turn 2 · six treatments at 52px, shown at 18 / 55 / 88 %</span>
+  </div>
+  <p style="max-width:680px;margin:0 0 26px;font-size:12px;line-height:1.6;color:#8ba3a9;text-wrap:pretty">Flat cap, no bevel, no drop shadow, accent arc hugging the rim. <a href="#2a">2a</a> matches the Artifact screenshot; the rest push one variable each.</p>
+
+  <div style="display:flex;flex-wrap:wrap;gap:16px">
+
+    <div id="2a" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">2a</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Hugging arc</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">The screenshot, rebuilt. 5px stroke, 2px gap, unlit track barely there.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ hugS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <div style="position:relative;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#313d42 0%,#1b2226 38%,#0f1417 100%);box-shadow:0 5px 11px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.6),inset 0 1px 0 rgba(222,242,248,.38)">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-width="5" stroke-linecap="round">
+                <path d="{{ s.track }}" style="stroke:#1c2427"></path>
+                <path d="{{ s.lit }}" style="stroke:#d0342c"></path>
+              </svg>
+              <div style="position:absolute;inset:3px;border-radius:50%;background:radial-gradient(135% 135% at 50% 118%,#232c31 0%,#1a2124 55%,#151b1e 100%);box-shadow:inset 0 3px 5px rgba(0,0,0,.42),inset 0 -1px 0 rgba(214,236,243,.16)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ s.rot }}"><div style="position:absolute;top:16%;left:50%;height:26%;width:3px;margin-left:-1.5px;border-radius:999px;background:#e6f0f4;box-shadow:0 1px 2px rgba(0,0,0,.55)"></div></div>
+              </div>
+            </div>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="2b" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">2b</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Inlaid ring</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">Arc sunk into the cap face. Nothing spills outside the circle, so knobs pack tighter.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ inlayS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <div style="position:relative;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#313d42 0%,#1b2226 38%,#0f1417 100%);box-shadow:0 5px 11px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.6),inset 0 1px 0 rgba(222,242,248,.38)">
+              <div style="position:absolute;inset:3px;border-radius:50%;background:radial-gradient(135% 135% at 50% 118%,#232c31 0%,#1a2124 55%,#151b1e 100%);box-shadow:inset 0 3px 5px rgba(0,0,0,.42),inset 0 -1px 0 rgba(214,236,243,.16)"></div>
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-width="4" stroke-linecap="butt">
+                <path d="{{ s.track }}" style="stroke:#0e1214"></path>
+                <path d="{{ s.lit }}" style="stroke:#d0342c"></path>
+              </svg>
+              <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ s.rot }}"><div style="position:absolute;top:28%;left:50%;height:22%;width:3px;margin-left:-1.5px;border-radius:999px;background:#e6f0f4;box-shadow:0 1px 2px rgba(0,0,0,.55)"></div></div>
+            </div>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="2c" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">2c</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Segmented</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">Same arc cut into 14 blocks. Gives a readable scale without drawing a tick ring.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ segS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <div style="position:relative;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#313d42 0%,#1b2226 38%,#0f1417 100%);box-shadow:0 5px 11px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.6),inset 0 1px 0 rgba(222,242,248,.38)">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-width="5" stroke-linecap="butt">
+                <sc-for list="{{ s.dim }}" as="g" hint-placeholder-count="8"><path d="{{ g.d }}" style="stroke:#1c2427"></path></sc-for>
+                <sc-for list="{{ s.on }}" as="g" hint-placeholder-count="6"><path d="{{ g.d }}" style="stroke:#d0342c"></path></sc-for>
+              </svg>
+              <div style="position:absolute;inset:3px;border-radius:50%;background:radial-gradient(135% 135% at 50% 118%,#232c31 0%,#1a2124 55%,#151b1e 100%);box-shadow:inset 0 3px 5px rgba(0,0,0,.42),inset 0 -1px 0 rgba(214,236,243,.16)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ s.rot }}"><div style="position:absolute;top:16%;left:50%;height:26%;width:3px;margin-left:-1.5px;border-radius:999px;background:#e6f0f4;box-shadow:0 1px 2px rgba(0,0,0,.55)"></div></div>
+              </div>
+            </div>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="2d" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">2d</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Cursor</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">Full track stays neutral; only a short accent block marks the value. Calmest in a dense row.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ curS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <div style="position:relative;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#313d42 0%,#1b2226 38%,#0f1417 100%);box-shadow:0 5px 11px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.6),inset 0 1px 0 rgba(222,242,248,.38)">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-linecap="round">
+                <path d="{{ s.track }}" stroke-width="2" style="stroke:#2a343a"></path>
+                <path d="{{ s.lit }}" stroke-width="5" style="stroke:#d0342c"></path>
+              </svg>
+              <div style="position:absolute;inset:3px;border-radius:50%;background:radial-gradient(135% 135% at 50% 118%,#232c31 0%,#1a2124 55%,#151b1e 100%);box-shadow:inset 0 3px 5px rgba(0,0,0,.42),inset 0 -1px 0 rgba(214,236,243,.16)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ s.rot }}"><div style="position:absolute;top:16%;left:50%;height:26%;width:3px;margin-left:-1.5px;border-radius:999px;background:#e6f0f4;box-shadow:0 1px 2px rgba(0,0,0,.55)"></div></div>
+              </div>
+            </div>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="2e" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">2e</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Accent slot</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">No ring at all. The pointer carries the colour and a rim dot marks the travel ends.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ slotS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <div style="position:relative;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#313d42 0%,#1b2226 38%,#0f1417 100%);box-shadow:0 5px 11px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.6),inset 0 1px 0 rgba(222,242,248,.38)">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}">
+                <sc-for list="{{ s.ends }}" as="d" hint-placeholder-count="2"><circle cx="{{ d.x }}" cy="{{ d.y }}" r="1.4" style="fill:#2a343a"></circle></sc-for>
+              </svg>
+              <div style="position:absolute;inset:3px;border-radius:50%;background:radial-gradient(135% 135% at 50% 118%,#232c31 0%,#1a2124 55%,#151b1e 100%);box-shadow:inset 0 3px 5px rgba(0,0,0,.42),inset 0 -1px 0 rgba(214,236,243,.16)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ s.rot }}"><div style="position:absolute;top:14%;left:50%;height:34%;width:3.4px;margin-left:-1.7px;border-radius:999px;background:#e04036;box-shadow:0 1px 2px rgba(0,0,0,.55)"></div></div>
+              </div>
+            </div>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+    <div id="2f" style="width:300px;background:#20292e;border-radius:10px;overflow:hidden">
+      <div style="display:flex;align-items:baseline;gap:9px;padding:15px 16px 0">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.12em;color:#0e1214;background:#d0342c;border-radius:4px;padding:2px 6px">2f</span>
+        <span style="font-size:11px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:#dce6ea">Full sweep</span>
+      </div>
+      <p style="margin:8px 16px 0;font-size:11px;line-height:1.5;color:#8ba3a9">Arc closes the full 360° with a gap at the bottom, so the ring reads as one object.</p>
+      <div style="display:flex;justify-content:space-around;padding:26px 12px 26px">
+        <sc-for list="{{ fullS }}" as="s" hint-placeholder-count="3">
+          <div style="display:flex;flex-direction:column;align-items:center;gap:9px">
+            <div style="position:relative;width:52px;height:52px;border-radius:50%;background:linear-gradient(180deg,#313d42 0%,#1b2226 38%,#0f1417 100%);box-shadow:0 5px 11px rgba(0,0,0,.55),0 1px 2px rgba(0,0,0,.6),inset 0 1px 0 rgba(222,242,248,.38)">
+              <svg style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)" width="{{ s.box }}" height="{{ s.box }}" viewBox="{{ s.vb }}" fill="none" stroke-linecap="butt">
+                <path d="{{ s.track }}" stroke-width="3" style="stroke:#1c2427"></path>
+                <path d="{{ s.lit }}" stroke-width="3" style="stroke:#d0342c"></path>
+              </svg>
+              <div style="position:absolute;inset:4px;border-radius:50%;background:radial-gradient(135% 135% at 50% 118%,#232c31 0%,#1a2124 55%,#151b1e 100%);box-shadow:inset 0 3px 5px rgba(0,0,0,.42),inset 0 -1px 0 rgba(214,236,243,.16)">
+                <div style="position:absolute;inset:0;transform-origin:50% 50%;transform:{{ s.rot }}"><div style="position:absolute;top:15%;left:50%;height:28%;width:3px;margin-left:-1.5px;border-radius:999px;background:#e6f0f4;box-shadow:0 1px 2px rgba(0,0,0,.55)"></div></div>
+              </div>
+            </div>
+            <span style="font-size:9px;font-weight:500;color:#8ba3a9;font-variant-numeric:tabular-nums">{{ s.pct }}</span>
+          </div>
+        </sc-for>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:980,&quot;height&quot;:580}}">
+const A0 = -135, A1 = 135, VALS = [0.18, 0.55, 0.88];
+
+const pt = (r, d) => {
+  const rad = ((d - 90) * Math.PI) / 180;
+  return [Math.cos(rad) * r, Math.sin(rad) * r];
+};
+
+const arc = (r, from, to) => {
+  if (Math.abs(to - from) < 0.4) return "";
+  const [x1, y1] = pt(r, from);
+  const [x2, y2] = pt(r, to);
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${Math.abs(to - from) > 180 ? 1 : 0} ${to > from ? 1 : 0} ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+};
+
+const frame = (r, pad) => {
+  const box = r + pad;
+  return { box: box * 2, vb: `${-box} ${-box} ${box * 2} ${box * 2}` };
+};
+
+const ang = (v) => A0 + v * 270;
+
+class Component extends DCLogic {
+  renderVals() {
+    const build = (fn) =>
+      VALS.map((v) => ({
+        pct: `${Math.round(v * 100)} %`,
+        rot: `rotate(${ang(v).toFixed(2)}deg)`,
+        ...fn(v),
+      }));
+
+    return {
+      hugS: build((v) => {
+        const r = 28.5;
+        return { ...frame(r, 3), track: arc(r, A0, A1), lit: arc(r, A0, ang(v)) };
+      }),
+
+      inlayS: build((v) => {
+        const r = 22;
+        return { ...frame(r, 2), track: arc(r, A0, A1), lit: arc(r, A0, ang(v)) };
+      }),
+
+      segS: build((v) => {
+        const r = 28.5;
+        const n = 14, span = 270 / n, gap = 4.5;
+        const edge = Math.round(v * (n - 1));
+        const on = [], dim = [];
+        for (let i = 0; i < n; i++) {
+          const a = A0 + i * span;
+          const d = { d: arc(r, a + gap / 2, a + span - gap / 2) };
+          (i <= edge ? on : dim).push(d);
+        }
+        return { ...frame(r, 3), on, dim };
+      }),
+
+      curS: build((v) => {
+        const r = 28.5;
+        const a = ang(v);
+        // A fixed-length block centred on the value, clamped so it never runs
+        // off either end of the travel.
+        const half = 7;
+        const c = Math.min(Math.max(a, A0 + half), A1 - half);
+        return { ...frame(r, 3), track: arc(r, A0, A1), lit: arc(r, c - half, c + half) };
+      }),
+
+      slotS: build(() => {
+        const r = 30;
+        const ends = [A0, A1].map((a) => {
+          const [x, y] = pt(r, a);
+          return { x: x.toFixed(2), y: y.toFixed(2) };
+        });
+        return { ...frame(r, 3), ends };
+      }),
+
+      fullS: build((v) => {
+        // 340° of ring with a 20° break at the bottom.
+        const r = 24.5, B0 = -170, B1 = 170;
+        return {
+          ...frame(r, 2),
+          track: arc(r, B0, B1),
+          lit: arc(r, B0, B0 + v * 340),
+        };
+      }),
+    };
+  }
+}
+
+</script>
+</body>
+</html>
