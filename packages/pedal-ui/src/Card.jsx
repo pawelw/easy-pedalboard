@@ -22,6 +22,12 @@ import "./Card.css";
  * slot off the card if laid out beside it). Structure only: the type sizes,
  * padding and logo size those faces also change are theirs to scope, the way
  * `.pd-card` already scopes Peak Delay's.
+ *
+ * `headerCenterPlacement`: "inline" (default) sits `headerCenter` beside the
+ * title, sharing the header's one row - what every pedal with a preset bar
+ * does. "below" moves it to a second full-width row under the title/logo row,
+ * for a card whose title alone doesn't leave that row enough width to also
+ * read a preset name (Peak Artifact's, half Peak Alpine's).
  */
 export default function Card({
   title,
@@ -31,31 +37,38 @@ export default function Card({
   headerRight,
   showLogo = true,
   subtitlePlacement = "beside",
+  headerCenterPlacement = "inline",
   children,
   className = "",
 }) {
   const stacked = subtitlePlacement === "below";
+  const centerBelow = headerCenterPlacement === "below";
   return (
     <div className={`pui-reset pui-card ${className}`} style={width ? { width } : undefined}>
       {(title || subtitle || headerCenter || headerRight) && (
-        <header className="pui-card__header">
-          <div className={`pui-card__header-left${stacked ? " pui-card__header-left--stacked" : ""}`}>
-            {showLogo && <Logo className="pui-card__logo" />}
-            {stacked ? (
-              <div className="pui-card__titles">
-                {title && <h1 className="pui-card__title">{title}</h1>}
-                {subtitle && <span className="pui-card__subtitle">{subtitle}</span>}
-              </div>
-            ) : (
-              <>
-                {title && <h1 className="pui-card__title">{title}</h1>}
-                {subtitle && <span className="pui-card__subtitle">{subtitle}</span>}
-              </>
-            )}
-          </div>
-          {headerCenter && <div className="pui-card__header-center">{headerCenter}</div>}
-          {headerRight && <div className="pui-card__header-right">{headerRight}</div>}
-        </header>
+        <div className={`pui-card__header-block${centerBelow ? " pui-card__header-block--center-below" : ""}`}>
+          <header className="pui-card__header">
+            <div className={`pui-card__header-left${stacked ? " pui-card__header-left--stacked" : ""}`}>
+              {showLogo && <Logo className="pui-card__logo" />}
+              {stacked ? (
+                <div className="pui-card__titles">
+                  {title && <h1 className="pui-card__title">{title}</h1>}
+                  {subtitle && <span className="pui-card__subtitle">{subtitle}</span>}
+                </div>
+              ) : (
+                <>
+                  {title && <h1 className="pui-card__title">{title}</h1>}
+                  {subtitle && <span className="pui-card__subtitle">{subtitle}</span>}
+                </>
+              )}
+            </div>
+            {headerCenter && !centerBelow && <div className="pui-card__header-center">{headerCenter}</div>}
+            {headerRight && <div className="pui-card__header-right">{headerRight}</div>}
+          </header>
+          {headerCenter && centerBelow && (
+            <div className="pui-card__header-center pui-card__header-center--below">{headerCenter}</div>
+          )}
+        </div>
       )}
 
       <div className="pui-card__body">{children}</div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PedalUIProvider } from "@synthpeak/pedal-ui";
-import { pedals } from "./pedals.js";
+import { groups, pedals } from "./pedals.js";
 import Components from "./Components.jsx";
 import "./index.css";
 
@@ -38,19 +38,28 @@ function Home() {
           <span className="gallery__tile-name">pedal-ui components</span>
           <span className="gallery__tile-status">Light / onyx showcase</span>
         </a>
-
-        {pedals.map((pedal) => (
-          <a
-            key={pedal.slug}
-            href={pedal.face ? `#${pedal.slug}` : undefined}
-            className={"gallery__tile" + (pedal.face ? "" : " gallery__tile--disabled")}
-            aria-disabled={!pedal.face}
-          >
-            <span className="gallery__tile-name">{pedal.name}</span>
-            <span className="gallery__tile-status">{pedal.face ? "View face" : "No WebView face yet"}</span>
-          </a>
-        ))}
       </div>
+
+      {groups.map((group) => (
+        <section key={group.id} className="gallery__group">
+          <h2 className="gallery__group-title">{group.title}</h2>
+          <div className="gallery__grid">
+            {pedals
+              .filter((pedal) => pedal.group === group.id)
+              .map((pedal) => (
+                <a
+                  key={pedal.slug}
+                  href={pedal.face ? `#${pedal.slug}` : undefined}
+                  className={"gallery__tile" + (pedal.face ? "" : " gallery__tile--disabled")}
+                  aria-disabled={!pedal.face}
+                >
+                  <span className="gallery__tile-name">{pedal.name}</span>
+                  <span className="gallery__tile-status">{pedal.face ? "View face" : "No WebView face yet"}</span>
+                </a>
+              ))}
+          </div>
+        </section>
+      ))}
     </div>
   );
 }

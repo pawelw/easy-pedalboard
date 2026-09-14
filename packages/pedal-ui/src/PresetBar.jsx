@@ -71,6 +71,10 @@ function ChevronRightIcon() {
  *    next to it - and a segmented group among them reads as the odd one out.
  *    The name field is also nearly twice as wide there, which is what buys the
  *    room for a preset name to be read rather than truncated.
+ *
+ * `showSteppers` (default on) hides the prev/next arrows for a face too narrow
+ * to carry them - Peak Artifact's single-module card - leaving just the name
+ * picker and Save.
  */
 export default function PresetBar({
   factory = DEMO_FACTORY,
@@ -78,6 +82,7 @@ export default function PresetBar({
   value,
   canAuthor = false,
   variant = "joined",
+  showSteppers = true,
   onLoad,
   onStep,
   onSave,
@@ -101,22 +106,29 @@ export default function PresetBar({
   };
 
   return (
-    <div className={`pui-reset pui-presetbar pui-presetbar--${variant}`}>
+    <div
+      className={`pui-reset pui-presetbar pui-presetbar--${variant}${showSteppers ? "" : " pui-presetbar--no-steppers"}`}
+    >
       <div className="pui-presetbar__group">
-        <Button onClick={() => onStep?.(-1)} aria-label="Previous preset">
-          {separated ? <Chevron direction="left" width={8} height={12} /> : <ChevronLeftIcon />}
-        </Button>
-        <Button onClick={() => onStep?.(1)} aria-label="Next preset">
-          {separated ? <Chevron direction="right" width={8} height={12} /> : <ChevronRightIcon />}
-        </Button>
+        {showSteppers && (
+          <>
+            <Button onClick={() => onStep?.(-1)} aria-label="Previous preset">
+              {separated ? <Chevron direction="left" width={8} height={12} /> : <ChevronLeftIcon />}
+            </Button>
+            <Button onClick={() => onStep?.(1)} aria-label="Next preset">
+              {separated ? <Chevron direction="right" width={8} height={12} /> : <ChevronRightIcon />}
+            </Button>
+          </>
+        )}
         <PresetPicker
           factory={factory}
           user={user}
           value={value}
           onChange={onLoad}
           chevron={separated ? <Chevron direction="updown" width={10} height={13} /> : undefined}
-          // Two 28px buttons and the two 6px gaps between them and the field.
-          reachBack={separated ? 68 : undefined}
+          // Two 28px buttons and the two 6px gaps between them and the field -
+          // nothing to reach back across once they are gone.
+          reachBack={separated && showSteppers ? 68 : undefined}
         />
       </div>
 

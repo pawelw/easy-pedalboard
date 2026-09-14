@@ -51,6 +51,22 @@
   padding: 0 10px 24px;
 }
 
+/* headerCenterPlacement="below": the header row keeps its own bottom padding
+   only when there is no second row to follow it - the gap between the two
+   rows is this element's, not the header's. */
+.pui-card__header-block--center-below .pui-card__header {
+  padding-bottom: 10px;
+}
+
+/* Left-aligned rather than centred on the row: it sits above the body's own
+   left edge (headerCenter--below and .pui-card__body share the same 10px
+   inset), so a preset bar here reads as flush with what is below it. */
+.pui-card__header-center--below {
+  display: flex;
+  justify-content: flex-start;
+  padding: 0 10px 24px;
+}
+
 .pui-card__header-left {
   display: flex;
   align-items: baseline;

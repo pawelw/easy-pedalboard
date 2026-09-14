@@ -64,9 +64,10 @@ function usePresetBridge() {
  *
  * `variant` is PresetBar's, forwarded. The only prop there is, and it is here
  * because how the bar is *drawn* is the face's decision while everything else
- * about it comes off the bridge.
+ * about it comes off the bridge. `showSteppers` is PresetBar's too, forwarded
+ * for the same reason.
  */
-export default function JucePresetBar({ variant }) {
+export default function JucePresetBar({ variant, showSteppers }) {
   const { state, load, step, save } = usePresetBridge();
 
   return (
@@ -76,6 +77,7 @@ export default function JucePresetBar({ variant }) {
       value={{ kind: state.currentKind, name: state.currentName }}
       canAuthor={state.canAuthor}
       variant={variant}
+      showSteppers={showSteppers}
       onLoad={load}
       onStep={step}
       onSave={save}

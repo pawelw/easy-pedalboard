@@ -475,6 +475,61 @@ export function installAutoResize({ padding = 4 } = {}) {
   observer.observe(card);
 }
 
+/** Like `installAutoResize`, but for a face whose native editor is resizable
+ * (a DAW's own corner drag, or its own on-screen grip) rather than fixed to
+ * its content - Peak Alpine's host chrome, so its window behaves the way
+ * every other plugin's does in Ableton, Logic and the rest.
+ *
+ * The page is measured once, at its natural (unscaled) size, the moment it
+ * settles - that measurement becomes the design size the native editor opens
+ * at and locks its aspect ratio and min/max drag range to (see
+ * `PeakAlpineWebEditor`'s `reportContentSize`). It is not re-measured after
+ * that: the editor's own size from then on is the user's or the host's to
+ * pick, not the page's, exactly as `PedalEditor`'s native faces already work.
+ *
+ * What actually fills the window at any other size is CSS, not React: `body`
+ * is pinned to that one design size and scaled by the ratio between it and
+ * `window.innerWidth`, which is how big the native side has actually made the
+ * WebView. Nothing inside ever reflows - it is one image, stretched - so nothing
+ * about the face has to know it is being resized at all.
+ */
+export function installResizableFace({ padding = 4 } = {}) {
+  if (typeof window.__JUCE__?.initialisationData?.__juce__functions?.includes !== "function") return;
+  if (!window.__JUCE__.initialisationData.__juce__functions.includes("reportContentSize")) return;
+
+  const reportContentSize = Juce.getNativeFunction("reportContentSize");
+  const card = document.querySelector(".pui-card");
+  if (!card) return;
+
+  let baseWidth = 0;
+
+  const applyScale = () => {
+    if (!baseWidth) return;
+    document.body.style.transform = `scale(${window.innerWidth / baseWidth})`;
+  };
+
+  const measure = () => {
+    const rect = card.getBoundingClientRect();
+    baseWidth = Math.ceil(rect.width) + padding * 2;
+    const baseHeight = Math.ceil(rect.height) + padding * 2;
+
+    document.body.style.width = `${baseWidth}px`;
+    document.body.style.height = `${baseHeight}px`;
+    document.body.style.transformOrigin = "top left";
+
+    reportContentSize(baseWidth, baseHeight);
+    applyScale();
+
+    observer.disconnect();
+  };
+
+  // One measurement, not `installAutoResize`'s continuous one - see above.
+  const observer = new ResizeObserver(measure);
+  observer.observe(card);
+
+  window.addEventListener("resize", applyScale);
+}
+
 /** The native build stamp - `getBuildInfo()`, when the processor registers it
  * - so a face can show which binary is actually running. `__DATE__ __TIME__`
  * only ever changes when that translation unit is actually recompiled, so

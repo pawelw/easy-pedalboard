@@ -62,6 +62,24 @@ private:
 
     PeakAlpineProcessor& processorRef;
 
+    // How far the window can be dragged from the size the page first reported -
+    // the same range PedalEditor's native faces use, so every pedal's window
+    // resizes by the same feel. Unlike those, this one opens at exactly the
+    // reported size (scale 1) rather than kDefaultZoom - reportContentSize's
+    // very first call is what used to size the window outright, and still does.
+    static constexpr float kMinZoom = 0.6f;
+    static constexpr float kMaxZoom = 2.0f;
+
+    // The size the page reported the one time it is measured - see
+    // installResizableFace. 0 until that first report arrives.
+    int baseWidth = 0;
+    int baseHeight = 0;
+
+    // Its own grip rather than useBottomRightCornerResizer's: that one draws
+    // outside setResizable's control over where, and this way it sits above
+    // the WebView the same way PedalEditor's does above its face.
+    std::unique_ptr<juce::ResizableCornerComponent> resizeGrip;
+
     // Where the page comes from - see EE_JSUI_DEV_SERVER above.
     static constexpr bool kUseDevServer = EE_JSUI_DEV_SERVER != 0;
     static const juce::String devServerAddress;

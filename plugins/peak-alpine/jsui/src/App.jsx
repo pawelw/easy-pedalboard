@@ -5,7 +5,7 @@ import { Card, JucePresetBar, ModulePanel, PowerToggle } from "@synthpeak/pedal-
 import {
   JuceFader,
   JuceKnob,
-  installAutoResize,
+  installResizableFace,
   useJuceBuildInfo,
   useJuceToggleValue,
 } from "@synthpeak/pedal-ui/juce";
@@ -115,7 +115,7 @@ const MODULE_RENDERERS = {
  * exact same four elements it always did.
  */
 export default function App() {
-  useEffect(() => installAutoResize(), []);
+  useEffect(() => installResizableFace(), []);
 
   // Engaged unless told otherwise - see useJuceToggleValue's note on why the
   // default matters for a power switch.
@@ -145,7 +145,7 @@ export default function App() {
     <div className="page">
       <Card
         title="Peak Alpine"
-        subtitle="Artifact / Modulation / Delay / Reverb machine"
+        subtitle="Artifact / Mod / Delay / Reverb machine"
         subtitlePlacement="below"
         headerCenter={<JucePresetBar variant="separated" />}
         headerRight={<HostControls on={on} onToggle={setOn} />}

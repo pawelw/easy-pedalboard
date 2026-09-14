@@ -16,11 +16,10 @@ export default function App() {
   return (
     <div className="page">
       <Card
-        title="Peak Artifact"
-        subtitle="Ring Mod / Bit Crush / Filter / Rust"
-        subtitlePlacement="below"
-        headerCenter={<JucePresetBar />}
-        className="pa-card"
+        showLogo={false}
+        headerCenter={<JucePresetBar variant="separated" showSteppers={false} />}
+        headerCenterPlacement="below"
+        className="af-card"
       >
         <ArtifactFace />
       </Card>

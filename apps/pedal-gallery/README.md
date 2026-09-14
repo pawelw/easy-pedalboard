@@ -10,6 +10,14 @@ npm install
 npm run dev      # http://localhost:3100
 ```
 
+## What is listed
+
+The gallery follows the shipping plan rather than `plugins/`: **Peak Alpine**
+and each of its four modules as its own product (Reverb, Delay, Modulation,
+Artifact), then the pedals that ship on their own (**Peak Grain**, **Peak
+EQ**). `groups` in `src/pedals.js` sets the two sections; a pedal off that
+list does not appear here even if it has a face.
+
 ## Why this doesn't become a second UI to maintain
 
 Each tile in `src/pedals.js` points at that pedal's **own real** `App.jsx`,

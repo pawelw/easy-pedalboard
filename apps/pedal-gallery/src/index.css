@@ -45,6 +45,19 @@ body {
   gap: 14px;
 }
 
+.gallery__group {
+  margin-top: 32px;
+}
+
+.gallery__group-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #6b6a63;
+  margin: 0 0 12px;
+}
+
 .gallery__tile {
   display: flex;
   flex-direction: column;

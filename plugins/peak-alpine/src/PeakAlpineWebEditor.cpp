@@ -74,22 +74,41 @@ PeakAlpineWebEditor::PeakAlpineWebEditor (PeakAlpineProcessor& p)
                   // See installAutoResize: the page measures its own real
                   // rendered size and reports it here, rather than this editor
                   // opening at a size guessed from a browser that isn't the
-                  // WebView engine actually rendering it.
-                  .withNativeFunction ("reportContentSize",
-                                       [this] (const juce::Array<juce::var>& args,
-                                               juce::WebBrowserComponent::NativeFunctionCompletion complete)
-                                       {
-                                           const int w = juce::jmax (100, static_cast<int> (args[0]));
-                                           const int h = juce::jmax (100, static_cast<int> (args[1]));
+                  // WebView engine actually rendering it. installResizableFace
+                  // only ever calls this once, with the page's unscaled size -
+                  // that measurement becomes the window's design size, so it is
+                  // what the resize range and locked aspect ratio are set from.
+                  .withNativeFunction (
+                      "reportContentSize",
+                      [this] (const juce::Array<juce::var>& args,
+                              juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                      {
+                          const int w = juce::jmax (100, static_cast<int> (args[0]));
+                          const int h = juce::jmax (100, static_cast<int> (args[1]));
+
+                          if (baseWidth <= 0)
+                          {
+                              baseWidth = w;
+                              baseHeight = h;
+
+                              setResizable (true, false);
+                              setResizeLimits (
+                                  juce::roundToInt (baseWidth * kMinZoom), juce::roundToInt (baseHeight * kMinZoom),
+                                  juce::roundToInt (baseWidth * kMaxZoom), juce::roundToInt (baseHeight * kMaxZoom));
+
+                              if (auto* c = getConstrainer())
+                                  c->setFixedAspectRatio ((double)baseWidth / (double)baseHeight);
+
+                              resizeGrip = std::make_unique<juce::ResizableCornerComponent> (this, getConstrainer());
+                              addAndMakeVisible (*resizeGrip);
+                          }
 #if EE_ALPINE_WATCHDOG
-                                           setSize (
-                                               w + (watchdogPanel != nullptr ? AlpineWatchdogPanel::preferredWidth : 0),
-                                               h);
+                          setSize (w + (watchdogPanel != nullptr ? AlpineWatchdogPanel::preferredWidth : 0), h);
 #else
                                            setSize (w, h);
 #endif
-                                           complete (true);
-                                       })
+                          complete (true);
+                      })
                   // A knob's printed value. A native function rather than the
                   // parameter's own stringFromValue because JUCE's relays carry
                   // only start/end/skew/interval, not the format string.
@@ -127,10 +146,10 @@ PeakAlpineWebEditor::PeakAlpineWebEditor (PeakAlpineProcessor& p)
                   // the stamp only moves when this file (or a header it
                   // depends on - PluginProcessor.h, and through it every DSP
                   // header) is actually recompiled.
-                  .withNativeFunction ("getBuildInfo",
-                                       [] (const juce::Array<juce::var>&,
-                                           juce::WebBrowserComponent::NativeFunctionCompletion complete)
-                                       { complete (juce::String (__DATE__) + " " + __TIME__); })
+                  .withNativeFunction (
+                      "getBuildInfo",
+                      [] (const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                      { complete (juce::String (__DATE__) + " " + __TIME__); })
                   .withNativeFunction ("getDelayTimesMs",
                                        [this] (const juce::Array<juce::var>&,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
@@ -219,10 +238,19 @@ void PeakAlpineWebEditor::resized()
         auto bounds = getLocalBounds();
         watchdogPanel->setBounds (bounds.removeFromRight (AlpineWatchdogPanel::preferredWidth));
         webView.setBounds (bounds);
-        return;
     }
+    else
 #endif
-    webView.setBounds (getLocalBounds());
+    {
+        webView.setBounds (getLocalBounds());
+    }
+
+    if (resizeGrip != nullptr)
+    {
+        constexpr int gripSize = 18;
+        resizeGrip->setBounds (getWidth() - gripSize, getHeight() - gripSize, gripSize, gripSize);
+        resizeGrip->toFront (false);
+    }
 }
 
 std::optional<juce::WebBrowserComponent::Resource> PeakAlpineWebEditor::getResource (const juce::String& url)

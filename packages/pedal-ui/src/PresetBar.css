@@ -109,8 +109,11 @@
   gap: 10px;
 }
 
+/* The prev/next/name trio joins into one control the same way the joined
+   variant's does - only its own outer corners keep the group's rounding, and
+   Save stays a separate object past the wider 10px gap above. */
 .pui-presetbar--separated .pui-presetbar__group {
-  gap: 6px;
+  gap: 0;
 }
 
 .pui-presetbar--separated > .pui-button,
@@ -143,6 +146,39 @@
 
 .pui-presetbar--separated .pui-dropdown__input:hover {
   background: var(--pui-chrome-hover);
+}
+
+/* Comes after the .pui-button rules above on purpose: same specificity, and
+   this has to win - see the joined variant's identical note. */
+.pui-presetbar--separated .pui-presetbar__group > .pui-button:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.pui-presetbar--separated .pui-presetbar__group > .pui-button:nth-child(2) {
+  border-radius: 0;
+  margin-left: -1px;
+}
+
+.pui-presetbar--separated .pui-presetbar__group .pui-dropdown__input {
+  border-radius: 0 8px 8px 0;
+  margin-left: -1px;
+}
+
+/* showSteppers=false: no arrow buttons to its left, so the field joins Save
+   into one pair instead of standing apart from it across the wider gap -
+   there is only one other object in the bar to read as separate from. */
+.pui-presetbar--separated.pui-presetbar--no-steppers {
+  gap: 0;
+}
+
+.pui-presetbar--separated.pui-presetbar--no-steppers .pui-dropdown__input {
+  border-radius: 8px 0 0 8px;
+  margin-left: 0;
+}
+
+.pui-presetbar--separated.pui-presetbar--no-steppers > .pui-button {
+  border-radius: 0 8px 8px 0;
+  margin-left: -1px;
 }
 
 /* The field's mark is a double chevron, not the single down-arrow a select
