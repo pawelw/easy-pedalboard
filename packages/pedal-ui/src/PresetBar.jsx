@@ -3,6 +3,7 @@ import Button from "./Button.jsx";
 import Chevron from "./Chevron.jsx";
 import PresetPicker from "./PresetPicker.jsx";
 import PresetSaveDialog from "./PresetSaveDialog.jsx";
+import DiceIcon from "./DiceIcon.jsx";
 import SaveIcon from "./SaveIcon.jsx";
 import "./PresetBar.css";
 
@@ -45,7 +46,11 @@ function ChevronRightIcon() {
 }
 
 /**
- * Browse and save: prev/next/name as one joined control, then Save.
+ * Browse and save: prev/next/name as one joined control, then Save and the
+ * dice. The dice sets every knob to a random position (`onRandomize`; the
+ * native side decides what counts as a knob and how far it may go - see
+ * PresetStore::randomize) and leaves the selected preset's name showing, the
+ * same as turning a knob by hand does.
  *
  * Presentational and stateless about the presets themselves - it is handed two
  * lists and a selection and calls back. `JucePresetBar` is the same bar with
@@ -65,7 +70,7 @@ function ChevronRightIcon() {
  *  - `"joined"` (default) is the segmented control every pedal face carries:
  *    prev, next and the name box share their edges and read as one object,
  *    with Save beside it.
- *  - `"separated"` is Peak Alpine's host header: four discrete rounded
+ *  - `"separated"` is Peak Alpine's host header: discrete rounded
  *    controls at a wider size. Four rather than one because that header is a
  *    row of separate chrome objects - the level faders and the bypass pill are
  *    next to it - and a segmented group among them reads as the odd one out.
@@ -86,6 +91,7 @@ export default function PresetBar({
   onLoad,
   onStep,
   onSave,
+  onRandomize,
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState("");
@@ -138,8 +144,18 @@ export default function PresetBar({
           setDialogOpen(true);
         }}
         aria-label="Save preset"
+        className="pui-presetbar__save"
       >
         <SaveIcon size={separated ? 14 : 13} variant={separated ? "chrome" : "default"} />
+      </Button>
+
+      <Button
+        onClick={() => onRandomize?.()}
+        aria-label="Randomise knobs"
+        title="Randomise knobs"
+        className="pui-presetbar__dice"
+      >
+        <DiceIcon size={separated ? 14 : 13} />
       </Button>
 
       <PresetSaveDialog

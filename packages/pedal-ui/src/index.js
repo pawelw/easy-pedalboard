@@ -63,3 +63,4 @@ export { default as SpaceIcon } from "./SpaceIcon.jsx";
 export { default as SpringIcon } from "./SpringIcon.jsx";
 export { default as PowerIcon } from "./PowerIcon.jsx";
 export { default as SaveIcon } from "./SaveIcon.jsx";
+export { default as DiceIcon } from "./DiceIcon.jsx";

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
 import PresetBar from "./PresetBar.jsx";
 
-// The five native functions ee/plugin/PresetBridge.h registers. Resolved once
+// The six native functions ee/plugin/PresetBridge.h registers. Resolved once
 // per page rather than per render: getNativeFunction only builds a wrapper,
 // but it also warns for a name the backend has not registered, and a pedal
 // that has not wired the bridge up should say so once, not on every keystroke.
@@ -41,8 +41,9 @@ function usePresetBridge() {
   const load = useCallback(({ kind, name }) => nativeFunction("presetLoad")(kind, name).then(apply), [apply]);
   const step = useCallback((delta) => nativeFunction("presetStep")(delta).then(apply), [apply]);
   const save = useCallback((kind, name) => nativeFunction("presetSave")(kind, name).then(apply), [apply]);
+  const randomize = useCallback(() => nativeFunction("presetRandomize")().then(apply), [apply]);
 
-  return { state, load, step, save };
+  return { state, load, step, save, randomize };
 }
 
 /**
@@ -68,7 +69,7 @@ function usePresetBridge() {
  * for the same reason.
  */
 export default function JucePresetBar({ variant, showSteppers }) {
-  const { state, load, step, save } = usePresetBridge();
+  const { state, load, step, save, randomize } = usePresetBridge();
 
   return (
     <PresetBar
@@ -81,6 +82,7 @@ export default function JucePresetBar({ variant, showSteppers }) {
       onLoad={load}
       onStep={step}
       onSave={save}
+      onRandomize={randomize}
     />
   );
 }

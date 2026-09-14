@@ -3,8 +3,8 @@
   align-items: center;
 }
 
-/* The three square glyph buttons the bar itself owns - the two arrows inside
-   the group, and Save beside it. Named by child combinator rather than as
+/* The square glyph buttons the bar itself owns - the two arrows inside the
+   group, and Save and the dice beside it. Named by child combinator rather than as
    `.pui-presetbar .pui-button`, because the save dialog renders inside the bar
    (it has to stay under the `data-pui-theme` wrapper to keep the pedal's
    palette) and a descendant selector was forcing its Cancel/Save buttons to
@@ -100,7 +100,7 @@
 }
 
 /* ------------------------------------------------------------- separated --
-   Peak Alpine's host header: four discrete controls rather than a segmented
+   Peak Alpine's host header: discrete controls rather than a segmented
    group, on the chrome palette. The 10px gap before Save is deliberately wider
    than the 6px inside the group - browsing and saving are two different jobs,
    and the space is what says so. */
@@ -164,9 +164,22 @@
   margin-left: -1px;
 }
 
+/* Save and the dice join into one pair past that gap: both act on the whole
+   pedal rather than browse it. The dice reaches back across the 10px gap and
+   the shared 1px border. Same specificity as the .pui-button rule above, and
+   after it, so these win. */
+.pui-presetbar--separated > .pui-presetbar__save {
+  border-radius: 8px 0 0 8px;
+}
+
+.pui-presetbar--separated > .pui-presetbar__dice {
+  border-radius: 0 8px 8px 0;
+  margin-left: -11px;
+}
+
 /* showSteppers=false: no arrow buttons to its left, so the field joins Save
-   into one pair instead of standing apart from it across the wider gap -
-   there is only one other object in the bar to read as separate from. */
+   and the dice into one control instead of standing apart across the wider
+   gap - there is nothing else in the bar to read as separate from. */
 .pui-presetbar--separated.pui-presetbar--no-steppers {
   gap: 0;
 }
@@ -179,6 +192,11 @@
 .pui-presetbar--separated.pui-presetbar--no-steppers > .pui-button {
   border-radius: 0 8px 8px 0;
   margin-left: -1px;
+}
+
+/* Save is the middle of the three there, square on both sides. */
+.pui-presetbar--separated.pui-presetbar--no-steppers > .pui-presetbar__save {
+  border-radius: 0;
 }
 
 /* The field's mark is a double chevron, not the single down-arrow a select

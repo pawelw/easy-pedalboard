@@ -6,6 +6,8 @@
 // product name, so this writes into the real "Peak Preset Tests" folder under
 // the user's application-data directory and cleans it up afterwards. Nothing it
 // touches belongs to an installed pedal.
+#include <map>
+
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "PluginProcessor.h"
@@ -140,6 +142,54 @@ int main()
     setValue (processor.apvts, "sync", 0.0f);
     setValue (processor.apvts, "ltime", 0.9f);
     check (std::abs (valueOf (processor.apvts, "rtime") - 0.25f) < 1.0e-4f, "with Sync off they move alone");
+
+    // The dice. Knobs only, never past 80 % of their travel, the level faders
+    // and every switch left exactly where they were - and, because it turns
+    // knobs rather than installing a tree, Sync L/R still holds the two Time
+    // knobs together.
+    std::printf ("\nThe dice:\n");
+
+    presets.load (ee::plugin::PresetStore::Kind::factory, "Init");
+    setValue (processor.apvts, "sync", 1.0f);
+
+    std::map<juce::String, float> untouched;
+    for (auto* p : processor.getParameters())
+    {
+        auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (p);
+        if (dynamic_cast<juce::AudioParameterFloat*> (p) == nullptr
+            || ! ee::plugin::PresetStore::isRolledByDice (withId->getParameterID()))
+            untouched[withId->getParameterID()] = p->getValue();
+    }
+
+    const auto selectedBefore = presets.currentName();
+    const auto feedbackBefore = valueOf (processor.apvts, "fb");
+    bool allInRange = true, othersStill = true, timesLinked = true, feedbackMoved = false;
+
+    for (int roll = 0; roll < 200; ++roll)
+    {
+        presets.randomize();
+
+        for (auto* p : processor.getParameters())
+        {
+            const auto id = dynamic_cast<juce::AudioProcessorParameterWithID*> (p)->getParameterID();
+
+            if (auto it = untouched.find (id); it != untouched.end())
+                othersStill = othersStill && std::abs (p->getValue() - it->second) < 1.0e-6f;
+            else
+                allInRange = allInRange && p->getValue() >= 0.0f && p->getValue() <= 0.8f + 1.0e-6f;
+        }
+
+        timesLinked = timesLinked && std::abs (valueOf (processor.apvts, "ltime") - valueOf (processor.apvts, "rtime")) < 1.0e-4f;
+        feedbackMoved = feedbackMoved || std::abs (valueOf (processor.apvts, "fb") - feedbackBefore) > 1.0e-3f;
+    }
+
+    check (untouched.count ("ingain") == 1 && untouched.count ("outgain") == 1 && untouched.count ("sync") == 1,
+           "the gain faders and the switches are on the hands-off list");
+    check (allInRange, "every rolled knob stays within 0-80 % of its travel");
+    check (feedbackMoved, "...and a knob does actually move");
+    check (othersStill, "the gain faders, switches and choices never move");
+    check (timesLinked, "Sync L/R keeps the two Time knobs together through a roll");
+    check (presets.currentName() == selectedBefore, "the selection stays, as for any knob move");
 
     // The user bank. A second store on the same processor, under a product name
     // no installed pedal uses, so the folder this creates is this test's own.

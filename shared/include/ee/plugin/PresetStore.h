@@ -135,6 +135,54 @@ public:
         load (all[(size_t) next].kind, all[(size_t) next].name);
     }
 
+    /** The dice button: every knob to a random position, and nothing else.
+
+        A "knob" is an `AudioParameterFloat`. Switches and engine pickers are
+        bools and choices and stay where they are - a roll that also swapped
+        the engine would be a different pedal every click rather than a new
+        setting of this one. The level faders are floats but are not part of
+        the sound, and a roll that lands the output at +12 dB is a surprise
+        rather than an idea, so an id ending in `ingain`, `outgain` or `level`
+        (Peak Alpine's per-module trims) is left alone too.
+
+        Positions are drawn in normalised units, so a skewed range - a cutoff,
+        a decay time - lands where a hand on the knob would put it, and capped
+        at `maxNormalised` so no roll pins every control at its extreme at
+        once. The bottom is left open.
+
+        Written one parameter at a time, a gesture each, the way a person
+        turning knobs would: a host records it as automation, and a processor
+        that links two knobs (Sync L/R) sees a turn rather than a tree
+        arriving, so the pair stays together. The selection is left alone,
+        like any other knob move - see currentName(). */
+    void randomize (float maxNormalised = 0.8f)
+    {
+        auto& random = juce::Random::getSystemRandom();
+
+        for (auto* parameter : state.processor.getParameters())
+        {
+            auto* knob = dynamic_cast<juce::AudioParameterFloat*> (parameter);
+
+            if (knob == nullptr || ! isRolledByDice (knob->getParameterID()))
+                continue;
+
+            knob->beginChangeGesture();
+            knob->setValueNotifyingHost (random.nextFloat() * maxNormalised);
+            knob->endChangeGesture();
+        }
+    }
+
+    /** Whether randomize() touches a float parameter, by id. Public so a test
+        can hold the same line the store does rather than a copy of it. */
+    static bool isRolledByDice (const juce::String& parameterID)
+    {
+        // The leaf after the last '.', so Alpine's "art.level" is caught the
+        // same as a bare "level" (fromLastOccurrenceOf hands back the whole
+        // string when there is no dot).
+        const auto leaf = parameterID.fromLastOccurrenceOf (".", false, false);
+        return leaf != "ingain" && leaf != "outgain" && leaf != "level";
+    }
+
     //==============================================================================
     /** Writes the current state to the user bank under `name`, overwriting a
         user preset of that name and selecting it. The error text is meant to be

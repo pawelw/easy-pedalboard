@@ -346,8 +346,9 @@ webView (ee::plugin::presetBridge (juce::WebBrowserComponent::Options {} ... ,
 headerCenter={<JucePresetBar />}
 ```
 
-`JucePresetBar` (`@synthpeak/pedal-ui`) takes no props - it talks to the five
-native functions `presetBridge` registers. `PresetBar` is the same bar
+`JucePresetBar` (`@synthpeak/pedal-ui`) takes no props - it talks to the six
+native functions `presetBridge` registers (the sixth, `presetRandomize`, is
+the dice beside Save - `PresetStore::randomize`). `PresetBar` is the same bar
 prop-driven, for the gallery and for a face with no store behind it. Loading a
 preset says nothing to the knobs: it replaces the APVTS tree and every relay
 attachment already listens to its own parameter.

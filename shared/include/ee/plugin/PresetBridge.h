@@ -7,7 +7,7 @@
 namespace ee::plugin
 {
 
-/** The five native functions a WebView face's preset bar talks to, added to a
+/** The six native functions a WebView face's preset bar talks to, added to a
     juce::WebBrowserComponent::Options in one call.
 
     A web face's preset bar is the same control on every pedal, so its bridge
@@ -19,7 +19,8 @@ namespace ee::plugin
                                            processorRef.presets,
                                            EE_PRESET_SOURCE_DIR))
 
-    and gets browsing, loading, saving and deleting. Nothing else per pedal.
+    and gets browsing, loading, saving, deleting and the dice. Nothing else per
+    pedal.
 
     Relays would have been the obvious mechanism and are the wrong one: a relay
     carries one parameter's value, and none of this is a parameter. Loading a
@@ -166,6 +167,16 @@ inline juce::WebBrowserComponent::Options presetBridge (juce::WebBrowserComponen
                                  complete (resultPayload (presets, canAuthor,
                                                           ok ? juce::Result::ok()
                                                              : juce::Result::fail ("Could not delete that preset.")));
+                             })
+
+        // The dice. Answers with the list like everything else, although a
+        // roll changes neither it nor the selection: the knobs hear about it
+        // through their own attachments, as they do for a load.
+        .withNativeFunction ("presetRandomize",
+                             [&presets] (const juce::Array<juce::var>&, Completion complete)
+                             {
+                                 presets.randomize();
+                                 complete (listPayload (presets, canAuthor));
                              });
 }
 
