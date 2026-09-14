@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;gap:12px;padding:0 2px 16px;font-family:'Space Grotesk',-apple-system,sans-serif">
+  <div style="display:flex;align-items:center;gap:16px">
+    <div style="display:flex;align-items:center;gap:11px;min-width:0;flex:1 1 auto">
+      <img src="assets/peak-logo.png" alt="" style="height:32px;width:auto;display:block;filter:brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg)">
+      <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
+        <h1 style="margin:0;font-weight:700;font-size:19px;letter-spacing:.01em;color:#b9d3d9;white-space:nowrap">Peak Grain</h1>
+        <span style="font-weight:500;font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:#6c8288;white-space:nowrap">Granular delay into delay into plate</span>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex:none">
+      <div style="display:flex;align-items:center">
+        <button style="appearance:none;width:28px;height:28px;border:1px solid #2a3336;border-radius:8px 0 0 8px;background:#1b2225;color:#9fb8bd;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="8" height="12" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M5.2 1.2 L1.6 5 L5.2 8.8"></path></svg></button>
+        <button style="appearance:none;width:28px;height:28px;border:1px solid #2a3336;border-radius:0;margin-left:-1px;background:#1b2225;color:#9fb8bd;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="8" height="12" viewBox="0 0 7 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 1.2 L5.4 5 L1.8 8.8"></path></svg></button>
+        <div style="position:relative;width:168px;height:28px;margin-left:-1px;border:1px solid #2a3336;border-radius:0 8px 8px 0;background:#1b2225;color:#cfe2e6;font-weight:500;font-size:12px;line-height:26px;padding:0 30px 0 13px;box-sizing:border-box;white-space:nowrap;overflow:hidden">Presets<span style="position:absolute;right:11px;top:8px;color:#9fb8bd;display:flex"><svg width="10" height="13" viewBox="0 0 9 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M1.5 4.6 L4.5 1.6 L7.5 4.6"></path><path d="M1.5 7.4 L4.5 10.4 L7.5 7.4"></path></svg></span></div>
+      </div>
+      <div style="display:flex;align-items:center">
+        <button style="appearance:none;width:28px;height:28px;border:1px solid #2a3336;border-radius:8px 0 0 8px;background:#1b2225;color:#9fb8bd;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="M2.5 2.5h8.5l2.5 2.5v8.5h-11z"></path><path d="M5.5 2.5h5v3.5h-5z"></path><path d="M5.5 9.5h5v4h-5z"></path></svg></button>
+        <button style="appearance:none;width:28px;height:28px;border:1px solid #2a3336;border-radius:0 8px 8px 0;margin-left:-1px;background:#1b2225;color:#9fb8bd;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2.25" y="2.25" width="11.5" height="11.5" rx="2.5" stroke="currentColor" stroke-width="1.5"></rect><g fill="currentColor"><circle cx="5.6" cy="5.6" r="1.05"></circle><circle cx="10.4" cy="5.6" r="1.05"></circle><circle cx="8" cy="8" r="1.05"></circle><circle cx="5.6" cy="10.4" r="1.05"></circle><circle cx="10.4" cy="10.4" r="1.05"></circle></g></svg></button>
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:16px">
+    <div style="display:flex;align-items:center;flex:1 1 auto;min-width:0">
+      <button style="appearance:none;font-family:inherit;font-weight:700;font-size:9px;line-height:1;letter-spacing:.12em;padding:8px 13px;border:1px solid transparent;border-radius:8px 0 0 8px;background:#b9d3d9;color:#171d20;cursor:pointer">LIVE</button>
+      <button style="appearance:none;font-family:inherit;font-weight:700;font-size:9px;line-height:1;letter-spacing:.12em;padding:8px 13px;border:1px solid #2a3336;border-radius:0 8px 8px 0;background:#1b2225;color:#8ba3a9;cursor:pointer;margin-left:-1px">FREEZE</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:22px;flex:none">
+      <div style="display:flex;align-items:center;gap:9px">
+        <span style="font-weight:700;font-size:9px;letter-spacing:.14em;color:#6c8288">LEVEL</span>
+        <div style="position:relative;width:88px;height:4px;border-radius:999px;background:#2b3639">
+          <div style="position:absolute;left:0;top:0;bottom:0;width:62%;border-radius:999px;background:#3a4a4e"></div>
+          <div style="position:absolute;left:62%;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;border-radius:50%;background:#b9d3d9;box-shadow:0 1px 3px rgba(0,0,0,.6)"></div>
+        </div>
+      </div>
+      <button style="appearance:none;width:22px;height:22px;border-radius:999px;border:1px solid rgba(185,211,217,.4);background:transparent;color:#b9d3d9;display:flex;align-items:center;justify-content:center;cursor:pointer"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><path d="M8 1.6 V7"></path><path d="M12.1 3.6 A6 6 0 1 1 3.9 3.6"></path></svg></button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:730,&quot;height&quot;:110}}"></script>
+</body>
+</html>

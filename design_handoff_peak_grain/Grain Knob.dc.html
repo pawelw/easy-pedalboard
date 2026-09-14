@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<div style="display:flex;flex-direction:column;align-items:center;gap:7px;font-family:'Space Grotesk',-apple-system,sans-serif">
+  <div style="position:relative;display:flex;align-items:center;justify-content:center;width:{{ box }}px;height:{{ box }}px">
+    <sc-if value="{{ ticks }}" hint-placeholder-val="{{ true }}">
+      <svg style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);pointer-events:none" width="{{ box }}" height="{{ box }}" viewBox="{{ viewBox }}">
+        <sc-for list="{{ tickList }}" as="t" hint-placeholder-count="20">
+          <line x1="{{ t.x1 }}" y1="{{ t.y1 }}" x2="{{ t.x2 }}" y2="{{ t.y2 }}" stroke="{{ t.c }}" stroke-width="{{ t.w }}" stroke-linecap="round"></line>
+        </sc-for>
+      </svg>
+    </sc-if>
+    <div style="position:relative;width:{{ dial }}px;height:{{ dial }}px;border-radius:50%;background:{{ ring }}">
+      <div style="position:absolute;inset:{{ capInset }};border-radius:50%;background:{{ cap }};box-shadow:{{ capShadow }}">
+        <div style="position:absolute;inset:0;transform:{{ rot }}">
+          <div style="position:absolute;top:12%;left:50%;width:{{ needleW }}px;height:30%;margin-left:{{ needleOffset }}px;border-radius:999px;background:#cfe4e9"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div style="font-weight:700;font-size:9px;line-height:1;letter-spacing:.14em;text-transform:uppercase;color:#8ba3a9;white-space:nowrap">{{ caption }}</div>
+  <sc-if value="{{ sub }}" hint-placeholder-val="{{ false }}">
+    <div style="font-weight:500;font-size:10px;line-height:1;color:#6c8288;white-space:nowrap">{{ sub }}</div>
+  </sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:110,&quot;height&quot;:110},&quot;caption&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;Size&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#a3ce7a&quot;,&quot;options&quot;:[&quot;#b39bd8&quot;,&quot;#e78fb3&quot;,&quot;#dfa878&quot;,&quot;#a3ce7a&quot;,&quot;#7fd2d8&quot;],&quot;tsType&quot;:&quot;string&quot;},&quot;value&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;0.5&quot;,&quot;tsType&quot;:&quot;string&quot;},&quot;size&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:46,&quot;min&quot;:28,&quot;max&quot;:96,&quot;unit&quot;:&quot;px&quot;,&quot;tsType&quot;:&quot;number&quot;},&quot;ticks&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;bipolar&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;},&quot;sub&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;&quot;,&quot;tsType&quot;:&quot;string&quot;}}">
+class Component extends DCLogic {
+  renderVals() {
+    const v = Math.min(1, Math.max(0, Number(this.props.value ?? 0.5) || 0));
+    const a = this.props.accent || "#a3ce7a";
+    const size = Number(this.props.size ?? 46) || 46;
+    const ticks = this.props.ticks === true || this.props.ticks === "true";
+    const track = "#2b3639";
+    const deg = v * 270;
+    const angle = -135 + v * 270;
+
+    let ring, cap, capShadow, capInset;
+    if (ticks) {
+      ring = "#0b0e10";
+      cap = "linear-gradient(180deg,#364347,#191f22)";
+      capShadow = "inset 0 1px 0 rgba(185,211,217,.25)";
+      capInset = "8%";
+    } else {
+      if (this.props.bipolar) {
+        const s = Math.min(135, deg), e = Math.max(135, deg);
+        ring = `conic-gradient(from 225deg, ${track} 0 ${s}deg, ${a} ${s}deg ${e}deg, ${track} ${e}deg 270deg, transparent 270deg)`;
+      } else {
+        ring = `conic-gradient(from 225deg, ${a} 0 ${deg}deg, ${track} ${deg}deg 270deg, transparent 270deg)`;
+      }
+      cap = "#0a0d0e";
+      capShadow = "inset 0 -1px 0.5px rgba(0,0,0,0.93), inset 0 1px 0 rgba(185,211,217,0.3), 0 6px 14px rgba(0,0,0,0.5)";
+      capInset = "4px";
+    }
+
+    // The tick ring: 20 radial dashes from -135deg to +135deg inclusive, lit
+    // up to the value, the way pedal-ui's variant="scale" draws it.
+    const gap = size >= 60 ? 9 : 6;
+    const len = size >= 60 ? 6 : 4;
+    const w = size >= 60 ? 2 : 1.4;
+    const rIn = size / 2 + gap, rOut = rIn + len;
+    const box = Math.ceil((rOut + w) * 2);
+    const litCount = v > 0.004 ? Math.round(v * 19) : -1;
+    const tickList = [];
+    for (let i = 0; i < 20; i++) {
+      const d = (-135 + (i * 270) / 19 - 90) * Math.PI / 180;
+      tickList.push({
+        x1: +(Math.cos(d) * rIn).toFixed(2), y1: +(Math.sin(d) * rIn).toFixed(2),
+        x2: +(Math.cos(d) * rOut).toFixed(2), y2: +(Math.sin(d) * rOut).toFixed(2),
+        c: i <= litCount ? a : "#39474b", w,
+      });
+    }
+
+    return {
+      ring, cap, capShadow, capInset, ticks, tickList,
+      dial: size,
+      box: ticks ? box : size,
+      viewBox: `${-box / 2} ${-box / 2} ${box} ${box}`,
+      needleW: size >= 60 ? 3 : 2,
+      needleOffset: size >= 60 ? -1.5 : -1,
+      rot: `rotate(${angle.toFixed(1)}deg)`,
+      caption: this.props.caption ?? "Knob",
+      sub: this.props.sub ?? "",
+    };
+  }
+}
+</script>
+</body>
+</html>
