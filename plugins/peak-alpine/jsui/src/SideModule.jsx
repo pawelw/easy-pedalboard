@@ -91,7 +91,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
          what a 0..100 % level looks like - it said "turned all the way up"
          about a module that was doing nothing to the level at all. */
       headerRight={
-        <JuceKnob parameterId={`${prefix}level`} variant="soft" size={30} scaleFrom="centre" bare />
+        <JuceKnob parameterId={`${prefix}level`} variant="flat" size={30} scaleFrom="centre" bare />
       }
       /* Tape runs fully wet and is not offered a Mix (see engines.jsx) - the
          footer strip stays for the row to keep its shape, held to height in
@@ -100,7 +100,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
         engine.hideMix ? (
           <div className="pa-footer-empty" aria-hidden="true" />
         ) : (
-          <JuceKnob parameterId={`${prefix}mix`} variant="soft" size={38} caption="Mix" />
+          <JuceKnob parameterId={`${prefix}mix`} variant="flat" size={38} caption="Mix" />
         )
       }
     >
@@ -145,7 +145,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
                 key={engine.prefix + id}
                 parameterId={engine.prefix + id}
                 caption={caption}
-                variant="soft"
+                variant="flat"
                 size={36}
               />
             ))}
@@ -160,7 +160,7 @@ export default function SideModule({ name, accent, engines, engineId, prefix }) 
             <JuceKnob
               parameterId={engine.prefix + engine.centre[0]}
               caption={engine.centre[1]}
-              variant="soft"
+              variant="flat"
               size={36}
               scaleFrom="centre"
             />

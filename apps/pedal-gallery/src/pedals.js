@@ -26,7 +26,7 @@ export const groups = [
 export const pedals = [
   // The multi-effect host - listed first because it is the one that contains
   // the four after it rather than sitting beside them.
-  { slug: "peak-alpine", name: "Peak Alpine", group: "alpine", face: PeakAlpineFace }, // TEMPORARY: light preview, restore theme: "onyx"
+  { slug: "peak-alpine", name: "Peak Alpine", group: "alpine", face: PeakAlpineFace, theme: "onyx" },
   { slug: "peak-reverb", name: "Peak Reverb", group: "alpine", face: null },
   { slug: "peak-delay", name: "Peak Delay", group: "alpine", face: PeakDelayFace, theme: "onyx" },
   { slug: "peak-modulation", name: "Peak Modulation", group: "alpine", face: null },

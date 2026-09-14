@@ -142,6 +142,16 @@ const SOFT_SWEEP_GAP = 3.5;
 const SOFT_SWEEP_WIDTH = 4;
 const SOFT_SWEEP_WIDTH_SMALL = 2;
 
+// variant="flat" - "2a" of design_handoff_flat_knobs: one continuous arc
+// hugging the rim, drawn by the same Sweep every other variant's arc uses.
+// FLAT_REF_* are the handoff's own numbers at its 52px reference size (radius
+// 28.5, stroke 5) - gap/width below scale those linearly for any other
+// `size`, the way the handoff scales everything.
+const FLAT_REF_DIAMETER = 52;
+const FLAT_REF_RADIUS = 28.5;
+const FLAT_REF_STROKE = 5;
+const FLAT_GAP = FLAT_REF_RADIUS - FLAT_REF_DIAMETER / 2;
+
 const TICK_COUNT = 20;
 const TICK_LENGTH = 6;
 const TICK_THICKNESS = 2;
@@ -250,15 +260,18 @@ function TickScale({ diameter, value, gap = SWEEP_GAP, from = "min" }) {
     rotated to the value angle, the way `.pui-knob__dot` pins a dot in the
     collar variant - same wrapper-rotates-not-the-bar trick, so the bar's own
     box can be positioned in plain top/left percentages instead of trig. */
-function Pointer({ angle, diameter, soft = false }) {
+function Pointer({ angle, diameter, soft = false, flat = false }) {
   // `soft`: variant="soft"'s needle instead - one hairline running from the
   // cap's centre out towards the rim, rather than a stub parked near the
   // edge. Same wrapper and the same rotation; only the bar's own geometry
   // (set in Knob.css) differs, so there is one place that knows how a
-  // pointer is pinned and rotated.
-  const cls = soft
-    ? `pui-knob__pointer pui-knob__pointer--needle${diameter < 60 ? " pui-knob__pointer--needle-thin" : ""}`
-    : `pui-knob__pointer${diameter < 60 ? " pui-knob__pointer--thin" : ""}`;
+  // pointer is pinned and rotated. `flat` is variant="flat"'s own bar, the
+  // handoff's own geometry (design_handoff_flat_knobs).
+  const cls = flat
+    ? "pui-knob__pointer pui-knob__pointer--flat"
+    : soft
+      ? `pui-knob__pointer pui-knob__pointer--needle${diameter < 60 ? " pui-knob__pointer--needle-thin" : ""}`
+      : `pui-knob__pointer${diameter < 60 ? " pui-knob__pointer--thin" : ""}`;
 
   return (
     <div className="pui-knob__pointer-wrap" style={{ transform: `rotate(${angle}deg)` }}>
@@ -299,6 +312,11 @@ function EndMarker({ label, radius, lit }) {
  * fills the whole dial, a hairline needle from its centre, and one continuous
  * accent arc hugging the rim - the tick ring's information without the twenty
  * dashes, for a face that wants the control to read as one quiet disc.
+ * "flat" is "2a" of design_handoff_flat_knobs: a turned-rim cap with a
+ * shallow dish (a light counterpart in :root, the handoff's own dark numbers
+ * moved into onyx's block) and a continuous accent arc hugging the rim, the
+ * simpler of the two treatments tried here ("2c"'s segmented ring was the
+ * first pass).
  * Same controlled API, same drag/keyboard handling below, only the dial's
  * own markup and CSS differ.
  *
@@ -449,14 +467,25 @@ export default function Knob({
 
   const isScale = variant === "scale";
   const isSoft = variant === "soft";
+  const isFlat = variant === "flat";
 
   return (
     <div
-      className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}${isSoft ? " pui-knob--soft" : ""}`}
+      className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}${isSoft ? " pui-knob--soft" : ""}${isFlat ? " pui-knob--flat" : ""}`}
       style={{ width: bare ? size : size + 28 }}
     >
       <div className="pui-knob__dial" style={{ width: size, height: size }}>
-        {isSoft ? (
+        {isFlat ? (
+          <Sweep
+            diameter={size}
+            value={value}
+            gap={FLAT_GAP * (size / FLAT_REF_DIAMETER)}
+            width={FLAT_REF_STROKE * (size / FLAT_REF_DIAMETER)}
+            trackColor="var(--pui-flat-track)"
+            litColor="var(--pui-soft-lit)"
+            from={scaleFrom}
+          />
+        ) : isSoft ? (
           // The same arc the collar variant draws, on the soft palette and
           // sitting closer in: with no ring or collar around the cap there is
           // nothing between the arc and the knob, so the old 6px gap read as
@@ -503,7 +532,7 @@ export default function Knob({
 
         <div
           ref={bodyRef}
-          className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${isSoft ? " pui-knob__body--soft" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
+          className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${isSoft ? " pui-knob__body--soft" : ""}${isFlat ? " pui-knob__body--flat" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
           style={{ width: size, height: size }}
           onPointerDown={onPointerDown}
           onKeyDown={onKeyDown}
@@ -515,7 +544,12 @@ export default function Knob({
           aria-valuemax={1}
           aria-valuenow={value}
         >
-          {isSoft ? (
+          {isFlat ? (
+            <div className="pui-knob__flat-face">
+              <Pointer angle={angle} diameter={size} flat />
+              {icon && <div className="pui-knob__icon">{icon(value)}</div>}
+            </div>
+          ) : isSoft ? (
             <>
               {/* One element, not the ring+cap pair the scale variant needs:
                   there is no ring here, so the cap itself carries both the

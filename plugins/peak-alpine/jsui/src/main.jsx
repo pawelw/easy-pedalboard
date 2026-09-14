@@ -5,8 +5,7 @@ import App from "./App.jsx";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
-    {/* TEMPORARY: light-theme preview - restore theme="onyx" when done. */}
-    <PedalUIProvider>
+    <PedalUIProvider theme="onyx">
       <App />
     </PedalUIProvider>
   </StrictMode>,

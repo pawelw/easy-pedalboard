@@ -127,6 +127,29 @@
   --pui-soft-lit: #7ba85f;
   --pui-soft-shadow: 0 3px 6px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.08);
 
+  /* variant="flat" (Knob.css/Knob.jsx) - "2c" of design_handoff_flat_knobs.
+     The handoff itself is one fixed dark treatment with no light variant -
+     these are its own numbers, moved into onyx's own block below and given a
+     light counterpart here instead, the way variant="soft"'s face tokens
+     already work. The lit segment colour is --pui-soft-lit, not a token of
+     its own - the handoff's own red is a placeholder for "whichever module
+     this knob is in", and that per-module colour already exists.
+     Deliberately more contrast than a literal light re-tint of onyx's numbers
+     would give: the panel itself is #f3f2ed, and a rim/face that close to it
+     in value read as barely-there at these knobs' small sizes - the whole
+     point of a raised turned cap is that it reads as an object sitting
+     proud of the panel, not a tint of the panel. */
+  --pui-flat-rim-top: #ffffff;
+  --pui-flat-rim-mid: #d9d6ca;
+  --pui-flat-rim-bottom: #aeaa99;
+  --pui-flat-rim-hi: rgba(255, 255, 255, 0.8);
+  --pui-flat-face-top: #e3dfd2;
+  --pui-flat-face-mid: #cec8b7;
+  --pui-flat-face-bottom: #b4ae9c;
+  --pui-flat-face-hi: rgba(255, 255, 255, 0.65);
+  --pui-flat-track: #c5bfad;
+  --pui-flat-pointer: #2a2a26;
+
   /* Peak Alpine's host chrome (design_handoff_peak_alpine/README.md's token
      table). Two things the pedal faces never needed: a panel *inside* a panel
      (the module shell), and a small square button that is neither a Pill nor a
@@ -220,6 +243,20 @@
   --pui-soft-shadow: 0 6px 14px rgba(0, 0, 0, 0.5);
   --pui-scope-dry: #e0b23c;
   --pui-logo-filter: brightness(0) invert(84%) sepia(9%) saturate(360%) hue-rotate(150deg);
+
+  /* variant="flat", onyx - design_handoff_flat_knobs' own numbers (a dark
+     turned-rim cap the handoff drew for exactly this kind of ground; :root's
+     are a light counterpart built for the cream/grey themes instead). */
+  --pui-flat-rim-top: #313d4200;
+  --pui-flat-rim-mid: #2c2f31;
+  --pui-flat-rim-bottom: #0f141757;
+  --pui-flat-rim-hi: rgb(132 132 132 / 38%);
+  --pui-flat-face-top: #232c31;
+  --pui-flat-face-mid: #1a2124;
+  --pui-flat-face-bottom: #303030;
+  --pui-flat-face-hi: rgba(214, 236, 243, 0.16);
+  --pui-flat-track: #1c2427;
+  --pui-flat-pointer: #e6f0f4;
 
   /* Peak Alpine's host chrome, onyx - the handoff's own numbers. */
   --pui-module: #20292d;

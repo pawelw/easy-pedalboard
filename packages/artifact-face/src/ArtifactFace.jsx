@@ -143,7 +143,7 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
       onToggle={setOn}
       headerRight={headerRight}
       className="af-module"
-      footer={<JuceKnob parameterId="mix" caption="Mix" variant="soft" size={38} />}
+      footer={<JuceKnob parameterId="mix" caption="Mix" variant="flat" size={38} />}
     >
       <EngineStepper
         engines={ENGINES.map((e) => e.name)}
@@ -326,8 +326,8 @@ function FilterBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="flt.freq" caption="Freq" variant="soft" size={36} />
-          <JuceKnob parameterId="flt.q" caption="Q" variant="soft" size={36} />
+          <JuceKnob parameterId="flt.freq" caption="Freq" variant="flat" size={36} />
+          <JuceKnob parameterId="flt.q" caption="Q" variant="flat" size={36} />
         </div>
         {/* Range and Time each carry a small control directly under them: the
             wave <> picker (glyph only, no name - it is small enough to sit here
@@ -335,7 +335,7 @@ function FilterBody() {
             short) and the SYNC pill, the same control Peak Delay uses. */}
         <div className="af-knob-row">
           <div className="af-subcol">
-            <JuceKnob parameterId="flt.range" caption="Range" variant="soft" size={36} />
+            <JuceKnob parameterId="flt.range" caption="Range" variant="flat" size={36} />
             <div className="af-sub af-sub--wave">
               <EngineStepper
                 engines={WAVES.map((w) => w.name)}
@@ -348,7 +348,7 @@ function FilterBody() {
           </div>
 
           <div className="af-subcol">
-            <JuceKnob parameterId="flt.time" caption="Time" variant="soft" size={36} />
+            <JuceKnob parameterId="flt.time" caption="Time" variant="flat" size={36} />
             <div className="af-sub af-sub--sync">
               {/* flt.sync's own sense is already "synced to tempo", so it
                   lights when on with no invert. */}
@@ -373,12 +373,12 @@ function CrushBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="crush.bits" caption="Bits" variant="soft" size={36} />
-          <JuceKnob parameterId="crush.rate" caption="Rate" variant="soft" size={36} />
+          <JuceKnob parameterId="crush.bits" caption="Bits" variant="flat" size={36} />
+          <JuceKnob parameterId="crush.rate" caption="Rate" variant="flat" size={36} />
         </div>
         <div className="af-knob-row">
-          <JuceKnob parameterId="crush.lp" caption="Filter" variant="soft" size={36} />
-          <JuceKnob parameterId="crush.jitter" caption="Jitter" variant="soft" size={36} />
+          <JuceKnob parameterId="crush.lp" caption="Filter" variant="flat" size={36} />
+          <JuceKnob parameterId="crush.jitter" caption="Jitter" variant="flat" size={36} />
         </div>
       </div>
     </div>
@@ -395,17 +395,17 @@ function RingBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="ring.freq" caption="Freq" variant="soft" size={36} />
-          <JuceKnob parameterId="ring.tweak" caption="Tweak" variant="soft" size={36} />
+          <JuceKnob parameterId="ring.freq" caption="Freq" variant="flat" size={36} />
+          <JuceKnob parameterId="ring.tweak" caption="Tweak" variant="flat" size={36} />
         </div>
         <div className="af-knob-row">
-          <JuceKnob parameterId="ring.lp" caption="Filter" variant="soft" size={36} />
+          <JuceKnob parameterId="ring.lp" caption="Filter" variant="flat" size={36} />
           {/* Bipolar: a plain sine carrier dead centre, so its arc grows out
               from twelve o'clock in whichever direction it is folded. */}
           <JuceKnob
             parameterId="ring.rect"
             caption="Rectify"
-            variant="soft"
+            variant="flat"
             size={36}
             scaleFrom="centre"
           />
@@ -454,8 +454,8 @@ function RustBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="rust.grind" caption="Grind" variant="soft" size={36} />
-          <JuceKnob parameterId="rust.tone" caption="Tone" variant="soft" size={36} />
+          <JuceKnob parameterId="rust.grind" caption="Grind" variant="flat" size={36} />
+          <JuceKnob parameterId="rust.tone" caption="Tone" variant="flat" size={36} />
         </div>
       </div>
 
@@ -477,14 +477,14 @@ function AmpBody() {
 
       <div className="af-knobs">
         <div className="af-knob-row">
-          <JuceKnob parameterId="amp.drive" caption="Drive" variant="soft" size={36} />
-          <JuceKnob parameterId="amp.mids" caption="Mids" variant="soft" size={36} />
+          <JuceKnob parameterId="amp.drive" caption="Drive" variant="flat" size={36} />
+          <JuceKnob parameterId="amp.mids" caption="Mids" variant="flat" size={36} />
         </div>
         <div className="af-knob-row">
-          <JuceKnob parameterId="amp.bit" caption="Bit" variant="soft" size={36} />
+          <JuceKnob parameterId="amp.bit" caption="Bit" variant="flat" size={36} />
           {/* Bipolar: flat dead centre, so its arc grows out from twelve
               o'clock the way Tape's Tone does. */}
-          <JuceKnob parameterId="amp.tone" caption="Tone" variant="soft" size={36} scaleFrom="centre" />
+          <JuceKnob parameterId="amp.tone" caption="Tone" variant="flat" size={36} scaleFrom="centre" />
         </div>
       </div>
 
