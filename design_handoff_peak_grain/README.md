@@ -35,28 +35,30 @@ are static values chosen to show the arcs and tick rings at work.
 
 ## What 1c contains
 
-Header (two rows, because the pedal is ~700px wide and Alpine's single-row
+Header (two rows, because the pedal is ~560px wide and Alpine's single-row
 header only fits at ~2100px — mirror `Card`'s `headerCenterPlacement="below"`):
 
-1. Logo + `Peak Grain` + tagline, preset bar (`PresetBar variant="separated"`)
-   right.
-2. `Live / Freeze` segmented pair left; `Level` fader + bypass `PowerToggle`
-   right.
+1. Logo + `Peak Grain`; `Level` fader + bypass `PowerToggle` right.
+2. `Live / Freeze` segmented pair left; preset bar (`PresetBar
+   variant="separated"`) + Save/Randomise icons right.
 
-Plate, row 1 — three equal columns, hairline `#0a0b0c` dividers:
+Plate, row 1 — three equal columns, hairline `#0a0b0c` dividers, each section a
+2x2 knob grid (`justify-content:space-around` rows):
 
 | Section | Display | Knobs | Other |
 |---------|---------|-------|-------|
-| Grain | grain envelope curve | Mix (48px, tick ring, value line), Size / Destiny / Shape (46px soft) | `MS`/`SYNC` pill pair in the header |
-| Pitch | three weight bars (Low / Unison / High) | Low, Unison, High, Detune (bipolar) | `WEIGHTS` corner label |
-| Random | L/R stereo field, scattered grains | Stereo, Reverse, Scatter | `FIELD` corner label |
+| Grain | grain envelope curve | Mix (50px) / Size, Destiny / Shape (all soft, no ticks) | `SYNC` pill in the header (no `MS`) |
+| Pitch | three weight bars (Low / Unison / High) | Low / Unison, High / Detune (bipolar) | no corner label |
+| Random | L/R stereo field, scattered grains | Stereo / Reverse, Scatter alone on its own row | no corner label |
 
-Plate, row 2 — `1.95fr / 1fr`:
+Plate, row 2 — one `1fr 1px 1fr 1px 1fr` grid shared with row 1's tracks, so
+the dividers line up: Delay spans the first three tracks (Grain + divider +
+Pitch's width), Reverb takes the last:
 
 | Section | Contents |
 |---------|----------|
-| Delay | `PowerToggle` + `MS`/`SYNC`; Mix and Feedback (52px, tick rings, value lines); link bracket + chain button; Left / Right time knobs (36px, tick rings) each with a recessed readout (`1/8` · `198 ms`); type pills `NORMAL` / `WIDE` / `PING PONG` |
-| Reverb | `PowerToggle`; falling-tail bar display; Decay / Low Cut / Mix |
+| Delay | `PowerToggle` + `Delay`; `SYNC`/`NORMAL` routing pills in the **header**, not the body; Mix and Feedback (52px, tick rings, value lines); Left / Right time knobs (44px, plain soft, no ticks) each with a recessed `1/8`-only readout (no `198 ms`); a single link (chain) button floating between the two readouts, right-aligned with `NORMAL` above — no connecting arm lines |
+| Reverb | `PowerToggle`; falling-tail bar display; Mix / Decay / Low Cut (40px), in that order |
 
 Then the full-width scope strip: grain cloud left, delay repeats fading right
 over a faint reverb wash, `GRAINS` / `DELAY` labels in recess ink.
@@ -69,12 +71,12 @@ Every control maps to an existing parameter id in
 | Control | Parameter |
 |---------|-----------|
 | Grain — Mix, Size, Destiny, Shape | `mix`, `size`, `density`, `shape` |
-| Grain — MS / Sync | `sizeSync` (mirrors onto `densitySync`, see `onGrainSyncToggled`) |
+| Grain — Sync | `sizeSync` (mirrors onto `densitySync`, see `onGrainSyncToggled`) |
 | Pitch — Low, Unison, High, Detune | `pitchLow`, `pitchUnison`, `pitchHigh`, `detune` |
 | Random — Stereo, Reverse, Scatter | `stereo`, `reverse`, `scatter` |
 | Delay — Mix, Feedback | `delayMix`, `delayFeedback` |
 | Delay — Left / Right time | `delayTime` + **NEW** a second time id; sync flag `delaySync` |
-| Delay — type pills | **NEW** (`Normal` / `Wide` / `Ping Pong`, as Peak Delay's type button) |
+| Delay — type pills | **NEW** (`Normal` / `Wide` / `Ping Pong`; `1c` shows only `Normal`, cycling through the choice as `JuceChoicePill` does) |
 | Delay / Reverb power | `delayOn`, `reverbOn` |
 | Reverb — Decay, Mix | `decay`, `reverbMix` |
 | Reverb — Low Cut | **NEW** |

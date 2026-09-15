@@ -9,18 +9,21 @@
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/TapeDelay.h"
+#include "ee/plugin/PresetStore.h"
 
-#include "GrainPresets.h"
+#if EE_HAS_FACTORY_PRESETS
+#include EE_FACTORY_PRESETS_HEADER
+#endif
 
 #if EE_GRAIN_TRACE
 #include "GrainTrace.h"
 #endif
 
-class PeakGrainProcessor : public juce::AudioProcessor
+class PeakGrainProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     PeakGrainProcessor();
-    ~PeakGrainProcessor() override = default;
+    ~PeakGrainProcessor() override;
 
     void prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock) override;
     void releaseResources() override;
@@ -47,42 +50,96 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
+    /** Both preset banks. Public because the web editor's bridge takes a
+        reference to it - see ee/plugin/PresetBridge.h. Declared after apvts so
+        the tree it reads and writes is already built. */
+    ee::plugin::PresetStore presets { apvts, "Peak Grain", EE_FACTORY_PRESETS };
+
+    /** Text under Size/Density/the two Delay time knobs: the division label
+        when synced, or the free-running reading otherwise. Public - unlike the
+        old ee::ui editor, PeakGrainWebEditor isn't a member of this class and
+        can't reach the private *Param pointers or *Map members directly, the
+        same reason Peak Delay's equivalents are public
+        (plugins/peak-delay/src/PluginProcessor.h). */
+    juce::String sizeReadout() const;
+    juce::String densityReadout() const;
+    juce::String leftTimeReadout() const;
+    juce::String rightTimeReadout() const;
+
+    /** The host tempo the readouts above were worked out at, for the web
+        editor's timer feed - a synced knob is a note division, so its printed
+        value moves whenever the host's tempo does, with nothing on the face
+        changing and no parameter to listen to. Safe from any thread; see
+        currentBpm()'s own note. */
+    double hostBpm() const { return lastKnownBpm.load(); }
+
+    /** The grain engine's current/default voicing, for the EE_GRAIN_TUNER dev
+        panel - same reason as the readouts above, PeakGrainWebEditor isn't a
+        member of this class and needs a way to reach the engine. Unconditional
+        (not guarded by EE_GRAIN_TUNER) the same way Peak Delay's
+        tapeTuning()/setTapeTuning() are - cheap to keep around, and it's the
+        editor's own #if that decides whether anything calls them. */
+    const ee::dsp::GrainerTuning& tuning() const noexcept { return grainer.getTuning(); }
+    void setTuning (const ee::dsp::GrainerTuning& t) noexcept { grainer.setTuning (t); }
+
 private:
     static constexpr int kMaxChannels = 2;
 
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-    /** Host tempo, clamped to something usable, for the three tempo-synced knobs
-        (grain Size, grain Density, delay Time). 120 when the host reports none. */
-    double currentBpm() const;
+    /** The last tempo readPlayHeadBpm() saw, clamped to 20..300 and defaulting
+        to 120 before the first block. Safe from any thread - this is what the
+        four readouts above and hostBpm() use. */
+    double currentBpm() const { return lastKnownBpm.load(); }
 
-    juce::String sizeReadout() const;
-    juce::String densityReadout() const;
-    juce::String delayTimeReadout() const;
+    /** Reads the host's tempo off the playhead and caches it in lastKnownBpm.
+        ONLY safe from processBlock/prepareToPlay: JUCE documents getPlayHead()
+        as callable only from the audio callback, and Ableton's playhead really
+        is invalid outside it - reading it from the message thread segfaulted
+        Live inside Peak Delay's own editor once (see
+        PeakDelayProcessor::readPlayHeadBpm()'s note). */
+    double readPlayHeadBpm();
 
-    /** A Sync button was clicked on the face: stash the knob's current position
-        into the mode it is leaving and push the mode it is entering back onto
-        the parameter, so each mode remembers where it was left. Mirrors
-        PeakTremPanProcessor::onSyncToggled. UI thread only - no listener. */
+    /** The Delay Type pill's three positions, read off dtype's choice index.
+        Out of range falls back to Normal. */
+    ee::dsp::TapeDelay::Routing routing() const noexcept;
+
+    /** ssync/dsync flipped: stash the knob's current position into the mode it
+        is leaving and push the mode it is entering back onto the parameter,
+        so each mode remembers where it was left. Mirrors
+        PeakTremPanProcessor::onSyncToggled. Called from parameterChanged
+        below - the face's single Grain "SYNC" pill writes both ssync and
+        dsync (see GrainFace.jsx), and each write triggers its own knob's
+        remap independently, so host automation of either flag alone remaps
+        correctly too, not only a click on the pill. The delay's own
+        single-knob version of this (onDelaySyncToggled) is gone now that
+        Left/Right are two independent knobs with no remembered per-mode
+        position, matching Peak Delay. */
     void onSizeSyncToggled();
     void onDensitySyncToggled();
-    void onDelaySyncToggled();
-
-    /** The Grain card's single footer switch: carry its new state onto the
-        Destiny sync flag and run both grain knobs' handlers together. */
-    void onGrainSyncToggled();
 
     void syncToggled (const char* paramID,
                       std::atomic<float>& freeSlot,
                       std::atomic<float>& syncSlot,
                       const std::atomic<float>* syncFlag);
 
+    /** One listener for every parameter that reacts to its own change rather
+        than just being read each block: ssync/dsync (above) and ltime/rtime/
+        dlink - PeakDelayProcessor's Sync-L/R mirror, copied onto Grain's ids
+        (PluginProcessor.cpp:293-357 there). `mirroring` stops the two Time
+        parameters echoing each other forever; `installingState` stands every
+        case here down for the length of a whole-tree install. */
+    void parameterChanged (const juce::String& parameterID, float newValue) override;
+    void mirrorTime (const juce::String& from, const juce::String& to);
+
+    /** Every route a whole APVTS tree can arrive by goes through this rather
+        than calling apvts.replaceState directly - a host restoring a session,
+        and the preset store, which is handed this as its install hook. */
+    void installState (const juce::ValueTree& tree);
+
     ee::dsp::Grainer grainer;
     ee::dsp::TapeDelay delay;
     ee::dsp::FdnReverb reverb;
-
-    // File-backed preset store, driven by the face's preset bar.
-    ee::grain::PresetStore presets { apvts };
 
     // 0..1 knobs whose Sync switch reinterprets them; built from GrainerConfig.
     ee::dsp::GrainSyncMap sizeMap;
@@ -105,11 +162,15 @@ private:
     std::atomic<float>* pitchLowParam = nullptr;
     std::atomic<float>* pitchUnisonParam = nullptr;
     std::atomic<float>* pitchHighParam = nullptr;
-    std::atomic<float>* delayTimeParam = nullptr;
-    std::atomic<float>* delaySyncParam = nullptr;
+    std::atomic<float>* leftTimeParam = nullptr;
+    std::atomic<float>* rightTimeParam = nullptr;
+    std::atomic<float>* delayLinkParam = nullptr;
+    std::atomic<float>* delaySyncParam = nullptr; // dtsync: ms vs tempo-division display, both time knobs
+    std::atomic<float>* delayTypeParam = nullptr;
     std::atomic<float>* delayFeedbackParam = nullptr;
     std::atomic<float>* delayMixParam = nullptr;
     std::atomic<float>* decayParam = nullptr;
+    std::atomic<float>* reverbLoCutParam = nullptr;
     std::atomic<float>* reverbMixParam = nullptr;
     std::atomic<float>* mixParam = nullptr;
     std::atomic<float>* onParam = nullptr;
@@ -127,13 +188,23 @@ private:
 
     // Remembered knob positions for the mode each Sync switch is not currently
     // in, so a round trip through the switch lands back where it started.
-    // Persisted as state-tree properties (see get/setStateInformation).
+    // Persisted as state-tree properties (see get/setStateInformation). Only
+    // Size/Density have this now - the delay's own version went with the
+    // single dtime knob it belonged to.
     std::atomic<float> sizeFree01 { ee::dsp::config::kDefaultSize01 };
     std::atomic<float> sizeSync01 { ee::dsp::config::kDefaultSize01 };
     std::atomic<float> densityFree01 { ee::dsp::config::kDefaultDensity01 };
     std::atomic<float> densitySync01 { ee::dsp::config::kDefaultDensity01 };
-    std::atomic<float> delayFree01 { ee::dsp::config::kDefaultDelayTime01 };
-    std::atomic<float> delaySync01 { ee::dsp::config::kDefaultDelayTime01 };
+
+    /** Stops ltime/rtime echoing each other forever while dlink is on. */
+    std::atomic<bool> mirroring { false };
+
+    /** Held while installState is putting a whole tree in place, so the L/R
+        mirror stands down for the length of it. See installState. */
+    std::atomic<bool> installingState { false };
+
+    /** Written on the audio thread, read from the editor - see hostBpm(). */
+    std::atomic<double> lastKnownBpm { 120.0 };
 
     // Each series stage is an equal-power dry/wet blend; the dry leg opens to
     // unity when the pedal is bypassed so all three tails ring out over the

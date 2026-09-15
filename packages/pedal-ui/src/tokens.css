@@ -425,6 +425,19 @@
   --pui-accent-reverb: #348088;
 }
 
+/* Peak Grain's three non-Alpine section accents (Grain, Pitch, Random) -
+   outside the theme blocks for the same reason as the three above, but with
+   no onyx override: Grain only ships on the onyx face, so there is no other
+   ground for these to need to read against. The old native face's pastel
+   knob-cap colours (0xff80658e / 0xffe79bbf / 0xffe6bfa9), re-picked in
+   lightness so a 1.4px arc still reads on the near-black onyx panel - same
+   hues, see design_handoff_peak_grain/TOKENS.md. */
+:root {
+  --pui-accent-grain: #b39bd8;
+  --pui-accent-pitch: #e78fb3;
+  --pui-accent-random: #dfa878;
+}
+
 /* There is deliberately no `--pui-accent` token here. An accent-wearing
    control resolves it as `var(--pui-accent, var(--pui-ink))` at the point of
    use instead, so that with no ModulePanel above it the control lands on

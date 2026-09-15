@@ -4,6 +4,7 @@ import PeakArtifactFace from "peak-artifact-jsui/src/App.jsx";
 import PeakModulationFace from "peak-modulation-jsui/src/App.jsx";
 import PeakReverbFace from "peak-reverb-jsui/src/App.jsx";
 import PeakWahFace from "peak-wah-jsui/src/App.jsx";
+import PeakGrainFace from "peak-grain-jsui/src/App.jsx";
 
 // The shipping plan, not a mirror of plugins/: Peak Alpine, each of its four
 // modules as its own product, and two pedals that ship on their own. A pedal
@@ -35,6 +36,6 @@ export const pedals = [
   { slug: "peak-artifact", name: "Peak Artifact", group: "alpine", face: PeakArtifactFace, theme: "onyx" },
 
   { slug: "peak-wah", name: "Peak Wah", group: "standalone", face: PeakWahFace },
-  { slug: "peak-grain", name: "Peak Grain", group: "standalone", face: null },
+  { slug: "peak-grain", name: "Peak Grain", group: "standalone", face: PeakGrainFace, theme: "onyx" },
   { slug: "peak-eq", name: "Peak EQ", group: "standalone", face: null },
 ];

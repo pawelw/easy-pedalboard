@@ -3,15 +3,9 @@
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/plugin/Bypass.h"
 #include "ee/plugin/ParamText.h"
-#include "ee/ui/PedalEditor.h"
-
-#include "BinaryData.h"
+#include "PeakGrainWebEditor.h"
 
 #include <cmath>
-
-#if EE_GRAIN_TUNER
-#include "GrainTunerPanel.h"
-#endif
 
 namespace
 {
@@ -33,11 +27,15 @@ constexpr const char* kDetuneID = "detune";
 constexpr const char* kPitchLowID = "plow";
 constexpr const char* kPitchUnisonID = "puni";
 constexpr const char* kPitchHighID = "phigh";
-constexpr const char* kDelayTimeID = "dtime";
+constexpr const char* kDelayLeftTimeID = "ltime";
+constexpr const char* kDelayRightTimeID = "rtime";
+constexpr const char* kDelayLinkID = "dlink";
 constexpr const char* kDelaySyncID = "dtsync";
+constexpr const char* kDelayTypeID = "dtype";
 constexpr const char* kDelayFeedbackID = "dfb";
 constexpr const char* kDelayMixID = "dmix";
 constexpr const char* kDecayID = "decay";
+constexpr const char* kReverbLoCutID = "rlocut";
 constexpr const char* kReverbMixID = "rmix";
 constexpr const char* kMixID = "mix";
 constexpr const char* kOnID = "on";
@@ -52,12 +50,13 @@ constexpr const char* kReverbOnID = "revon";
 
 // State-tree properties: the knob position each Sync switch is not currently
 // showing, so flipping the switch and flipping it back lands where it started.
+// Only Size/Density have this - the delay's own version went with the single
+// dtime knob it used to belong to; ltime/rtime mirror Peak Delay's simpler
+// scheme instead (see PeakGrainProcessor::parameterChanged).
 constexpr const char* kSizeFreeProp = "sizeFree01";
 constexpr const char* kSizeSyncProp = "sizeSync01";
 constexpr const char* kDensityFreeProp = "densityFree01";
 constexpr const char* kDensitySyncProp = "densitySync01";
-constexpr const char* kDelayFreeProp = "delayFree01";
-constexpr const char* kDelaySyncProp = "delaySync01";
 
 // The reverb network is normalised to ~0.42 RMS gain; this is Peak Reverb's
 // trim, kept so a given Decay lands at the same level on both pedals.
@@ -97,9 +96,17 @@ juce::String decaySecondsToText (float value, int)
     return juce::String (value, 2) + " s";
 }
 
+/** Reverb Low Cut's host-facing text - same shape as Peak Reverb's own
+    hertzToText (plugins/peak-reverb/src/PluginProcessor.cpp). */
+juce::String hertzToText (float value, int)
+{
+    return value >= 1000.0f ? juce::String (value / 1000.0f, 1) + " kHz"
+                            : juce::String (juce::roundToInt (value)) + " Hz";
+}
+
 /** The three tempo-sync maps, built once from GrainerConfig ranges. Size and
-    the delay Time are durations (knob up = longer, free unit ms); Density is a
-    rate (knob up = faster, free unit grains/second). */
+    the delay time knobs are durations (knob up = longer, free unit ms);
+    Density is a rate (knob up = faster, free unit grains/second). */
 ee::dsp::GrainSyncMap makeSizeMap()
 {
     namespace cfg = ee::dsp::config;
@@ -123,107 +130,6 @@ ee::dsp::GrainSyncMap makeDelayMap()
     r.setSkewForCentre (cfg::kTimeSkewMs);
     return { r, true };
 }
-
-/** One grain envelope, for the Shape knob's cap - the same idea as Peak Wah's
-    morphing LFO glyph, but the curve that morphs here is the grain window:
-    `shape` leans it from soft (a slow rise into a gentle tail) at 0 to plucky
-    (an instant attack into a sharp decay) at 1, matching `Grainer::setShape`. */
-void drawGrainShapeIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour, float shape01)
-{
-    const auto r = area.reduced (area.getWidth() * 0.12f, area.getHeight() * 0.26f);
-    const float s = juce::jlimit (0.0f, 1.0f, shape01);
-    const float attack = 0.42f - 0.36f * s; // fraction of the width spent rising
-    const float decayK = 2.0f + 4.5f * s;   // steepness of the exponential tail
-
-    juce::Path p;
-    constexpr int steps = 48;
-    for (int i = 0; i <= steps; ++i)
-    {
-        const float t = static_cast<float> (i) / static_cast<float> (steps);
-        const float e = t < attack ? (attack > 1.0e-4f ? t / attack : 1.0f)
-                                   : std::exp (-decayK * (t - attack) / juce::jmax (1.0e-4f, 1.0f - attack));
-        const float x = r.getX() + t * r.getWidth();
-        const float y = r.getBottom() - e * r.getHeight();
-        i == 0 ? p.startNewSubPath (x, y) : p.lineTo (x, y);
-    }
-
-    g.setColour (colour);
-    g.strokePath (p, juce::PathStrokeType (2.0f, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-}
-
-/** The IEC power glyph - a ring broken at the top with a stem through the gap -
-    for each module's enable button. Lit when the section is on, the pale grey
-    of an unreached tick when off, the same as the Sync buttons. */
-void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
-{
-    const auto r = area.reduced (area.getWidth() * 0.10f, area.getHeight() * 0.10f);
-    const auto c = r.getCentre();
-    const float radius = r.getWidth() * 0.45f;
-    const float stroke = juce::jmax (1.3f, r.getHeight() * 0.12f);
-
-    juce::Path ring;
-    ring.addCentredArc (c.x, c.y, radius, radius, 0.0f, juce::degreesToRadians (38.0f), juce::degreesToRadians (322.0f),
-                        true);
-
-    g.setColour (colour);
-    g.strokePath (ring, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
-    g.drawLine (c.x, r.getY(), c.x, c.y + radius * 0.10f, stroke);
-}
-
-/** The icon set's own ink colour - sampled from the fully-opaque pixels of
-    all five files, which agree to within a couple of RGB steps (~68,68,70).
-    Used below as a fill, not a tint: `Graphics::drawImage` compositing these
-    PNGs' own RGB+alpha measurably washes the linework out at this draw size
-    on this build (confirmed by sampling pixels going in versus what actually
-    lands on screen); reading the image as an alpha stencil and flooding it
-    with this colour - matching the source almost exactly - does not, and
-    reads sharper regardless of scale. */
-constexpr juce::uint32 kIconInk = 0xff444446;
-
-/** A module's mark drawn from a bundled PNG, fitted to the icon box without
-    stretching. The tint argument is ignored - see `kIconInk` above. */
-void drawImageIcon (juce::Graphics& g, juce::Rectangle<float> area, const juce::Image& img)
-{
-    if (! img.isValid())
-        return;
-
-    g.setColour (juce::Colour (kIconInk));
-    g.drawImage (img, area, juce::RectanglePlacement::centred, true);
-}
-
-void drawRandomIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
-{
-    static const juce::Image img = juce::ImageCache::getFromMemory (BinaryData::random_png, BinaryData::random_pngSize);
-    drawImageIcon (g, area, img);
-}
-
-void drawGrainIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
-{
-    static const juce::Image img =
-        juce::ImageCache::getFromMemory (BinaryData::grainicon_png, BinaryData::grainicon_pngSize);
-    drawImageIcon (g, area, img);
-}
-
-void drawTapeIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
-{
-    static const juce::Image img =
-        juce::ImageCache::getFromMemory (BinaryData::tapeicon_png, BinaryData::tapeicon_pngSize);
-    drawImageIcon (g, area, img);
-}
-
-void drawReverbIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
-{
-    static const juce::Image img =
-        juce::ImageCache::getFromMemory (BinaryData::reverbicon_png, BinaryData::reverbicon_pngSize);
-    drawImageIcon (g, area, img);
-}
-
-void drawPitchIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
-{
-    static const juce::Image img =
-        juce::ImageCache::getFromMemory (BinaryData::pitchicon_png, BinaryData::pitchicon_pngSize);
-    drawImageIcon (g, area, img);
-}
 } // namespace
 
 PeakGrainProcessor::PeakGrainProcessor()
@@ -232,6 +138,11 @@ PeakGrainProcessor::PeakGrainProcessor()
                                 .withOutput ("Output", juce::AudioChannelSet::stereo(), true)),
       apvts (*this, nullptr, "PARAMETERS", createParameterLayout())
 {
+    // Every route a whole APVTS tree can arrive by - a host restoring a
+    // session, the preset store loading a preset - has to stand down the
+    // Left/Right mirror for the length of it; see installState.
+    presets.installState = [this] (const juce::ValueTree& tree) { installState (tree); };
+
     sizeMap = makeSizeMap();
     densityMap = makeDensityMap();
     delayMap = makeDelayMap();
@@ -252,11 +163,15 @@ PeakGrainProcessor::PeakGrainProcessor()
     pitchLowParam = apvts.getRawParameterValue (kPitchLowID);
     pitchUnisonParam = apvts.getRawParameterValue (kPitchUnisonID);
     pitchHighParam = apvts.getRawParameterValue (kPitchHighID);
-    delayTimeParam = apvts.getRawParameterValue (kDelayTimeID);
+    leftTimeParam = apvts.getRawParameterValue (kDelayLeftTimeID);
+    rightTimeParam = apvts.getRawParameterValue (kDelayRightTimeID);
+    delayLinkParam = apvts.getRawParameterValue (kDelayLinkID);
     delaySyncParam = apvts.getRawParameterValue (kDelaySyncID);
+    delayTypeParam = apvts.getRawParameterValue (kDelayTypeID);
     delayFeedbackParam = apvts.getRawParameterValue (kDelayFeedbackID);
     delayMixParam = apvts.getRawParameterValue (kDelayMixID);
     decayParam = apvts.getRawParameterValue (kDecayID);
+    reverbLoCutParam = apvts.getRawParameterValue (kReverbLoCutID);
     reverbMixParam = apvts.getRawParameterValue (kReverbMixID);
     mixParam = apvts.getRawParameterValue (kMixID);
     onParam = apvts.getRawParameterValue (kOnID);
@@ -273,12 +188,25 @@ PeakGrainProcessor::PeakGrainProcessor()
     sizeSync01 = sizeParam->load();
     densityFree01 = densityParam->load();
     densitySync01 = densityParam->load();
-    delayFree01 = delayTimeParam->load();
-    delaySync01 = delayTimeParam->load();
+
+    apvts.addParameterListener (kDelayLeftTimeID, this);
+    apvts.addParameterListener (kDelayRightTimeID, this);
+    apvts.addParameterListener (kDelayLinkID, this);
+    apvts.addParameterListener (kSizeSyncID, this);
+    apvts.addParameterListener (kDensitySyncID, this);
 
 #if EE_GRAIN_TRACE
     trace = std::make_unique<GrainTrace> (apvts);
 #endif
+}
+
+PeakGrainProcessor::~PeakGrainProcessor()
+{
+    apvts.removeParameterListener (kDelayLeftTimeID, this);
+    apvts.removeParameterListener (kDelayRightTimeID, this);
+    apvts.removeParameterListener (kDelayLinkID, this);
+    apvts.removeParameterListener (kSizeSyncID, this);
+    apvts.removeParameterListener (kDensitySyncID, this);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createParameterLayout()
@@ -358,15 +286,29 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
                                                              percent, cfg::kDefaultPitchHighPct, percentAttributes));
 
     // The post delay: a clean digital delay after the grain stage, before the
-    // reverb. One normalised Time knob with its own Sync switch, plus Feedback
-    // and Mix.
+    // reverb. Independent Left/Right time knobs, a Sync-L/R link (mirrors Peak
+    // Delay's own `sync`/ltime/rtime exactly - see PeakGrainProcessor::
+    // parameterChanged), a Normal/Wide/Ping-Pong routing choice, plus Feedback
+    // and Mix. dtsync is Grain's own long-standing sense (true = tempo-synced
+    // display), used by both time knobs' host-facing text and live readout.
+    const auto timeAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+        [] (float v, int) { return makeDelayMap().toText (v, true, 120.0); });
+
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kDelayTimeID, 1 }, "Delay Time", unit, cfg::kDefaultDelayTime01,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-            [] (float v, int) { return makeDelayMap().toText (v, false, 120.0); })));
+        juce::ParameterID { kDelayLeftTimeID, 1 }, "Left Time", unit, cfg::kDefaultDelayTime01, timeAttributes));
+
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kDelayRightTimeID, 1 }, "Right Time", unit, cfg::kDefaultDelayTime01, timeAttributes));
+
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDelayLinkID, 1 }, "Delay Link", true));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDelaySyncID, 1 }, "Delay Sync",
                                                             cfg::kDefaultDelaySync));
+
+    // Normal first, so a session saved before this parameter existed loads at
+    // index 0 and sounds exactly as it did.
+    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kDelayTypeID, 1 }, "Delay Type",
+                                                              juce::StringArray { "Normal", "Wide", "Ping Pong" }, 0));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kDelayFeedbackID, 1 },
                                                              "Delay Feedback", percent, cfg::kDefaultDelayFeedbackPct,
@@ -376,11 +318,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
                                                              cfg::kDefaultDelayMixPct, percentAttributes));
 
     // The reverb now hears the whole post-delay blend. Decay is straight
-    // seconds onto the network; Mix is its own dry/wet.
+    // seconds onto the network; Low Cut is a real knob now (used to be fixed
+    // at GrainerTuning::verbLowCutHz); Mix is its own dry/wet.
     auto decayRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kDecayID, 1 }, "Decay", decayRange, cfg::kDefaultReverbDecaySeconds,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (decaySecondsToText)));
+
+    auto loCutRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz, ee::dsp::FdnReverb::kMaxLowCutHz);
+    loCutRange.setSkewForCentre (180.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kReverbLoCutID, 1 }, "Reverb Low Cut", loCutRange, cfg::kDefaultReverbLoCutHz,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (hertzToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kReverbMixID, 1 }, "Reverb Mix",
                                                              percent, cfg::kDefaultReverbMixPct, percentAttributes));
@@ -406,16 +355,18 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
     return layout;
 }
 
-double PeakGrainProcessor::currentBpm() const
+double PeakGrainProcessor::readPlayHeadBpm()
 {
     double bpm = 120.0;
 
     if (auto* playHead = getPlayHead())
         if (const auto position = playHead->getPosition())
-            if (const auto hostBpm = position->getBpm())
-                bpm = *hostBpm;
+            if (const auto hostBpmValue = position->getBpm())
+                bpm = *hostBpmValue;
 
-    return juce::jlimit (20.0, 300.0, bpm);
+    bpm = juce::jlimit (20.0, 300.0, bpm);
+    lastKnownBpm.store (bpm);
+    return bpm;
 }
 
 juce::String PeakGrainProcessor::sizeReadout() const
@@ -431,9 +382,14 @@ juce::String PeakGrainProcessor::densityReadout() const
     return densityMap.toText (densityParam->load(), densitySyncParam->load() > 0.5f, currentBpm());
 }
 
-juce::String PeakGrainProcessor::delayTimeReadout() const
+juce::String PeakGrainProcessor::leftTimeReadout() const
 {
-    return delayMap.toText (delayTimeParam->load(), delaySyncParam->load() > 0.5f, currentBpm());
+    return delayMap.toText (leftTimeParam->load(), delaySyncParam->load() > 0.5f, currentBpm());
+}
+
+juce::String PeakGrainProcessor::rightTimeReadout() const
+{
+    return delayMap.toText (rightTimeParam->load(), delaySyncParam->load() > 0.5f, currentBpm());
 }
 
 void PeakGrainProcessor::syncToggled (const char* paramID,
@@ -472,23 +428,88 @@ void PeakGrainProcessor::onDensitySyncToggled()
     syncToggled (kDensityID, densityFree01, densitySync01, densitySyncParam);
 }
 
-void PeakGrainProcessor::onDelaySyncToggled()
+ee::dsp::TapeDelay::Routing PeakGrainProcessor::routing() const noexcept
 {
-    syncToggled (kDelayTimeID, delayFree01, delaySync01, delaySyncParam);
+    using Routing = ee::dsp::TapeDelay::Routing;
+
+    switch (delayTypeParam != nullptr ? juce::roundToInt (delayTypeParam->load()) : 0)
+    {
+    case 1:
+        return Routing::wide;
+    case 2:
+        return Routing::pingPong;
+    default:
+        return Routing::normal;
+    }
 }
 
-void PeakGrainProcessor::onGrainSyncToggled()
+void PeakGrainProcessor::mirrorTime (const juce::String& from, const juce::String& to)
 {
-    // One footer switch for the whole Grain card. It is bound to `ssync`, which
-    // has already flipped; carry `dsync` to the same state, then let each knob's
-    // own handler nudge Size and Destiny to what that mode remembers.
-    const bool nowSynced = sizeSyncParam != nullptr && sizeSyncParam->load() > 0.5f;
+    auto* source = apvts.getParameter (from);
+    auto* destination = apvts.getParameter (to);
 
-    if (auto* dsync = apvts.getParameter (kDensitySyncID); dsync != nullptr && (dsync->getValue() > 0.5f) != nowSynced)
-        dsync->setValueNotifyingHost (nowSynced ? 1.0f : 0.0f);
+    if (source == nullptr || destination == nullptr)
+        return;
 
-    onSizeSyncToggled();
-    onDensitySyncToggled();
+    const float value = source->getValue();
+
+    if (std::abs (destination->getValue() - value) > 1.0e-6f)
+        destination->setValueNotifyingHost (value);
+}
+
+/** Installs a whole APVTS tree - a host restoring a session, a preset load -
+    with the Sync L/R mirror held off for the length of it. Same reasoning as
+    PeakDelayProcessor::installState: an install writes the link flag and both
+    times one parameter at a time, in the file's own order, so without this a
+    preset whose two sides are deliberately apart could be collapsed onto one
+    time before the link's own "off" ever arrived. */
+void PeakGrainProcessor::installState (const juce::ValueTree& tree)
+{
+    installingState = true;
+    apvts.replaceState (tree);
+    installingState = false;
+}
+
+void PeakGrainProcessor::parameterChanged (const juce::String& parameterID, float newValue)
+{
+    if (installingState.load())
+        return;
+
+    // ssync/dsync: the face's single Grain "SYNC" pill writes both flags
+    // separately (see GrainFace.jsx); each write lands here on its own and
+    // remaps its own knob, so this also does the right thing if a host
+    // automates just one of the two.
+    if (parameterID == kSizeSyncID)
+    {
+        onSizeSyncToggled();
+        return;
+    }
+    if (parameterID == kDensitySyncID)
+    {
+        onDensitySyncToggled();
+        return;
+    }
+
+    // ltime/rtime/dlink: the Sync-L/R mirror. Read the link flag from the
+    // callback argument rather than the cached value: the two are not
+    // guaranteed to be in step at this point.
+    const bool linked =
+        parameterID == kDelayLinkID ? newValue > 0.5f : (delayLinkParam != nullptr && delayLinkParam->load() > 0.5f);
+
+    if (! linked)
+        return;
+
+    if (mirroring.exchange (true))
+        return;
+
+    // Turning the link on adopts the left value, which is the one the user set
+    // last in the common case of reaching for the button after dialling left.
+    if (parameterID == kDelayRightTimeID)
+        mirrorTime (kDelayRightTimeID, kDelayLeftTimeID);
+    else
+        mirrorTime (kDelayLeftTimeID, kDelayRightTimeID);
+
+    mirroring = false;
 }
 
 void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSamplesPerBlock)
@@ -501,6 +522,7 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     delay.prepare (sampleRate);
     delay.reset();
     delay.setModulation (0.0f);
+    delay.setRouting (routing());
     snapDelayNextBlock = true;
 
     reverb.prepare (sampleRate);
@@ -510,6 +532,7 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     // before it ever calls processBlock, and without this it is answered from
     // FdnReverb's own default decay rather than the knob.
     reverb.setDecayTime (decayParam->load());
+    reverb.setLowCut (reverbLoCutParam->load());
 
     // Fixed for the life of the plugin: Peak Grain runs the network plain. Read
     // back from the engine's own tuning, so a value the dev panel has changed
@@ -517,7 +540,6 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     const auto& tuning = grainer.getTuning();
     reverb.setResonance (tuning.verbResonance);
     reverb.setShimmer (ee::dsp::config::kVerbShimmer);
-    reverb.setLowCut (tuning.verbLowCutHz);
 
     grainBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
     stageBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
@@ -546,6 +568,8 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     reverbDry.setCurrentAndTargetValue (engaged ? std::cos (rMix * hp) : 1.0f);
     reverbWet.setCurrentAndTargetValue (std::sin (rMix * hp) * kWetTrim);
     engageGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
+
+    readPlayHeadBpm(); // seed lastKnownBpm from whatever the host reports before the first block, if anything
 }
 
 void PeakGrainProcessor::releaseResources()
@@ -599,7 +623,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         inputPeak = juce::jmax (inputPeak, buffer.getMagnitude (ch, 0, numSamples));
 #endif
 
-    const double bpm = currentBpm();
+    const double bpm = readPlayHeadBpm();
     const bool sizeSynced = sizeSyncParam->load() > 0.5f;
     const bool densitySynced = densitySyncParam->load() > 0.5f;
     const bool delaySynced = delaySyncParam->load() > 0.5f;
@@ -651,8 +675,10 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     else
         grainer.setPitchMix (0.0f, 1.0f, 0.0f);
 
-    const float delaySecs = delayMap.value (delayTimeParam->load(), delaySynced, bpm) * 0.001f;
-    delay.setDelaySeconds (delaySecs, delaySecs);
+    const float leftSecs = delayMap.value (leftTimeParam->load(), delaySynced, bpm) * 0.001f;
+    const float rightSecs = delayMap.value (rightTimeParam->load(), delaySynced, bpm) * 0.001f;
+    delay.setDelaySeconds (leftSecs, rightSecs);
+    delay.setRouting (routing());
     delay.setFeedback (delayFeedbackParam->load() * 0.01f);
     delay.setModulation (0.0f);
 
@@ -663,6 +689,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     }
 
     reverb.setDecayTime (decayParam->load());
+    reverb.setLowCut (reverbLoCutParam->load());
 
     const float hp = juce::MathConstants<float>::halfPi;
     const bool grainOn = grainOnParam->load() > 0.5f;
@@ -838,212 +865,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
 juce::AudioProcessorEditor* PeakGrainProcessor::createEditor()
 {
-    ee::ui::PedalSpec spec;
-    spec.name = "Peak Grain";
-    spec.tagline = "Granular delay into delay into plate";
-    spec.version = "v" JucePlugin_VersionString;
-
-    // Five modules laid out side by side, each its own raised panel. The knobs
-    // are consumed in order by `knobGroups`; within a module they fill two per
-    // row (an odd one leading on a row of its own), except Reverb which stacks
-    // one per row so its panel stays narrow. Each module's knob caps carry that
-    // module's own colour.
-    constexpr int kLeadKnob = 86; // the two lead knobs, ~30% up on the face default
-
-    const juce::Colour kGrainCol { 0xff80658e };  // purple
-    const juce::Colour kPitchCol { 0xffe79bbf };  // pink
-    const juce::Colour kRandomCol { 0xffe6bfa9 }; // peach
-    const juce::Colour kDelayCol { 0xff9ebb87 };  // green
-    const juce::Colour kReverbCol { 0xff50938a }; // teal
-
-    spec.knobs = {
-        // Grain
-        { .parameterID = kMixID, .caption = "Mix", .capFill = kGrainCol },
-        { .parameterID = kSizeID,
-          .caption = "Size",
-          .capFill = kGrainCol,
-          .liveValueText = [this] { return sizeReadout(); } },
-        { .parameterID = kDensityID,
-          .caption = "Destiny",
-          .capFill = kGrainCol,
-          .liveValueText = [this] { return densityReadout(); } },
-        { .parameterID = kShapeID,
-          .caption = "Shape",
-          .capFill = kGrainCol,
-          .capIcon = [this] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
-          { drawGrainShapeIcon (g, r, c, shapeParam->load() * 0.01f); } },
-
-        // Pitch
-        { .parameterID = kPitchLowID, .caption = "Low", .capFill = kPitchCol },
-        { .parameterID = kPitchUnisonID, .caption = "Unison", .capFill = kPitchCol },
-        { .parameterID = kPitchHighID, .caption = "High", .capFill = kPitchCol },
-        { .parameterID = kDetuneID, .caption = "Detune", .capFill = kPitchCol },
-
-        // Random
-        { .parameterID = kStereoID, .caption = "Stereo", .capFill = kRandomCol },
-        { .parameterID = kReverseID, .caption = "Reverse", .capFill = kRandomCol },
-        { .parameterID = kScatterID, .caption = "Scatter", .capFill = kRandomCol },
-
-        // Delay
-        { .parameterID = kDelayMixID, .caption = "Mix", .capFill = kDelayCol },
-        { .parameterID = kDelayTimeID,
-          .caption = "Time",
-          .capFill = kDelayCol,
-          .liveValueText = [this] { return delayTimeReadout(); } },
-        { .parameterID = kDelayFeedbackID, .caption = "Feedback", .capFill = kDelayCol },
-
-        // Reverb
-        { .parameterID = kDecayID, .caption = "Decay", .capFill = kReverbCol },
-        { .parameterID = kReverbMixID, .caption = "Mix", .capFill = kReverbCol },
-    };
-
-    // Lavender-white panels standing off the cool grey face, each with its own
-    // mark centred at the top (placeholder art for now).
-    const juce::Colour kCardFill { 0xffe9e8f0 };
-
-    // Sync / ms switch in the card footer. The Grain card carries one switch
-    // that drives both grain knobs (Size + Destiny) at once; Delay carries one
-    // for Time. The switch is bound to the first of its pair - `footerOnClick`
-    // mirrors its new state onto the sibling before nudging the knobs. Off/on
-    // are silent: only the knob positions move to what each mode remembers.
-    const auto syncFooter = [] (const char* id) {
-        return ee::ui::SlideToggleSpec {
-            .parameterID = id, .labelOff = "ms", .labelOn = "Sync", .invertPosition = true
-        };
-    };
-    spec.knobGroups = {
-        { .caption = "Grain",
-          .count = 4,
-          .columns = 1,
-          .fill = kCardFill,
-          .icon = drawGrainIcon,
-          .footer = syncFooter (kSizeSyncID),
-          .footerOnClick = [this] { onGrainSyncToggled(); } },
-        { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawPitchIcon },
-        { .caption = "Random", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawRandomIcon },
-        { .caption = "Delay",
-          .count = 3,
-          .columns = 1,
-          .fill = kCardFill,
-          .icon = drawTapeIcon,
-          .footer = syncFooter (kDelaySyncID),
-          .footerOnClick = [this] { onDelaySyncToggled(); } },
-        { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawReverbIcon },
-    };
-    spec.knobGroupsHorizontal = true;
-    spec.filledKnobGroups = true;
-    spec.captionUntilTouchedKnobs = true; // caption at rest, value only while turning
-    spec.knobGroupFooters = true;
-
-    spec.toggles = {
-        // A power button in the top-right of each module panel: off feeds that
-        // section its no-op values (see processBlock) without moving its knobs.
-        { .parameterID = kGrainOnID,
-          .caption = "On",
-          .iconSize = 18,
-          .groupPanelIndex = 0,
-          .icon = drawPowerIcon,
-          .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = kPitchOnID,
-          .caption = "On",
-          .iconSize = 18,
-          .groupPanelIndex = 1,
-          .icon = drawPowerIcon,
-          .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = kRandomOnID,
-          .caption = "On",
-          .iconSize = 18,
-          .groupPanelIndex = 2,
-          .icon = drawPowerIcon,
-          .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = kDelayOnID,
-          .caption = "On",
-          .iconSize = 18,
-          .groupPanelIndex = 3,
-          .icon = drawPowerIcon,
-          .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = kReverbOnID,
-          .caption = "On",
-          .iconSize = 18,
-          .groupPanelIndex = 4,
-          .icon = drawPowerIcon,
-          .controlStyle = ee::ui::ControlStyle::digital },
-    };
-
-    // Live / Freeze rides in the strip across the top.
-    spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = kFreezeID, .labelOff = "Live", .labelOn = "Freeze" };
-
-    // Preset bar, centred in the same strip: list / save on the left, name in
-    // the middle, prev / next on the right. Backed by the file store.
-    spec.presetBar = ee::ui::PresetBarSpec {
-        .names = [this] { return presets.names(); },
-        .currentIndex = [this] { return presets.currentIndex(); },
-        .onSelect = [this] (int i) { presets.select (i); },
-        .onSave = [this] { presets.save(); },
-        .onSaveAsNew = [this] { presets.saveAsNew(); },
-        .onPrev = [this] { presets.step (-1); },
-        .onNext = [this] { presets.step (1); },
-        .width = 300,
-    };
-
-    // The empty line above the logo: a scope showing the grain cloud on the
-    // left and its delay repeats fading right, over a faint reverb wash. Still
-    // and knob-tracking for now - the parameter IDs are all read normalised.
-    spec.grainScope = ee::ui::GrainScopeSpec {
-        .sizeID = kSizeID,
-        .densityID = kDensityID,
-        .scatterID = kScatterID,
-        .stereoID = kStereoID,
-        .pitchLowID = kPitchLowID,
-        .pitchHighID = kPitchHighID,
-        .delayTimeID = kDelayTimeID,
-        .delayFeedbackID = kDelayFeedbackID,
-        .delayMixID = kDelayMixID,
-        .reverbDecayID = kDecayID,
-        .reverbMixID = kReverbMixID,
-        .height = 66,
-    };
-
-    // Logo and name share the bottom row, centred and nudged down a touch.
-    spec.titleBesideLogo = true;
-    spec.titleRowCentred = true;
-    spec.titleRowDrop = 4;
-
-    // Master level, hard against the top-right of the switch strip. One text
-    // line - the caption at rest, the reading while it is turned.
-    spec.topRightKnob = ee::ui::KnobSpec { .parameterID = kVolumeID, .caption = "Level", .captionUntilTouched = true };
-    spec.topRightKnobDiameter = 40;
-
-    // Five narrow modules side by side, one knob per row. The row gap still has
-    // to clear the Sync buttons that hang under Size, Destiny and Time.
-    spec.knobDiameter = 64;
-    spec.displayBandRise = -24; // push the scope band down too
-    spec.knobRowGap = -4;
-    spec.width = 700;
-    spec.height = 700;
-
-    // Peak Wah's white theme, but the face is a cool light-grey box (matching
-    // the design) so the lavender-white panels read as raised cards on it.
-    auto theme = ee::ui::PedalTheme::white();
-    theme.panel = juce::Colour (0xffd5d5df);
-    theme.background = juce::Colour (0xffcfcfda);
-
-    auto* editor = new ee::ui::PedalEditor (*this, apvts, spec, theme);
-
-#if EE_GRAIN_TUNER
-    // The panel owns the voicing while it is open: the grain half goes to the
-    // engine, the two reverb fields straight to the network.
-    editor->setSidePanel (std::make_unique<GrainTunerPanel> (grainer.getTuning(),
-                                                             [this] (const ee::dsp::GrainerTuning& t)
-                                                             {
-                                                                 grainer.setTuning (t);
-                                                                 reverb.setResonance (t.verbResonance);
-                                                                 reverb.setLowCut (t.verbLowCutHz);
-                                                             }),
-                          GrainTunerPanel::preferredWidth);
-#endif
-
-    return editor;
+    return new PeakGrainWebEditor (*this);
 }
 
 void PeakGrainProcessor::getStateInformation (juce::MemoryBlock& destData)
@@ -1054,8 +876,6 @@ void PeakGrainProcessor::getStateInformation (juce::MemoryBlock& destData)
     state.setProperty (kSizeSyncProp, sizeSync01.load(), nullptr);
     state.setProperty (kDensityFreeProp, densityFree01.load(), nullptr);
     state.setProperty (kDensitySyncProp, densitySync01.load(), nullptr);
-    state.setProperty (kDelayFreeProp, delayFree01.load(), nullptr);
-    state.setProperty (kDelaySyncProp, delaySync01.load(), nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -1067,7 +887,7 @@ void PeakGrainProcessor::setStateInformation (const void* data, int sizeInBytes)
     {
         if (xml->hasTagName (apvts.state.getType()))
         {
-            apvts.replaceState (juce::ValueTree::fromXml (*xml));
+            installState (juce::ValueTree::fromXml (*xml));
 
             const auto restore = [this] (const char* prop, std::atomic<float>& slot, const std::atomic<float>* fallback)
             { slot.store (static_cast<float> (apvts.state.getProperty (prop, fallback->load()))); };
@@ -1076,8 +896,6 @@ void PeakGrainProcessor::setStateInformation (const void* data, int sizeInBytes)
             restore (kSizeSyncProp, sizeSync01, sizeParam);
             restore (kDensityFreeProp, densityFree01, densityParam);
             restore (kDensitySyncProp, densitySync01, densityParam);
-            restore (kDelayFreeProp, delayFree01, delayTimeParam);
-            restore (kDelaySyncProp, delaySync01, delayTimeParam);
         }
     }
 }

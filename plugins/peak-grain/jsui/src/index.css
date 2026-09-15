@@ -1,0 +1,13 @@
+/* Peak Grain's page wrapper. The actual face styling is GrainFace.css -
+   this is only the centring/padding shell every pedal's index.css carries.
+
+   html/body's own margin/overflow/background live in index.html - see
+   plugins/peak-wah/jsui/index.html for why. */
+
+.page {
+  display: flex;
+  justify-content: center;
+  /* The plugin window is sized to the panel plus exactly this much on every
+     side (installAutoResize's `padding`) - change one, change the other. */
+  padding: 4px;
+}

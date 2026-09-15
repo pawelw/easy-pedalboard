@@ -13,6 +13,7 @@
     "peak-alpine-jsui": "*",
     "peak-artifact-jsui": "*",
     "peak-delay-jsui": "*",
+    "peak-grain-jsui": "*",
     "peak-modulation-jsui": "*",
     "peak-reverb-jsui": "*",
     "peak-wah-jsui": "*",

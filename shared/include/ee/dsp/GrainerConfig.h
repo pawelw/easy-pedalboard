@@ -221,6 +221,11 @@ constexpr float kVerbShimmer   = 0.0f;
 constexpr float kDefaultReverbDecaySeconds = 2.5f;
 constexpr float kDefaultReverbMixPct       = 30.0f;
 
+// Low Cut is a real face knob now (it used to be GrainerTuning::verbLowCutHz,
+// fixed and never exposed); this is that same resting point, kept here as the
+// parameter's default so the two stay obviously in step.
+constexpr float kDefaultReverbLoCutHz = 120.0f;
+
 // ============================================================================
 // GRAIN SIZE / DENSITY SYNC
 // ============================================================================

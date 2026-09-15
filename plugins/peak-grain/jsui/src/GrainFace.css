@@ -1,0 +1,467 @@
+/* Peak Grain's 1c face - one plate, hairline dividers, per-section displays
+   and lead knobs. Structure and numbers are design_handoff_peak_grain's
+   `Peak Grain - 1c.dc.html` / COMPONENTS.md, translated from that doc's
+   inline styles into classes here.
+
+   Card carries no title/logo/header of its own (App.jsx passes none), so
+   .pg-header below is the whole header - two custom rows built as plain
+   children ahead of the plate, not forced into Card's single header-slot
+   API, which only has room for one central slot. */
+
+.pg-card.pui-card {
+  padding: 14px;
+}
+
+/* No title/logo/headerCenter/headerRight are passed to Card (GrainFace
+   builds its own two-row header as plain children), so its header block
+   never renders - only the body's own 10px horizontal inset needs zeroing,
+   or the plate would sit 10px narrower than the card's own 14px frame. */
+.pg-card .pui-card__body {
+  padding: 0;
+}
+
+/* ---------------------------------------------------------------- header */
+
+.pg-header {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 2px 16px;
+}
+
+.pg-header__row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.pg-header__brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.pg-header__logo {
+  height: 32px;
+  width: auto;
+  display: block;
+  filter: var(--pui-logo-filter);
+}
+
+.pg-header__title {
+  margin: 0;
+  font-family: var(--pui-font-display);
+  font-weight: 700;
+  font-size: 19px;
+  letter-spacing: 0.01em;
+  color: var(--pui-ink);
+  white-space: nowrap;
+}
+
+.pg-header__right {
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  flex: none;
+}
+
+.pg-header__live {
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Live/Freeze: two buttons sharing one edge, only the outer corners
+   rounded - reads as one segmented object rather than two pills. */
+.pg-live-freeze {
+  display: flex;
+  align-items: center;
+}
+
+.pg-live-freeze__btn {
+  appearance: none;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 9px;
+  line-height: 1;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 8px 13px;
+  border: 1px solid var(--pui-pill-off-border);
+  background: var(--pui-chrome);
+  color: var(--pui-pill-off-ink);
+  cursor: pointer;
+}
+
+.pg-live-freeze__btn:first-child {
+  border-radius: 8px 0 0 8px;
+}
+
+.pg-live-freeze__btn:last-child {
+  border-radius: 0 8px 8px 0;
+  margin-left: -1px;
+}
+
+.pg-live-freeze__btn[data-on] {
+  border-color: transparent;
+  background: var(--pui-pill-on-bg);
+  color: var(--pui-pill-on-ink);
+}
+
+.pg-header__presets {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: none;
+}
+
+/* ---------------------------------------------------------------- plate */
+
+.pg-plate {
+  background: var(--pui-module);
+  border: 1px solid var(--pui-module-edge);
+  border-radius: 10px;
+  box-shadow: var(--pui-module-shadow);
+  overflow: hidden;
+}
+
+.pg-row {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr 1px 1fr;
+}
+
+.pg-vdivider {
+  background: var(--pui-module-divider);
+}
+
+.pg-hdivider {
+  height: 1px;
+  background: var(--pui-module-divider);
+}
+
+/* ------------------------------------------------------------ sections */
+
+.pg-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 10px 13px;
+  min-width: 0;
+}
+
+/* Grain runs tighter than its neighbours: a 2x2 knob grid is shorter than
+   three-across, so without this the row would stretch to match Pitch/Random
+   and leave Grain's own content looking lost in the extra height. */
+.pg-section--grain {
+  gap: 8px;
+  padding: 10px 10px 10px;
+}
+
+.pg-section--delay {
+  grid-column: 1 / span 3;
+  padding: 12px 14px 14px;
+}
+
+.pg-section--reverb {
+  grid-column: 5;
+}
+
+.pg-section__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+
+.pg-section__name {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pui-accent);
+}
+
+.pg-section__spacer {
+  flex: 1;
+}
+
+.pg-section__head-right {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+}
+
+/* A switched-off section (Delay/Reverb only) dims its body to 0.42 over
+   140ms and keeps the power toggle and name lit - ModulePanel.css's own
+   language for "this is not running", reproduced here since 1c is one plate
+   rather than five ModulePanels. */
+.pg-section[data-off] .pg-section__display,
+.pg-section[data-off] .pg-section__knobs,
+.pg-section[data-off] .pg-delay__body {
+  opacity: 0.42;
+  transition: opacity 140ms ease;
+}
+
+.pg-section__display {
+  box-sizing: border-box;
+  height: 50px;
+  border-radius: 5px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  border: 1px solid var(--pui-module-edge);
+  overflow: hidden;
+}
+
+.pg-section--grain .pg-section__display {
+  margin-top: 4px;
+}
+
+.pg-section__knobs {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-around;
+  gap: 4px;
+}
+
+.pg-section--pitch .pg-section__knobs,
+.pg-section--random .pg-section__knobs {
+  gap: 8px;
+}
+
+/* --------------------------------------------------------------- delay */
+
+/* position:relative so the link button (below) can be pinned to this row's
+   own right edge without claiming flex width of its own - Delay's share of
+   the plate (grid-column: 1 / span 3 of a 560px card) is not quite wide
+   enough to lay out two 52px lead knobs, the L/R time+readout pair AND the
+   link button as one plain flex row at the mock's own generous spacing; the
+   mock's own layout only fits by giving the button zero footprint (an
+   absolutely-positioned, zero-width "ghost" trick - see its own comment on
+   why that is *not* being ported literally). Pinning the real button here is
+   the plainer way to get the same "costs no width" result. */
+.pg-delay__body {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.pg-delay__leads {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.pg-delay__times {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  padding-top: 4px;
+}
+
+.pg-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* The Left/Right readout: same DOM Readout always renders, sized and
+   coloured to match COMPONENTS.md's recessed-well look, with only the
+   primary value shown (the revised mock dropped the secondary constant-ms
+   figure). Narrower than COMPONENTS.md's own 80px: Delay's plate width
+   (grid-column: 1 / span 3 of a 560px card, minus the section's own 28px of
+   padding) is not quite wide enough for that figure alongside two 52px lead
+   knobs and the link button in a plain flex row - see .pg-delay__body's own
+   note. */
+.pg-time-row .pui-readout {
+  width: 62px;
+  height: 34px;
+  box-sizing: border-box;
+  border-radius: 5px;
+  padding: 0 8px;
+  gap: 6px;
+  margin-left: 0;
+}
+
+.pg-time-row .pui-readout__label {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--pui-recess-ink);
+}
+
+.pg-time-row .pui-readout__value {
+  font-size: 15px;
+  color: var(--pui-chrome-field-ink);
+}
+
+/* The link (chain) button: pinned to .pg-delay__body's own right edge and
+   vertically centred on it, costing the flex row no width of its own - see
+   .pg-delay__body's note on why (plain flow doesn't fit otherwise). The
+   mock's own note says its arm-bracket drawing is "this design's own
+   simplified take... not a literal spec to port over"; this is the simpler
+   real equivalent of the same "free-floating" idea. */
+.pg-delay__link {
+  position: absolute;
+  right: 2px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.pg-delay__link .pui-pill {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 6px;
+  background: var(--pui-chrome);
+  color: var(--pui-chrome-ink);
+  justify-content: center;
+}
+
+/* ---------------------------------------------------- in-plate displays */
+
+/* Pitch's three weight bars. */
+.pg-weights {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 16px;
+  padding: 8px 24px 9px;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.pg-weights__baseline {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 8px;
+  height: 1px;
+  background: #1b2529;
+}
+
+.pg-weights__col {
+  position: relative;
+  width: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.pg-weights__bar {
+  width: 100%;
+  border-radius: 2px;
+  opacity: 0.75;
+}
+
+/* Random's L/R stereo field. */
+.pg-field {
+  position: relative;
+  height: 100%;
+}
+
+.pg-field__hline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #1b2529;
+}
+
+.pg-field__side {
+  position: absolute;
+  left: 9px;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 7px;
+  letter-spacing: 0.16em;
+  color: var(--pui-recess-ink);
+}
+
+.pg-field__side--l {
+  top: 6px;
+}
+
+.pg-field__side--r {
+  bottom: 5px;
+}
+
+.pg-field__dot {
+  position: absolute;
+  border-radius: 50%;
+}
+
+/* Reverb's falling tail. */
+.pg-tail {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 5px;
+  padding: 9px 12px;
+}
+
+.pg-tail__bar {
+  width: 5px;
+  border-radius: 2px;
+  opacity: 0.7;
+}
+
+/* -------------------------------------------------------------- scope */
+
+.pg-scope-wrap {
+  padding: 12px;
+}
+
+.pg-scope {
+  position: relative;
+  height: 66px;
+  border-radius: 6px;
+  border: 1px solid var(--pui-module-edge);
+  background-color: var(--pui-recess);
+  overflow: hidden;
+}
+
+.pg-scope__vdivider {
+  position: absolute;
+  left: 47%;
+  top: 8px;
+  bottom: 8px;
+  width: 1px;
+  background: #1b2529;
+}
+
+.pg-scope__hline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: #1b2529;
+}
+
+.pg-scope__label {
+  position: absolute;
+  top: 8px;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 8px;
+  letter-spacing: 0.16em;
+  color: var(--pui-recess-ink);
+}
+
+.pg-scope__label--grains {
+  left: 10px;
+}
+
+.pg-scope__label--delay {
+  left: calc(47% + 10px);
+}
