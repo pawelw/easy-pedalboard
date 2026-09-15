@@ -338,4 +338,46 @@ inline int bitHoldNFor (float bit01, double sampleRate) noexcept
 // engine, and Chorus already owns the plain kDefaultMixPct.
 constexpr float kDefaultGrainMixPct = 50.0f;
 
+// ============================================================================
+// CLOUD FILTER
+// ============================================================================
+// A fixed pair run once per sample on the summed cloud (not per grain - that
+// would cost CPU per voice for a difference nobody asks to hear on this face).
+// Hidden, not a knob: a highpass to bleed off the DC/rumble a short grain
+// envelope's asymmetry and the feedback recirculation both accumulate, and a
+// lowpass to take the edge off the extra high-frequency content a pitched-up
+// or bit-crushed grain adds that the source never had. Both corners sit loose
+// and wide of the musical range on purpose - they shape the cloud, they do
+// not filter it.
+constexpr float kCloudHighpassHz = 60.0f;
+constexpr float kCloudLowpassHz  = 13000.0f;
+
+// Both stages have their own state now, so the cloud can go on decaying for a
+// moment after the engine itself has stopped feeding them anything. The
+// highpass is the slower of the two (its pole sits closer to 1): from a
+// 60 Hz corner its state needs ~5,800 samples (~0.12 s, independent of sample
+// rate to a first order) to decay past cloudHighpass()'s denormal squelch -
+// see that function's own note on why the squelch exists at all. Rounded up
+// for margin; getTailSeconds() adds this on top of the engine's own estimate
+// so the figure a host trims to stays an honest one.
+constexpr float kCloudFilterSettleSeconds = 0.4f;
+
+// ============================================================================
+// OUTPUT LIMITER
+// ============================================================================
+// A grain landing back on top of the transient that spawned it - a doubled
+// kick, say - can sum past what the dry signal alone ever reached, and the
+// grain/delay/reverb sends can push the same way. Not something the Level
+// knob can see coming, so ee::dsp::PeakLimiter runs always-on at the very end
+// of the chain as a safety net, not a face control. The attack is sub-sample
+// fast on purpose - PeakLimiter has no lookahead, so anything slower lets the
+// leading edge of exactly the transient this exists for through mostly
+// unchecked (verified empirically: 1 ms let a stacked kick through 4 dB over
+// ceiling; 0.02 ms holds it within a few hundredths of a dB). The 60 ms
+// release is the other half of that asymmetry - slow enough to stay out of
+// the way of the granular texture itself rather than pumping with it.
+constexpr float kLimiterCeilingDb = -0.3f;
+constexpr float kLimiterAttackMs  = 0.02f;
+constexpr float kLimiterReleaseMs = 60.0f;
+
 } // namespace ee::dsp::config

@@ -8,6 +8,7 @@
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/Grainer.h"
+#include "ee/dsp/PeakLimiter.h"
 #include "ee/dsp/TapeDelay.h"
 #include "ee/plugin/PresetStore.h"
 
@@ -192,6 +193,10 @@ private:
     std::atomic<float>* levelParam = nullptr;
 
     juce::SmoothedValue<float> outputGain;
+
+    /** Always-on safety net after outputGain - see GrainerConfig.h's OUTPUT
+        LIMITER section for why. Not a face control. */
+    ee::dsp::PeakLimiter outputLimiter;
 
     // Remembered knob positions for the mode each Sync switch is not currently
     // in, so a round trip through the switch lands back where it started.

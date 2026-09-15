@@ -61,6 +61,12 @@ public:
         onsetGate.prepare (fs, kOnsetEnvDecayMs, kOnsetAttackWidthMs, kOnsetRiseRatioOn, kOnsetRiseRatioOff,
                            kOnsetMinRise, kOnsetLockoutMs);
 
+        // Cloud filter coefficients - see GrainerConfig.h's CLOUD FILTER
+        // section. Highpass as a DC blocker (Smith's one-pole: R relates to
+        // corner as fc ~= (1-R) * sr / 2*pi), lowpass as the usual one-pole.
+        cloudHpCoeff = 1.0f - kTwoPi * config::kCloudHighpassHz / static_cast<float> (sampleRate);
+        cloudLpCoeff = 1.0f - std::exp (-kTwoPi * config::kCloudLowpassHz / static_cast<float> (sampleRate));
+
         updateTimeOffset();
         updateDerived();
         reset();
@@ -83,6 +89,8 @@ public:
         rngState = kRngSeed;
         smoothedNorm = normTarget;
         feedbackSample = 0.0f;
+        cloudHpX1L = cloudHpY1L = cloudHpX1R = cloudHpY1R = 0.0f;
+        cloudLpZL = cloudLpZR = 0.0f;
         recordedSamples = 0;
         wowPhase = 0.0;
 
@@ -450,13 +458,19 @@ public:
             const float wetL = sumL * smoothedNorm;
             const float wetR = sumR * smoothedNorm;
 
-            outL[i] = wetL;
-            outR[i] = wetR;
+            // Cloud filter runs on the sum, before the feedback tap, so a
+            // recirculating repeat is shaped again on the way round instead
+            // of accumulating rumble or top-end untouched.
+            const float filteredL = cloudLowpass (cloudHighpass (wetL, cloudHpX1L, cloudHpY1L), cloudLpZL);
+            const float filteredR = cloudLowpass (cloudHighpass (wetR, cloudHpX1R, cloudHpY1R), cloudLpZR);
+
+            outL[i] = filteredL;
+            outR[i] = filteredR;
 
             // What goes back round next sample. tanh bounds it to (-1, 1)
             // whatever the cloud does, so the recirculation cannot build
             // without limit; a non-finite cloud feeds back nothing.
-            const float cloudMono = 0.5f * (wetL + wetR);
+            const float cloudMono = 0.5f * (filteredL + filteredR);
             feedbackSample = std::isfinite (cloudMono) ? std::tanh (cloudMono) : 0.0f;
         }
     }
@@ -476,7 +490,7 @@ public:
         // the grain-length margin either one needs.
         const float seconds =
             std::max (feedbackTail, attackReachSeconds) + sizeMs * static_cast<float> (kMaxRate + 1.0) * 0.001f;
-        return std::min (seconds, kFrozenTailSeconds);
+        return std::min (seconds, kFrozenTailSeconds) + config::kCloudFilterSettleSeconds;
     }
 
     /** Grains currently sounding. For the tests - the pool must never overflow
@@ -577,6 +591,32 @@ private:
         }
         --g.bitCounter;
         return g.bitHeld;
+    }
+
+    /** One-pole DC blocker (Smith's classic form) - the cloud's highpass.
+
+        Squelches below 1e-20: a pole this close to 1 (60 Hz corner) never
+        reaches an exact float32 zero through rounding alone once it is down
+        in denormal territory - repeated multiplication by the coefficient
+        rounds back to the same representable value and latches there
+        (confirmed by simulation: still nonzero after 100+ seconds). The
+        lowpass stage does not need this - its coefficient is far enough from
+        1 to underflow to zero in well under a millisecond. */
+    float cloudHighpass (float x, float& x1, float& y1) const noexcept
+    {
+        float y = x - x1 + cloudHpCoeff * y1;
+        x1 = x;
+        if (std::abs (y) < 1.0e-20f)
+            y = 0.0f;
+        y1 = y;
+        return y;
+    }
+
+    /** One-pole lowpass - the cloud's lowpass, cascaded after the highpass. */
+    float cloudLowpass (float x, float& z) const noexcept
+    {
+        z += cloudLpCoeff * (x - z);
+        return z;
     }
 
     /** Four-point Hermite read, the same interpolator ModDelayLine uses. Linear
@@ -1002,6 +1042,16 @@ private:
 
     float normTarget = 1.0f;
     float smoothedNorm = 1.0f;
+
+    // Cloud filter (see GrainerConfig.h's CLOUD FILTER section): a highpass
+    // then a lowpass, run once on the summed cloud rather than per grain.
+    // Coefficients set once in prepare(); state per channel, reset with
+    // everything else.
+    float cloudHpCoeff = 0.0f;
+    float cloudLpCoeff = 0.0f;
+    float cloudHpX1L = 0.0f, cloudHpY1L = 0.0f;
+    float cloudHpX1R = 0.0f, cloudHpY1R = 0.0f;
+    float cloudLpZL = 0.0f, cloudLpZR = 0.0f;
 
     float curDecayShape = 4.0f;
     float curAttackMs = 1.0f;

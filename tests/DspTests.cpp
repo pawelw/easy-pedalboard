@@ -13,11 +13,13 @@
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/Grainer.h"
+#include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/Phaser.h"
 #include "ee/dsp/RingModulator.h"
 #include "ee/dsp/Rust.h"
 #include "ee/dsp/SpringReverb.h"
 #include "ee/dsp/Overdrive.h"
+#include "ee/dsp/PeakLimiter.h"
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
 #include "ee/dsp/TapeMachine.h"
@@ -4291,6 +4293,104 @@ void testBitCrusherJitterIsReproducible()
     check (worst == 0.0f, "jitter is not reproducible run to run");
 }
 
+// ---------------------------------------------------------------------------
+// PeakLimiter
+// ---------------------------------------------------------------------------
+
+void testPeakLimiterSilence()
+{
+    std::printf ("Peak limiter: silence in -> silence out\n");
+
+    ee::dsp::PeakLimiter limiter;
+    limiter.prepare (kSampleRate);
+    limiter.setCeilingDb (ee::dsp::config::kLimiterCeilingDb);
+    limiter.setAttackMs (ee::dsp::config::kLimiterAttackMs);
+    limiter.setReleaseMs (ee::dsp::config::kLimiterReleaseMs);
+
+    std::vector<float> l (kBlock, 0.0f), r (kBlock, 0.0f);
+    for (int b = 0; b < 10; ++b)
+        limiter.process (l.data(), r.data(), kBlock);
+
+    bool allZero = true;
+    for (int i = 0; i < kBlock; ++i)
+        allZero = allZero && l[i] == 0.0f && r[i] == 0.0f;
+
+    check (allZero, "limiter produced sound from silence");
+}
+
+void testPeakLimiterTransparentBelowCeiling()
+{
+    std::printf ("Peak limiter: leaves a signal under the ceiling untouched\n");
+
+    ee::dsp::PeakLimiter limiter;
+    limiter.prepare (kSampleRate);
+    limiter.setCeilingDb (ee::dsp::config::kLimiterCeilingDb);
+    limiter.setAttackMs (ee::dsp::config::kLimiterAttackMs);
+    limiter.setReleaseMs (ee::dsp::config::kLimiterReleaseMs);
+
+    const int total = static_cast<int> (kSampleRate / 2);
+    std::vector<float> l (total), r (total);
+    for (int i = 0; i < total; ++i)
+    {
+        // A steady tone well under the ceiling (-6 dBFS peak).
+        l[i] = r[i] = 0.5f * std::sin (2.0f * 3.14159265f * 440.0f * static_cast<float> (i) /
+                                       static_cast<float> (kSampleRate));
+    }
+
+    std::vector<float> original = l;
+    for (int off = 0; off < total; off += kBlock)
+    {
+        const int n = juce::jmin (kBlock, total - off);
+        limiter.process (l.data() + off, r.data() + off, n);
+    }
+
+    float worst = 0.0f;
+    for (int i = 0; i < total; ++i)
+        worst = juce::jmax (worst, std::abs (l[i] - original[i]));
+
+    std::printf ("  largest change below ceiling: %.2e\n", worst);
+    check (worst < 1.0e-4f, "limiter touched a signal that never approached the ceiling");
+}
+
+void testPeakLimiterCapsAStackedPeak()
+{
+    std::printf ("Peak limiter: caps a transient stacked over the ceiling\n");
+
+    ee::dsp::PeakLimiter limiter;
+    limiter.prepare (kSampleRate);
+    limiter.setCeilingDb (ee::dsp::config::kLimiterCeilingDb);
+    limiter.setAttackMs (ee::dsp::config::kLimiterAttackMs);
+    limiter.setReleaseMs (ee::dsp::config::kLimiterReleaseMs);
+
+    // A burst well past the ceiling, as if a grain had landed back on the
+    // transient that spawned it - the case this limiter exists for.
+    const int total = static_cast<int> (kSampleRate * 0.05);
+    std::vector<float> l (total), r (total);
+    for (int i = 0; i < total; ++i)
+        l[i] = r[i] = 1.8f * std::sin (2.0f * 3.14159265f * 200.0f * static_cast<float> (i) /
+                                       static_cast<float> (kSampleRate));
+
+    const float ceiling = juce::Decibels::decibelsToGain (ee::dsp::config::kLimiterCeilingDb);
+    float worstOver = 0.0f;
+    bool finite = true;
+    for (int off = 0; off < total; off += kBlock)
+    {
+        const int n = juce::jmin (kBlock, total - off);
+        limiter.process (l.data() + off, r.data() + off, n);
+        for (int i = off; i < off + n; ++i)
+        {
+            finite = finite && std::isfinite (l[i]) && std::isfinite (r[i]);
+            worstOver = juce::jmax (worstOver, std::abs (l[i]) - ceiling);
+        }
+    }
+
+    std::printf ("  worst excursion above ceiling: %.4f\n", worstOver);
+    check (finite, "limiter produced a non-finite sample");
+    // No lookahead, so a fast-rising peak can poke slightly over the ceiling
+    // before the envelope catches it - allow a small margin, not zero.
+    check (worstOver < 0.05f, "limiter let a stacked peak through uncontrolled");
+}
+
 } // namespace
 
 int main()
@@ -4441,6 +4541,12 @@ int main()
     testBitCrusherStability();
     std::printf ("\n");
     testBitCrusherJitterIsReproducible();
+    std::printf ("\n");
+    testPeakLimiterSilence();
+    std::printf ("\n");
+    testPeakLimiterTransparentBelowCeiling();
+    std::printf ("\n");
+    testPeakLimiterCapsAStackedPeak();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

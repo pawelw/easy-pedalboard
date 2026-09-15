@@ -668,6 +668,11 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     outputGain.reset (sampleRate, kGainRampSeconds);
     outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (levelParam->load()));
 
+    outputLimiter.prepare (sampleRate);
+    outputLimiter.setCeilingDb (ee::dsp::config::kLimiterCeilingDb);
+    outputLimiter.setAttackMs (ee::dsp::config::kLimiterAttackMs);
+    outputLimiter.setReleaseMs (ee::dsp::config::kLimiterReleaseMs);
+
     const float hp = juce::MathConstants<float>::halfPi;
     const float gMix = grainOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f) : 0.0f;
     const float dMix = delayOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, delayMixParam->load() * 0.01f) : 0.0f;
@@ -690,6 +695,7 @@ void PeakGrainProcessor::releaseResources()
     grainer.reset();
     delay.reset();
     reverb.reset();
+    outputLimiter.reset();
 }
 
 double PeakGrainProcessor::getTailLengthSeconds() const
@@ -972,6 +978,15 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         const float mg = outputGain.getNextValue();
         for (int ch = 0; ch < numOut; ++ch)
             buffer.getWritePointer (ch)[i] *= mg;
+    }
+
+    // Safety net, not a voicing stage: a grain landing back on the transient
+    // that spawned it can sum past what Level alone anticipated. See
+    // GrainerConfig.h's OUTPUT LIMITER section.
+    {
+        float* outL = buffer.getWritePointer (0);
+        float* outR = numOut > 1 ? buffer.getWritePointer (1) : outL;
+        outputLimiter.process (outL, outR, numSamples);
     }
 
 #if EE_GRAIN_TRACE
