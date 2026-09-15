@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <cmath>
+
 /**
  * Voicing for ee::dsp::Grainer, the granular delay behind Peak Grain.
  *
@@ -164,16 +167,22 @@ constexpr float kDefaultReversePct = 25.0f;
 // throws them hard left and right. Equal-power, so the middle does not dip.
 constexpr float kDefaultStereoPct = 85.0f;
 
-// Random detune on every grain, in cents either way. A few cents is what stops
-// a stack of unshifted grains phasing into one flat tone; wound up it is a
-// chorus of slightly wrong copies.
-constexpr float kMinDetuneCents     = 0.0f;
-constexpr float kMaxDetuneCents     = 100.0f;
-constexpr float kDetuneSkewCents    = 12.0f;
-// Zero by default: at anything above it every grain plays at a slightly
-// different pitch, which reads as an unstable, out-of-tune cloud rather than
-// as the note that was played. Dial it in deliberately.
-constexpr float kDefaultDetuneCents = 0.0f;
+// Random detune on every grain, in semitones either way - half tones up or
+// down from the played note, not a cents-scale chorus wobble. Bipolar knob,
+// -7..+7 (up to a fifth either side): Grainer::process() already draws its
+// own random sign per grain (nextBipolar() * detuneSemitones), so the two
+// halves of the knob's travel are audibly symmetric by construction - what
+// the sign buys is a centred rest position at 0 rather than a magnitude knob
+// starting at one end of its travel, matching the face's bipolar cap (Grain
+// Knob.dc.html's bipolar="true"). Linear, not skewed: whole semitones are
+// already coarse enough that skewing toward the centre would just waste
+// travel.
+constexpr float kMinDetuneSemitones     = -7.0f;
+constexpr float kMaxDetuneSemitones     = 7.0f;
+// Zero by default: at anything above it every grain can land on a different
+// note, which reads as a scattered chord rather than the note that was
+// played. Dial it in deliberately.
+constexpr float kDefaultDetuneSemitones = 0.0f;
 
 // ============================================================================
 // PITCH
@@ -246,6 +255,62 @@ constexpr bool  kDefaultDensitySync = false;
 constexpr double kSpawnPhasePullFraction = 0.15;
 constexpr double kSpawnPhasePullMax      = 0.006;
 constexpr double kSpawnJumpPpq           = 0.25;
+
+// ============================================================================
+// MOD  (per-grain drift)
+// ============================================================================
+// The same slow sine ee::dsp::TapeDelay's own Mod knob rides
+// (shared/src/dsp/TapeDelay.cpp's kWowHz, pinned at 0 for Grain's own
+// post-delay stage - see PluginProcessor.cpp's `delay.setModulation
+// (0.0f)`), reused here as a *pitch* drift rather than a read-position
+// wobble. TapeDelay modulates one continuously-playing tap, so a few
+// milliseconds of position wobble is an audible vibrato over its whole
+// ringing tail; a grain lasts at most half a second and only ever samples a
+// sliver of one slow (~2.4 s) cycle, so the equivalent position wobble here
+// came out under 15 cents at its peak and inaudible under Scatter/Detune -
+// the first cut at this knob had exactly that bug.
+//
+// Sampled once per grain at spawn instead (frozen for its life, like
+// Detune - see pickRate()), not reapplied every sample: every grain spawned
+// near the same point in the shared cycle bends the same way, so the whole
+// cloud's pitch rises and falls together over one kModWowHz cycle - audible
+// drift, not per-grain jitter. Detune stays the independent per-grain
+// scatter; Mod is what moves the cloud as one voice, same as TapeDelay's Mod
+// moves its one tap.
+constexpr float kModWowHz      = 0.42f;
+constexpr float kModMaxCents   = 40.0f;
+constexpr float kDefaultModPct = 0.0f;
+
+// ============================================================================
+// BIT  (per-grain crush)
+// ============================================================================
+// Peak Artifact's Amp engine's own Bit knob (ee::fx::ArtifactModule::
+// ampRateHzFor) - a sample-and-hold rate reducer only, no bit-depth
+// quantisation and no anti-alias filter (that class's own note: the reference
+// unit it was measured against holds full amplitude resolution). Restated
+// here rather than included: ee::dsp must not depend on ee::fx, which is
+// built on top of it. Each active grain holds independently rather than
+// sharing one clock, so overlapping grains land on different hold phases
+// instead of crushing in lockstep. bitHoldNFor() is the same formula as
+// ampRateHzFor() plus the last step (Hz -> an integer hold count), so a
+// render can be checked against Amp's own numbers directly - 32 at the top of
+// the knob's travel, 5 at half, both at 48 kHz.
+constexpr float kBitCrushRateHz   = 1500.0f;
+constexpr float kBitCrushRateSkew = 1.1f;
+constexpr float kDefaultBitPct    = 0.0f;
+
+/** Bit knob (0..1) -> the sample-and-hold hold count at `sampleRate`. 0 always
+    returns 1 (hold every sample = pass-through), whatever the sample rate -
+    see the class note above. */
+inline int bitHoldNFor (float bit01, double sampleRate) noexcept
+{
+    const double host = sampleRate > 0.0 ? sampleRate : 48000.0;
+    const double floorHz = std::min (static_cast<double> (kBitCrushRateHz), host);
+    const double t = std::pow (std::clamp (static_cast<double> (bit01), 0.0, 1.0),
+                               static_cast<double> (kBitCrushRateSkew));
+    const double rateHz = host * std::pow (floorHz / host, t);
+    return std::max (1, static_cast<int> (std::lround (host / std::max (1.0, rateHz))));
+}
 
 // ============================================================================
 // MIX

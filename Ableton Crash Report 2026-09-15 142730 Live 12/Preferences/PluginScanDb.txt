@@ -1,0 +1,1079 @@
+#######################################
+# Opening Log: Tue Sep 15 14:27:29 2026
+#######################################
+
+Logging plugins information about plugin domains start ------------------
+Id,ModuleId,RelPath,IsEnabled
+"local",1,"",1
+"local",2,"",1
+"local",3,"",1
+"local",4,"",1
+"local",5,"",1
+"local",6,"",1
+"local",7,"",1
+"local",9,"",1
+"local",10,"",1
+"local",11,"",1
+"local",12,"",1
+"local",13,"",1
+"local",14,"",1
+"local",15,"",1
+"local",16,"",1
+"local",17,"",1
+"local",18,"",1
+"local",19,"",1
+"local",20,"",1
+"local",21,"",1
+"local",22,"",1
+"local",23,"",1
+"local",24,"",1
+"local",25,"",1
+"local",26,"",1
+"local",27,"",1
+"local",28,"",1
+"local",29,"",1
+"local",30,"",1
+"local",31,"",1
+"local",32,"",1
+"local",33,"",1
+"local",34,"",1
+"local",35,"",1
+"local",36,"",1
+"local",37,"",1
+"local",38,"",1
+"local",39,"",1
+"local",40,"",1
+"local",41,"",1
+"local",42,"",1
+"local",43,"",1
+"local",44,"",1
+"local",45,"",1
+"local",46,"",1
+"local",47,"",1
+"local",48,"",1
+"local",49,"",1
+"local",50,"",1
+"local",51,"",1
+"local",52,"",1
+"local",53,"",1
+"local",54,"",1
+"local",55,"",1
+"local",56,"",1
+"local",57,"",1
+"local",58,"",1
+"local",59,"",1
+"local",60,"",1
+"local",61,"",1
+"local",62,"",1
+"local",63,"",1
+"local",64,"",1
+"local",65,"",1
+"local",66,"",1
+"local",67,"",1
+"local",68,"",1
+"local",69,"",1
+"local",70,"",1
+"local",72,"",1
+"local",73,"",1
+"local",74,"",1
+"local",75,"",1
+"local",76,"",1
+"local",77,"",1
+"local",78,"",1
+"local",79,"",1
+"local",80,"",1
+"local",81,"",1
+"local",82,"",1
+"local",83,"",1
+"local",84,"",1
+"local",85,"",1
+"local",86,"",1
+"local",87,"",1
+"local",88,"",1
+"local",90,"",1
+"local",92,"",1
+"local",93,"",1
+"local",94,"",1
+"local",95,"",1
+"local",96,"",1
+"local",99,"",1
+"local",100,"",1
+"local",101,"",1
+"local",102,"",1
+"local",103,"",1
+"local",104,"",1
+"local",105,"",1
+"local",106,"",1
+"local",107,"",1
+"local",108,"",1
+"local",109,"",1
+"local",110,"",1
+"local",111,"",1
+"local",112,"",1
+"local",113,"",1
+"local",115,"",1
+"local",116,"",1
+"local",118,"",1
+"local",119,"",1
+"local",120,"",1
+"local",121,"",1
+"local",122,"",1
+"local",123,"",1
+"local",124,"",1
+"local",125,"",1
+"local",126,"",1
+"local",127,"",1
+"local",128,"",1
+"local",129,"",1
+"local",130,"",1
+"local",132,"",1
+"local",133,"",1
+"local",134,"",1
+"local",135,"",1
+"local",136,"",1
+"local",137,"",1
+"local",138,"",1
+"local",139,"",1
+"local",141,"",1
+"local",142,"",1
+"local",143,"",1
+"local",144,"",1
+"local",145,"",1
+"local",146,"",1
+"local",147,"",1
+"local",148,"",1
+"local",149,"",1
+"local",150,"",1
+"local",151,"",1
+"local",152,"",1
+"local",153,"",1
+"local",154,"",1
+"local",156,"",1
+"local",157,"",1
+"local",158,"",1
+"local",159,"",1
+"local",160,"",1
+"local",162,"",1
+"local",163,"",1
+"local",164,"",1
+"local",165,"",1
+"local",167,"",1
+"local",168,"",1
+"local",169,"",1
+"local",171,"",1
+"local",173,"",1
+"local",174,"",1
+"local",175,"",1
+"local",176,"",1
+"local",177,"",1
+"local",178,"",1
+"local",179,"",1
+"local",180,"",1
+"local",181,"",1
+"local",182,"",1
+"local",183,"",1
+"local",184,"",1
+"local",185,"",1
+"local",186,"",1
+"local",187,"",1
+"local",188,"",1
+"local",189,"",1
+"local",190,"",1
+"local",191,"",1
+"local",192,"",1
+"local",193,"",1
+"local",194,"",1
+"local",195,"",1
+"local",196,"",1
+"local",197,"",1
+"local",198,"",1
+"local",199,"",1
+"local",200,"",1
+"local",201,"",1
+"local",202,"",1
+"local",203,"",1
+"local",204,"",1
+"local",205,"",1
+"local",206,"",1
+"local",207,"",1
+"local",208,"",1
+"local",209,"",1
+"local",210,"",1
+"local",211,"",1
+"local",212,"",1
+"local",213,"",1
+"local",215,"",1
+"local",216,"",1
+"local",217,"",1
+"local",218,"",1
+"local",219,"",1
+"local",220,"",1
+"local",221,"",1
+"local",222,"",1
+"local",223,"",1
+"local",224,"",1
+"local",225,"",1
+"local",226,"",1
+"local",227,"",1
+"local",228,"",1
+"local",229,"",1
+"local",230,"",1
+"local",231,"",1
+"local",232,"",1
+"local",234,"",1
+"local",236,"",1
+"local",238,"",1
+"local",239,"",1
+"local",240,"",1
+"local",242,"",1
+"local",243,"",1
+"local",244,"",1
+"local",245,"Sonic Charge",1
+"local",246,"",1
+"local",249,"",1
+"local",250,"",1
+"local",251,"",1
+"local",252,"",1
+"local",253,"",1
+"local",255,"",1
+"local",256,"",1
+"local",257,"",1
+"local",258,"",1
+"local",259,"",1
+"local",260,"",1
+"local",261,"",1
+"local",262,"",1
+"local",263,"",1
+"local",264,"",1
+"local",265,"",1
+"local",266,"",1
+"local",267,"",1
+"local",268,"",1
+"local",269,"",1
+"local",270,"",1
+"local",271,"",1
+"local",272,"",1
+"local",273,"",1
+"local",274,"",1
+"local",275,"",1
+"local",276,"",1
+"local",277,"",1
+"local",278,"",1
+"local",279,"",1
+"local",280,"",1
+"local",282,"",1
+"local",283,"",1
+"local",284,"",1
+"local",285,"",1
+"local",286,"",1
+"local",287,"",1
+"local",288,"",1
+"local",289,"",1
+"local",290,"",1
+"local",291,"",1
+"local",292,"",1
+"local",293,"",1
+"local",294,"",1
+"local",295,"",1
+"local",296,"",1
+"local",297,"",1
+"local",298,"",1
+"local",299,"",1
+"local",300,"",1
+"local",301,"Loopmasters",1
+"local",302,"",1
+"local",303,"",1
+"local",304,"",1
+"local",305,"",1
+"local",306,"",1
+"local",307,"",1
+"local",308,"",1
+"local",309,"",1
+"local",310,"",1
+"local",311,"",1
+"local",312,"",1
+"local",313,"",1
+"local",314,"",1
+"local",315,"",1
+"local",316,"",1
+"local",317,"",1
+"local",318,"",1
+"local",319,"",1
+"local",320,"",1
+"local",321,"",1
+"local",322,"",1
+"local",323,"",1
+"local",324,"",1
+"local",325,"",1
+"local",326,"",1
+"local",327,"",1
+"local",328,"",1
+"local",330,"Sonic Charge",1
+"local",331,"",1
+"local",332,"",1
+"local",335,"",1
+"local",336,"",1
+"local",337,"",1
+"local",338,"Sonic Charge",1
+"local",339,"",1
+"local",340,"",1
+"local",341,"",1
+"local",342,"",1
+"local",343,"",1
+"local",344,"",1
+"local",345,"",1
+"local",346,"",1
+"local",347,"",1
+"local",348,"",1
+"local",349,"",1
+"local",350,"",1
+"local",351,"",1
+"local",352,"",1
+"local",353,"",1
+"local",355,"",1
+"local",357,"",1
+"local",358,"",1
+"local",359,"Softube",1
+"local",360,"",1
+"local",361,"",1
+"local",362,"",1
+"local",363,"",1
+"local",364,"",1
+"local",365,"",1
+"local",366,"",1
+"local",367,"Loopmasters",1
+"local",368,"",1
+"local",370,"",1
+"local",371,"Sonic Charge",1
+"local",372,"u-he",1
+"local",373,"Sonic Charge",1
+"local",374,"",1
+"local",375,"Sonic Charge",1
+"local",376,"",1
+"local",377,"",1
+"local",378,"",1
+"local",379,"",1
+"local",380,"",1
+"user",381,"",1
+"user",383,"",1
+"user",384,"",1
+"user",385,"",1
+"local",386,"",1
+"local",387,"",1
+"user",388,"",1
+"user",389,"",1
+"local",390,"",1
+"user",391,"",1
+"user",392,"",1
+"user",393,"",1
+"user",394,"",1
+"user",395,"",1
+"user",396,"",1
+"user",397,"",1
+"user",398,"",1
+"user",399,"",1
+"local",400,"",1
+"local",401,"",1
+"local",402,"",1
+"local",403,"",1
+"local",404,"",1
+"local",405,"",1
+"local",406,"",1
+"local",407,"",1
+"user",408,"",1
+"user",409,"",1
+"local",410,"",1
+"local",411,"",1
+"user",412,"",1
+"user",413,"",1
+"user",414,"",1
+"local",415,"",1
+"local",416,"",1
+"local",417,"",1
+"local",418,"",1
+"local",419,"",1
+"local",420,"",1
+"local",421,"",1
+"user",422,"",1
+Logging plugins information about plugin domains end --------------------
+Logging plugins information about plugin modules start ------------------
+ModuleId,Path,Arch,Processor,ScanState,Fingerprint
+1,"/Library/Audio/Plug-Ins/VST/KORG MS-20 V.vst",2,2,ok,"35f27c0:67365865"
+2,"/Library/Audio/Plug-Ins/VST/VocalSynth Pro.vst",2,2,not-a-plugin,"75890:601037ee"
+3,"/Library/Audio/Plug-Ins/VST/Neoverb.vst",2,2,not-a-plugin,"6e300:64a76eb2"
+4,"/Library/Audio/Plug-Ins/VST/Stage-73 V2.vst",2,2,ok,"353cbe0:673650cf"
+5,"/Library/Audio/Plug-Ins/VST/Neutron 3 Visual Mixer.vst",2,2,not-a-plugin,"83c50:5f729455"
+6,"/Library/Audio/Plug-Ins/VST/Virus TI Snow.vst",2,2,not-a-plugin,"1151a8:59cd0a98"
+7,"/Library/Audio/Plug-Ins/VST/Dist COLDFIRE.vst",2,2,ok,"34a39d0:6660b5f6"
+9,"/Library/Audio/Plug-Ins/VST3/Dist TUBE-CULTURE.vst3",3,2,ok,"33bd190:6660c2ab"
+10,"/Library/Audio/Plug-Ins/VST3/Nectar 4.vst3",3,2,ok,"f1f50:64ed41a0"
+11,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Dynamics.vst3",3,2,ok,"15a5f0:66b65419"
+12,"/Library/Audio/Plug-Ins/VST3/XO.vst3",3,2,ok,"29acf90:64591e72"
+13,"/Library/Audio/Plug-Ins/VST3/Protoverb.vst3",3,2,ok,"d9d260:61e846f0"
+14,"/Library/Audio/Plug-Ins/VST3/Solid Dynamics.vst3",3,2,ok,"1339360:63fcc2c3"
+15,"/Library/Audio/Plug-Ins/VST3/Neutron 4 Exciter.vst3",3,2,ok,"156860:663911dc"
+16,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Low End Focus.vst3",3,2,not-a-plugin,"8db30:61248e1d"
+17,"/Library/Audio/Plug-Ins/VST3/Saturation Knob.vst3",3,2,not-a-plugin,"16c7120:60268e5b"
+18,"/Library/Audio/Plug-Ins/VST3/Efx MOTIONS.vst3",3,2,ok,"349f200:6660bb96"
+19,"/Library/Audio/Plug-Ins/VST3/Rotary CLS-222.vst3",3,2,ok,"33bd1a0:6660bbf1"
+20,"/Library/Audio/Plug-Ins/VST3/Dist COLDFIRE.vst3",3,2,ok,"34a39d0:6660b5f8"
+21,"/Library/Audio/Plug-Ins/VST3/Chorus DIMENSION-D.vst3",3,2,ok,"33b5090:6660bc16"
+22,"/Library/Audio/Plug-Ins/VST3/Subsequent 37 Editor.vst3",3,2,ok,"20d3130:628feb69"
+23,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Equalizer.vst3",3,2,ok,"15a5f0:66b65412"
+24,"/Library/Audio/Plug-Ins/VST3/Ozone Pro.vst3",3,2,not-a-plugin,"8db20:61248987"
+25,"/Library/Audio/Plug-Ins/VST3/Comp DIODE-609.vst3",3,2,ok,"33b9160:6660b903"
+26,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Vintage Compressor.vst3",3,2,not-a-plugin,"8db30:61248bc2"
+27,"/Library/Audio/Plug-Ins/VST3/Augmented VOICES.vst3",3,2,ok,"37e2d60:67364ce8"
+28,"/Library/Audio/Plug-Ins/VST3/Choral.vst3",3,2,ok,"7540230:66155b85"
+29,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Maximizer.vst3",3,2,not-a-plugin,"8db30:61248ada"
+30,"/Library/Audio/Plug-Ins/VST3/Supercharger.vst3",3,2,ok,"1331d50:63fcc0d8"
+31,"/Library/Audio/Plug-Ins/VST3/Life DAW Recorder.vst3",3,2,ok,"2eb3bf0:65707706"
+32,"/Library/Audio/Plug-Ins/VST3/Mini V3.vst3",3,2,ok,"2eb8cd0:6400586e"
+33,"/Library/Audio/Plug-Ins/VST3/RC 24.vst3",3,2,ok,"22e5bc0:63fd1b00"
+34,"/Library/Audio/Plug-Ins/VST3/Replika XT.vst3",3,2,ok,"7ccb730:63fcb525"
+35,"/Library/Audio/Plug-Ins/VST3/Neutron 4 Gate.vst3",3,2,ok,"156860:66391203"
+36,"/Library/Audio/Plug-Ins/VST3/Wurli V3.vst3",3,2,ok,"31c86d0:65724a74"
+37,"/Library/Audio/Plug-Ins/VST3/Driver.vst3",3,2,ok,"157b760:66155d73"
+38,"/Library/Audio/Plug-Ins/VST3/LALA.vst3",3,2,ok,"4241e0:63b024cd"
+39,"/Library/Audio/Plug-Ins/VST3/EQ SITRAL-295.vst3",3,2,ok,"33bd190:6660c131"
+40,"/Library/Audio/Plug-Ins/VST3/Kontakt.vst3",3,2,ok,"741b170:647da295"
+41,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Stabilizer.vst3",3,2,ok,"15a5f0:66b65422"
+42,"/Library/Audio/Plug-Ins/VST3/Pigments.vst3",3,2,ok,"40b2940:6790c9ce"
+43,"/Library/Audio/Plug-Ins/VST3/B-3 V2.vst3",3,2,ok,"353cbd0:6736531b"
+44,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Vintage Limiter.vst3",3,2,not-a-plugin,"8db30:61248ca5"
+45,"/Library/Audio/Plug-Ins/VST3/Stage-73 V2.vst3",3,2,ok,"353cbe0:673650d1"
+46,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Clarity.vst3",3,2,ok,"15a5f0:66b6541f"
+47,"/Library/Audio/Plug-Ins/VST3/Filter SEM.vst3",3,2,ok,"33b0ed0:6660ceb2"
+48,"/Library/Audio/Plug-Ins/VST3/Replika.vst3",3,2,ok,"739e000:63fcb60b"
+49,"/Library/Audio/Plug-Ins/VST3/Jun-6 V.vst3",3,2,ok,"3544c90:67365927"
+50,"/Library/Audio/Plug-Ins/VST3/Filter MINI.vst3",3,2,ok,"33acec0:6660bce6"
+51,"/Library/Audio/Plug-Ins/VST3/iZotope Trash 2.vst3",3,2,not-a-plugin,"16b790:5dd3129d"
+52,"/Library/Audio/Plug-Ins/VST3/KORG MS-20 V.vst3",3,2,ok,"35f27d0:67365867"
+53,"/Library/Audio/Plug-Ins/VST3/Pre TridA.vst3",3,2,ok,"33b5070:6660c12a"
+54,"/Library/Audio/Plug-Ins/VST3/Filter M12.vst3",3,2,ok,"33b5080:6660c376"
+55,"/Library/Audio/Plug-Ins/VST3/Neoverb.vst3",3,2,ok,"f1f40:64a76ebb"
+56,"/Library/Audio/Plug-Ins/VST3/Kontakt 8.vst3",3,2,ok,"17267050:66f434e5"
+57,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Voices.vst3",3,2,ok,"f1f50:64ed41a2"
+58,"/Library/Audio/Plug-Ins/VST3/Bite.vst3",3,2,ok,"7550fb0:66155479"
+59,"/Library/Audio/Plug-Ins/VST3/Battery 4.vst3",3,2,ok,"7b28bc0:63b8311b"
+60,"/Library/Audio/Plug-Ins/VST3/PolyBrute Connect.vst3",3,2,ok,"3cd69e0:6673eed3"
+61,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Equalizer.vst3",3,2,not-a-plugin,"8db20:61248b74"
+62,"/Library/Audio/Plug-Ins/VST3/Vari Comp.vst3",3,2,ok,"206a880:63fcf20a"
+63,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Compressor.vst3",3,2,ok,"f1f50:64ed41a6"
+64,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Master Rebalance.vst3",3,2,not-a-plugin,"8db30:61248a95"
+65,"/Library/Audio/Plug-Ins/VST3/Freak.vst3",3,2,ok,"7588ea0:6615550d"
+66,"/Library/Audio/Plug-Ins/VST3/Rev INTENSITY.vst3",3,2,ok,"33bd180:6660c9c7"
+67,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Imager.vst3",3,2,not-a-plugin,"8db30:61248b27"
+68,"/Library/Audio/Plug-Ins/VST3/Komplete Kontrol.vst3",3,2,ok,"eba9030:6756ffa1"
+69,"/Library/Audio/Plug-Ins/VST3/DX7 V.vst3",3,2,ok,"3581580:673665b6"
+70,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Vintage Tape.vst3",3,2,not-a-plugin,"8db30:61248c54"
+72,"/Library/Audio/Plug-Ins/VST3/Solid EQ.vst3",3,2,ok,"13a2ad0:63fd0f57"
+73,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Vintage Compressor.vst3",3,2,ok,"15a5f0:66b65413"
+74,"/Library/Audio/Plug-Ins/VST3/TB_Equalizer_v4.vst3",3,2,ok,"ab00b0:66f3cc56"
+75,"/Library/Audio/Plug-Ins/VST3/Reaktor 6.vst3",3,2,ok,"8f0e860:64255a67"
+76,"/Library/Audio/Plug-Ins/VST3/Analog Lab 4.vst3",3,2,not-a-plugin,"1a140d0:5f56ad86"
+77,"/Library/Audio/Plug-Ins/VST3/uaudio_polymax.vst3",3,2,ok,"2dc5570:65728f4f"
+78,"/Library/Audio/Plug-Ins/VST3/Neutron 4 Compressor.vst3",3,2,ok,"156860:663911b4"
+79,"/Library/Audio/Plug-Ins/VST3/RC 48.vst3",3,2,ok,"230bf40:63fd01c0"
+80,"/Library/Audio/Plug-Ins/VST3/Delay ETERNITY.vst3",3,2,ok,"33bd170:6660b408"
+81,"/Library/Audio/Plug-Ins/VST3/Subsequent 37 Editor-VI.vst3",3,2,ok,"20d3180:628feb69"
+82,"/Library/Audio/Plug-Ins/VST3/Supercharger GT.vst3",3,2,ok,"135b720:63fcbef3"
+83,"/Library/Audio/Plug-Ins/VST3/SpliceBridge.vst3",3,2,ok,"2aa2000:64f77161"
+84,"/Library/Audio/Plug-Ins/VST3/Ozone 11.vst3",3,2,ok,"15a5f0:66b653d0"
+85,"/Library/Audio/Plug-Ins/VST3/Synthi V.vst3",3,2,ok,"353cb90:67370fe1"
+86,"/Library/Audio/Plug-Ins/VST3/Analog Lab V.vst3",3,2,ok,"5fe3f50:673e5210"
+87,"/Library/Audio/Plug-Ins/VST3/Passive EQ.vst3",3,2,ok,"20bb5a0:63fcf433"
+88,"/Library/Audio/Plug-Ins/VST3/Dirt.vst3",3,2,ok,"7548f90:661561b0"
+90,"/Library/Audio/Plug-Ins/VST3/Pre 1973.vst3",3,2,ok,"33b5060:6660bc6c"
+92,"/Library/Audio/Plug-Ins/VST3/soothe2.vst3",3,2,not-a-plugin,"4374850:63889222"
+93,"/Library/Audio/Plug-Ins/VST3/Sonic Charge/Microtonic Multi.vst3",3,2,ok,"8b75e0:63812824"
+94,"/Library/Audio/Plug-Ins/VST3/TB Equalizer Pro.vst3",3,2,ok,"b51060:66f3ccf3"
+95,"/Library/Audio/Plug-Ins/VST3/Mellotron V.vst3",3,2,ok,"3599850:673751eb"
+96,"/Library/Audio/Plug-Ins/VST3/FabFilter Pro-Q 3.vst3",3,2,ok,"3881b0:66582af9"
+99,"/Library/Audio/Plug-Ins/VST3/Bus FORCE.vst3",3,2,ok,"33d94e0:66619c10"
+100,"/Library/Audio/Plug-Ins/VST3/Ozone Imager 2.vst3",3,2,not-a-plugin,"d79d0:5defbd97"
+101,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Vintage Tape.vst3",3,2,ok,"15a5f0:66b65416"
+102,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Reverb.vst3",3,2,ok,"f1f50:64ed41a4"
+103,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Breath Control.vst3",3,2,ok,"f1f60:64ed41ae"
+104,"/Library/Audio/Plug-Ins/VST3/VC 160.vst3",3,2,ok,"206a2e0:63fcfb1e"
+105,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Delay.vst3",3,2,ok,"f1f50:64ed41aa"
+106,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Backer.vst3",3,2,ok,"f1f50:64ed41a5"
+107,"/Library/Audio/Plug-Ins/VST3/Pre V76.vst3",3,2,ok,"33b5060:6660c850"
+108,"/Library/Audio/Plug-Ins/VST3/Flair.vst3",3,2,ok,"755d750:66155a30"
+109,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Dimension.vst3",3,2,ok,"f1f60:64ed41ab"
+110,"/Library/Audio/Plug-Ins/VST3/OP-Xa V.vst3",3,2,ok,"355cff0:67366d05"
+111,"/Library/Audio/Plug-Ins/VST3/ValhallaSupermassive.vst3",3,2,ok,"47ffc0:636eb99f"
+112,"/Library/Audio/Plug-Ins/VST3/Mini V4.vst3",3,2,ok,"3229490:65724392"
+113,"/Library/Audio/Plug-Ins/VST3/Neutron 4.vst3",3,2,ok,"156860:66391163"
+115,"/Library/Audio/Plug-Ins/VST3/Efx FRAGMENTS.vst3",3,2,ok,"3581880:6660c5f8"
+116,"/Library/Audio/Plug-Ins/VST3/Prophet-5 V.vst3",3,2,ok,"35bde30:6736646f"
+118,"/Library/Audio/Plug-Ins/VST3/Rev SPRING-636.vst3",3,2,ok,"33bd1a0:6660c68d"
+119,"/Library/Audio/Plug-Ins/VST3/Buchla Easel V.vst3",3,2,ok,"3585760:6736621d"
+120,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Gate.vst3",3,2,ok,"f1f50:64ed41a1"
+121,"/Library/Audio/Plug-Ins/VST3/Sonic Charge/Permut8.vst3",3,2,ok,"51c400:638126b4"
+122,"/Library/Audio/Plug-Ins/VST3/Enhanced EQ.vst3",3,2,ok,"20610b0:63fcf639"
+123,"/Library/Audio/Plug-Ins/VST3/Sonic Charge/Microtonic.vst3",3,2,ok,"8b75d0:638126d1"
+124,"/Library/Audio/Plug-Ins/VST3/Neutron 4 Equalizer.vst3",3,2,ok,"156860:6639118d"
+125,"/Library/Audio/Plug-Ins/VST3/Bus PEAK.vst3",3,2,ok,"348f7b0:6660b8d0"
+126,"/Library/Audio/Plug-Ins/VST3/VC 2A.vst3",3,2,ok,"2065780:63fcb48e"
+127,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Spectral Shaper.vst3",3,2,not-a-plugin,"8db30:61248dd1"
+128,"/Library/Audio/Plug-Ins/VST3/Applied Acoustics Systems/Lounge Lizard EP-4.vst3",3,2,ok,"473f0:60a2b6dd"
+129,"/Library/Audio/Plug-Ins/VST3/Augmented BRASS.vst3",3,2,ok,"34524e0:6572366d"
+130,"/Library/Audio/Plug-Ins/VST3/Chorus JUN-6.vst3",3,2,ok,"33acec0:6660c27b"
+132,"/Library/Audio/Plug-Ins/VST3/Phaser BI-TRON.vst3",3,2,ok,"33b5090:6660cba1"
+133,"/Library/Audio/Plug-Ins/VST3/Relay.vst3",3,2,ok,"f1f40:649a27ea"
+134,"/Library/Audio/Plug-Ins/VST3/Wurli V2.vst3",3,2,ok,"2eb8d00:6400153b"
+135,"/Library/Audio/Plug-Ins/VST3/Youlean Loudness Meter 2.vst3",3,2,ok,"154f900:672fd21c"
+136,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Equalizer.vst3",3,2,ok,"f1f50:64ed41ac"
+137,"/Library/Audio/Plug-Ins/VST3/Delay BRIGADE.vst3",3,2,ok,"33b5080:6660cd2f"
+138,"/Library/Audio/Plug-Ins/VST3/VocalSynth Pro.vst3",3,2,not-a-plugin,"75890:601037f8"
+139,"/Library/Audio/Plug-Ins/VST3/Archetype Tim Henson.vst3",3,2,not-a-plugin,"460f290:6102beb8"
+141,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Exciter.vst3",3,2,not-a-plugin,"8db30:61248d3d"
+142,"/Library/Audio/Plug-Ins/VST3/Augmented STRINGS.vst3",3,2,ok,"38132d0:67365eb1"
+143,"/Library/Audio/Plug-Ins/VST3/Neoverb Pro.vst3",3,2,not-a-plugin,"72500:604a1186"
+144,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Maximizer.vst3",3,2,ok,"15a5f0:66b6540f"
+145,"/Library/Audio/Plug-Ins/VST3/Dist OPAMP-21.vst3",3,2,ok,"33b5090:6660c16c"
+146,"/Library/Audio/Plug-Ins/VST3/Raum.vst3",3,2,ok,"7583710:6615614a"
+147,"/Library/Audio/Plug-Ins/VST3/Phasis.vst3",3,2,ok,"4f28070:63fcb7cb"
+148,"/Library/Audio/Plug-Ins/VST3/Archetype Petrucci.vst3",3,2,not-a-plugin,"51feee0:61bb6529"
+149,"/Library/Audio/Plug-Ins/VST3/Massive.vst3",3,2,ok,"7a67d60:6409dbae"
+150,"/Library/Audio/Plug-Ins/VST3/Rev PLATE-140.vst3",3,2,ok,"33b5080:6660c907"
+151,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Imager.vst3",3,2,ok,"15a5f0:66b65411"
+152,"/Library/Audio/Plug-Ins/VST3/Emulator II V.vst3",3,2,ok,"37201f0:673644f2"
+153,"/Library/Audio/Plug-Ins/VST3/Auburn Sounds Graillon 2.vst3",3,2,disabled,"590120:60e36fa9"
+154,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Match EQ.vst3",3,2,ok,"15a5f0:66b6540d"
+156,"/Library/Audio/Plug-Ins/VST3/Filter MS-20.vst3",3,2,ok,"349b8a0:6660cf8b"
+157,"/Library/Audio/Plug-Ins/VST3/Bus EXCITER-104.vst3",3,2,ok,"348f7c0:6660c0b8"
+158,"/Library/Audio/Plug-Ins/VST3/Flanger BL-20.vst3",3,2,ok,"33b5070:6660b7d6"
+159,"/Library/Audio/Plug-Ins/VST3/Comp FET-76.vst3",3,2,ok,"33c5370:6660c73b"
+160,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Low End Focus.vst3",3,2,ok,"15a5f0:66b6541e"
+162,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Dynamics.vst3",3,2,not-a-plugin,"8db30:61248cf0"
+163,"/Library/Audio/Plug-Ins/VST3/Sonic Charge/Synplant.vst3",3,2,ok,"6f3c50:651c56d7"
+164,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Vintage EQ.vst3",3,2,not-a-plugin,"8db30:61248c09"
+165,"/Library/Audio/Plug-Ins/VST3/SEM V2.vst3",3,2,ok,"35288c0:6736640c"
+167,"/Library/Audio/Plug-Ins/VST3/Neutron 4 Visual Mixer.vst3",3,2,ok,"156860:663912a1"
+168,"/Library/Audio/Plug-Ins/VST3/Tape MELLO-FI.vst3",3,2,ok,"33b5030:6660ccd8"
+169,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Impact.vst3",3,2,ok,"15a5f0:66b65420"
+171,"/Library/Audio/Plug-Ins/VST3/VC 76.vst3",3,2,ok,"2065bc0:63fcfa51"
+173,"/Library/Audio/Plug-Ins/VST3/Sonic Charge/Echobode.vst3",3,2,ok,"50bf50:638126c7"
+174,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Spectral Shaper.vst3",3,2,ok,"15a5f0:66b6541c"
+175,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Auto-Level.vst3",3,2,ok,"f1f50:64ed41ad"
+176,"/Library/Audio/Plug-Ins/VST3/Massive X.vst3",3,2,ok,"e28c7b0:675c4736"
+177,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Saturation.vst3",3,2,ok,"f1f50:64ed41a8"
+178,"/Library/Audio/Plug-Ins/VST3/Nectar 4 Pitch.vst3",3,2,ok,"f1f50:64ed41a3"
+179,"/Library/Audio/Plug-Ins/VST3/Transient Master.vst3",3,2,ok,"137d040:63fcb9bf"
+180,"/Library/Audio/Plug-Ins/VST3/Neutron 3 Visual Mixer.vst3",3,2,not-a-plugin,"83c50:5f72945c"
+181,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Vintage Limiter.vst3",3,2,ok,"15a5f0:66b65417"
+182,"/Library/Audio/Plug-Ins/VST3/LANDR Mastering Pro.vst3",3,2,ok,"e6ae9f0:6639169b"
+183,"/Library/Audio/Plug-Ins/VST3/Rev LX-24.vst3",3,2,ok,"342e3d0:6660cf56"
+184,"/Library/Audio/Plug-Ins/VST3/Neutron 4 Transient Shaper.vst3",3,2,ok,"156860:6639122a"
+185,"/Library/Audio/Plug-Ins/VST3/ARP 2600 V3.vst3",3,2,ok,"35288e0:6736498f"
+186,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Dynamic EQ.vst3",3,2,ok,"15a5f0:66b6541b"
+187,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Master Rebalance.vst3",3,2,ok,"15a5f0:66b6540e"
+188,"/Library/Audio/Plug-Ins/VST3/Solid Bus Comp.vst3",3,2,ok,"13379e0:63fcca44"
+189,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Dynamic EQ.vst3",3,2,not-a-plugin,"8db30:61248d8a"
+190,"/Library/Audio/Plug-Ins/VST3/uaudio_teletronix_la-2a_tc.vst3",3,2,ok,"2ceedd0:6572af54"
+191,"/Library/Audio/Plug-Ins/VST3/Nectar 4 DeEsser.vst3",3,2,ok,"f1f50:64ed41a9"
+192,"/Library/Audio/Plug-Ins/VST3/Archetype Cory Wong.vst3",3,2,ok,"b79d0c0:6449274c"
+193,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Vintage EQ.vst3",3,2,ok,"15a5f0:66b65415"
+194,"/Library/Audio/Plug-Ins/VST3/Kontakt 7.vst3",3,2,ok,"10341960:656489eb"
+195,"/Library/Audio/Plug-Ins/VST3/Neutron 4 Unmask.vst3",3,2,ok,"156870:66391277"
+196,"/Library/Audio/Plug-Ins/VST3/Comp VCA-65.vst3",3,2,ok,"33c1220:6660b63f"
+197,"/Library/Audio/Plug-Ins/VST3/Delay TAPE-201.vst3",3,2,ok,"33c11d0:6660c8b6"
+198,"/Library/Audio/Plug-Ins/VST3/Acid V.vst3",3,2,ok,"35c5f90:673662fe"
+199,"/Library/Audio/Plug-Ins/VST3/Virus TI.vst3",3,2,not-a-plugin,"9fb00:59cd0a3e"
+200,"/Library/Audio/Plug-Ins/VST3/Efx REFRACT.vst3",3,2,ok,"33f5a50:6660c59b"
+201,"/Library/Audio/Plug-Ins/VST3/DiracLiveProcessor.vst3",3,2,ok,"2b16f30:657ac900"
+202,"/Library/Audio/Plug-Ins/VST3/Ozone 11 Exciter.vst3",3,2,ok,"15a5f0:66b6541a"
+203,"/Library/Audio/Plug-Ins/VST3/mvMeter2.vst3",3,2,ok,"2b0c60:67026b4f"
+204,"/Library/Audio/Plug-Ins/VST3/Life.vst3",3,2,ok,"2ebbcc0:657073d2"
+205,"/Library/Audio/Plug-Ins/VST3/Stochas.vst3",3,2,ok,"c70b00:638d0ac3"
+206,"/Library/Audio/Plug-Ins/VST3/MiniFreak V.vst3",3,2,ok,"3dee2d0:6571b160"
+207,"/Library/Audio/Plug-Ins/VST3/Piano V3.vst3",3,2,ok,"3554ee0:67365625"
+208,"/Library/Audio/Plug-Ins/VST3/Sonic Charge/Bitspeek.vst3",3,2,ok,"507f20:638127bf"
+209,"/Library/Audio/Plug-Ins/VST3/Neutron 4 Sculptor.vst3",3,2,ok,"156860:66391251"
+210,"/Library/Audio/Plug-Ins/VST3/FM8.vst3",3,2,ok,"267da60:63a57fe0"
+211,"/Library/Audio/Plug-Ins/VST3/Ozone Pro Match EQ.vst3",3,2,not-a-plugin,"8db30:61248a51"
+212,"/Library/Audio/Plug-Ins/VST3/SQ80 V.vst3",3,2,ok,"35f2620:67365ff9"
+213,"/Library/Audio/Plug-Ins/VST3/Prophet V3.vst3",3,2,ok,"2a0cc60:61c0ef3c"
+215,"/Library/Audio/Plug-Ins/VST/Delay BRIGADE.vst",2,2,ok,"33b5080:6660cd2d"
+216,"/Library/Audio/Plug-Ins/VST/ValhallaSupermassive.vst",2,2,ok,"453300:636eb996"
+217,"/Library/Audio/Plug-Ins/VST/Bus FORCE.vst",2,2,ok,"33d94e0:66619c0d"
+218,"/Library/Audio/Plug-Ins/VST/Bus PEAK.vst",2,2,ok,"348f7a0:6660b8ce"
+219,"/Library/Audio/Plug-Ins/VST/MiniFreak V.vst",2,2,ok,"3dee2d0:6571b15e"
+220,"/Library/Audio/Plug-Ins/VST/Replika XT.vst",2,2,not-a-plugin,"3fb5120:63fcb524"
+221,"/Library/Audio/Plug-Ins/VST/Piano V3.vst",2,2,ok,"3554ed0:67365623"
+222,"/Library/Audio/Plug-Ins/VST/Comp DIODE-609.vst",2,2,ok,"33b9150:6660b901"
+223,"/Library/Audio/Plug-Ins/VST/EQ SITRAL-295.vst",2,2,ok,"33bd190:6660c12f"
+224,"/Library/Audio/Plug-Ins/VST/Filter M12.vst",2,2,ok,"33b5080:6660c374"
+225,"/Library/Audio/Plug-Ins/VST/Bite.vst",2,2,not-a-plugin,"3cfbd10:66155479"
+226,"/Library/Audio/Plug-Ins/VST/Synthi V.vst",2,2,ok,"353cb80:67370fdf"
+227,"/Library/Audio/Plug-Ins/VST/Enhanced EQ.vst",2,2,not-a-plugin,"113fe50:63fcf639"
+228,"/Library/Audio/Plug-Ins/VST/Reaktor 6 FX.vst",2,2,not-a-plugin,"92cf0:64255a66"
+229,"/Library/Audio/Plug-Ins/VST/DiracLiveProcessor.vst",2,2,ok,"2ad9600:657ac8ff"
+230,"/Library/Audio/Plug-Ins/VST/ARP 2600 V3.vst",2,2,ok,"35288e0:6736498d"
+231,"/Library/Audio/Plug-Ins/VST/Ozone Pro Match EQ.vst",2,2,not-a-plugin,"8db30:61248a46"
+232,"/Library/Audio/Plug-Ins/VST/Massive.vst",2,2,not-a-plugin,"3fe2bd0:6409dbae"
+234,"/Library/Audio/Plug-Ins/VST/Wurli V2.vst",2,2,ok,"2eb8cf0:64001539"
+236,"/Library/Audio/Plug-Ins/VST/Passive EQ.vst",2,2,not-a-plugin,"116b000:63fcf433"
+238,"/Library/Audio/Plug-Ins/VST/Ozone Pro Vintage Compressor.vst",2,2,not-a-plugin,"8db30:61248bb8"
+239,"/Library/Audio/Plug-Ins/VST/Loopcloud.vst",2,2,not-a-plugin,"2688b0:60361fad"
+240,"/Library/Audio/Plug-Ins/VST/Ozone Pro Imager.vst",2,2,not-a-plugin,"8db30:61248b1c"
+242,"/Library/Audio/Plug-Ins/VST/Mellotron V.vst",2,2,ok,"3599850:673751e8"
+243,"/Library/Audio/Plug-Ins/VST/Absynth 5 FX.vst",2,2,not-a-plugin,"21810:60212595"
+244,"/Library/Audio/Plug-Ins/VST/Comp VCA-65.vst",2,2,ok,"33c1220:6660b63d"
+245,"/Library/Audio/Plug-Ins/VST/Sonic Charge/Permut8.vst",2,2,ok,"51c400:638126b4"
+246,"/Library/Audio/Plug-Ins/VST/Komplete Kontrol.vst",2,2,not-a-plugin,"3b77fe0:61ae1f22"
+249,"/Library/Audio/Plug-Ins/VST/Supercharger GT.vst",2,2,not-a-plugin,"9e70a0:63fcbef3"
+250,"/Library/Audio/Plug-Ins/VST/SEM V2.vst",2,2,ok,"35288c0:6736640b"
+251,"/Library/Audio/Plug-Ins/VST/Kontakt.vst",2,2,not-a-plugin,"3c8fdd0:647da294"
+252,"/Library/Audio/Plug-Ins/VST/FabFilter Pro-Q 3.vst",2,2,ok,"3881b0:66582af9"
+253,"/Library/Audio/Plug-Ins/VST/Pre V76.vst",2,2,ok,"33b5060:6660c84e"
+255,"/Library/Audio/Plug-Ins/VST/Ozone Imager 2.vst",2,2,not-a-plugin,"d79d0:5defbd94"
+256,"/Library/Audio/Plug-Ins/VST/Comp FET-76.vst",2,2,ok,"33c5370:6660c739"
+257,"/Library/Audio/Plug-Ins/VST/Virus TI.vst",2,2,not-a-plugin,"1151b4:59cd0a29"
+258,"/Library/Audio/Plug-Ins/VST/Ozone Pro Maximizer.vst",2,2,not-a-plugin,"8db30:61248ad2"
+259,"/Library/Audio/Plug-Ins/VST/FM8.vst",2,2,not-a-plugin,"13eef40:63a57fe0"
+260,"/Library/Audio/Plug-Ins/VST/VC 2A.vst",2,2,not-a-plugin,"11405a0:63fcb48e"
+261,"/Library/Audio/Plug-Ins/VST/Battery 4.vst",2,2,not-a-plugin,"3fd1c90:63b8311a"
+262,"/Library/Audio/Plug-Ins/VST/Life.vst",2,2,ok,"2ebbcc0:657073d0"
+263,"/Library/Audio/Plug-Ins/VST/Massive X.vst",2,2,not-a-plugin,"7729bc0:675c4736"
+264,"/Library/Audio/Plug-Ins/VST/Delay ETERNITY.vst",2,2,ok,"33bd160:6660b407"
+265,"/Library/Audio/Plug-Ins/VST/Subsequent 37 Editor-VI.vst",2,2,ok,"1f6bca0:628feb68"
+266,"/Library/Audio/Plug-Ins/VST/Ozone Pro Vintage Limiter.vst",2,2,not-a-plugin,"8db30:61248c9c"
+267,"/Library/Audio/Plug-Ins/VST/Efx FRAGMENTS.vst",2,2,ok,"3581880:6660c5f6"
+268,"/Library/Audio/Plug-Ins/VST/Ozone Pro Master Rebalance.vst",2,2,not-a-plugin,"8db30:61248a8c"
+269,"/Library/Audio/Plug-Ins/VST/Ozone Pro Spectral Shaper.vst",2,2,not-a-plugin,"8db30:61248dc8"
+270,"/Library/Audio/Plug-Ins/VST/VC 160.vst",2,2,not-a-plugin,"1141070:63fcfb1e"
+271,"/Library/Audio/Plug-Ins/VST/B-3 V2.vst",2,2,ok,"353cbd0:67365318"
+272,"/Library/Audio/Plug-Ins/VST/Flair.vst",2,2,not-a-plugin,"3cfc5b0:66155a30"
+273,"/Library/Audio/Plug-Ins/VST/Jun-6 V.vst",2,2,ok,"3544c90:67365925"
+274,"/Library/Audio/Plug-Ins/VST/Rev PLATE-140.vst",2,2,ok,"33b5080:6660c905"
+275,"/Library/Audio/Plug-Ins/VST/Absynth 5 FX Surround.vst",2,2,not-a-plugin,"21820:60212595"
+276,"/Library/Audio/Plug-Ins/VST/Pigments.vst",2,2,ok,"40b2930:6790c9cb"
+277,"/Library/Audio/Plug-Ins/VST/Freak.vst",2,2,not-a-plugin,"3d13c60:6615550d"
+278,"/Library/Audio/Plug-Ins/VST/Delay TAPE-201.vst",2,2,ok,"33c11c0:6660c8b4"
+279,"/Library/Audio/Plug-Ins/VST/Ozone Pro Low End Focus.vst",2,2,not-a-plugin,"8db30:61248e15"
+280,"/Library/Audio/Plug-Ins/VST/PolyBrute Connect.vst",2,2,ok,"3cd69e0:6673eed0"
+282,"/Library/Audio/Plug-Ins/VST/Relay.vst",2,2,not-a-plugin,"6e300:649a27df"
+283,"/Library/Audio/Plug-Ins/VST/VC 76.vst",2,2,not-a-plugin,"11409b0:63fcfa51"
+284,"/Library/Audio/Plug-Ins/VST/Rotary CLS-222.vst",2,2,ok,"33bd190:6660bbef"
+285,"/Library/Audio/Plug-Ins/VST/RC 48.vst",2,2,not-a-plugin,"12c06d0:63fd01c0"
+286,"/Library/Audio/Plug-Ins/VST/Solid Dynamics.vst",2,2,not-a-plugin,"9d98d0:63fcc2c3"
+287,"/Library/Audio/Plug-Ins/VST/Tape MELLO-FI.vst",2,2,ok,"33b5030:6660ccd7"
+288,"/Library/Audio/Plug-Ins/VST/Dist TUBE-CULTURE.vst",2,2,ok,"33bd190:6660c2a9"
+289,"/Library/Audio/Plug-Ins/VST/DX7 V.vst",2,2,ok,"3581580:673665b4"
+290,"/Library/Audio/Plug-Ins/VST/Pre TridA.vst",2,2,ok,"33b5070:6660c128"
+291,"/Library/Audio/Plug-Ins/VST/Supercharger.vst",2,2,not-a-plugin,"9d56c0:63fcc0d8"
+292,"/Library/Audio/Plug-Ins/VST/Dirt.vst",2,2,not-a-plugin,"3cf7d50:661561b0"
+293,"/Library/Audio/Plug-Ins/VST/Mini V4.vst",2,2,ok,"3229490:6572438f"
+294,"/Library/Audio/Plug-Ins/VST/Acid V.vst",2,2,ok,"35c5f80:673662fc"
+295,"/Library/Audio/Plug-Ins/VST/Augmented BRASS.vst",2,2,ok,"34524e0:6572366b"
+296,"/Library/Audio/Plug-Ins/VST/Chorus JUN-6.vst",2,2,ok,"33acec0:6660c279"
+297,"/Library/Audio/Plug-Ins/VST/Spark.vst",2,2,not-a-plugin,"5cc0cac:639c711a"
+298,"/Library/Audio/Plug-Ins/VST/Ozone Pro Dynamics.vst",2,2,not-a-plugin,"8db30:61248ce6"
+299,"/Library/Audio/Plug-Ins/VST/Efx MOTIONS.vst",2,2,ok,"349f200:6660bb94"
+300,"/Library/Audio/Plug-Ins/VST/Absynth 5.vst",2,2,not-a-plugin,"1514390:60212595"
+301,"/Library/Audio/Plug-Ins/VST/Loopmasters/Loopcloud Drum.vst",2,2,not-a-plugin,"29ea350:60361b8e"
+302,"/Library/Audio/Plug-Ins/VST/Raum.vst",2,2,not-a-plugin,"3d1a810:6615614a"
+303,"/Library/Audio/Plug-Ins/VST/Ozone Pro Exciter.vst",2,2,not-a-plugin,"8db30:61248d34"
+304,"/Library/Audio/Plug-Ins/VST/Prophet V3.vst",2,2,ok,"2a0cc50:61c0ef3a"
+305,"/Library/Audio/Plug-Ins/VST/Bus EXCITER-104.vst",2,2,ok,"348f7c0:6660c0b5"
+306,"/Library/Audio/Plug-Ins/VST/Ozone Pro Equalizer.vst",2,2,not-a-plugin,"8db20:61248b6b"
+307,"/Library/Audio/Plug-Ins/VST/Mini V3.vst",2,2,ok,"2eb8cd0:6400586c"
+308,"/Library/Audio/Plug-Ins/VST/Ozone Pro.vst",2,2,not-a-plugin,"8db20:61248962"
+309,"/Library/Audio/Plug-Ins/VST/TB Equalizer Pro.vst",2,2,ok,"b0c020:66f3ccf0"
+310,"/Library/Audio/Plug-Ins/VST/Serum.vst",2,2,ok,"11e23f0:60394450"
+311,"/Library/Audio/Plug-Ins/VST/iZotope Trash 2.vst",2,2,not-a-plugin,"16b790:5dd312a2"
+312,"/Library/Audio/Plug-Ins/VST/Absynth 5 Stereo.vst",2,2,not-a-plugin,"21820:60212595"
+313,"/Library/Audio/Plug-Ins/VST/Ozone Pro Dynamic EQ.vst",2,2,not-a-plugin,"8db30:61248d81"
+314,"/Library/Audio/Plug-Ins/VST/Archetype Cory Wong.vst",2,2,not-a-plugin,"5d24090:61966057"
+315,"/Library/Audio/Plug-Ins/VST/Archetype Tim Henson.vst",2,2,not-a-plugin,"45d7140:6102beb1"
+316,"/Library/Audio/Plug-Ins/VST/Chorus DIMENSION-D.vst",2,2,ok,"33b5090:6660bc14"
+317,"/Library/Audio/Plug-Ins/VST/Phaser BI-TRON.vst",2,2,ok,"33b5080:6660cb9f"
+318,"/Library/Audio/Plug-Ins/VST/Filter MINI.vst",2,2,ok,"33acec0:6660bce5"
+319,"/Library/Audio/Plug-Ins/VST/Filter SEM.vst",2,2,ok,"33b0ed0:6660ceb0"
+320,"/Library/Audio/Plug-Ins/VST/Flanger BL-20.vst",2,2,ok,"33b5070:6660b7d4"
+321,"/Library/Audio/Plug-Ins/VST/Reaktor 6.vst",2,2,not-a-plugin,"49ae7a0:64255a66"
+322,"/Library/Audio/Plug-Ins/VST/Solid EQ.vst",2,2,not-a-plugin,"a0f240:63fd0f57"
+323,"/Library/Audio/Plug-Ins/VST/SQ80 V.vst",2,2,ok,"35f2610:67365ff7"
+324,"/Library/Audio/Plug-Ins/VST/Wurli V3.vst",2,2,ok,"31c86d0:65724a71"
+325,"/Library/Audio/Plug-Ins/VST/Replika.vst",2,2,not-a-plugin,"3b1b5b0:63fcb60a"
+326,"/Library/Audio/Plug-Ins/VST/Ozone Pro Vintage Tape.vst",2,2,not-a-plugin,"8db30:61248c4a"
+327,"/Library/Audio/Plug-Ins/VST/Archetype Petrucci.vst",2,2,not-a-plugin,"51c8dc0:61bb6520"
+328,"/Library/Audio/Plug-Ins/VST/FM8 FX.vst",2,2,not-a-plugin,"2f2d0:63a57fe0"
+330,"/Library/Audio/Plug-Ins/VST/Sonic Charge/Microtonic.vst",2,2,ok,"8b75d0:638126d1"
+331,"/Library/Audio/Plug-Ins/VST/Vari Comp.vst",2,2,not-a-plugin,"1145570:63fcf20a"
+332,"/Library/Audio/Plug-Ins/VST/Choral.vst",2,2,not-a-plugin,"3cf2f30:66155b85"
+335,"/Library/Audio/Plug-Ins/VST/XO.vst",2,2,ok,"29acf90:64591e70"
+336,"/Library/Audio/Plug-Ins/VST/Analog Lab V.vst",2,2,disabled,"5fe3f40:673e520e"
+337,"/Library/Audio/Plug-Ins/VST/Augmented STRINGS.vst",2,2,ok,"38132d0:67365eaf"
+338,"/Library/Audio/Plug-Ins/VST/Sonic Charge/Echobode.vst",2,2,ok,"50bf50:638126c7"
+339,"/Library/Audio/Plug-Ins/VST/Subsequent 37 Editor.vst",2,2,ok,"1f6bc50:628feb67"
+340,"/Library/Audio/Plug-Ins/VST/Maschine 2.vst",2,2,not-a-plugin,"5340820:603926b2"
+341,"/Library/Audio/Plug-Ins/VST/Analog Lab 4.vst",2,2,not-a-plugin,"1a140d0:5f56ad85"
+342,"/Library/Audio/Plug-Ins/VST/Pre 1973.vst",2,2,ok,"33b5050:6660bc6b"
+343,"/Library/Audio/Plug-Ins/VST/Ozone Pro Vintage EQ.vst",2,2,not-a-plugin,"8db30:61248c00"
+344,"/Library/Audio/Plug-Ins/VST/Emulator II V.vst",2,2,ok,"37201f0:673644f0"
+345,"/Library/Audio/Plug-Ins/VST/Transient Master.vst",2,2,not-a-plugin,"9fca20:63fcb9be"
+346,"/Library/Audio/Plug-Ins/VST/Rev INTENSITY.vst",2,2,ok,"33bd180:6660c9c4"
+347,"/Library/Audio/Plug-Ins/VST/Solid Bus Comp.vst",2,2,not-a-plugin,"9d7fe0:63fcca44"
+348,"/Library/Audio/Plug-Ins/VST/Dist OPAMP-21.vst",2,2,ok,"33b5090:6660c16a"
+349,"/Library/Audio/Plug-Ins/VST/Buchla Easel V.vst",2,2,ok,"3585760:6736621a"
+350,"/Library/Audio/Plug-Ins/VST/Lounge Lizard EP-4.vst",2,2,ok,"be9ed0:60a2b6dc"
+351,"/Library/Audio/Plug-Ins/VST/Driver.vst",2,2,not-a-plugin,"af1a60:66155d73"
+352,"/Library/Audio/Plug-Ins/VST/Filter MS-20.vst",2,2,ok,"349b890:6660cf89"
+353,"/Library/Audio/Plug-Ins/VST/Augmented VOICES.vst",2,2,ok,"37e2d50:67364ce5"
+355,"/Library/Audio/Plug-Ins/VST/Auburn Sounds Graillon 2.vst",2,2,disabled,"599060:60e36f22"
+357,"/Library/Audio/Plug-Ins/VST/Neoverb Pro.vst",2,2,not-a-plugin,"72500:604a117d"
+358,"/Library/Audio/Plug-Ins/VST/Efx REFRACT.vst",2,2,ok,"33f5a50:6660c598"
+359,"/Library/Audio/Plug-Ins/VST/Softube/Saturation Knob.vst",2,2,not-a-plugin,"16c7110:60268e60"
+360,"/Library/Audio/Plug-Ins/VST/Rev LX-24.vst",2,2,ok,"342e3d0:6660cf54"
+361,"/Library/Audio/Plug-Ins/VST/mvMeter2.vst",2,2,ok,"22a550:67026b4f"
+362,"/Library/Audio/Plug-Ins/VST/Maschine 2 FX.vst",2,2,not-a-plugin,"262f0:603926b2"
+363,"/Library/Audio/Plug-Ins/VST/OP-Xa V.vst",2,2,ok,"355cff0:67366d03"
+364,"/Library/Audio/Plug-Ins/VST/RC 24.vst",2,2,not-a-plugin,"12ae2b0:63fd1b00"
+365,"/Library/Audio/Plug-Ins/VST/Life DAW Recorder.vst",2,2,ok,"2eb3bf0:65707704"
+366,"/Library/Audio/Plug-Ins/VST/TB_Equalizer_v4.vst",2,2,ok,"a6b1a0:66f3cc4d"
+367,"/Library/Audio/Plug-Ins/VST/Loopmasters/Loopcloud Play.vst",2,2,not-a-plugin,"27815f0:60361b90"
+368,"/Library/Audio/Plug-Ins/VST/Prophet-5 V.vst",2,2,ok,"35bde30:6736646d"
+370,"/Library/Audio/Plug-Ins/VST/Phasis.vst",2,2,not-a-plugin,"28daed0:63fcb7cb"
+371,"/Library/Audio/Plug-Ins/VST/Sonic Charge/Synplant.vst",2,2,ok,"6f3c50:651c56d7"
+372,"/Library/Audio/Plug-Ins/VST/u-he/Protoverb.vst",2,2,ok,"d9d260:61e846ee"
+373,"/Library/Audio/Plug-Ins/VST/Sonic Charge/Microtonic Multi.vst",2,2,ok,"8b75e0:63812824"
+374,"/Library/Audio/Plug-Ins/VST/Rev SPRING-636.vst",2,2,ok,"33bd190:6660c68b"
+375,"/Library/Audio/Plug-Ins/VST/Sonic Charge/Bitspeek.vst",2,2,ok,"507f20:638127bf"
+376,"/Library/Audio/Plug-Ins/VST3/Archetype John Mayer X.vst3",3,2,ok,"b71f980:6940143e"
+377,"/Library/Audio/Plug-Ins/VST3/Gateway.vst3",3,2,ok,"8a7730:6a1f26bb"
+378,"/Library/Audio/Plug-Ins/VST3/NAM Rig.vst3",3,2,ok,"1ab8d40:6a62a509"
+379,"/Library/Audio/Plug-Ins/VST3/Tone King Imperial MKII.vst3",3,2,not-a-plugin,"a7c8130:641c81ee"
+380,"/Library/Audio/Plug-Ins/VST3/Easy Reverb.vst3",3,2,not-a-plugin,"3bf010:6a8ecffc"
+381,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Easy Reverb.vst3",3,2,not-a-plugin,"4972f0:6a94ab73"
+383,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Easy Delay.vst3",3,2,not-a-plugin,"49df30:6a94abc0"
+384,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Easy EQ.vst3",3,2,not-a-plugin,"4a1410:6a94ab7a"
+385,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Easy Trem-Pan.vst3",3,2,not-a-plugin,"497db0:6a94ab84"
+386,"/Library/Audio/Plug-Ins/VST3/ValhallaShimmer.vst3",3,2,ok,"4fb760:63d47f8d"
+387,"/Library/Audio/Plug-Ins/VST/ValhallaShimmer_x64.vst",2,2,ok,"4a7b80:63d47f88"
+388,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Easy Chorus.vst3",3,2,not-a-plugin,"491660:6a94ab9c"
+389,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Easy Overdrive.vst3",3,2,not-a-plugin,"4950a0:6a94ace7"
+390,"/Library/Audio/Plug-Ins/VST3/Overdrive Essentials.vst3",3,2,ok,"3eab760:626851e1"
+391,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Delay.vst3",3,2,ok,"152d490:6aa3a360"
+392,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Reverb.vst3",3,2,ok,"117b350:6aa809a1"
+393,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Chorus.vst3",3,2,ok,"16209f0:6aa3a365"
+394,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Trem-Pan.vst3",3,2,ok,"162a120:6aa3a364"
+395,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Phase.vst3",3,2,ok,"1620660:6aa3a368"
+396,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Overdrive.vst3",3,2,ok,"1620be0:6aa3a369"
+397,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak EQ.vst3",3,2,ok,"19c5720:6aa3a361"
+398,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Wah.vst3",3,2,ok,"14f50d0:6aa3a36a"
+399,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Tape.vst3",3,2,ok,"22bdd90:6aa3a36d"
+400,"/Library/Audio/Plug-Ins/VST3/Rev OCEAN.vst3",3,2,ok,"3857830:6a4b9910"
+401,"/Library/Audio/Plug-Ins/VST3/Tape J-37.vst3",3,2,ok,"3860070:698537b0"
+402,"/Library/Audio/Plug-Ins/VST3/Pitch SHIFTER-910.vst3",3,2,ok,"37654b0:69851ef8"
+403,"/Library/Audio/Plug-Ins/VST3/Efx AMBIENT.vst3",3,2,ok,"376d630:698cba2b"
+404,"/Library/Audio/Plug-Ins/VST/Efx AMBIENT.vst",2,2,ok,"376d630:698cba29"
+405,"/Library/Audio/Plug-Ins/VST/Tape J-37.vst",2,2,ok,"3860070:698537ae"
+406,"/Library/Audio/Plug-Ins/VST/Rev OCEAN.vst",2,2,ok,"3857830:6a4b990e"
+407,"/Library/Audio/Plug-Ins/VST/Pitch SHIFTER-910.vst",2,2,ok,"37654b0:69851ef6"
+408,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Grain.vst3",3,2,ok,"11965a0:6aa927bc"
+409,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Alpine.vst3",3,2,ok,"1f331f0:6aa80994"
+410,"/Library/Audio/Plug-Ins/VST3/AIR Flavor Pro.vst3",3,2,ok,"2648d60:6594523c"
+411,"/Library/Audio/Plug-Ins/VST/AIR Flavor Pro.vst",2,2,ok,"2648d60:6594523b"
+412,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Artifact.vst3",3,2,ok,"151c820:6aa8099b"
+413,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Spring.vst3",3,2,ok,"16246e0:6aa3a35e"
+414,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Sympathy.vst3",3,2,ok,"16476d0:6aa3a36e"
+415,"/Library/Audio/Plug-Ins/VST3/Lifeline Expanse.vst3",3,2,ok,"1dd4030:66ce1b05"
+416,"/Library/Audio/Plug-Ins/VST3/Lifeline Format Module.vst3",3,2,ok,"1a38220:66ce20d0"
+417,"/Library/Audio/Plug-Ins/VST3/Lifeline Space Module.vst3",3,2,ok,"1a60920:66ce1975"
+418,"/Library/Audio/Plug-Ins/VST3/Lifeline Re-Amp Module.vst3",3,2,ok,"1c85e80:66ce1ce9"
+419,"/Library/Audio/Plug-Ins/VST3/Lifeline Width Module.vst3",3,2,ok,"1a3cf10:66ce135b"
+420,"/Library/Audio/Plug-Ins/VST3/Lifeline Dirt Module.vst3",3,2,ok,"1a2ee80:66ce2319"
+421,"/Library/Audio/Plug-Ins/VST3/Strymon/Cloudburst.vst3",3,2,ok,"1557ca0:680be55b"
+422,"/Users/pawelwitkowski/Library/Audio/Plug-Ins/VST3/Peak Modulation.vst3",3,2,ok,"1e1e310:6aa809a0"
+Logging plugins information about plugin modules end --------------------
+Logging plugins information about all plugins start----------------------
+PluginId,ModuleId,DevIdentifier,Name,Vendor,Version,SdkVersion,Flags,ScanState,SubCategories,IsEnabled
+1,1,"device:vst:instr:1263358806?n=KORG%20MS-20%20V","KORG MS-20 V","Arturia","1","2400",0,1,"",1
+2,4,"device:vst:instr:1400137522?n=Stage-73%20V2","Stage-73 V2","Arturia","1","2400",0,1,"",1
+3,7,"device:vst:audiofx:1131365993?n=Dist%20COLDFIRE","Dist COLDFIRE","Arturia","1","2400",0,1,"",1
+5,9,"device:vst3:audiofx:41727475-4156-4953-5475-437550726f63","Dist TUBE-CULTURE","Arturia","1.2.0.5460","VST 3.7.5",1,1,"Fx|Distortion",1
+6,10,"device:vst3:audiofx:5653544e-6374-5a4e-6563-746172205072","Nectar 4","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+7,11,"device:vst3:audiofx:5653545a-4144-5a4f-7a6f-6e652050726f","Ozone 11 Dynamics","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+8,12,"device:vst3:instr:abcdef01-9182-faeb-786c-6e417841584f","XO","XLN Audio","Plugin_VersionHi.Plugin_VersionMi.Plugin_VersionLo","VST 3.6.8",1,1,"Instrument|Synth",1
+9,13,"device:vst3:audiofx:d39d5b69-d6af-42fa-1234-567875685056","Protoverb","u-he","1.0.1","VST 3.7.0",1,1,"Fx|u-he",1
+10,14,"device:vst3:audiofx:5653544e-6924-3773-6f6c-69642064796e","Solid Dynamics","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+11,15,"device:vst3:audiofx:5653545a-4e58-5a4e-6575-74726f6e2050","Neutron 4 Exciter","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|Distortion",1
+12,18,"device:vst3:audiofx:41727475-4156-4953-4d6f-746950726f63","Efx MOTIONS","Arturia","1.1.0.5460","VST 3.7.5",1,1,"Fx|Tools",1
+13,19,"device:vst3:audiofx:41727475-4156-4953-636c-733250726f63","Rotary CLS-222","Arturia","1.2.0.5460","VST 3.7.5",1,1,"Fx|Modulation",1
+14,20,"device:vst3:audiofx:41727475-4156-4953-436f-466950726f63","Dist COLDFIRE","Arturia","1.2.0.5460","VST 3.7.5",1,1,"Fx|Distortion",1
+15,21,"device:vst3:audiofx:41727475-4156-4953-4469-6d4450726f63","Chorus DIMENSION-D","Arturia","1.5.0.5460","VST 3.7.5",1,1,"Fx|Modulation",1
+16,22,"device:vst3:audiofx:56535453-5371-6573-7562-73657175656e","Subsequent 37 Editor","Moog Music Inc.","1.1.1","VST 3.7.2",1,1,"Fx",1
+17,23,"device:vst3:audiofx:5653545a-415a-554f-7a6f-6e652050726f","Ozone 11 Equalizer","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|EQ",1
+18,25,"device:vst3:audiofx:41727475-4156-4953-436f-446950726f63","Comp DIODE-609","Arturia","1.4.0.5460","VST 3.7.5",1,1,"Fx|Dynamics",1
+19,27,"device:vst3:instr:41727475-4156-4953-4156-637350726f63","Augmented VOICES","Arturia","1.7.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+20,28,"device:vst3:audiofx:5653544e-6924-4963-686f-72616c000000","Choral","Native Instruments","1.3.3 (R22)","VST 3.7.8",1,1,"Fx|Modulation",1
+21,30,"device:vst3:audiofx:5653544e-6924-4073-7570-657263686172","Supercharger","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+22,31,"device:vst3:audiofx:abcdef01-9182-faeb-786c-6e4178614c52","Life DAW Recorder","XLN Audio","Plugin_VersionHi.Plugin_VersionMi.Plugin_VersionLo","VST 3.6.8",1,1,"Fx",1
+23,32,"device:vst3:instr:41727475-4156-4953-4d49-4e3350726f63","Mini V3","Arturia","3.12.0.3422","VST 3.7.5",1,1,"Instrument|Synth",1
+24,33,"device:vst3:audiofx:5653544e-6924-3e72-6320-323400000000","RC 24","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Reverb",1
+25,34,"device:vst3:audiofx:5653544e-6924-4372-6570-6c696b612078","Replika XT","Native Instruments","1.3.1 (R666666666)","VST 3.7.4",1,1,"Fx|Delay",1
+26,35,"device:vst3:audiofx:5653545a-4e47-5a4e-6575-74726f6e2050","Neutron 4 Gate","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+27,36,"device:vst3:instr:41727475-4156-4953-5755-523350726f63","Wurli V3","Arturia","3.0.0.4395","VST 3.7.5",1,1,"Instrument|Synth",1
+28,37,"device:vst3:audiofx:5653544e-6924-3d64-7269-766572000000","Driver","Native Instruments","1.4.7 (R22)","VST 3.7.8",1,1,"Fx|Filter",1
+29,38,"device:vst3:audiofx:f2aee70d-00de-4f4e-416e-6f624c414c31","LALA","AnalogObsession","3.1.0","VST 3.7.6",1,1,"Fx|Dynamics",1
+30,39,"device:vst3:audiofx:41727475-4156-4953-4571-536950726f63","EQ SITRAL-295","Arturia","1.4.0.5460","VST 3.7.5",1,1,"Fx|EQ",1
+31,40,"device:vst3:instr:5653544e-6924-446b-6f6e-74616b740000","Kontakt","Native Instruments","6.8.0","VST 3.7.1",1,1,"Instrument",1
+32,41,"device:vst3:audiofx:5653545a-414f-534f-7a6f-6e652050726f","Ozone 11 Stabilizer","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|EQ",1
+33,42,"device:vst3:instr:41727475-4156-4953-4b61-743150726f63","Pigments","Arturia","6.0.1.5484","VST 3.7.5",1,1,"Instrument|Synth",1
+34,43,"device:vst3:instr:41727475-4156-4953-546e-573250726f63","B-3 V2","Arturia","2.9.3.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+35,45,"device:vst3:instr:41727475-4156-4953-5374-673250726f63","Stage-73 V2","Arturia","2.6.3.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+36,46,"device:vst3:audiofx:5653545a-4143-4c4f-7a6f-6e652050726f","Ozone 11 Clarity","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|EQ",1
+37,47,"device:vst3:audiofx:41727475-4156-4953-4f53-466950726f63","Filter SEM","Arturia","1.8.0.5460","VST 3.7.5",1,1,"Fx|Filter",1
+38,48,"device:vst3:audiofx:5653544e-6924-4272-6570-6c696b610000","Replika","Native Instruments","1.6.1 (R666666666)","VST 3.7.4",1,1,"Fx|Delay",1
+39,49,"device:vst3:instr:41727475-4156-4953-4a75-6e3150726f63","Jun-6 V","Arturia","1.6.3.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+40,50,"device:vst3:audiofx:41727475-4156-4953-4d69-466950726f63","Filter MINI","Arturia","1.9.0.5460","VST 3.7.5",1,1,"Fx|Filter",1
+41,52,"device:vst3:instr:41727475-4156-4953-4b4d-535650726f63","KORG MS-20 V","Arturia","1.3.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+42,53,"device:vst3:audiofx:41727475-4156-4953-5452-415250726f63","Pre TridA","Arturia","1.8.0.5460","VST 3.7.5",1,1,"Fx|EQ",1
+43,54,"device:vst3:audiofx:41727475-4156-4953-4d61-466950726f63","Filter M12","Arturia","1.8.0.5460","VST 3.7.5",1,1,"Fx|Filter",1
+44,55,"device:vst3:audiofx:5653545a-4d52-314e-656f-766572620000","Neoverb","iZotope","1.3.0","VST 3.7.1",1,1,"Fx|Reverb",1
+45,56,"device:vst3:instr:5653544e-694b-386b-6f6e-74616b742038","Kontakt 8","Native Instruments","8.0.1","VST 3.7.8",1,1,"Instrument",1
+46,57,"device:vst3:audiofx:5653544e-4354-564e-6563-746172203420","Nectar 4 Voices","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+47,58,"device:vst3:audiofx:5653544e-6924-4d62-6974-650000000000","Bite","Native Instruments","1.3.3 (R22)","VST 3.7.8",1,1,"Fx|Distortion",1
+48,59,"device:vst3:instr:5653544e-4261-3462-6174-746572792034","Battery 4","Native Instruments","4.3","VST 3.7.4",1,1,"Instrument",1
+49,60,"device:vst3:instr:41727475-4156-4953-506f-6c7950726f63","PolyBrute Connect","Arturia","3.1.0.907","VST 3.7.5",1,1,"Instrument|Synth",1
+50,62,"device:vst3:audiofx:5653544e-6924-3b76-6172-6920636f6d70","Vari Comp","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+51,63,"device:vst3:audiofx:5653544e-4354-434e-6563-746172203420","Nectar 4 Compressor","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+52,65,"device:vst3:audiofx:5653544e-6924-4e66-7265-616b00000000","Freak","Native Instruments","1.3.3 (R22)","VST 3.7.8",1,1,"Fx|Modulation",1
+53,66,"device:vst3:audiofx:41727475-4156-4953-416c-675650726f63","Rev INTENSITY","Arturia","1.6.0.5460","VST 3.7.5",1,1,"Fx|Reverb",1
+54,68,"device:vst3:instr:5653544e-694b-4b6b-6f6d-706c65746520","Komplete Kontrol","Native Instruments","3.3.4 (R0)","VST 3.7.11",1,1,"Instrument",1
+55,69,"device:vst3:instr:41727475-4156-4953-4478-373150726f63","DX7 V","Arturia","1.13.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+57,72,"device:vst3:audiofx:5653544e-6924-3873-6f6c-696420657100","Solid EQ","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|EQ",1
+58,73,"device:vst3:audiofx:5653545a-415a-434f-7a6f-6e652050726f","Ozone 11 Vintage Compressor","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+59,74,"device:vst3:audiofx:56535454-3445-5174-625f-657175616c69","TB_Equalizer_v4","ToneBoosters","4.7.9","VST 3.7.12",1,1,"Fx|EQ",1
+60,75,"device:vst3:instr:5653544e-6952-3672-6561-6b746f722036","Reaktor 6","Native Instruments","6.5.0","VST 3.7.5",1,1,"Instrument",1
+61,75,"device:vst3:audiofx:5653544e-5236-6a72-6561-6b746f722036","Reaktor 6 FX","Native Instruments","6.5.0","VST 3.7.5",1,1,"Fx",1
+62,77,"device:vst3:instr:abcdef01-9182-faeb-5541-447855493036","UADx PolyMAX Synth","Universal Audio (UADx)","1.0.10","VST 3.7.2",1,1,"Instrument|Synth",1
+63,78,"device:vst3:audiofx:5653545a-4e44-5a4e-6575-74726f6e2050","Neutron 4 Compressor","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+64,79,"device:vst3:audiofx:5653544e-6924-3f72-6320-343800000000","RC 48","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Reverb",1
+65,80,"device:vst3:audiofx:41727475-4156-4953-4574-657250726f63","Delay ETERNITY","Arturia","1.7.0.5460","VST 3.7.5",1,1,"Fx|Delay",1
+66,81,"device:vst3:instr:56535453-5371-6973-7562-73657175656e","Subsequent 37 Editor-VI","Moog Music Inc.","1.1.1","VST 3.7.2",1,1,"Instrument|Synth",1
+67,82,"device:vst3:audiofx:5653544e-6924-4173-7570-657263686172","Supercharger GT","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+68,83,"device:vst3:instr:abcdef01-9182-faeb-5370-6c6358793768","Splice Bridge","Splice","4.3.7","VST 3.7.2",1,1,"Instrument",1
+69,84,"device:vst3:audiofx:5653545a-414f-5a4f-7a6f-6e6500000000","Ozone 11","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Mastering",1
+70,85,"device:vst3:instr:41727475-4156-4953-534e-544850726f63","Synthi V","Arturia","1.9.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+71,86,"device:vst3:instr:41727475-4156-4953-416c-617650726f63","Analog Lab V","Arturia","5.10.7.5324","VST 3.7.5",1,1,"Instrument|Synth",1
+72,87,"device:vst3:audiofx:5653544e-6924-3970-6173-736976652065","Passive EQ","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|EQ",1
+73,88,"device:vst3:audiofx:5653544e-6924-4c64-6972-740000000000","Dirt","Native Instruments","1.3.3 (R22)","VST 3.7.8",1,1,"Fx|Distortion",1
+75,90,"device:vst3:audiofx:41727475-4156-4953-5052-373350726f63","Pre 1973","Arturia","1.9.0.5460","VST 3.7.5",1,1,"Fx|EQ",1
+77,93,"device:vst3:instr:5653544e-754d-6d76-7374-325f66696c65","Microtonic Multi","Sonic Charge","3.3.4.1048","VST 3.7.6",1,1,"Instrument",1
+78,94,"device:vst3:audiofx:56535454-3145-5074-6220-657175616c69","TB Equalizer Pro","ToneBoosters","1.1.1","VST 3.7.12",1,1,"Fx|Dynamics|EQ",1
+79,95,"device:vst3:instr:41727475-4156-4953-4d4c-544e50726f63","Mellotron V","Arturia","1.9.3.5306","VST 3.7.5",1,1,"Instrument|Synth",1
+80,96,"device:vst3:audiofx:72c4db71-7a4d-459a-b97e-51745d84b39d","Pro-Q 3","FabFilter","3.2.6.0","VST 3.7.9",1,1,"Fx|EQ",1
+83,99,"device:vst3:audiofx:41727475-4156-4953-4275-467350726f63","Bus FORCE","Arturia","1.4.0.5463","VST 3.7.5",1,1,"Fx|Mastering",1
+84,101,"device:vst3:audiofx:5653545a-415a-544f-7a6f-6e652050726f","Ozone 11 Vintage Tape","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+85,102,"device:vst3:audiofx:5653544e-4354-524e-6563-746172203420","Nectar 4 Reverb","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+86,103,"device:vst3:audiofx:5653544e-4354-424e-6563-746172203420","Nectar 4 Breath Control","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+87,104,"device:vst3:audiofx:5653544e-6924-3276-6320-313630000000","VC 160","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+88,105,"device:vst3:audiofx:5653544e-4354-4c4e-6563-746172203420","Nectar 4 Delay","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+89,106,"device:vst3:audiofx:5653544e-4354-4d4e-6563-746172203420","Nectar 4 Backer","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+90,107,"device:vst3:audiofx:41727475-4156-4953-5445-4c4550726f63","Pre V76","Arturia","1.8.0.5460","VST 3.7.5",1,1,"Fx|EQ",1
+91,108,"device:vst3:audiofx:5653544e-6924-4b66-6c61-697200000000","Flair","Native Instruments","1.3.3 (R22)","VST 3.7.8",1,1,"Fx|Modulation",1
+92,109,"device:vst3:audiofx:5653544e-4354-4e4e-6563-746172203420","Nectar 4 Dimension","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+93,110,"device:vst3:instr:41727475-4156-4953-4f42-586150726f63","OP-Xa V","Arturia","1.7.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+94,111,"device:vst3:audiofx:56535473-4d61-7376-616c-68616c6c6173","ValhallaSupermassive","Valhalla DSP, LLC","2.5.0","VST 3.7.2",1,1,"Fx",1
+95,112,"device:vst3:instr:41727475-4156-4953-4d49-4e3450726f63","Mini V4","Arturia","4.0.0.4395","VST 3.7.5",1,1,"Instrument|Synth",1
+96,113,"device:vst3:audiofx:5653545a-4e4e-5a4e-6575-74726f6e2050","Neutron 4","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|EQ",1
+98,115,"device:vst3:audiofx:41727475-4156-4953-6772-616e50726f63","Efx FRAGMENTS","Arturia","1.3.0.5460","VST 3.7.5",1,1,"Fx|Tools",1
+99,116,"device:vst3:instr:41727475-4156-4953-5052-4f3550726f63","Prophet-5 V","Arturia","1.3.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+101,118,"device:vst3:audiofx:41727475-4156-4953-5265-477250726f63","Rev SPRING-636","Arturia","1.6.0.5460","VST 3.7.5",1,1,"Fx|Reverb",1
+102,119,"device:vst3:instr:41727475-4156-4953-4275-456150726f63","Buchla Easel V","Arturia","1.13.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+103,120,"device:vst3:audiofx:5653544e-4354-474e-6563-746172203420","Nectar 4 Gate","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+104,121,"device:vst3:audiofx:5653544e-7550-7270-6572-6d7574380000","Permut8","Sonic Charge","1.2.3.1028","VST 3.7.6",1,1,"Fx",1
+105,122,"device:vst3:audiofx:5653544e-6924-3a65-6e68-616e63656420","Enhanced EQ","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|EQ",1
+106,123,"device:vst3:instr:5653544e-754d-5476-7374-325f66696c65","Microtonic","Sonic Charge","3.3.4.1048","VST 3.7.6",1,1,"Instrument",1
+107,124,"device:vst3:audiofx:5653545a-4e45-5a4e-6575-74726f6e2050","Neutron 4 Equalizer","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|EQ",1
+108,125,"device:vst3:audiofx:41727475-4156-4953-4253-504b50726f63","Bus PEAK","Arturia","1.0.0.5460","VST 3.7.5",1,1,"Fx|Dynamics",1
+109,126,"device:vst3:audiofx:5653544e-6924-3376-6320-326100000000","VC 2A","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+110,128,"device:vst3:instr:5653544c-4c5a-346c-6f75-6e6765206c69","Lounge Lizard EP-4","Applied Acoustics Systems","4","VST 3.6.7",1,1,"Instrument",1
+111,129,"device:vst3:instr:41727475-4156-4953-4142-727350726f63","Augmented BRASS","Arturia","1.1.0.4395","VST 3.7.5",1,1,"Instrument|Synth",1
+112,130,"device:vst3:audiofx:41727475-4156-4953-434a-553650726f63","Chorus JUN-6","Arturia","1.5.0.5460","VST 3.7.5",1,1,"Fx|Modulation",1
+114,132,"device:vst3:audiofx:41727475-4156-4953-4269-547250726f63","Phaser BI-TRON","Arturia","1.5.0.5460","VST 3.7.5",1,1,"Fx|Modulation",1
+115,133,"device:vst3:audiofx:5653545a-524c-3152-656c-617900000000","Relay","iZotope","1.4.0","VST 3.7.1",1,1,"Fx|Spatial",1
+116,134,"device:vst3:instr:41727475-4156-4953-5755-523250726f63","Wurli V2","Arturia","2.12.0.3420","VST 3.7.5",1,1,"Instrument|Synth",1
+117,135,"device:vst3:audiofx:f2aee70d-00de-4f4e-6774-755975726259","Youlean Loudness Meter 2","Youlean","2.5.10","VST 3.7.4",1,1,"Fx|Analyzer",1
+118,136,"device:vst3:audiofx:5653544e-4354-514e-6563-746172203420","Nectar 4 Equalizer","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+119,137,"device:vst3:audiofx:41727475-4156-4953-4d65-427250726f63","Delay BRIGADE","Arturia","1.7.0.5460","VST 3.7.5",1,1,"Fx|Delay",1
+121,142,"device:vst3:instr:41727475-4156-4953-4153-747250726f63","Augmented STRINGS","Arturia","1.7.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+122,144,"device:vst3:audiofx:5653545a-415a-4d4f-7a6f-6e652050726f","Ozone 11 Maximizer","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+123,145,"device:vst3:audiofx:41727475-4156-4953-7341-4d5050726f63","Dist OPAMP-21","Arturia","1.2.0.5460","VST 3.7.5",1,1,"Fx|Distortion",1
+124,146,"device:vst3:audiofx:5653544e-6924-5172-6175-6d0000000000","Raum","Native Instruments","1.3.3 (R22)","VST 3.7.8",1,1,"Fx|Reverb",1
+125,147,"device:vst3:audiofx:5653544e-6924-4a70-6861-736973000000","Phasis","Native Instruments","1.3.1 (R666666666)","VST 3.7.4",1,1,"Fx|Modulation",1
+126,149,"device:vst3:instr:5653544e-694d-616d-6173-736976650000","Massive","Native Instruments","1.5.12 (R31)","VST 3.7.4",1,1,"Instrument|Synth",1
+127,150,"device:vst3:audiofx:41727475-4156-4953-5265-506c50726f63","Rev PLATE-140","Arturia","1.7.0.5460","VST 3.7.5",1,1,"Fx|Reverb",1
+128,151,"device:vst3:audiofx:5653545a-4149-5a4f-7a6f-6e652050726f","Ozone 11 Imager","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Spatial",1
+129,152,"device:vst3:instr:41727475-4156-4953-456d-753150726f63","Emulator II V","Arturia","1.6.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+130,154,"device:vst3:audiofx:5653545a-415a-484f-7a6f-6e652050726f","Ozone 11 Match EQ","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|EQ",1
+132,156,"device:vst3:audiofx:41727475-4156-4953-4669-4d7350726f63","Filter MS-20","Arturia","1.2.0.5462","VST 3.7.5",1,1,"Fx|Filter",1
+133,157,"device:vst3:audiofx:41727475-4156-4953-5831-303450726f63","Bus EXCITER-104","Arturia","1.0.0.5460","VST 3.7.5",1,1,"Fx|Distortion",1
+134,158,"device:vst3:audiofx:41727475-4156-4953-424c-323050726f63","Flanger BL-20","Arturia","1.5.0.5460","VST 3.7.5",1,1,"Fx|Modulation",1
+135,159,"device:vst3:audiofx:41727475-4156-4953-4654-373650726f63","Comp FET-76","Arturia","1.7.0.5460","VST 3.7.5",1,1,"Fx|Dynamics",1
+136,160,"device:vst3:audiofx:5653545a-415a-4c4f-7a6f-6e652050726f","Ozone 11 Low End Focus","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|EQ",1
+138,163,"device:vst3:instr:5653544e-7553-5073-796e-706c616e7400","Synplant","Sonic Charge","2.0.0.268","VST 3.7.6",1,1,"Instrument|Synth",1
+139,165,"device:vst3:instr:41727475-4156-4953-4f42-533250726f63","SEM V2","Arturia","2.13.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+141,167,"device:vst3:audiofx:5653545a-4e56-344e-6575-74726f6e2034","Neutron 4 Visual Mixer","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|EQ",1
+142,168,"device:vst3:audiofx:41727475-4156-4953-5461-4d6550726f63","Tape MELLO-FI","Arturia","1.4.0.5460","VST 3.7.5",1,1,"Fx|Distortion",1
+143,169,"device:vst3:audiofx:5653545a-414f-494f-7a6f-6e652050726f","Ozone 11 Impact","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+145,171,"device:vst3:audiofx:5653544e-6924-3476-6320-373600000000","VC 76","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+147,173,"device:vst3:audiofx:5653544e-7545-4265-6368-6f626f646500","Echobode","Sonic Charge","1.2.0.818","VST 3.7.6",1,1,"Fx",1
+148,174,"device:vst3:audiofx:5653545a-415a-534f-7a6f-6e652050726f","Ozone 11 Spectral Shaper","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+149,175,"device:vst3:audiofx:5653544e-4354-414e-6563-746172203420","Nectar 4 Auto-Level","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+150,176,"device:vst3:instr:5653544e-6924-486d-6173-736976652078","Massive X","Native Instruments","1.4.5 (R0)","VST 3.7.12",1,1,"Instrument|Synth",1
+151,177,"device:vst3:audiofx:5653544e-4354-534e-6563-746172203420","Nectar 4 Saturation","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+152,178,"device:vst3:audiofx:5653544e-4354-504e-6563-746172203420","Nectar 4 Pitch","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+153,179,"device:vst3:audiofx:5653544e-6924-3574-7261-6e7369656e74","Transient Master","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+154,181,"device:vst3:audiofx:5653545a-415a-564f-7a6f-6e652050726f","Ozone 11 Vintage Limiter","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+155,182,"device:vst3:audiofx:abcdef01-9182-faeb-4c4e-44524d737472","LANDR Mastering Pro","LANDR","1.1.14","VST 3.7.2",1,1,"Fx|Mastering",1
+156,183,"device:vst3:audiofx:41727475-4156-4953-524c-657850726f63","Rev LX-24","Arturia","1.2.0.5461","VST 3.7.5",1,1,"Fx|Reverb",1
+157,184,"device:vst3:audiofx:5653545a-4e54-5a4e-6575-74726f6e2050","Neutron 4 Transient Shaper","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+158,185,"device:vst3:instr:41727475-4156-4953-4152-503350726f63","ARP 2600 V3","Arturia","3.13.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+159,186,"device:vst3:audiofx:5653545a-4159-5a4f-7a6f-6e652050726f","Ozone 11 Dynamic EQ","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Dynamics",1
+160,187,"device:vst3:audiofx:5653545a-415a-524f-7a6f-6e652050726f","Ozone 11 Master Rebalance","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Mastering",1
+161,188,"device:vst3:audiofx:5653544e-6924-3673-6f6c-696420627573","Solid Bus Comp","Native Instruments","1.4.5 (R666666666)","VST 3.7.4",1,1,"Fx|Dynamics",1
+162,190,"device:vst3:audiofx:abcdef01-9182-faeb-5541-44785533444a","UADx LA-2A Tube Compressor","Universal Audio (UADx)","1.0.2","VST 3.7.2",1,1,"Fx|Dynamics",1
+163,191,"device:vst3:audiofx:5653544e-4354-444e-6563-746172203420","Nectar 4 DeEsser","iZotope","4.0.0","VST 3.7.1",1,1,"Fx|Vocals",1
+164,192,"device:vst3:audiofx:abcdef01-9182-faeb-4e44-535041544357","Archetype Cory Wong","Neural DSP","2.0.1","VST 3.7.2",1,1,"Fx|Distortion|Dynamics|Reverb",1
+165,193,"device:vst3:audiofx:5653545a-415a-514f-7a6f-6e652050726f","Ozone 11 Vintage EQ","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|EQ",1
+166,194,"device:vst3:instr:5653544e-694b-376b-6f6e-74616b742037","Kontakt 7","Native Instruments","7.7.2","VST 3.7.5",1,1,"Instrument",1
+167,195,"device:vst3:audiofx:5653545a-4e55-5a4e-6575-74726f6e2050","Neutron 4 Unmask","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|EQ",1
+168,196,"device:vst3:audiofx:41727475-4156-4953-4436-354150726f63","Comp VCA-65","Arturia","1.7.0.5460","VST 3.7.5",1,1,"Fx|Dynamics",1
+169,197,"device:vst3:audiofx:41727475-4156-4953-5461-323050726f63","Delay TAPE-201","Arturia","1.7.0.5460","VST 3.7.5",1,1,"Fx|Delay",1
+170,198,"device:vst3:instr:41727475-4156-4953-5433-303350726f63","Acid V","Arturia","1.1.3.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+171,200,"device:vst3:audiofx:41727475-4156-4953-5246-525450726f63","Efx REFRACT","Arturia","1.1.0.5460","VST 3.7.5",1,1,"Fx|Modulation",1
+172,201,"device:vst3:audiofx:56535456-376c-6564-6972-61636c697665","DiracLiveProcessor","Dirac Research","1.7.26","VST 3.7.2",1,1,"Fx|Filter",1
+173,202,"device:vst3:audiofx:5653545a-415a-584f-7a6f-6e652050726f","Ozone 11 Exciter","iZotope","11.2.0","VST 3.7.8",1,1,"Fx|Distortion",1
+174,203,"device:vst3:audiofx:f2aee70d-00de-4f4e-5442-504154423135","mvMeter2","TBProAudio","2.6.1","VST 3.6.13",1,1,"Fx|Analyzer",1
+175,204,"device:vst3:instr:abcdef01-9182-faeb-786c-6e4178414c49","Life","XLN Audio","Plugin_VersionHi.Plugin_VersionMi.Plugin_VersionLo","VST 3.6.8",1,1,"Instrument|Synth",1
+176,205,"device:vst3:instr:abcdef01-9182-faeb-7072-6f6a53746f63","Stochas","Surge Synth Team","1.3.9","VST 3.7.2",1,1,"Instrument|Effect",1
+177,206,"device:vst3:instr:41727475-4156-4953-4d6e-465650726f63","MiniFreak V","Arturia","2.0.0.720","VST 3.7.5",1,1,"Instrument|Synth",1
+178,207,"device:vst3:instr:41727475-4156-4953-5069-613350726f63","Piano V3","Arturia","3.3.2.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+179,208,"device:vst3:audiofx:5653544e-7553-7162-6974-737065656b00","Bitspeek","Sonic Charge","1.7.0.1011","VST 3.7.6",1,1,"Fx",1
+180,209,"device:vst3:audiofx:5653545a-4e53-5a4e-6575-74726f6e2050","Neutron 4 Sculptor","iZotope","4.6.0","VST 3.7.8",1,1,"Fx|EQ",1
+181,210,"device:vst3:instr:5653544e-6966-3866-6d38-000000000000","FM8","Native Instruments","1.4.6 (R3)","VST 3.7.4",1,1,"Instrument|Synth",1
+182,210,"device:vst3:audiofx:5653544e-6986-3866-6d38-206678000000","FM8 FX","Native Instruments","1.4.6 (R3)","VST 3.7.4",1,1,"Fx",1
+183,212,"device:vst3:instr:41727475-4156-4953-5351-383050726f63","SQ80 V","Arturia","1.6.3.5305","VST 3.7.5",1,1,"Instrument|Synth",1
+184,213,"device:vst3:instr:41727475-4156-4953-5052-4f3350726f63","Prophet V3","Arturia","3.9.1.1843","VST 3.6.13",1,1,"Instrument|Synth",1
+186,215,"device:vst:audiofx:1298481778?n=Delay%20BRIGADE","Delay BRIGADE","Arturia","1","2400",0,1,"",1
+187,216,"device:vst:audiofx:1934451059?n=ValhallaSupermassive","ValhallaSupermassive","Valhalla DSP, LLC","132352","2400",0,1,"",1
+188,217,"device:vst:audiofx:1114982003?n=Bus%20FORCE","Bus FORCE","Arturia","1","2400",0,1,"",1
+189,218,"device:vst:audiofx:1112756299?n=Bus%20PEAK","Bus PEAK","Arturia","1","2400",0,1,"",1
+190,219,"device:vst:instr:1299072598?n=MiniFreak%20V","MiniFreak V","Arturia","1","2400",0,1,"",1
+191,221,"device:vst:instr:1349083443?n=Piano%20V3","Piano V3","Arturia","1","2400",0,1,"",1
+192,222,"device:vst:audiofx:1131365481?n=Comp%20DIODE-609","Comp DIODE-609","Arturia","1","2400",0,1,"",1
+193,223,"device:vst:audiofx:1165054825?n=EQ%20SITRAL-295","EQ SITRAL-295","Arturia","1","2400",0,1,"",1
+194,224,"device:vst:audiofx:1298220649?n=Filter%20M12","Filter M12","Arturia","1","2400",0,1,"",1
+195,226,"device:vst:instr:1397642312?n=Synthi%20V","Synthi V","Arturia","1","2400",0,1,"",1
+196,229,"device:vst:audiofx:1446472805?n=DiracLiveProcessor","DiracLiveProcessor","Dirac Research","67354","2400",0,1,"",1
+197,230,"device:vst:instr:1095913523?n=ARP%202600%20V3","ARP 2600 V3","Arturia","1","2400",0,1,"",1
+199,234,"device:vst:instr:1465209394?n=Wurli%20V2","Wurli V2","Arturia","1","2400",0,1,"",1
+203,242,"device:vst:instr:1296847950?n=Mellotron%20V","Mellotron V","Arturia","1","2400",0,1,"",1
+204,244,"device:vst:audiofx:1144403265?n=Comp%20VCA-65","Comp VCA-65","Arturia","1","2400",0,1,"",1
+205,245,"device:vst:audiofx:1316311154?n=Permut8","Permut8","Sonic Charge","1","2400",0,1,"",1
+208,250,"device:vst:instr:1329746738?n=SEM%20V2","SEM V2","Arturia","1","2400",0,1,"",1
+209,252,"device:vst:audiofx:1179726704?n=FabFilter%20Pro-Q%203","FabFilter Pro-Q 3","FabFilter","1","2400",0,1,"",1
+210,253,"device:vst:audiofx:1413827653?n=Pre%20V76","Pre V76","Arturia","1","2400",0,1,"",1
+212,256,"device:vst:audiofx:1179924278?n=Comp%20FET-76","Comp FET-76","Arturia","1","2400",0,1,"",1
+213,262,"device:vst:instr:2017545289?n=Life","Life","XLN Audio","65537","2400",0,1,"",1
+214,264,"device:vst:audiofx:1165256050?n=Delay%20ETERNITY","Delay ETERNITY","Arturia","1","2400",0,1,"",1
+215,265,"device:vst:instr:1397977449?n=Subsequent%2037%20Editor-VI","Subsequent 37 Editor-VI","Moog Music Inc.","65793","2400",0,1,"",1
+216,267,"device:vst:audiofx:1735549294?n=Efx%20FRAGMENTS","Efx FRAGMENTS","Arturia","1","2400",0,1,"",1
+217,271,"device:vst:instr:1416517426?n=B-3%20V2","B-3 V2","Arturia","1","2400",0,1,"",1
+218,273,"device:vst:instr:1249209905?n=Jun-6%20V","Jun-6 V","Arturia","1","2400",0,1,"",1
+219,274,"device:vst:audiofx:1382371436?n=Rev%20PLATE-140","Rev PLATE-140","Arturia","1","2400",0,1,"",1
+220,276,"device:vst:instr:1264677937?n=Pigments","Pigments","Arturia","1","2400",0,1,"",1
+221,278,"device:vst:audiofx:1415655984?n=Delay%20TAPE-201","Delay TAPE-201","Arturia","1","2400",0,1,"",1
+222,280,"device:vst:instr:1349479545?n=PolyBrute%20Connect","PolyBrute Connect","Arturia","1","2400",0,1,"",1
+224,284,"device:vst:audiofx:1668051762?n=Rotary%20CLS-222","Rotary CLS-222","Arturia","1","2400",0,1,"",1
+225,287,"device:vst:audiofx:1415662949?n=Tape%20MELLO-FI","Tape MELLO-FI","Arturia","1","2400",0,1,"",1
+226,288,"device:vst:audiofx:1416971125?n=Dist%20TUBE-CULTURE","Dist TUBE-CULTURE","Arturia","1","2400",0,1,"",1
+227,289,"device:vst:instr:1148729137?n=DX7%20V","DX7 V","Arturia","1","2400",0,1,"",1
+228,290,"device:vst:audiofx:1414676818?n=Pre%20TridA","Pre TridA","Arturia","1","2400",0,1,"",1
+229,293,"device:vst:instr:1296649780?n=Mini%20V4","Mini V4","Arturia","1","2400",0,1,"",1
+230,294,"device:vst:instr:1412640819?n=Acid%20V","Acid V","Arturia","1","2400",0,1,"",1
+231,295,"device:vst:instr:1094873715?n=Augmented%20BRASS","Augmented BRASS","Arturia","1","2400",0,1,"",1
+232,296,"device:vst:audiofx:1128944950?n=Chorus%20JUN-6","Chorus JUN-6","Arturia","1","2400",0,1,"",1
+233,299,"device:vst:audiofx:1299149929?n=Efx%20MOTIONS","Efx MOTIONS","Arturia","1","2400",0,1,"",1
+234,304,"device:vst:instr:1347571507?n=Prophet%20V3","Prophet V3","Arturia","1","2400",0,1,"",1
+235,305,"device:vst:audiofx:1479618612?n=Bus%20EXCITER-104","Bus EXCITER-104","Arturia","1","2400",0,1,"",1
+236,307,"device:vst:instr:1296649779?n=Mini%20V3","Mini V3","Arturia","1","2400",0,1,"",1
+237,309,"device:vst:audiofx:1412515152?n=Equalizer%20Pro","Equalizer Pro","ToneBoosters","65793","2400",0,1,"",1
+238,310,"device:vst:instr:1483109208?n=Serum","Serum","Xfer Records","1","2400",0,1,"",1
+239,316,"device:vst:audiofx:1147759940?n=Chorus%20DIMENSION-D","Chorus DIMENSION-D","Arturia","1","2400",0,1,"",1
+240,317,"device:vst:audiofx:1114199154?n=Phaser%20BI-TRON","Phaser BI-TRON","Arturia","1","2400",0,1,"",1
+241,318,"device:vst:audiofx:1298744937?n=Filter%20MINI","Filter MINI","Arturia","1","2400",0,1,"",1
+242,319,"device:vst:audiofx:1330857577?n=Filter%20SEM","Filter SEM","Arturia","1","2400",0,1,"",1
+243,320,"device:vst:audiofx:1112289840?n=Flanger%20BL-20","Flanger BL-20","Arturia","1","2400",0,1,"",1
+244,323,"device:vst:instr:1397831728?n=SQ80%20V","SQ80 V","Arturia","1","2400",0,1,"",1
+245,324,"device:vst:instr:1465209395?n=Wurli%20V3","Wurli V3","Arturia","1","2400",0,1,"",1
+247,330,"device:vst:instr:1316310356?n=Microtonic","Microtonic","Sonic Charge","1","2400",0,1,"",1
+250,335,"device:vst:instr:2017548367?n=XO","XO","XLN Audio","66824","2400",0,1,"",1
+251,337,"device:vst:instr:1095988338?n=Augmented%20STRINGS","Augmented STRINGS","Arturia","1","2400",0,1,"",1
+252,338,"device:vst:audiofx:1316308290?n=Echobode","Echobode","Sonic Charge","1","2400",0,1,"",1
+253,339,"device:vst:audiofx:1397977445?n=Subsequent%2037%20Editor","Subsequent 37 Editor","Moog Music Inc.","65793","2400",0,1,"",1
+254,342,"device:vst:audiofx:1347565363?n=Pre%201973","Pre 1973","Arturia","1","2400",0,1,"",1
+255,344,"device:vst:instr:1164801329?n=Emulator%20II%20V","Emulator II V","Arturia","1","2400",0,1,"",1
+256,346,"device:vst:audiofx:1097623382?n=Rev%20INTENSITY","Rev INTENSITY","Arturia","1","2400",0,1,"",1
+257,348,"device:vst:audiofx:1933659472?n=Dist%20OPAMP-21","Dist OPAMP-21","Arturia","1","2400",0,1,"",1
+258,349,"device:vst:instr:1114981729?n=Buchla%20Easel%20V","Buchla Easel V","Arturia","1","2400",0,1,"",1
+259,350,"device:vst:instr:1280072244?n=Lounge%20Lizard%20EP-4","Lounge Lizard EP-4","Applied Acoustics Systems","1","2400",0,1,"",1
+260,352,"device:vst:audiofx:1181306227?n=Filter%20MS-20","Filter MS-20","Arturia","1","2400",0,1,"",1
+261,353,"device:vst:instr:1096180595?n=Augmented%20VOICES","Augmented VOICES","Arturia","1","2400",0,1,"",1
+264,358,"device:vst:audiofx:1380340308?n=Efx%20REFRACT","Efx REFRACT","Arturia","1","2400",0,1,"",1
+265,360,"device:vst:audiofx:1380738424?n=Rev%20LX-24","Rev LX-24","Arturia","1","2400",0,1,"",1
+266,361,"device:vst:audiofx:1413624117?n=mvMeter2","mvMeter2","TBProAudio","2610","2400",0,1,"",1
+267,363,"device:vst:instr:1329748065?n=OP-Xa%20V","OP-Xa V","Arturia","1","2400",0,1,"",1
+268,365,"device:vst:audiofx:2019642450?n=Life%20DAW%20Recorder","Life DAW Recorder","XLN Audio","65537","2400",0,1,"",1
+269,366,"device:vst:audiofx:1412711761?n=Equalizer","Equalizer","ToneBoosters","263945","2400",0,1,"",1
+270,368,"device:vst:instr:1347571509?n=Prophet-5%20V","Prophet-5 V","Arturia","1","2400",0,1,"",1
+272,371,"device:vst:instr:1316311888?n=Synplant","Synplant","Sonic Charge","1","2400",0,1,"",1
+273,372,"device:vst:audiofx:1969770582?n=Protoverb","Protoverb","u-he","1","2400",0,1,"",1
+274,373,"device:vst:instr:1316310381?n=Microtonic%20Multi","Microtonic Multi","Sonic Charge","1","2400",0,1,"",1
+275,374,"device:vst:audiofx:1382369138?n=Rev%20SPRING-636","Rev SPRING-636","Arturia","1","2400",0,1,"",1
+276,375,"device:vst:audiofx:1316311921?n=Bitspeek","Bitspeek","Sonic Charge","1","2400",0,1,"",1
+277,376,"device:vst3:audiofx:abcdef01-9182-faeb-4e44-53504e4a4d58","Archetype John Mayer X","Neural DSP","1.0.0","VST 3.7.2",1,1,"Fx|Fx|Distortion|Dynamics|Reverb",1
+278,377,"device:vst3:audiofx:f2aee70d-00de-4f4e-4141-4d6137325247","Gateway","Atkinson Advanced Modeling, LLC","1.0.1","VST 3.8.0",1,1,"Fx",1
+279,378,"device:vst3:audiofx:abcdef01-9182-faeb-4e4f-55524e414d52","NAM Rig","Nouratone","1.0.0","VST 3.8.0",1,1,"Fx|Fx|Guitar",1
+280,386,"device:vst3:audiofx:56535473-686d-7276-616c-68616c6c6173","ValhallaShimmer","Valhalla DSP, LLC","1.3.0","VST 3.7.2",1,1,"Fx|Reverb",1
+281,387,"device:vst:audiofx:1936223602?n=ValhallaShimmer","ValhallaShimmer","Valhalla DSP, LLC","66304","2400",0,1,"",1
+282,390,"device:vst3:audiofx:abcdef01-9182-faeb-4d61-6e75476e7165","Overdrive Essentials","Fazertone","1.0.0","VST 3.7.2",1,1,"Fx",1
+283,400,"device:vst3:audiofx:41727475-4156-4953-5265-764f50726f63","Rev OCEAN","Arturia","1.0.1.5886","VST 3.7.5",1,1,"Fx|Reverb",1
+284,401,"device:vst3:audiofx:41727475-4156-4953-544a-333750726f63","Tape J-37","Arturia","1.1.0.6566","VST 3.7.5",1,1,"Fx|Tools",1
+285,402,"device:vst3:audiofx:41727475-4156-4953-4839-313050726f63","Pitch SHIFTER-910","Arturia","1.0.0.6566","VST 3.7.5",1,1,"Fx|Tools",1
+286,403,"device:vst3:audiofx:41727475-4156-4953-414d-424950726f63","Efx AMBIENT","Arturia","1.0.0.6577","VST 3.7.5",1,1,"Fx|Reverb",1
+287,404,"device:vst:audiofx:1095582281?n=Efx%20AMBIENT","Efx AMBIENT","Arturia","1","2400",0,1,"",1
+288,405,"device:vst:audiofx:1414148919?n=Tape%20J-37","Tape J-37","Arturia","1","2400",0,1,"",1
+289,406,"device:vst:audiofx:1382381135?n=Rev%20OCEAN","Rev OCEAN","Arturia","1","2400",0,1,"",1
+290,407,"device:vst:audiofx:1211707696?n=Pitch%20SHIFTER-910","Pitch SHIFTER-910","Arturia","1","2400",0,1,"",1
+308,410,"device:vst3:audiofx:abcdef01-9182-faeb-4149-526d61466c76","AIR Flavor Pro","AIR Music Technology","1.2.0.8","VST 3.6.13",1,1,"Fx",1
+310,411,"device:vst:audiofx:1632005238?n=AIR%20Flavor%20Pro","AIR Flavor Pro","AIR Music Technology","66048","2400",0,1,"",1
+360,391,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50646c79","Peak Delay","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Delay",1
+363,395,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50706873","Peak Phase","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Modulation",1
+364,396,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b506f7664","Peak Overdrive","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Distortion",1
+366,398,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50776168","Peak Wah","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Filter",1
+368,413,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50737072","Peak Spring","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Reverb",1
+369,414,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b5073796d","Peak Sympathy","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Reverb",1
+370,399,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50746170","Peak Tape","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Distortion",1
+371,397,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50716772","Peak EQ","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|EQ",1
+372,393,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50636872","Peak Chorus","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Modulation",1
+373,394,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b5074706e","Peak Trem-Pan","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Modulation",1
+374,415,"device:vst3:audiofx:abcdef01-9182-faeb-4578-633145787034","Lifeline Expanse","Excite Audio","1.3.0","VST 3.7.2",1,1,"Fx",1
+375,416,"device:vst3:audiofx:abcdef01-9182-faeb-4578-63314578666d","LL Format Module","Excite Audio","1.3.0","VST 3.7.2",1,1,"Fx",1
+376,417,"device:vst3:audiofx:abcdef01-9182-faeb-4578-633145787370","LL Space Module","Excite Audio","1.3.0","VST 3.7.2",1,1,"Fx",1
+377,418,"device:vst3:audiofx:abcdef01-9182-faeb-4578-633145787261","LL Re-Amp Module","Excite Audio","1.3.0","VST 3.7.2",1,1,"Fx",1
+378,419,"device:vst3:audiofx:abcdef01-9182-faeb-4578-63314578776d","LL Width Module","Excite Audio","1.3.0","VST 3.7.2",1,1,"Fx",1
+379,420,"device:vst3:audiofx:abcdef01-9182-faeb-4578-63314578646d","LL Dirt Module","Excite Audio","1.3.0","VST 3.7.2",1,1,"Fx",1
+402,421,"device:vst3:audiofx:abcdef01-9182-faeb-4463-506744636362","Cloudburst","Strymon","1.0.1","VST 3.7.11",1,1,"Fx|Reverb",1
+408,409,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50616c70","Peak Alpine","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Delay|Modulation|Reverb",1
+409,422,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b506d6f64","Peak Modulation","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Modulation",1
+410,392,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50727662","Peak Reverb","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Reverb",1
+411,412,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b50617274","Peak Artifact","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Distortion",1
+415,408,"device:vst3:audiofx:abcdef01-9182-faeb-5065-616b5067726e","Peak Grain","Synth Peak","0.10.0","VST 3.8.0",1,1,"Fx|Delay",1
+Logging plugins information about all plugins end -----------------------

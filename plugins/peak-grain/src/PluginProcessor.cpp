@@ -23,6 +23,8 @@ constexpr const char* kShapeID = "shape";
 constexpr const char* kScatterID = "scatter";
 constexpr const char* kReverseID = "reverse";
 constexpr const char* kStereoID = "stereo";
+constexpr const char* kModID = "mod";
+constexpr const char* kBitID = "bit";
 constexpr const char* kDetuneID = "detune";
 constexpr const char* kPitchLowID = "plow";
 constexpr const char* kPitchUnisonID = "puni";
@@ -39,7 +41,7 @@ constexpr const char* kReverbLoCutID = "rlocut";
 constexpr const char* kReverbMixID = "rmix";
 constexpr const char* kMixID = "mix";
 constexpr const char* kOnID = "on";
-constexpr const char* kVolumeID = "volume";
+constexpr const char* kLevelID = "level";
 
 // Per-module enable switches, one per face panel.
 constexpr const char* kGrainOnID = "grainon";
@@ -64,9 +66,12 @@ constexpr float kWetTrim = 1.1f;
 
 constexpr float kGainRampSeconds = ee::plugin::kRampSeconds;
 
-juce::String centsToText (float value, int)
+/** Detune's host-facing text. Signed, like Stretch's signedPercentToText
+    below - Detune is bipolar (-7..+7 semitones), so which side of zero a
+    reading is on is as much the point as the figure itself. */
+juce::String semitonesToText (float value, int)
 {
-    return juce::String (juce::roundToInt (value)) + " ct";
+    return (value > 0.0f ? "+" : "") + juce::String (value, 1) + " st";
 }
 
 /** Time reads in seconds once it is past one, because past a second it is a
@@ -159,6 +164,8 @@ PeakGrainProcessor::PeakGrainProcessor()
     scatterParam = apvts.getRawParameterValue (kScatterID);
     reverseParam = apvts.getRawParameterValue (kReverseID);
     stereoParam = apvts.getRawParameterValue (kStereoID);
+    modParam = apvts.getRawParameterValue (kModID);
+    bitParam = apvts.getRawParameterValue (kBitID);
     detuneParam = apvts.getRawParameterValue (kDetuneID);
     pitchLowParam = apvts.getRawParameterValue (kPitchLowID);
     pitchUnisonParam = apvts.getRawParameterValue (kPitchUnisonID);
@@ -180,7 +187,7 @@ PeakGrainProcessor::PeakGrainProcessor()
     randomOnParam = apvts.getRawParameterValue (kRandomOnID);
     delayOnParam = apvts.getRawParameterValue (kDelayOnID);
     reverbOnParam = apvts.getRawParameterValue (kReverbOnID);
-    volumeParam = apvts.getRawParameterValue (kVolumeID);
+    levelParam = apvts.getRawParameterValue (kLevelID);
 
     // Seed both mode slots from the parameters' defaults, so the first flip of a
     // Sync switch has somewhere sensible to land before the user has set it.
@@ -224,20 +231,32 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
     // decides whether that maps to a free unit or a note division. The
     // host-facing text assumes the free reading - the editor overrides it with
     // one that follows the switch and the host tempo.
+    //
+    // Meta, all four: flipping ssync/dsync moves size/density
+    // (parameterChanged -> onSizeSyncToggled/onDensitySyncToggled), the same
+    // "one parameter's change moves another's value" shape as the delay time
+    // mirror below - and the same fix, following Peak Alpine's own note on
+    // why (PluginProcessor.cpp there): auval's round-trip check fails on
+    // exactly this unless every parameter doing it, moved or mover, is
+    // flagged.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kSizeID, 1 }, "Size", unit, cfg::kDefaultSize01,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-            [] (float v, int) { return makeSizeMap().toText (v, false, 120.0); })));
+        juce::AudioParameterFloatAttributes()
+            .withStringFromValueFunction ([] (float v, int) { return makeSizeMap().toText (v, false, 120.0); })
+            .withMeta (true)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kDensityID, 1 }, "Density", unit, cfg::kDefaultDensity01,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-            [] (float v, int) { return makeDensityMap().toText (v, false, 120.0); })));
+        juce::AudioParameterFloatAttributes()
+            .withStringFromValueFunction ([] (float v, int) { return makeDensityMap().toText (v, false, 120.0); })
+            .withMeta (true)));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kSizeSyncID, 1 }, "Size Sync",
-                                                            cfg::kDefaultSizeSync));
+                                                            cfg::kDefaultSizeSync,
+                                                            juce::AudioParameterBoolAttributes().withMeta (true)));
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDensitySyncID, 1 }, "Density Sync",
-                                                            cfg::kDefaultDensitySync));
+                                                            cfg::kDefaultDensitySync,
+                                                            juce::AudioParameterBoolAttributes().withMeta (true)));
 
     // The granular delay half - Time, Feedback, Stretch - is no longer on the
     // face, but the parameters and the engine wiring stay: the cloud is still a
@@ -270,11 +289,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kStereoID, 1 }, "Stereo", percent,
                                                              cfg::kDefaultStereoPct, percentAttributes));
 
-    auto detuneRange = juce::NormalisableRange<float> (cfg::kMinDetuneCents, cfg::kMaxDetuneCents);
-    detuneRange.setSkewForCentre (cfg::kDetuneSkewCents);
+    // Drift and crush, both per-grain and both fully off at rest - see
+    // Grainer::setMod/setBit and GrainerConfig.h's own notes on the engines
+    // they're drawn from (TapeDelay's Mod wow, Peak Artifact Amp's Bit).
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kModID, 1 }, "Mod", percent,
+                                                             cfg::kDefaultModPct, percentAttributes));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kBitID, 1 }, "Bit", percent,
+                                                             cfg::kDefaultBitPct, percentAttributes));
+
+    // Linear, not skewed - see GrainerConfig.h's own note on why.
+    auto detuneRange = juce::NormalisableRange<float> (cfg::kMinDetuneSemitones, cfg::kMaxDetuneSemitones);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kDetuneID, 1 }, "Detune", detuneRange, cfg::kDefaultDetuneCents,
-        juce::AudioParameterFloatAttributes().withStringFromValueFunction (centsToText)));
+        juce::ParameterID { kDetuneID, 1 }, "Detune", detuneRange, cfg::kDefaultDetuneSemitones,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (semitonesToText)));
 
     // The three pitch groups are weights against each other, not a position on
     // one scale, so each gets its own knob and they are free to overlap.
@@ -291,8 +318,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
     // parameterChanged), a Normal/Wide/Ping-Pong routing choice, plus Feedback
     // and Mix. dtsync is Grain's own long-standing sense (true = tempo-synced
     // display), used by both time knobs' host-facing text and live readout.
-    const auto timeAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-        [] (float v, int) { return makeDelayMap().toText (v, true, 120.0); });
+    //
+    // Meta, all three (ltime/rtime/dlink): with the link on, turning one time
+    // knob moves the other, and turning the link on itself adopts the left
+    // value into the right - the same shape and the same fix as Peak Alpine's
+    // dly.ltime/rtime/sync (PluginProcessor.cpp there).
+    const auto timeAttributes = juce::AudioParameterFloatAttributes()
+                                     .withStringFromValueFunction (
+                                         [] (float v, int) { return makeDelayMap().toText (v, true, 120.0); })
+                                     .withMeta (true);
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kDelayLeftTimeID, 1 }, "Left Time", unit, cfg::kDefaultDelayTime01, timeAttributes));
@@ -300,7 +334,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kDelayRightTimeID, 1 }, "Right Time", unit, cfg::kDefaultDelayTime01, timeAttributes));
 
-    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDelayLinkID, 1 }, "Delay Link", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDelayLinkID, 1 }, "Delay Link", true,
+                                                            juce::AudioParameterBoolAttributes().withMeta (true)));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDelaySyncID, 1 }, "Delay Sync",
                                                             cfg::kDefaultDelaySync));
@@ -348,7 +383,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     // Master output level, in dB, applied to the whole wet+dry mix last.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kVolumeID, 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
+        juce::ParameterID { kLevelID, 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
                                                                            { return juce::String (v, 1) + " dB"; })));
 
@@ -374,7 +409,20 @@ juce::String PeakGrainProcessor::sizeReadout() const
     // Always milliseconds, synced or not - a grain's length is a duration a
     // listener hears, not a rhythmic position, so the note-division label
     // toText() would show once synced is not what belongs here.
-    return sizeMap.toMsText (sizeParam->load(), sizeSyncParam->load() > 0.5f, currentBpm());
+    //
+    // Clamped to what Grainer::setSizeMs() will actually apply
+    // (config::kMinGrainMs..kMaxGrainMs): synced mode picks a tempo division
+    // with no relation to that range, so at a slow enough tempo the top of
+    // the knob's travel can select a division several seconds long while the
+    // engine silently caps every grain at kMaxGrainMs (500 ms) regardless -
+    // showing the true division length there was a readout that described a
+    // sound nothing was making. sizeMap.toMsText()'s own formatting (>=1s
+    // shows seconds) is duplicated here rather than reused, since clamping
+    // has to happen on the raw ms value before that decision.
+    namespace cfg = ee::dsp::config;
+    const float ms = juce::jlimit (cfg::kMinGrainMs, cfg::kMaxGrainMs,
+                                   sizeMap.value (sizeParam->load(), sizeSyncParam->load() > 0.5f, currentBpm()));
+    return ms >= 1000.0f ? juce::String (ms * 0.001f, 2) + " s" : juce::String (juce::roundToInt (ms)) + " ms";
 }
 
 juce::String PeakGrainProcessor::densityReadout() const
@@ -553,7 +601,7 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
         g->reset (sampleRate, kGainRampSeconds);
 
     outputGain.reset (sampleRate, kGainRampSeconds);
-    outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (volumeParam->load()));
+    outputGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (levelParam->load()));
 
     const float hp = juce::MathConstants<float>::halfPi;
     const float gMix = grainOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f) : 0.0f;
@@ -654,8 +702,12 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     grainTransport.ppqPerSample = bpm / (60.0 * getSampleRate());
 
     // Each face module has an enable switch. Off leaves the knobs alone but
-    // feeds the engine that section's no-op values: Random flat, Pitch pure
-    // unison, and (below) the grain / delay / reverb blends fully dry.
+    // feeds the engine that section's no-op values: Grain's own Bit crush
+    // off, Random flat, Pitch pure unison, and (below) the grain / delay /
+    // reverb blends fully dry. grainOn is fetched here rather than down by
+    // gMix - Bit lives on the Grain section's face now, so it follows that
+    // section's own enable the way Detune follows pitchOn.
+    const bool grainOn = grainOnParam->load() > 0.5f;
     const bool randomOn = randomOnParam->load() > 0.5f;
     const bool pitchOn = pitchOnParam->load() > 0.5f;
 
@@ -666,10 +718,12 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     grainer.setStretch (stretchParam->load() * 0.01f);
     grainer.setFreeze (freezeParam->load() > 0.5f);
     grainer.setShape (shapeParam->load() * 0.01f);
+    grainer.setBit ((grainOn ? bitParam->load() : 0.0f) * 0.01f);
     grainer.setScatter ((randomOn ? scatterParam->load() : 0.0f) * 0.01f);
     grainer.setReverse ((randomOn ? reverseParam->load() : 0.0f) * 0.01f);
     grainer.setStereo ((randomOn ? stereoParam->load() : 0.0f) * 0.01f);
-    grainer.setDetuneCents (pitchOn ? detuneParam->load() : 0.0f);
+    grainer.setMod ((randomOn ? modParam->load() : 0.0f) * 0.01f);
+    grainer.setDetuneSemitones (pitchOn ? detuneParam->load() : 0.0f);
     if (pitchOn)
         grainer.setPitchMix (pitchLowParam->load(), pitchUnisonParam->load(), pitchHighParam->load());
     else
@@ -692,7 +746,6 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     reverb.setLowCut (reverbLoCutParam->load());
 
     const float hp = juce::MathConstants<float>::halfPi;
-    const bool grainOn = grainOnParam->load() > 0.5f;
     const bool delayOn = delayOnParam->load() > 0.5f;
     const bool reverbOn = reverbOnParam->load() > 0.5f;
     const float gMix = grainOn ? juce::jlimit (0.0f, 1.0f, mixParam->load() * 0.01f) : 0.0f;
@@ -846,7 +899,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     }
 
     // Master output level, applied last over the finished mix.
-    outputGain.setTargetValue (juce::Decibels::decibelsToGain (volumeParam->load()));
+    outputGain.setTargetValue (juce::Decibels::decibelsToGain (levelParam->load()));
     for (int i = 0; i < numSamples; ++i)
     {
         const float mg = outputGain.getNextValue();

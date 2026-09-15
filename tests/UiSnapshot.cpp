@@ -464,24 +464,40 @@ public:
             return ee::dsp::GrainSyncMap { r, false };
         };
 
-        const auto sizeText = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-            [durationMap] (float v, int)
-            { return durationMap (cfg::kMinGrainMs, cfg::kMaxGrainMs, cfg::kGrainSkewMs).toText (v, false, 120.0); });
-        const auto densityText = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-            [rateMap] (float v, int)
-            { return rateMap (cfg::kMinDensityHz, cfg::kMaxDensityHz, cfg::kDensitySkewHz).toText (v, false, 120.0); });
-        const auto delayTimeText = juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-            [durationMap] (float v, int)
-            { return durationMap (cfg::kMinTimeMs, cfg::kMaxTimeMs, cfg::kTimeSkewMs).toText (v, false, 120.0); });
+        const auto sizeText = juce::AudioParameterFloatAttributes()
+                                  .withStringFromValueFunction (
+                                      [durationMap] (float v, int) {
+                                          return durationMap (cfg::kMinGrainMs, cfg::kMaxGrainMs, cfg::kGrainSkewMs)
+                                              .toText (v, false, 120.0);
+                                      })
+                                  .withMeta (true);
+        const auto densityText = juce::AudioParameterFloatAttributes()
+                                      .withStringFromValueFunction (
+                                          [rateMap] (float v, int) {
+                                              return rateMap (cfg::kMinDensityHz, cfg::kMaxDensityHz,
+                                                              cfg::kDensitySkewHz)
+                                                  .toText (v, false, 120.0);
+                                          })
+                                      .withMeta (true);
+        const auto delayTimeText = juce::AudioParameterFloatAttributes()
+                                        .withStringFromValueFunction (
+                                            [durationMap] (float v, int) {
+                                                return durationMap (cfg::kMinTimeMs, cfg::kMaxTimeMs,
+                                                                     cfg::kTimeSkewMs)
+                                                    .toText (v, false, 120.0);
+                                            })
+                                        .withMeta (true);
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "size", 1 }, "Size", unit,
                                                                  cfg::kDefaultSize01, sizeText));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "density", 1 }, "Density", unit,
                                                                  cfg::kDefaultDensity01, densityText));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "ssync", 1 }, "Size Sync",
-                                                                cfg::kDefaultSizeSync));
+                                                                cfg::kDefaultSizeSync,
+                                                                juce::AudioParameterBoolAttributes().withMeta (true)));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "dsync", 1 }, "Density Sync",
-                                                                cfg::kDefaultDensitySync));
+                                                                cfg::kDefaultDensitySync,
+                                                                juce::AudioParameterBoolAttributes().withMeta (true)));
 
         // The granular delay half is off the face but the parameters remain.
         auto timeRange = juce::NormalisableRange<float> (cfg::kMinTimeMs, cfg::kMaxTimeMs);
@@ -505,13 +521,16 @@ public:
                                                                  percent, cfg::kDefaultReversePct, percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "stereo", 1 }, "Stereo", percent,
                                                                  cfg::kDefaultStereoPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mod", 1 }, "Mod", percent,
+                                                                 cfg::kDefaultModPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "bit", 1 }, "Bit", percent,
+                                                                 cfg::kDefaultBitPct, percentAttributes));
 
-        auto detuneRange = juce::NormalisableRange<float> (cfg::kMinDetuneCents, cfg::kMaxDetuneCents);
-        detuneRange.setSkewForCentre (cfg::kDetuneSkewCents);
+        auto detuneRange = juce::NormalisableRange<float> (cfg::kMinDetuneSemitones, cfg::kMaxDetuneSemitones);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "detune", 1 }, "Detune", detuneRange, cfg::kDefaultDetuneCents,
+            juce::ParameterID { "detune", 1 }, "Detune", detuneRange, cfg::kDefaultDetuneSemitones,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float v, int) { return juce::String (juce::roundToInt (v)) + " ct"; })));
+                [] (float v, int) { return (v > 0.0f ? "+" : "") + juce::String (v, 1) + " st"; })));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "plow", 1 }, "Pitch Low", percent,
                                                                  cfg::kDefaultPitchLowPct, percentAttributes));
@@ -522,23 +541,42 @@ public:
                                                                  percent, cfg::kDefaultPitchHighPct,
                                                                  percentAttributes));
 
-        // Post delay.
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dtime", 1 }, "Delay Time", unit,
+        // Post delay: independent Left/Right time knobs, a Sync-L/R link
+        // (meta, all three - see PluginProcessor.cpp's own note), a routing
+        // choice, Feedback and Mix.
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "ltime", 1 }, "Left Time", unit,
                                                                  cfg::kDefaultDelayTime01, delayTimeText));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rtime", 1 }, "Right Time", unit,
+                                                                 cfg::kDefaultDelayTime01, delayTimeText));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "dlink", 1 }, "Delay Link", true,
+                                                                juce::AudioParameterBoolAttributes().withMeta (true)));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "dtsync", 1 }, "Delay Sync",
                                                                 cfg::kDefaultDelaySync));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "dtype", 1 }, "Delay Type",
+                                                                  juce::StringArray { "Normal", "Wide", "Ping Pong" },
+                                                                  0));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dfb", 1 }, "Delay Feedback",
                                                                  percent, cfg::kDefaultDelayFeedbackPct,
                                                                  percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dmix", 1 }, "Delay Mix", percent,
                                                                  cfg::kDefaultDelayMixPct, percentAttributes));
 
-        // Reverb: decay in seconds, its own mix.
+        // Reverb: decay in seconds, Low Cut (a real knob now, was fixed), its
+        // own mix.
         auto decayRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "decay", 1 }, "Decay", decayRange, cfg::kDefaultReverbDecaySeconds,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 2) + " s"; })));
+        auto loCutRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz, ee::dsp::FdnReverb::kMaxLowCutHz);
+        loCutRange.setSkewForCentre (180.0f);
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "rlocut", 1 }, "Reverb Low Cut", loCutRange, cfg::kDefaultReverbLoCutHz,
+            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+                [] (float v, int) {
+                    return v >= 1000.0f ? juce::String (v / 1000.0f, 1) + " kHz"
+                                        : juce::String (juce::roundToInt (v)) + " Hz";
+                })));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rmix", 1 }, "Reverb Mix", percent,
                                                                  cfg::kDefaultReverbMixPct, percentAttributes));
 
@@ -551,7 +589,7 @@ public:
             layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, 1 }, id, true));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "volume", 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
+            juce::ParameterID { "level", 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 1) + " dB"; })));
 
@@ -598,9 +636,10 @@ ee::ui::PedalSpec makeGrainSpec()
 
     spec.knobs = {
         { .parameterID = "mix", .caption = "Mix", .capFill = kGrainCol },
-        { .parameterID = "size", .caption = "Size", .capFill = kGrainCol },
         { .parameterID = "density", .caption = "Destiny", .capFill = kGrainCol },
+        { .parameterID = "size", .caption = "Size", .capFill = kGrainCol },
         { .parameterID = "shape", .caption = "Shape", .capFill = kGrainCol, .capIcon = shapeIcon },
+        { .parameterID = "bit", .caption = "Bit", .capFill = kGrainCol },
 
         { .parameterID = "plow", .caption = "Low", .capFill = kPitchCol },
         { .parameterID = "puni", .caption = "Unison", .capFill = kPitchCol },
@@ -610,12 +649,15 @@ ee::ui::PedalSpec makeGrainSpec()
         { .parameterID = "stereo", .caption = "Stereo", .capFill = kRandomCol },
         { .parameterID = "reverse", .caption = "Reverse", .capFill = kRandomCol },
         { .parameterID = "scatter", .caption = "Scatter", .capFill = kRandomCol },
+        { .parameterID = "mod", .caption = "Mod", .capFill = kRandomCol },
 
         { .parameterID = "dmix", .caption = "Mix", .capFill = kDelayCol },
-        { .parameterID = "dtime", .caption = "Time", .capFill = kDelayCol },
+        { .parameterID = "ltime", .caption = "Left Time", .capFill = kDelayCol },
+        { .parameterID = "rtime", .caption = "Right Time", .capFill = kDelayCol },
         { .parameterID = "dfb", .caption = "Feedback", .capFill = kDelayCol },
 
         { .parameterID = "decay", .caption = "Decay", .capFill = kReverbCol },
+        { .parameterID = "rlocut", .caption = "Low Cut", .capFill = kReverbCol },
         { .parameterID = "rmix", .caption = "Mix", .capFill = kReverbCol },
     };
     const juce::Colour kCardFill { 0xffe9e8f0 };
@@ -623,13 +665,13 @@ ee::ui::PedalSpec makeGrainSpec()
         return ee::ui::SlideToggleSpec { .parameterID = id, .labelOff = "ms", .labelOn = "Sync", .invertPosition = true };
     };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawGrainIcon,
+        { .caption = "Grain", .count = 5, .columns = 1, .fill = kCardFill, .icon = drawGrainIcon,
           .footer = kSyncFooter ("ssync"), .footerOnClick = [] {} },
         { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawPitchIcon },
-        { .caption = "Random", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawRandomIcon },
-        { .caption = "Delay", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawTapeIcon,
+        { .caption = "Random", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawRandomIcon },
+        { .caption = "Delay", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawTapeIcon,
           .footer = kSyncFooter ("dtsync") },
-        { .caption = "Reverb", .count = 2, .columns = 1, .fill = kCardFill, .icon = drawReverbIcon },
+        { .caption = "Reverb", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawReverbIcon },
     };
     spec.knobGroupsHorizontal = true;
     spec.filledKnobGroups = true;
@@ -669,7 +711,7 @@ ee::ui::PedalSpec makeGrainSpec()
         .stereoID = "stereo",
         .pitchLowID = "plow",
         .pitchHighID = "phigh",
-        .delayTimeID = "dtime",
+        .delayTimeID = "ltime",
         .delayFeedbackID = "dfb",
         .delayMixID = "dmix",
         .reverbDecayID = "decay",
@@ -682,7 +724,7 @@ ee::ui::PedalSpec makeGrainSpec()
     spec.titleRowDrop = 4;
 
     spec.topRightKnob =
-        ee::ui::KnobSpec { .parameterID = "volume", .caption = "Level", .captionUntilTouched = true };
+        ee::ui::KnobSpec { .parameterID = "level", .caption = "Level", .captionUntilTouched = true };
     spec.topRightKnobDiameter = 40;
 
     // Five modules side by side: a wide face rather than a tall one, small caps,

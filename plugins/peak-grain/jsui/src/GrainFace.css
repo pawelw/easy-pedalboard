@@ -67,6 +67,14 @@
   flex: none;
 }
 
+/* "LEVEL" is wider than the In/Out labels the shared fader was built around
+   (packages/pedal-ui/src/Slider.css's 7px label-to-track gap), so it reads as
+   touching the track at this length. Nudged left rather than widening the gap
+   for every horizontal fader. */
+.pg-header__level .pui-fader__label {
+  transform: translateX(-4px);
+}
+
 .pg-header__live {
   display: flex;
   align-items: center;
@@ -152,9 +160,11 @@
   min-width: 0;
 }
 
-/* Grain runs tighter than its neighbours: a 2x2 knob grid is shorter than
-   three-across, so without this the row would stretch to match Pitch/Random
-   and leave Grain's own content looking lost in the extra height. */
+/* Grain runs tighter than its neighbours: its display plus two rows of the
+   30px knobs below (see .pui-knob__caption's own note) sits shorter than
+   Pitch/Random's two rows of 38px ones, so without this the row would
+   stretch to match them and leave Grain's own content looking lost in the
+   extra height. */
 .pg-section--grain {
   gap: 8px;
   padding: 10px 10px 10px;
@@ -167,6 +177,17 @@
 
 .pg-section--reverb {
   grid-column: 5;
+}
+
+/* One pixel smaller than every other section's knob caption - Reverb's own
+   ask, not a global .pui-knob__caption change. Grain matches it now: its own
+   second row is Size/Shape/Bit, three 30px knobs the same as Reverb's own
+   three (Grain and Reverb are the only sections with a three-across row),
+   so the two read as one family of "narrow, three-across" knobs rather than
+   two different sizes that happen to be neighbours. */
+.pg-section--reverb .pui-knob__caption,
+.pg-section--grain .pui-knob__caption {
+  font-size: 9px;
 }
 
 .pg-section__head {
@@ -194,6 +215,7 @@
   align-items: center;
   gap: 7px;
   flex: none;
+  min-width: 138px;
 }
 
 /* A switched-off section (Delay/Reverb only) dims its body to 0.42 over
@@ -248,26 +270,26 @@
   position: relative;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 24px;
 }
 
 .pg-delay__leads {
   display: flex;
   align-items: flex-start;
   gap: 10px;
+  padding-top: 10px;
 }
 
 .pg-delay__times {
   display: flex;
   flex-direction: column;
-  gap: 15px;
-  padding-top: 4px;
+  gap: 32px;
 }
 
 .pg-time-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 16px;
 }
 
 /* The Left/Right readout: same DOM Readout always renders, sized and
@@ -279,7 +301,7 @@
    knobs and the link button in a plain flex row - see .pg-delay__body's own
    note. */
 .pg-time-row .pui-readout {
-  width: 62px;
+  width: 86px;
   height: 34px;
   box-sizing: border-box;
   border-radius: 5px;
@@ -307,14 +329,14 @@
    real equivalent of the same "free-floating" idea. */
 .pg-delay__link {
   position: absolute;
-  right: 2px;
+  right: 104px;
   top: 50%;
   transform: translateY(-50%);
 }
 
 .pg-delay__link .pui-pill {
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   padding: 0;
   border-radius: 6px;
   background: var(--pui-chrome);
@@ -395,7 +417,21 @@
 
 .pg-field__dot {
   position: absolute;
-  border-radius: 50%;
+  /* left/top mark each grain's centre, not a corner - it now draws as a
+     comet shape rather than a small square SVG box. Displays.jsx's own
+     requestAnimationFrame loop drives the jitter (a CSS animation re-reading
+     a custom property jumps rather than drifts when Scatter changes - see
+     its own note); this is only the resting transform before that loop's
+     first frame. */
+  transform: translate(-50%, -50%);
+}
+
+/* An inline `<svg>` sits on its line box's text baseline, not its own top -
+   left the comet shape floating below where its span was actually
+   positioned. Block display drops that baseline gap so the shape fills the
+   span exactly. */
+.pg-field__dot svg {
+  display: block;
 }
 
 /* Reverb's falling tail. */

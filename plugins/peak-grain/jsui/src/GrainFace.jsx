@@ -9,7 +9,7 @@ import {
   useParamId,
   useFormattedText,
 } from "@synthpeak/pedal-ui/juce";
-import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, GrainScope } from "./Displays.jsx";
+import { GrainEnvelope, PitchWeights, RandomField, ReverbTail } from "./Displays.jsx";
 import "./GrainFace.css";
 
 // The five section accents, literal rather than `var(--pui-accent-*)`: these
@@ -66,7 +66,7 @@ function TimeRow({ side, parameterId }) {
 
   return (
     <div className="pg-time-row">
-      <JuceKnob parameterId={parameterId} variant="flat" size={44} bare showValueLabel={false} />
+      <JuceKnob parameterId={parameterId} variant="flat" size={30} bare showValueLabel={false} />
       <Readout label={side} value={text} />
     </div>
   );
@@ -74,7 +74,7 @@ function TimeRow({ side, parameterId }) {
 
 function GrainSection() {
   return (
-    <section className="pg-section pg-section--grain" style={{ "--pui-accent": GRAIN }}>
+    <section className="pg-section pg-section--grain" style={{ "--pui-accent": GRAIN, "--pui-soft-lit": GRAIN }}>
       <div className="pg-section__head">
         <span className="pg-section__name">Grain</span>
         <span className="pg-section__spacer" />
@@ -86,12 +86,13 @@ function GrainSection() {
         <GrainEnvelope accent={GRAIN} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="mix" caption="Mix" variant="flat" size={44} />
-        <JuceKnob parameterId="size" caption="Size" variant="flat" size={44} />
+        <JuceKnob parameterId="mix" caption="Mix" variant="flat" size={30} />
+        <JuceKnob parameterId="density" caption="Destiny" variant="flat" size={30} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="density" caption="Destiny" variant="flat" size={44} />
-        <JuceKnob parameterId="shape" caption="Shape" variant="flat" size={44} />
+        <JuceKnob parameterId="size" caption="Size" variant="flat" size={30} />
+        <JuceKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
+        <JuceKnob parameterId="bit" caption="Bit" variant="flat" size={30} />
       </div>
     </section>
   );
@@ -99,7 +100,7 @@ function GrainSection() {
 
 function PitchSection() {
   return (
-    <section className="pg-section pg-section--pitch" style={{ "--pui-accent": PITCH }}>
+    <section className="pg-section pg-section--pitch" style={{ "--pui-accent": PITCH, "--pui-soft-lit": PITCH }}>
       <div className="pg-section__head">
         <span className="pg-section__name">Pitch</span>
         <span className="pg-section__spacer" />
@@ -108,12 +109,12 @@ function PitchSection() {
         <PitchWeights accent={PITCH} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="plow" caption="Low" variant="flat" size={44} />
-        <JuceKnob parameterId="puni" caption="Unison" variant="flat" size={44} />
+        <JuceKnob parameterId="plow" caption="Low" variant="flat" size={38} />
+        <JuceKnob parameterId="puni" caption="Unison" variant="flat" size={38} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="phigh" caption="High" variant="flat" size={44} />
-        <JuceKnob parameterId="detune" caption="Detune" variant="flat" size={44} scaleFrom="centre" />
+        <JuceKnob parameterId="phigh" caption="High" variant="flat" size={38} />
+        <JuceKnob parameterId="detune" caption="Detune" variant="flat" size={38} scaleFrom="centre" />
       </div>
     </section>
   );
@@ -121,7 +122,7 @@ function PitchSection() {
 
 function RandomSection() {
   return (
-    <section className="pg-section pg-section--random" style={{ "--pui-accent": RANDOM }}>
+    <section className="pg-section pg-section--random" style={{ "--pui-accent": RANDOM, "--pui-soft-lit": RANDOM }}>
       <div className="pg-section__head">
         <span className="pg-section__name">Random</span>
         <span className="pg-section__spacer" />
@@ -130,11 +131,12 @@ function RandomSection() {
         <RandomField accent={RANDOM} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="stereo" caption="Stereo" variant="flat" size={44} />
-        <JuceKnob parameterId="reverse" caption="Reverse" variant="flat" size={44} />
+        <JuceKnob parameterId="stereo" caption="Stereo" variant="flat" size={38} />
+        <JuceKnob parameterId="reverse" caption="Reverse" variant="flat" size={38} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="scatter" caption="Scatter" variant="flat" size={44} />
+        <JuceKnob parameterId="scatter" caption="Scatter" variant="flat" size={38} />
+        <JuceKnob parameterId="mod" caption="Mod" variant="flat" size={38} />
       </div>
     </section>
   );
@@ -144,7 +146,7 @@ function DelaySection() {
   const [on, powerToggle] = useSectionPower("delon");
 
   return (
-    <section className="pg-section pg-section--delay" style={{ "--pui-accent": DELAY }} data-off={!on || undefined}>
+    <section className="pg-section pg-section--delay" style={{ "--pui-accent": DELAY, "--pui-soft-lit": DELAY }} data-off={!on || undefined}>
       <div className="pg-section__head">
         {powerToggle}
         <span className="pg-section__name">Delay</span>
@@ -190,7 +192,7 @@ function ReverbSection() {
   const [on, powerToggle] = useSectionPower("revon");
 
   return (
-    <section className="pg-section pg-section--reverb" style={{ "--pui-accent": REVERB }} data-off={!on || undefined}>
+    <section className="pg-section pg-section--reverb" style={{ "--pui-accent": REVERB, "--pui-soft-lit": REVERB }} data-off={!on || undefined}>
       <div className="pg-section__head">
         {powerToggle}
         <span className="pg-section__name">Reverb</span>
@@ -200,9 +202,9 @@ function ReverbSection() {
         <ReverbTail accent={REVERB} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="rmix" caption="Mix" variant="flat" size={44} />
-        <JuceKnob parameterId="decay" caption="Decay" variant="flat" size={44} />
-        <JuceKnob parameterId="rlocut" caption="Low Cut" variant="flat" size={44} />
+        <JuceKnob parameterId="rmix" caption="Mix" variant="flat" size={30} />
+        <JuceKnob parameterId="decay" caption="Decay" variant="flat" size={30} />
+        <JuceKnob parameterId="rlocut" caption="Low Cut" variant="flat" size={30} />
       </div>
     </section>
   );
@@ -250,7 +252,7 @@ function Header() {
         </div>
         <div className="pg-header__right">
           <div className="pg-header__level">
-            <JuceFader parameterId="volume" label="LEVEL" resetTo={0} length={88} />
+            <JuceFader parameterId="level" label="LEVEL" resetTo={0} length={88} />
           </div>
           <PowerToggle on={on} onToggle={setOn} ariaLabel="Bypass" />
         </div>
@@ -284,10 +286,6 @@ export default function GrainFace() {
           <DelaySection />
           <div className="pg-vdivider" style={{ gridColumn: 4 }} />
           <ReverbSection />
-        </div>
-        <div className="pg-hdivider" />
-        <div className="pg-scope-wrap">
-          <GrainScope />
         </div>
       </div>
     </>

@@ -9,9 +9,11 @@
 //                 [--size 0.5] [--density 0.5] [--ssync 0] [--dsync 0]
 //                 [--time 300] [--feedback 30] [--stretch 0] [--freeze 0]
 //                 [--shape 55] [--scatter 25] [--reverse 25] [--stereo 85]
+//                 [--mod 0] [--bit 0]
 //                 [--detune 6] [--low 0] [--unison 100] [--high 0]
 //                 [--dtime 0.36] [--dtsync 1] [--dfb 30] [--dmix 30]
 //                 [--decay 2.5] [--rmix 30] [--mix 50]
+//                 [--grainon 1] [--pitchon 1] [--randon 1] [--delon 1] [--revon 1]
 //
 // Size, Density and the delay Time (--size/--density/--dtime) are normalised
 // 0..1 knobs now - their Sync switch decides what that maps to.
@@ -96,6 +98,8 @@ int main (int argc, char* argv[])
         else if (arg == "--scatter")  knobs.emplace_back ("scatter", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--reverse")  knobs.emplace_back ("reverse", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--stereo")   knobs.emplace_back ("stereo", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--mod")      knobs.emplace_back ("mod", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--bit")      knobs.emplace_back ("bit", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--detune")   knobs.emplace_back ("detune", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--low")      knobs.emplace_back ("plow", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--unison")   knobs.emplace_back ("puni", static_cast<float> (next().getDoubleValue()));
@@ -107,6 +111,11 @@ int main (int argc, char* argv[])
         else if (arg == "--decay")    knobs.emplace_back ("decay", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--rmix")     knobs.emplace_back ("rmix", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--mix")      knobs.emplace_back ("mix", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--grainon")  knobs.emplace_back ("grainon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--pitchon")  knobs.emplace_back ("pitchon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--randon")   knobs.emplace_back ("randon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--delon")    knobs.emplace_back ("delon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--revon")    knobs.emplace_back ("revon", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--snapshot")
         {
             // Renders the editor - side panel included, when the tuner build

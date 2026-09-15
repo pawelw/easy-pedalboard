@@ -158,6 +158,8 @@ private:
     std::atomic<float>* scatterParam = nullptr;
     std::atomic<float>* reverseParam = nullptr;
     std::atomic<float>* stereoParam = nullptr;
+    std::atomic<float>* modParam = nullptr;
+    std::atomic<float>* bitParam = nullptr;
     std::atomic<float>* detuneParam = nullptr;
     std::atomic<float>* pitchLowParam = nullptr;
     std::atomic<float>* pitchUnisonParam = nullptr;
@@ -182,7 +184,7 @@ private:
     std::atomic<float>* randomOnParam = nullptr;
     std::atomic<float>* delayOnParam = nullptr;
     std::atomic<float>* reverbOnParam = nullptr;
-    std::atomic<float>* volumeParam = nullptr;
+    std::atomic<float>* levelParam = nullptr;
 
     juce::SmoothedValue<float> outputGain;
 

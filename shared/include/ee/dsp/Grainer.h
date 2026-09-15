@@ -84,6 +84,7 @@ public:
         smoothedNorm = normTarget;
         feedbackSample = 0.0f;
         recordedSamples = 0;
+        wowPhase = 0.0;
 
         frozen = false;
         capturing = false;
@@ -186,10 +187,30 @@ public:
         stereo = std::clamp (amount01, 0.0f, 1.0f);
     }
 
-    /** Random detune on every grain, in cents either way. */
-    void setDetuneCents (float cents) noexcept
+    /** Random detune on every grain, in semitones either way. */
+    void setDetuneSemitones (float semitones) noexcept
     {
-        detuneCents = std::clamp (cents, config::kMinDetuneCents, config::kMaxDetuneCents);
+        detuneSemitones = std::clamp (semitones, config::kMinDetuneSemitones, config::kMaxDetuneSemitones);
+    }
+
+    /** Drift: every grain spawned samples the same slow shared sine
+        (config::kModWowHz) as a pitch bend, up to config::kModMaxCents at
+        full travel - see pickRate(). The whole cloud's pitch rises and falls
+        together over one cycle, the way ee::dsp::TapeDelay's own Mod knob
+        wobbles its one continuously-playing tap. 0 is exactly bypassed. */
+    void setMod (float amount01) noexcept
+    {
+        modAmount = std::clamp (amount01, 0.0f, 1.0f);
+    }
+
+    /** Crush: each active grain sample-and-holds independently, at the rate
+        config::bitHoldNFor maps the knob to - the same reduction Peak
+        Artifact's Amp engine applies to its own Bit knob. 0 is exactly
+        bypassed (every grain reads unheld). */
+    void setBit (float amount01) noexcept
+    {
+        bitAmount = std::clamp (amount01, 0.0f, 1.0f);
+        bitHoldN = config::bitHoldNFor (bitAmount, sampleRate);
     }
 
     /** Relative weight of the three pitch groups. Each grain picks one of them
@@ -271,6 +292,17 @@ public:
 
         for (int i = 0; i < numSamples; ++i)
         {
+            // Mod's shared drift phase, advanced here (ahead of any grain
+            // that spawns this sample) so pickRate() always reads "now" -
+            // see its own note and GrainerConfig.h's on why this moves pitch
+            // rather than read position.
+            if (modAmount > 0.0f)
+            {
+                wowPhase += static_cast<double> (config::kModWowHz) / sampleRate;
+                if (wowPhase >= 1.0)
+                    wowPhase -= 1.0;
+            }
+
             const float l = inL != nullptr ? inL[i] : 0.0f;
             const float r = inR != nullptr ? inR[i] : l;
             const float mono = 0.5f * (l + r);
@@ -380,7 +412,11 @@ public:
                 if (! g.active)
                     continue;
 
-                const float windowed = read (g.position) * envelopeOf (g);
+                float raw = read (g.position);
+                if (bitHoldN > 1)
+                    raw = crushed (g, raw, bitHoldN);
+
+                const float windowed = raw * envelopeOf (g);
 
                 sumL += windowed * g.gainL;
                 sumR += windowed * g.gainR;
@@ -449,6 +485,12 @@ private:
         int age = 0;
         int length = 0;
         bool active = false;
+
+        // Bit's own sample-and-hold state, per grain - see crushed(). Reset
+        // at spawn so a reused slot never carries over a previous grain's
+        // held value or phase.
+        int bitCounter = 0;
+        float bitHeld = 0.0f;
     };
 
     // A grain never exceeds this rate, which bounds how much source one spans
@@ -457,6 +499,7 @@ private:
     static constexpr double kMaxRate = 3.2;
 
     static constexpr float kNormSmoothing = 0.0005f;
+    static constexpr float kTwoPi = 6.28318530718f;
 
     // A frozen buffer rings for ever; the host still wants a number.
     static constexpr float kFrozenTailSeconds = 30.0f;
@@ -501,6 +544,21 @@ private:
         g.decayEnv *= g.decayMul;
 
         return env > 0.0f ? env : 0.0f;
+    }
+
+    /** Bit's sample-and-hold, one grain's own state. Holds x for bitHoldN
+        samples then re-samples - bitHoldN == 1 holds every sample, which is
+        exactly x back out, so Bit at rest is a bit-exact pass-through the
+        same way BitCrusher's own fast path is. */
+    static float crushed (Grain& g, float x, int holdN) noexcept
+    {
+        if (g.bitCounter <= 0)
+        {
+            g.bitHeld = x;
+            g.bitCounter = holdN;
+        }
+        --g.bitCounter;
+        return g.bitHeld;
     }
 
     /** Four-point Hermite read, the same interpolator ModDelayLine uses. Linear
@@ -698,7 +756,20 @@ private:
             }
         }
 
-        const float cents = nextBipolar() * detuneCents;
+        // Detune: a random whole-and-fractional semitone either way, added
+        // straight onto the interval already picked above - a fifth from the
+        // pitch table plus a detuned fifth is exactly what it sounds like.
+        semitones += nextBipolar() * detuneSemitones;
+
+        // Mod's drift: sampled from the shared slow phase, not this grain's
+        // own RNG, so every grain spawned near the same point in the cycle
+        // bends the same way - see setMod()'s note. Cents, not semitones -
+        // this is a wobble on top of whatever note was picked, not a second
+        // interval choice.
+        float cents = 0.0f;
+        if (modAmount > 0.0f)
+            cents = modAmount * config::kModMaxCents * std::sin (kTwoPi * static_cast<float> (wowPhase));
+
         const double ratio = std::pow (2.0, (static_cast<double> (semitones) + cents * 0.01) / 12.0);
 
         return std::clamp (ratio, 1.0 / kMaxRate, kMaxRate);
@@ -835,6 +906,12 @@ private:
         slot->gainL = std::cos (angle);
         slot->gainR = std::sin (angle);
         slot->active = true;
+
+        // Fresh hold state, so a reused slot's Bit crush starts from this
+        // grain's own first sample rather than wherever the previous grain
+        // that lived in this slot left its counter.
+        slot->bitCounter = 0;
+        slot->bitHeld = 0.0f;
     }
 
     //==========================================================================
@@ -869,7 +946,17 @@ private:
     float scatter = config::kDefaultScatterPct * 0.01f;
     float reverse = config::kDefaultReversePct * 0.01f;
     float stereo = config::kDefaultStereoPct * 0.01f;
-    float detuneCents = config::kDefaultDetuneCents;
+    float detuneSemitones = config::kDefaultDetuneSemitones;
+
+    // Mod: the shared drift phase every spawning grain samples its pitch
+    // bend from - see setMod()/pickRate().
+    float modAmount = config::kDefaultModPct * 0.01f;
+    double wowPhase = 0.0;
+
+    // Bit: the per-grain sample-and-hold count at the current knob position.
+    // 1 holds every sample, i.e. passes through unheld - see setBit().
+    float bitAmount = config::kDefaultBitPct * 0.01f;
+    int bitHoldN = 1;
 
     float pitchLow = config::kDefaultPitchLowPct;
     float pitchUnison = config::kDefaultPitchUnisonPct;
