@@ -15,6 +15,8 @@ constexpr const char* kSizeID = "size";
 constexpr const char* kDensityID = "density";
 constexpr const char* kSizeSyncID = "ssync";
 constexpr const char* kDensitySyncID = "dsync";
+constexpr const char* kWindowID = "window";
+constexpr const char* kWindowSyncID = "wsync";
 constexpr const char* kTimeID = "time";
 constexpr const char* kFeedbackID = "feedback";
 constexpr const char* kStretchID = "stretch";
@@ -52,13 +54,15 @@ constexpr const char* kReverbOnID = "revon";
 
 // State-tree properties: the knob position each Sync switch is not currently
 // showing, so flipping the switch and flipping it back lands where it started.
-// Only Size/Density have this - the delay's own version went with the single
-// dtime knob it used to belong to; ltime/rtime mirror Peak Delay's simpler
-// scheme instead (see PeakGrainProcessor::parameterChanged).
+// Only Size/Density/Window have this - the delay's own version went with the
+// single dtime knob it used to belong to; ltime/rtime mirror Peak Delay's
+// simpler scheme instead (see PeakGrainProcessor::parameterChanged).
 constexpr const char* kSizeFreeProp = "sizeFree01";
 constexpr const char* kSizeSyncProp = "sizeSync01";
 constexpr const char* kDensityFreeProp = "densityFree01";
 constexpr const char* kDensitySyncProp = "densitySync01";
+constexpr const char* kWindowFreeProp = "windowFree01";
+constexpr const char* kWindowSyncProp = "windowSync01";
 
 // The reverb network is normalised to ~0.42 RMS gain; this is Peak Reverb's
 // trim, kept so a given Decay lands at the same level on both pedals.
@@ -128,6 +132,18 @@ ee::dsp::GrainSyncMap makeDensityMap()
     return { r, false };
 }
 
+/** Same shape as makeSizeMap(): a duration, so the free range is built in
+    milliseconds even though GrainerConfig.h's WINDOW constants are seconds
+    (matching Grainer::setAttackReachSeconds' own unit) - value() below
+    converts back. */
+ee::dsp::GrainSyncMap makeWindowMap()
+{
+    namespace cfg = ee::dsp::config;
+    juce::NormalisableRange<float> r (cfg::kMinWindowSeconds * 1000.0f, cfg::kMaxWindowSeconds * 1000.0f);
+    r.setSkewForCentre (cfg::kWindowSkewSeconds * 1000.0f);
+    return { r, true };
+}
+
 ee::dsp::GrainSyncMap makeDelayMap()
 {
     namespace cfg = ee::dsp::config;
@@ -150,12 +166,15 @@ PeakGrainProcessor::PeakGrainProcessor()
 
     sizeMap = makeSizeMap();
     densityMap = makeDensityMap();
+    windowMap = makeWindowMap();
     delayMap = makeDelayMap();
 
     sizeParam = apvts.getRawParameterValue (kSizeID);
     densityParam = apvts.getRawParameterValue (kDensityID);
     sizeSyncParam = apvts.getRawParameterValue (kSizeSyncID);
     densitySyncParam = apvts.getRawParameterValue (kDensitySyncID);
+    windowParam = apvts.getRawParameterValue (kWindowID);
+    windowSyncParam = apvts.getRawParameterValue (kWindowSyncID);
     timeParam = apvts.getRawParameterValue (kTimeID);
     feedbackParam = apvts.getRawParameterValue (kFeedbackID);
     stretchParam = apvts.getRawParameterValue (kStretchID);
@@ -195,12 +214,15 @@ PeakGrainProcessor::PeakGrainProcessor()
     sizeSync01 = sizeParam->load();
     densityFree01 = densityParam->load();
     densitySync01 = densityParam->load();
+    windowFree01 = windowParam->load();
+    windowSync01 = windowParam->load();
 
     apvts.addParameterListener (kDelayLeftTimeID, this);
     apvts.addParameterListener (kDelayRightTimeID, this);
     apvts.addParameterListener (kDelayLinkID, this);
     apvts.addParameterListener (kSizeSyncID, this);
     apvts.addParameterListener (kDensitySyncID, this);
+    apvts.addParameterListener (kWindowSyncID, this);
 
 #if EE_GRAIN_TRACE
     trace = std::make_unique<GrainTrace> (apvts);
@@ -214,6 +236,7 @@ PeakGrainProcessor::~PeakGrainProcessor()
     apvts.removeParameterListener (kDelayLinkID, this);
     apvts.removeParameterListener (kSizeSyncID, this);
     apvts.removeParameterListener (kDensitySyncID, this);
+    apvts.removeParameterListener (kWindowSyncID, this);
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createParameterLayout()
@@ -227,18 +250,19 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     const auto unit = juce::NormalisableRange<float> (0.0f, 1.0f);
 
-    // Size and Density are one normalised knob each; the Sync switch beside them
-    // decides whether that maps to a free unit or a note division. The
-    // host-facing text assumes the free reading - the editor overrides it with
-    // one that follows the switch and the host tempo.
+    // Size, Density and Window are one normalised knob each; the shared Sync
+    // switch beside them decides whether that maps to a free unit or a note
+    // division for all three at once (see GrainSyncPill in GrainFace.jsx).
+    // The host-facing text assumes the free reading - the editor overrides it
+    // with one that follows the switch and the host tempo.
     //
-    // Meta, all four: flipping ssync/dsync moves size/density
-    // (parameterChanged -> onSizeSyncToggled/onDensitySyncToggled), the same
-    // "one parameter's change moves another's value" shape as the delay time
-    // mirror below - and the same fix, following Peak Alpine's own note on
-    // why (PluginProcessor.cpp there): auval's round-trip check fails on
-    // exactly this unless every parameter doing it, moved or mover, is
-    // flagged.
+    // Meta, all six: flipping ssync/dsync/wsync moves size/density/window
+    // (parameterChanged -> onSizeSyncToggled/onDensitySyncToggled/
+    // onWindowSyncToggled), the same "one parameter's change moves another's
+    // value" shape as the delay time mirror below - and the same fix,
+    // following Peak Alpine's own note on why (PluginProcessor.cpp there):
+    // auval's round-trip check fails on exactly this unless every parameter
+    // doing it, moved or mover, is flagged.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kSizeID, 1 }, "Size", unit, cfg::kDefaultSize01,
         juce::AudioParameterFloatAttributes()
@@ -251,16 +275,32 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
             .withStringFromValueFunction ([] (float v, int) { return makeDensityMap().toText (v, false, 120.0); })
             .withMeta (true)));
 
+    // How long a struck note keeps drawing the cloud back to its own attack
+    // rather than moving on to whatever Time/Scatter currently offer - see
+    // ee::dsp::Grainer::setAttackReachSeconds and GrainerConfig.h's WINDOW
+    // section. Short is one clean pass; long is a cloud that keeps re-singing
+    // the same attack for several seconds.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kWindowID, 1 }, "Window", unit, cfg::kDefaultWindow01,
+        juce::AudioParameterFloatAttributes()
+            .withStringFromValueFunction ([] (float v, int) { return makeWindowMap().toText (v, false, 120.0); })
+            .withMeta (true)));
+
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kSizeSyncID, 1 }, "Size Sync",
                                                             cfg::kDefaultSizeSync,
                                                             juce::AudioParameterBoolAttributes().withMeta (true)));
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kDensitySyncID, 1 }, "Density Sync",
                                                             cfg::kDefaultDensitySync,
                                                             juce::AudioParameterBoolAttributes().withMeta (true)));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kWindowSyncID, 1 }, "Window Sync",
+                                                            cfg::kDefaultWindowSync,
+                                                            juce::AudioParameterBoolAttributes().withMeta (true)));
 
-    // The granular delay half - Time, Feedback, Stretch - is no longer on the
-    // face, but the parameters and the engine wiring stay: the cloud is still a
-    // granular delay, it just runs at these fixed defaults now.
+    // The granular delay half - Time, Feedback and Stretch are not on the
+    // face, and run at these fixed defaults: the cloud is still a granular
+    // delay with its own recirculating tail (see ee::dsp::Grainer's own
+    // note), it just isn't a knob here - Window (above) is what the face
+    // controls for "how long does this keep going".
     auto timeRange = juce::NormalisableRange<float> (cfg::kMinTimeMs, cfg::kMaxTimeMs);
     timeRange.setSkewForCentre (cfg::kTimeSkewMs);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -430,6 +470,21 @@ juce::String PeakGrainProcessor::densityReadout() const
     return densityMap.toText (densityParam->load(), densitySyncParam->load() > 0.5f, currentBpm());
 }
 
+juce::String PeakGrainProcessor::windowReadout() const
+{
+    // Always seconds, synced or not - same reasoning as sizeReadout(): a
+    // listener hears how long the cloud keeps ringing, not a rhythmic
+    // position, and synced mode can pick a division longer than
+    // kMaxWindowSeconds at a slow enough tempo while
+    // Grainer::setAttackReachSeconds silently clamps to it regardless, so the
+    // readout clamps to the same range before formatting rather than showing
+    // a division length nothing is sounding.
+    namespace cfg = ee::dsp::config;
+    const float ms = juce::jlimit (cfg::kMinWindowSeconds * 1000.0f, cfg::kMaxWindowSeconds * 1000.0f,
+                                   windowMap.value (windowParam->load(), windowSyncParam->load() > 0.5f, currentBpm()));
+    return ms >= 1000.0f ? juce::String (ms * 0.001f, 2) + " s" : juce::String (juce::roundToInt (ms)) + " ms";
+}
+
 juce::String PeakGrainProcessor::leftTimeReadout() const
 {
     return delayMap.toText (leftTimeParam->load(), delaySyncParam->load() > 0.5f, currentBpm());
@@ -474,6 +529,11 @@ void PeakGrainProcessor::onSizeSyncToggled()
 void PeakGrainProcessor::onDensitySyncToggled()
 {
     syncToggled (kDensityID, densityFree01, densitySync01, densitySyncParam);
+}
+
+void PeakGrainProcessor::onWindowSyncToggled()
+{
+    syncToggled (kWindowID, windowFree01, windowSync01, windowSyncParam);
 }
 
 ee::dsp::TapeDelay::Routing PeakGrainProcessor::routing() const noexcept
@@ -523,10 +583,10 @@ void PeakGrainProcessor::parameterChanged (const juce::String& parameterID, floa
     if (installingState.load())
         return;
 
-    // ssync/dsync: the face's single Grain "SYNC" pill writes both flags
-    // separately (see GrainFace.jsx); each write lands here on its own and
-    // remaps its own knob, so this also does the right thing if a host
-    // automates just one of the two.
+    // ssync/dsync/wsync: the face's single Grain "SYNC" pill writes all three
+    // flags separately (see GrainFace.jsx); each write lands here on its own
+    // and remaps its own knob, so this also does the right thing if a host
+    // automates just one of the three.
     if (parameterID == kSizeSyncID)
     {
         onSizeSyncToggled();
@@ -535,6 +595,11 @@ void PeakGrainProcessor::parameterChanged (const juce::String& parameterID, floa
     if (parameterID == kDensitySyncID)
     {
         onDensitySyncToggled();
+        return;
+    }
+    if (parameterID == kWindowSyncID)
+    {
+        onWindowSyncToggled();
         return;
     }
 
@@ -674,6 +739,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     const double bpm = readPlayHeadBpm();
     const bool sizeSynced = sizeSyncParam->load() > 0.5f;
     const bool densitySynced = densitySyncParam->load() > 0.5f;
+    const bool windowSynced = windowSyncParam->load() > 0.5f;
     const bool delaySynced = delaySyncParam->load() > 0.5f;
 
     // Same three transport facts PeakTremPanProcessor reads for its own synced
@@ -713,6 +779,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 
     grainer.setSizeMs (sizeMap.value (sizeParam->load(), sizeSynced, bpm));
     grainer.setDensityHz (densityMap.value (densityParam->load(), densitySynced, bpm));
+    grainer.setAttackReachSeconds (windowMap.value (windowParam->load(), windowSynced, bpm) * 0.001f);
     grainer.setTimeMs (timeParam->load());
     grainer.setFeedback (feedbackParam->load() * 0.01f);
     grainer.setStretch (stretchParam->load() * 0.01f);
@@ -929,6 +996,8 @@ void PeakGrainProcessor::getStateInformation (juce::MemoryBlock& destData)
     state.setProperty (kSizeSyncProp, sizeSync01.load(), nullptr);
     state.setProperty (kDensityFreeProp, densityFree01.load(), nullptr);
     state.setProperty (kDensitySyncProp, densitySync01.load(), nullptr);
+    state.setProperty (kWindowFreeProp, windowFree01.load(), nullptr);
+    state.setProperty (kWindowSyncProp, windowSync01.load(), nullptr);
 
     if (auto xml = state.createXml())
         copyXmlToBinary (*xml, destData);
@@ -949,6 +1018,8 @@ void PeakGrainProcessor::setStateInformation (const void* data, int sizeInBytes)
             restore (kSizeSyncProp, sizeSync01, sizeParam);
             restore (kDensityFreeProp, densityFree01, densityParam);
             restore (kDensitySyncProp, densitySync01, densityParam);
+            restore (kWindowFreeProp, windowFree01, windowParam);
+            restore (kWindowSyncProp, windowSync01, windowParam);
         }
     }
 }

@@ -142,8 +142,27 @@ constexpr float kAttackJitterMs = 12.0f;
 
 // How long after an attack grains may still be drawn from it. Past this the note
 // has rung out and the cloud moves on to whatever the Time window currently
-// holds, so a long silence really does fall silent.
+// holds, so a long silence really does fall silent. The Window knob (below)
+// is what actually sets this at runtime - this is just what a fresh
+// ee::dsp::Grainer starts at before anything calls setAttackReachSeconds.
 constexpr float kAttackReachSeconds = 3.5f;
+
+// ============================================================================
+// WINDOW  (attack reach, live)
+// ============================================================================
+// Window is the Attack Reach above on a knob: one normalised value with a
+// Sync switch beside it, the same "duration, GrainSyncMap" shape as Size -
+// how long the cloud keeps drawing from the struck note before it moves on
+// to whatever Time and Scatter are currently offering. Short is a clean
+// single pass; long is a cloud that keeps re-singing the same attack for
+// several seconds. The skew centres the knob's middle on the figure
+// kAttackReachSeconds used to be fixed at, so the default position sounds
+// the same as the old always-3.5s behaviour.
+constexpr float kMinWindowSeconds  = 0.2f;
+constexpr float kMaxWindowSeconds  = 6.0f;
+constexpr float kWindowSkewSeconds = 3.5f;
+constexpr float kDefaultWindow01   = 0.5f;
+constexpr bool kDefaultWindowSync  = false;
 
 // When a loud input retriggers a frozen buffer, how much fresh audio is
 // captured before it re-freezes and loops again - a Time window plus a grain,

@@ -29,21 +29,35 @@ function grainDivisionBeats(density01) {
     off Shape (attack width, decay steepness), stretched by Size and overlaid
     with extra staggered copies for however many of Destiny's tempo division
     fit in a bar (a quarter note is "1/4", four of which fit in a bar of
-    four beats, so it draws four - not a linear guess at Destiny's value). */
+    four beats, so it draws four - not a linear guess at Destiny's value).
+
+    Window fades those trailing copies rather than adding to their count: it
+    is how long (see GrainerConfig.h's WINDOW section) the cloud keeps
+    drawing grains from the struck attack before falling back to whatever
+    Time and Scatter are currently offering, so a short Window reads as one
+    clean pass (the trailing copies scale to nothing) and a long one as the
+    cloud still re-singing the same attack several shapes later - the same
+    geometric falloff drawn here, one Window power per step from the lead
+    grain. The lead is drawn first (left), the way a delay's own repeat
+    diagram reads: the struck note first, its repeats decaying away to the
+    right of it. */
 export function GrainEnvelope({ accent }) {
   const [shape] = useJuceSliderValue("shape");
   const [size] = useJuceSliderValue("size");
   const [density] = useJuceSliderValue("density");
+  const [window01] = useJuceSliderValue("window");
 
   const grainCount = Math.min(8, Math.max(1, Math.round(4 / grainDivisionBeats(density))));
-  const width = 70 + size * 110; // longer Size = wider window
+  const width = 70 + size * 110; // longer Size = wider grain window
   const spacing = grainCount > 1 ? (234 - width) / (grainCount - 1) : 0;
 
   return (
     <svg width="100%" height="48" viewBox="0 0 240 48" preserveAspectRatio="none" fill="none">
       {Array.from({ length: grainCount }, (_, i) => {
         const x0 = 6 + i * Math.max(spacing, 0);
-        const isLead = i === grainCount - 1;
+        const stepsOut = i; // 0 at the lead (left), rising going right
+        const isLead = stepsOut === 0;
+        const decay = Math.pow(window01, stepsOut);
         return (
           <path
             key={i}
@@ -54,7 +68,7 @@ export function GrainEnvelope({ accent }) {
             vectorEffect="non-scaling-stroke"
             fill={isLead ? accent : "none"}
             fillOpacity={isLead ? 0.1 : 0}
-            opacity={isLead ? 1 : 0.35}
+            opacity={isLead ? 1 : 0.35 * decay}
           />
         );
       })}

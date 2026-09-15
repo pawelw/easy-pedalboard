@@ -8,6 +8,7 @@ namespace
 {
 constexpr const char* kParamSize = "size";
 constexpr const char* kParamDensity = "density";
+constexpr const char* kParamWindow = "window";
 constexpr const char* kParamLeftTime = "ltime";
 constexpr const char* kParamRightTime = "rtime";
 } // namespace
@@ -60,12 +61,13 @@ PeakGrainWebEditor::PeakGrainWebEditor (PeakGrainProcessor& p)
                                            setSize (width + panelWidth, height);
                                            complete (true);
                                        })
-                  // A knob's printed value. Size/Density/the two delay times
-                  // are tempo-synced - their text depends on a Sync switch and
-                  // the host tempo, neither of which the parameter's own
-                  // stringFromValue (fixed at construction) can see - so those
-                  // four are special-cased onto the processor's live readouts;
-                  // everything else falls through to the parameter's own text.
+                  // A knob's printed value. Size/Density/Window/the two delay
+                  // times are tempo-synced - their text depends on a Sync
+                  // switch and the host tempo, neither of which the
+                  // parameter's own stringFromValue (fixed at construction)
+                  // can see - so those five are special-cased onto the
+                  // processor's live readouts; everything else falls through
+                  // to the parameter's own text.
                   .withNativeFunction ("formatKnobValue",
                                        [this] (const juce::Array<juce::var>& args,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
@@ -77,6 +79,8 @@ PeakGrainWebEditor::PeakGrainWebEditor (PeakGrainProcessor& p)
                                                text = processorRef.sizeReadout();
                                            else if (id == kParamDensity)
                                                text = processorRef.densityReadout();
+                                           else if (id == kParamWindow)
+                                               text = processorRef.windowReadout();
                                            else if (id == kParamLeftTime)
                                                text = processorRef.leftTimeReadout();
                                            else if (id == kParamRightTime)

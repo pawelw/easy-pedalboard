@@ -487,16 +487,30 @@ public:
                                                     .toText (v, false, 120.0);
                                             })
                                         .withMeta (true);
+        const auto windowText = juce::AudioParameterFloatAttributes()
+                                     .withStringFromValueFunction (
+                                         [durationMap] (float v, int) {
+                                             return durationMap (cfg::kMinWindowSeconds * 1000.0f,
+                                                                 cfg::kMaxWindowSeconds * 1000.0f,
+                                                                 cfg::kWindowSkewSeconds * 1000.0f)
+                                                 .toText (v, false, 120.0);
+                                         })
+                                     .withMeta (true);
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "size", 1 }, "Size", unit,
                                                                  cfg::kDefaultSize01, sizeText));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "density", 1 }, "Density", unit,
                                                                  cfg::kDefaultDensity01, densityText));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "window", 1 }, "Window", unit,
+                                                                 cfg::kDefaultWindow01, windowText));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "ssync", 1 }, "Size Sync",
                                                                 cfg::kDefaultSizeSync,
                                                                 juce::AudioParameterBoolAttributes().withMeta (true)));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "dsync", 1 }, "Density Sync",
                                                                 cfg::kDefaultDensitySync,
+                                                                juce::AudioParameterBoolAttributes().withMeta (true)));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "wsync", 1 }, "Window Sync",
+                                                                cfg::kDefaultWindowSync,
                                                                 juce::AudioParameterBoolAttributes().withMeta (true)));
 
         // The granular delay half is off the face but the parameters remain.
@@ -637,6 +651,7 @@ ee::ui::PedalSpec makeGrainSpec()
     spec.knobs = {
         { .parameterID = "mix", .caption = "Mix", .capFill = kGrainCol },
         { .parameterID = "density", .caption = "Destiny", .capFill = kGrainCol },
+        { .parameterID = "window", .caption = "Window", .capFill = kGrainCol },
         { .parameterID = "size", .caption = "Size", .capFill = kGrainCol },
         { .parameterID = "shape", .caption = "Shape", .capFill = kGrainCol, .capIcon = shapeIcon },
         { .parameterID = "bit", .caption = "Bit", .capFill = kGrainCol },
@@ -665,7 +680,7 @@ ee::ui::PedalSpec makeGrainSpec()
         return ee::ui::SlideToggleSpec { .parameterID = id, .labelOff = "ms", .labelOn = "Sync", .invertPosition = true };
     };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 5, .columns = 1, .fill = kCardFill, .icon = drawGrainIcon,
+        { .caption = "Grain", .count = 6, .columns = 1, .fill = kCardFill, .icon = drawGrainIcon,
           .footer = kSyncFooter ("ssync"), .footerOnClick = [] {} },
         { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawPitchIcon },
         { .caption = "Random", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawRandomIcon },

@@ -6,6 +6,7 @@
 //
 //   ee_grain_host [--sr 44100] [--block 128] [--in noise|dc|burst|silence]
 //                 [--level -20] [--seconds 30] [--ragged] [--mono]
+//                 [--bpm 120] [--onsets]
 //                 [--size 0.5] [--density 0.5] [--ssync 0] [--dsync 0]
 //                 [--time 300] [--feedback 30] [--stretch 0] [--freeze 0]
 //                 [--shape 55] [--scatter 25] [--reverse 25] [--stereo 85]
@@ -17,6 +18,13 @@
 //
 // Size, Density and the delay Time (--size/--density/--dtime) are normalised
 // 0..1 knobs now - their Sync switch decides what that maps to.
+//
+// No --bpm means no playhead at all, so a Sync switch never actually engages
+// (processBlock never sees a finite ppq) - pass one to test the synced path.
+// --onsets measures grain spawn instants directly from the rendered audio (a
+// Schmitt-triggered envelope follower), rather than trusting the label under
+// the knob - use with --in dc, --mix 100 and a short unscattered Size so each
+// grain is a clean, separated blip.
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
@@ -49,6 +57,34 @@ Input inputFromName (const juce::String& name)
         return Input::silence;
     return Input::noise;
 }
+
+/** A transport that plays at a fixed tempo from bar 1, never relocated - see
+    tests/RegressHarness.h's own FakePlayHead for the fuller version with a
+    jump(). Without a playhead PeakGrainProcessor::processBlock never sees a
+    finite ppq, so densitySynced/windowSynced/sizeSynced/delaySynced never
+    actually engage - this is the only thing standing between ee_grain_host
+    and exercising Sync at all. */
+class FakePlayHead final : public juce::AudioPlayHead
+{
+public:
+    FakePlayHead (double bpm, double sr) : tempo (bpm), sampleRate (sr) {}
+
+    juce::Optional<PositionInfo> getPosition() const override
+    {
+        PositionInfo info;
+        info.setBpm (tempo);
+        info.setIsPlaying (true);
+        info.setPpqPosition (ppq);
+        return info;
+    }
+
+    void advance (int numSamples) { ppq += (tempo / 60.0) * (static_cast<double> (numSamples) / sampleRate); }
+
+private:
+    double tempo;
+    double sampleRate;
+    double ppq = 0.0;
+};
 } // namespace
 
 int main (int argc, char* argv[])
@@ -66,6 +102,8 @@ int main (int argc, char* argv[])
     bool reprepare = false;
     bool sweep = false;
     juce::File snapshot;
+    double bpm = 0.0; // 0 means no playhead at all - the old behaviour
+    bool onsets = false;
 
     // Knob overrides, applied through the parameter tree the way a host would.
     // Empty means "leave at the default".
@@ -82,6 +120,8 @@ int main (int argc, char* argv[])
         else if (arg == "--seconds")  seconds = next().getDoubleValue();
         else if (arg == "--in")       input = inputFromName (next());
         else if (arg == "--ragged")   ragged = true;
+        else if (arg == "--bpm")      bpm = next().getDoubleValue();
+        else if (arg == "--onsets")   onsets = true;
         else if (arg == "--mono")     mono = true;
         else if (arg == "--editor")   withEditor = true;
         else if (arg == "--reprepare") reprepare = true;
@@ -141,6 +181,14 @@ int main (int argc, char* argv[])
     processor.setPlayConfigDetails (channels, channels, sampleRate, block);
     processor.prepareToPlay (sampleRate, block);
 
+    std::unique_ptr<FakePlayHead> playHead;
+    if (bpm > 0.0)
+    {
+        playHead = std::make_unique<FakePlayHead> (bpm, sampleRate);
+        processor.setPlayHead (playHead.get());
+        std::printf ("  playhead: %.1f bpm, always playing from bar 1\n", bpm);
+    }
+
     for (auto* parameter : processor.getParameters())
         if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (parameter))
             std::printf ("  %-10s %s\n", withId->paramID.toRawUTF8(),
@@ -194,6 +242,15 @@ int main (int argc, char* argv[])
     long long n = 0;
     int reportedSecond = 0;
     bool reportedNonFinite = false;
+
+    // --onsets: a Schmitt-triggered envelope follower on the wet output, so a
+    // grain's own spawn instant can be measured directly from rendered audio
+    // rather than trusted from the knob label - see the note on kSpawnJumpPpq
+    // and the report this is chasing (grains landing off the Density grid).
+    float onsetEnv = 0.0f;
+    bool onsetAbove = false;
+    long long lastOnsetSample = -1000000000;
+    std::vector<long long> onsetTimes;
 
     const long long totalSamples = static_cast<long long> (seconds * sampleRate);
     const long long samplesPerSecond = static_cast<long long> (sampleRate);
@@ -259,6 +316,9 @@ int main (int argc, char* argv[])
 
         processor.processBlock (buffer, midi);
 
+        if (playHead != nullptr)
+            playHead->advance (thisBlock);
+
         // Hosts re-prepare on a buffer-size or sample-rate change, and on
         // transport starts. Anything the engine leaves behind shows up here.
         if (reprepare && (n / samplesPerSecond) != ((n - thisBlock) / samplesPerSecond))
@@ -284,6 +344,36 @@ int main (int argc, char* argv[])
             }
         }
 
+        if (onsets)
+        {
+            const auto* pl = buffer.getReadPointer (0);
+            const auto* pr = channels > 1 ? buffer.getReadPointer (1) : nullptr;
+            const float releaseCoeff = std::exp (-1.0f / (0.003f * static_cast<float> (sampleRate)));
+            const float onThreshold = 0.35f * amplitude;
+            const float offThreshold = 0.15f * amplitude;
+            const long long refractorySamples = static_cast<long long> (0.01 * sampleRate);
+
+            for (int i = 0; i < thisBlock; ++i)
+            {
+                const float rectified = std::abs (pr != nullptr ? 0.5f * (pl[i] + pr[i]) : pl[i]);
+                onsetEnv = std::max (rectified, onsetEnv * releaseCoeff);
+
+                const long long globalSample = n - thisBlock + i;
+
+                if (! onsetAbove && onsetEnv > onThreshold && (globalSample - lastOnsetSample) > refractorySamples)
+                {
+                    onsetAbove = true;
+                    lastOnsetSample = globalSample;
+                    if (onsetTimes.size() < 200)
+                        onsetTimes.push_back (globalSample);
+                }
+                else if (onsetAbove && onsetEnv < offThreshold)
+                {
+                    onsetAbove = false;
+                }
+            }
+        }
+
         sinceReport += thisBlock;
 
         if (sinceReport >= samplesPerSecond)
@@ -296,6 +386,17 @@ int main (int argc, char* argv[])
             secondSquares = 0.0;
             secondCount = 0;
             sinceReport = 0;
+        }
+    }
+
+    if (onsets)
+    {
+        std::printf ("\nonsets: %zu logged (capped at 200)\n", onsetTimes.size());
+        for (size_t k = 1; k < onsetTimes.size(); ++k)
+        {
+            const double gapMs = static_cast<double> (onsetTimes[k] - onsetTimes[k - 1]) / sampleRate * 1000.0;
+            std::printf ("  #%-3zu  t=%8.4f s   gap=%8.2f ms\n", k, static_cast<double> (onsetTimes[k]) / sampleRate,
+                         gapMs);
         }
     }
 

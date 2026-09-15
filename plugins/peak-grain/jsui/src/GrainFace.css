@@ -160,14 +160,17 @@
   min-width: 0;
 }
 
-/* Grain runs tighter than its neighbours: its display plus two rows of the
-   30px knobs below (see .pui-knob__caption's own note) sits shorter than
-   Pitch/Random's two rows of 38px ones, so without this the row would
-   stretch to match them and leave Grain's own content looking lost in the
-   extra height. */
+/* Grain's 30px knobs (see .pui-knob__caption's own note) make both its rows
+   shorter than Pitch/Random's 38px ones, so the base gap alone leaves row 2
+   sitting higher than its neighbours' row 2 - the first gap (display to row
+   1) matches the base .pg-section gap so row 1 lines up, and the extra
+   margin below makes up the rest of the difference so row 2 does too. */
 .pg-section--grain {
-  gap: 8px;
   padding: 10px 10px 10px;
+}
+
+.pg-section--grain .pg-section__knobs + .pg-section__knobs {
+  margin-top: 10px;
 }
 
 .pg-section--delay {
@@ -240,7 +243,7 @@
 }
 
 .pg-section--grain .pg-section__display {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
 .pg-section__knobs {
@@ -253,6 +256,17 @@
 .pg-section--pitch .pg-section__knobs,
 .pg-section--random .pg-section__knobs {
   gap: 8px;
+}
+
+/* space-around spreads 3 knobs to the card's edges much harder than it does
+   2 (more items means less free space left per edge), so Grain's rows sat
+   noticeably wider than Pitch/Random's - centered as a group either way, but
+   not reading as the same width of "centred" next to them. A fixed gap and
+   justify-content:center groups the 3 knobs at roughly Pitch/Random's own
+   edge margin instead of the leftover-space one. */
+.pg-section--grain .pg-section__knobs {
+  justify-content: center;
+  gap: 13px;
 }
 
 /* --------------------------------------------------------------- delay */

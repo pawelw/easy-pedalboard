@@ -26,19 +26,22 @@ const DELAY = "#a3ce7a";
 const REVERB = "#7fd2d8";
 
 /** The Grain card's single footer switch, now a section-header pill: writes
-    both `ssync` and `dsync` on click rather than relying on a native click
-    hook, so a plain RelaySet-bound WebView still gets the "drives Size and
-    Destiny together" behaviour - PluginProcessor's parameterChanged then
-    remaps each knob independently off its own flag (see PluginProcessor.h's
-    note on onSizeSyncToggled/onDensitySyncToggled). */
+    `ssync`, `dsync` and `wsync` on click rather than relying on a native
+    click hook, so a plain RelaySet-bound WebView still gets the "drives
+    Size, Destiny and Window together" behaviour - PluginProcessor's
+    parameterChanged then remaps each knob independently off its own flag
+    (see PluginProcessor.h's note on onSizeSyncToggled/onDensitySyncToggled/
+    onWindowSyncToggled). */
 function GrainSyncPill() {
   const [sizeSync, setSizeSync] = useJuceToggleValue("ssync");
   const [, setDensitySync] = useJuceToggleValue("dsync");
+  const [, setWindowSync] = useJuceToggleValue("wsync");
 
   const toggle = () => {
     const next = !sizeSync;
     setSizeSync(next);
     setDensitySync(next);
+    setWindowSync(next);
   };
 
   return <Pill label="SYNC" pressed={sizeSync} onClick={toggle} />;
@@ -88,6 +91,7 @@ function GrainSection() {
       <div className="pg-section__knobs">
         <JuceKnob parameterId="mix" caption="Mix" variant="flat" size={30} />
         <JuceKnob parameterId="density" caption="Destiny" variant="flat" size={30} />
+        <JuceKnob parameterId="window" caption="Window" variant="flat" size={30} />
       </div>
       <div className="pg-section__knobs">
         <JuceKnob parameterId="size" caption="Size" variant="flat" size={30} />

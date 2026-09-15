@@ -55,14 +55,15 @@ public:
         the tree it reads and writes is already built. */
     ee::plugin::PresetStore presets { apvts, "Peak Grain", EE_FACTORY_PRESETS };
 
-    /** Text under Size/Density/the two Delay time knobs: the division label
-        when synced, or the free-running reading otherwise. Public - unlike the
-        old ee::ui editor, PeakGrainWebEditor isn't a member of this class and
-        can't reach the private *Param pointers or *Map members directly, the
-        same reason Peak Delay's equivalents are public
+    /** Text under Size/Density/Window/the two Delay time knobs: the division
+        label when synced, or the free-running reading otherwise. Public -
+        unlike the old ee::ui editor, PeakGrainWebEditor isn't a member of
+        this class and can't reach the private *Param pointers or *Map
+        members directly, the same reason Peak Delay's equivalents are public
         (plugins/peak-delay/src/PluginProcessor.h). */
     juce::String sizeReadout() const;
     juce::String densityReadout() const;
+    juce::String windowReadout() const;
     juce::String leftTimeReadout() const;
     juce::String rightTimeReadout() const;
 
@@ -104,19 +105,20 @@ private:
         Out of range falls back to Normal. */
     ee::dsp::TapeDelay::Routing routing() const noexcept;
 
-    /** ssync/dsync flipped: stash the knob's current position into the mode it
-        is leaving and push the mode it is entering back onto the parameter,
-        so each mode remembers where it was left. Mirrors
+    /** ssync/dsync/wsync flipped: stash the knob's current position into the
+        mode it is leaving and push the mode it is entering back onto the
+        parameter, so each mode remembers where it was left. Mirrors
         PeakTremPanProcessor::onSyncToggled. Called from parameterChanged
-        below - the face's single Grain "SYNC" pill writes both ssync and
-        dsync (see GrainFace.jsx), and each write triggers its own knob's
-        remap independently, so host automation of either flag alone remaps
+        below - the face's single Grain "SYNC" pill writes all three (see
+        GrainFace.jsx), and each write triggers its own knob's remap
+        independently, so host automation of any one flag alone remaps
         correctly too, not only a click on the pill. The delay's own
         single-knob version of this (onDelaySyncToggled) is gone now that
         Left/Right are two independent knobs with no remembered per-mode
         position, matching Peak Delay. */
     void onSizeSyncToggled();
     void onDensitySyncToggled();
+    void onWindowSyncToggled();
 
     void syncToggled (const char* paramID,
                       std::atomic<float>& freeSlot,
@@ -144,12 +146,15 @@ private:
     // 0..1 knobs whose Sync switch reinterprets them; built from GrainerConfig.
     ee::dsp::GrainSyncMap sizeMap;
     ee::dsp::GrainSyncMap densityMap;
+    ee::dsp::GrainSyncMap windowMap;
     ee::dsp::GrainSyncMap delayMap;
 
     std::atomic<float>* sizeParam = nullptr;
     std::atomic<float>* densityParam = nullptr;
     std::atomic<float>* sizeSyncParam = nullptr;
     std::atomic<float>* densitySyncParam = nullptr;
+    std::atomic<float>* windowParam = nullptr;
+    std::atomic<float>* windowSyncParam = nullptr;
     std::atomic<float>* timeParam = nullptr;
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* stretchParam = nullptr;
@@ -191,12 +196,14 @@ private:
     // Remembered knob positions for the mode each Sync switch is not currently
     // in, so a round trip through the switch lands back where it started.
     // Persisted as state-tree properties (see get/setStateInformation). Only
-    // Size/Density have this now - the delay's own version went with the
-    // single dtime knob it belonged to.
+    // Size/Density/Window have this now - the delay's own version went with
+    // the single dtime knob it belonged to.
     std::atomic<float> sizeFree01 { ee::dsp::config::kDefaultSize01 };
     std::atomic<float> sizeSync01 { ee::dsp::config::kDefaultSize01 };
     std::atomic<float> densityFree01 { ee::dsp::config::kDefaultDensity01 };
     std::atomic<float> densitySync01 { ee::dsp::config::kDefaultDensity01 };
+    std::atomic<float> windowFree01 { ee::dsp::config::kDefaultWindow01 };
+    std::atomic<float> windowSync01 { ee::dsp::config::kDefaultWindow01 };
 
     /** Stops ltime/rtime echoing each other forever while dlink is on. */
     std::atomic<bool> mirroring { false };

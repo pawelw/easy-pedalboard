@@ -133,6 +133,18 @@ public:
         feedback = std::clamp (amount01, 0.0f, config::kMaxFeedback);
     }
 
+    /** How long after an attack grains may still be drawn from it - see
+        pickPosition()'s own note. Starts at config::kAttackReachSeconds, the
+        figure this was a compile-time constant at before Window went on the
+        face; independent of Feedback, which is its own knob and its own
+        recirculating tail (see the class note above) - `ee_dsp_tests`'
+        testGrainerAttackCapture and testGrainerFeedbackLengthensTail each
+        hold one of those two apart from the other on purpose. */
+    void setAttackReachSeconds (float seconds) noexcept
+    {
+        attackReachSeconds = std::clamp (seconds, config::kMinWindowSeconds, config::kMaxWindowSeconds);
+    }
+
     /** Read-head scan rate while frozen, in multiples of realtime. +1 forward,
         0 held, -1 backwards. Ignored while playing live. */
     void setStretch (float rate) noexcept
@@ -457,7 +469,13 @@ public:
             return kFrozenTailSeconds;
 
         const float repeats = 1.0f / std::max (0.08f, 1.0f - feedback);
-        const float seconds = (timeMs * repeats + sizeMs * static_cast<float> (kMaxRate + 1.0)) * 0.001f;
+        const float feedbackTail = timeMs * repeats * 0.001f;
+        // Window (attackReachSeconds) can outlast the feedback-recirculation
+        // estimate above on its own - the two are independent (see the class
+        // note) - so the host-facing figure is whichever runs longer, plus
+        // the grain-length margin either one needs.
+        const float seconds =
+            std::max (feedbackTail, attackReachSeconds) + sizeMs * static_cast<float> (kMaxRate + 1.0) * 0.001f;
         return std::min (seconds, kFrozenTailSeconds);
     }
 
@@ -865,9 +883,9 @@ private:
             // Most grains come from the last attack, if there was one recently
             // enough that the note is still ringing. That is what keeps the
             // cloud sounding like the note that was struck rather than like its
-            // sustain - but it lapses after kAttackReachSeconds so a long
-            // silence really does fall silent.
-            const int attackReach = static_cast<int> (config::kAttackReachSeconds * static_cast<float> (sampleRate));
+            // sustain - but it lapses after attackReachSeconds (Window) so a
+            // long silence really does fall silent.
+            const int attackReach = static_cast<int> (attackReachSeconds * static_cast<float> (sampleRate));
 
             if (attackIndex >= 0 && sinceAttack <= attackReach && sinceAttack <= maxOffset
                 && nextFloat() < tuning.attackShare)
@@ -941,6 +959,7 @@ private:
     float densityHz = config::kDefaultDensityHz;
     float timeMs = config::kDefaultTimeMs;
     float feedback = config::kDefaultFeedbackPct * 0.01f;
+    float attackReachSeconds = config::kAttackReachSeconds;
     float stretch = config::kDefaultStretchPct * 0.01f;
     float shape = config::kDefaultShapePct * 0.01f;
     float scatter = config::kDefaultScatterPct * 0.01f;
