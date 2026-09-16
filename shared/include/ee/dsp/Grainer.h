@@ -27,6 +27,10 @@ namespace ee::dsp
     buffer; the read head then scans the frozen capture at the Stretch rate -
     forwards, held still, or backwards - and a loud enough input retriggers a
     fresh capture.
+    With Grid (Transport::grid) read points stay on the tempo grid: frozen, the
+    capture follows the bar line and every grain replays a sixteenth taken from
+    the current bar's start; live, the Time tap moves in whole sixteenths - see
+    GrainerConfig.h's GRID.
 
     The feedback path means this is no longer strictly feed-forward, so it could
     in principle latch a non-finite value. Four things stop it: the feedback
@@ -37,8 +41,10 @@ namespace ee::dsp
     noise to keep this honest.
 
     Everything about the character that is not on a knob - how Scatter and Shape
-    map onto the engine, the interval tables, the output trim - is in
-    GrainerTuning.h, and can be driven live by the development panel.
+    map onto the engine, the output trim - is in GrainerTuning.h, and can be
+    driven live by the development panel. Which intervals the pitched grains
+    snap to is on a knob (Scale/Root, see setScale() and GrainerConfig.h's
+    SCALE section) rather than fixed tuning.
 */
 class Grainer
 {
@@ -61,11 +67,12 @@ public:
         onsetGate.prepare (fs, kOnsetEnvDecayMs, kOnsetAttackWidthMs, kOnsetRiseRatioOn, kOnsetRiseRatioOff,
                            kOnsetMinRise, kOnsetLockoutMs);
 
-        // Cloud filter coefficients - see GrainerConfig.h's CLOUD FILTER
-        // section. Highpass as a DC blocker (Smith's one-pole: R relates to
-        // corner as fc ~= (1-R) * sr / 2*pi), lowpass as the usual one-pole.
-        cloudHpCoeff = 1.0f - kTwoPi * config::kCloudHighpassHz / static_cast<float> (sampleRate);
-        cloudLpCoeff = 1.0f - std::exp (-kTwoPi * config::kCloudLowpassHz / static_cast<float> (sampleRate));
+        updateCloudFilter();
+
+        // So the candidate tables are populated even before the processor's
+        // first call to setScale() - a no-op if it was already called with
+        // something other than the default (see that function's guard).
+        setScale (config::kDefaultScaleIndex, config::kDefaultRootSemitone);
 
         updateTimeOffset();
         updateDerived();
@@ -96,6 +103,10 @@ public:
 
         frozen = false;
         capturing = false;
+        barLocked = false;
+        liveGrid = false;
+        samplesIntoBar = 0.0;
+        samplesPerSixteenth = 1.0;
         captureRemaining = 0;
         pendingCaptureLen = 0;
         scanPos = 0.0;
@@ -207,10 +218,81 @@ public:
         stereo = std::clamp (amount01, 0.0f, 1.0f);
     }
 
-    /** Random detune on every grain, in semitones either way. */
-    void setDetuneSemitones (float semitones) noexcept
+    /** The Filter knob: a plain lowpass cutoff and nothing else. 1 is fully
+        open at config::kCloudLowpassHz, 0 fully closed at
+        config::kCloudLowpassMinHz, and the sweep between them is geometric so
+        equal knob steps are equal musical intervals. One pole, 6 dB/oct -
+        deliberately gentle rather than a ladder, and there is no resonance
+        anywhere in this engine, so the response really is just the rolloff.
+
+        The highpass is no longer on the knob. It is a fixed, hidden trap at
+        config::kCloudHighpassHz that keeps the cloud tight underneath, and
+        nothing on the face moves it. Cheap to call every block; it only
+        recomputes when the value actually moved. */
+    void setCloudFilter (float openness) noexcept
     {
-        detuneSemitones = std::clamp (semitones, config::kMinDetuneSemitones, config::kMaxDetuneSemitones);
+        const float clamped = std::clamp (openness, 0.0f, 1.0f);
+
+        if (std::abs (clamped - cloudFilterAmount) < 1.0e-6f)
+            return;
+
+        cloudFilterAmount = clamped;
+        updateCloudFilter();
+    }
+
+    /** Which scale (config::kScales index) and root (0 = C .. 11 = B, any
+        octave) the Low/High pitch groups' interval choices are quantized to -
+        see GrainerConfig.h's SCALE section for what Root can and cannot mean
+        without pitch tracking, and pickRate() for where the result is used.
+        Cheap to call every block: only recomputes the candidate tables when
+        the scale or root actually changed. */
+    void setScale (int scaleIndex, int rootSemitone) noexcept
+    {
+        const int root = ((rootSemitone % 12) + 12) % 12;
+        const int clampedScale = std::clamp (scaleIndex, 0, config::kNumScales - 1);
+
+        if (clampedScale == currentScaleIndex && root == currentRootSemitone)
+            return;
+
+        currentScaleIndex = clampedScale;
+        currentRootSemitone = root;
+
+        const auto& scale = config::kScales[static_cast<size_t> (clampedScale)];
+
+        upCount = 0;
+        downCount = 0;
+
+        // High: the scale, an octave up. Anchored at +12 rather than at
+        // unison, because drawing from the whole range either side let most
+        // grains land a semitone or two off the note - which is not a
+        // transposition anybody can hear, and is what made the knob read as
+        // doing nothing at all. Root still rotates the pattern, so the
+        // octave itself is only a candidate when it belongs to the key: it
+        // does at Root C, it does not at Root F#.
+        for (int n = 12; n <= config::kMaxScaleSemitones; ++n)
+            if (isScaleMember (scale, n, root) && upCount < kMaxScaleCandidates)
+                upCandidates[static_cast<size_t> (upCount++)] = static_cast<float> (n);
+
+        // Low: an octave down, and nothing else - an octave is consonant
+        // against anything, so the bottom of the cloud adds weight without
+        // ever landing on a wrong note, whatever the scale says. Only the
+        // one: two octaves down is rate 0.25, under pickRate()'s own
+        // 1/kMaxRate floor, so it would come back clamped to a sour -20
+        // semitones rather than a clean -24.
+        downCandidates[0] = -12.0f;
+        downCount = 1;
+    }
+
+    /** How much of the scale the High group takes: 0 is a plain octave up for
+        every grain whatever setScale() was told, 1 draws each one from that
+        Scale/Root table, and in between it is the odds of any one grain taking
+        a scale degree rather than the octave. This is Pitch Mix, and colouring
+        the interval is the *only* thing it and the Scale switch do - neither
+        touches the weight of the three pitch groups, so High stays as loud as
+        it was dialled however the scale is set. */
+    void setScaleBlend (float amount01) noexcept
+    {
+        scaleBlend = std::clamp (amount01, 0.0f, 1.0f);
     }
 
     /** Drift: every grain spawned samples the same slow shared sine
@@ -272,6 +354,13 @@ public:
         double ppqStart = 0.0;
         double cyclesPerQuarter = 1.0;
         double ppqPerSample = 0.0;
+
+        // Grid (see GrainerConfig.h's GRID). The caller sets grid only when it
+        // has a finite ppq and the transport is rolling. barStartPpq is the
+        // ppq of any bar line, quartersPerBar the bar's length.
+        bool grid = false;
+        double barStartPpq = 0.0;
+        double quartersPerBar = 4.0;
     };
 
     //==========================================================================
@@ -310,6 +399,29 @@ public:
 
         const bool spawnOnArrival = alignSpawnToTransport (transport, numSamples, spawnPhaseInc);
 
+        // Grid. Frozen and bar-locked, the buffer keeps recording and
+        // spawnGrain() anchors each grain to the current bar line; leaving it
+        // while still frozen holds whatever was just recorded, the way engaging
+        // a plain Freeze does. Live, spawnGrain() only rounds the Time tap.
+        const bool gridOn = transport.grid && transport.ppqPerSample > 0.0 && transport.quartersPerBar > 0.0
+                            && std::isfinite (transport.ppqStart) && std::isfinite (transport.barStartPpq);
+        const bool nowBarLocked = frozen && gridOn;
+
+        if (nowBarLocked && ! barLocked)
+        {
+            capturing = false;
+        }
+        else if (barLocked && ! nowBarLocked && frozen)
+        {
+            frozen = false;
+            setFreeze (true);
+        }
+
+        barLocked = nowBarLocked;
+        liveGrid = gridOn && ! frozen;
+        if (gridOn)
+            samplesPerSixteenth = 0.25 / transport.ppqPerSample;
+
         for (int i = 0; i < numSamples; ++i)
         {
             // Mod's shared drift phase, advanced here (ahead of any grain
@@ -328,7 +440,7 @@ public:
             const float mono = 0.5f * (l + r);
             const float sample = std::isfinite (mono) ? mono : 0.0f;
 
-            const bool recording = ! frozen || capturing;
+            const bool recording = ! frozen || capturing || barLocked;
 
             if (recording)
             {
@@ -422,7 +534,26 @@ public:
             }
 
             if (spawnNow)
+            {
+                if (barLocked)
+                {
+                    // How far this sample is past the current bar line, in
+                    // samples - read once per grain, not per sample.
+                    const double ppqNow = transport.ppqStart + static_cast<double> (i) * transport.ppqPerSample;
+                    double into = std::fmod (ppqNow - transport.barStartPpq, transport.quartersPerBar);
+                    if (into < 0.0)
+                        into += transport.quartersPerBar;
+
+                    const double snap =
+                        static_cast<double> (config::kGridBarSnapMs) * 0.001 * sampleRate * transport.ppqPerSample;
+                    if (transport.quartersPerBar - into < snap)
+                        into = 0.0;
+
+                    samplesIntoBar = into / transport.ppqPerSample;
+                }
+
                 spawnGrain();
+            }
 
             float sumL = 0.0f;
             float sumR = 0.0f;
@@ -504,6 +635,14 @@ public:
         return n;
     }
 
+    /** For the tests - the semitone offsets setScale() currently allows in
+        each direction, so the quantization can be checked directly rather
+        than inferred from rendered audio. */
+    int getUpCandidateCount() const noexcept { return upCount; }
+    int getDownCandidateCount() const noexcept { return downCount; }
+    float getUpCandidate (int i) const noexcept { return upCandidates[static_cast<size_t> (i)]; }
+    float getDownCandidate (int i) const noexcept { return downCandidates[static_cast<size_t> (i)]; }
+
 private:
     struct Grain
     {
@@ -526,12 +665,17 @@ private:
     };
 
     // A grain never exceeds this rate, which bounds how much source one spans
-    // and therefore how far behind the write head it has to start. The interval
-    // table tops out at +19 semitones (2.997x) and the detune adds a hair.
+    // and therefore how far behind the write head it has to start. The scale
+    // candidate table (see setScale()) tops out at +19 semitones (2.997x) for
+    // exactly this reason - config::kMaxScaleSemitones matches this.
     static constexpr double kMaxRate = 3.2;
 
     static constexpr float kNormSmoothing = 0.0005f;
     static constexpr float kTwoPi = 6.28318530718f;
+
+    // Generous: the chromatic scale over +/-19 semitones gives 19 members
+    // each way, the most any scale choice can produce.
+    static constexpr int kMaxScaleCandidates = 20;
 
     // A frozen buffer rings for ever; the host still wants a number.
     static constexpr float kFrozenTailSeconds = 30.0f;
@@ -612,11 +756,49 @@ private:
         return y;
     }
 
+    /** Both cloud filter coefficients, from cloudFilterAmount. The sweep is
+        exponential (a ratio raised to the amount) rather than linear in hertz,
+        because a filter's travel only sounds even when it moves by octaves.
+        Highpass as a DC blocker (Smith's one-pole: R relates to corner as
+        fc ~= (1-R) * sr / 2*pi), lowpass as the usual one-pole. */
+    void updateCloudFilter() noexcept
+    {
+        const float sr = static_cast<float> (sampleRate);
+
+        // Fixed and hidden - the knob does not reach it, see setCloudFilter().
+        const float hpHz = config::kCloudHighpassHz;
+
+        // Geometric from open to closed, so the knob's bottom half is not all
+        // crammed into the last few hundred Hz the way a linear sweep would
+        // leave it.
+        const float lpHz = config::kCloudLowpassHz
+                           * std::pow (config::kCloudLowpassMinHz / config::kCloudLowpassHz, 1.0f - cloudFilterAmount);
+
+        // Clamped: the highpass form above is a forward-Euler approximation
+        // that only holds for a corner well under Nyquist, and a swept one
+        // climbs far closer to it than the fixed 60 Hz ever did.
+        cloudHpCoeff = std::clamp (1.0f - kTwoPi * hpHz / sr, 0.0f, 0.9999f);
+        cloudLpCoeff = std::clamp (1.0f - std::exp (-kTwoPi * lpHz / sr), 0.0f, 1.0f);
+    }
+
     /** One-pole lowpass - the cloud's lowpass, cascaded after the highpass. */
     float cloudLowpass (float x, float& z) const noexcept
     {
         z += cloudLpCoeff * (x - z);
         return z;
+    }
+
+    /** Whether transposing by `semitones` (either sign) lands on a member of
+        `scale`, given `root` (0-11) is the semitone above unison the scale's
+        own tonic sits at - see setScale()'s note on what that does and does
+        not promise without pitch tracking. */
+    static bool isScaleMember (const config::ScaleDegrees& scale, int semitones, int root) noexcept
+    {
+        const int pitchClass = ((semitones - root) % 12 + 12) % 12;
+        for (int d = 0; d < scale.count; ++d)
+            if (scale.degrees[d] == pitchClass)
+                return true;
+        return false;
     }
 
     /** Four-point Hermite read, the same interpolator ModDelayLine uses. Linear
@@ -785,11 +967,22 @@ private:
             ((1.0f - f * f) / (2.0f * k) - 2.0f * f * (1.0f - f) / k + f * f) / std::max (1.0e-6f, (1.0f - f) * (1.0f - f));
         const float envelopeRms = std::sqrt (std::max (1.0e-6f, meanSquare));
 
-        normTarget = tuning.outputTrim * (kEnvelopeReferenceRms / envelopeRms) / std::sqrt (overlap);
+        // Per-grain level jitter (see spawnGrain) scales every grain by a
+        // random 1 - j*u, u uniform in [0,1). That distribution's RMS is
+        // sqrt(E[L^2]) with E[L^2] = 1 - j + j^2/3, divided back out here so
+        // the cloud sits at the same level whatever the jitter is - the same
+        // move as dividing out the envelope's own RMS above.
+        const float j = tuning.grainLevelJitter;
+        const float levelRms = std::sqrt (std::max (1.0e-6f, 1.0f - j + j * j / 3.0f));
+
+        normTarget =
+            tuning.outputTrim * (kEnvelopeReferenceRms / envelopeRms) / (std::sqrt (overlap) * levelRms);
     }
 
     /** Picks a playback rate: one of the three pitch groups in proportion to
-        their weights, an interval from that group's table, plus the detune. */
+        their weights, then (for Low/High) a semitone offset uniformly at
+        random from that direction's scale-quantized candidate table - see
+        setScale(). */
     double pickRate() noexcept
     {
         float semitones = 0.0f;
@@ -799,25 +992,27 @@ private:
         if (total > 0.0f)
         {
             const float pick = nextFloat() * total;
-            const int slot = std::min (3, static_cast<int> (nextFloat() * 4.0f));
 
-            // Four slots per group; the repeats in the table are the weighting.
             if (pick < pitchLow)
             {
-                const float down[] = { tuning.downA, tuning.downB, tuning.downC, tuning.downD };
-                semitones = down[slot];
+                if (downCount > 0)
+                    semitones = downCandidates[static_cast<size_t> (
+                        std::min (downCount - 1, static_cast<int> (nextFloat() * static_cast<float> (downCount))))];
             }
             else if (pick >= pitchLow + pitchUnison)
             {
-                const float up[] = { tuning.upA, tuning.upB, tuning.upC, tuning.upD };
-                semitones = up[slot];
+                // The octave up is where this group lives; the scale is a
+                // colour laid over it, dialled by setScaleBlend(). The octave
+                // is the fallback rather than unison so that closing the blend
+                // (or switching Scale off) still transposes - High reading as
+                // unison was the bug that made the knob inaudible.
+                if (upCount > 0 && nextFloat() < scaleBlend)
+                    semitones = upCandidates[static_cast<size_t> (
+                        std::min (upCount - 1, static_cast<int> (nextFloat() * static_cast<float> (upCount))))];
+                else
+                    semitones = 12.0f;
             }
         }
-
-        // Detune: a random whole-and-fractional semitone either way, added
-        // straight onto the interval already picked above - a fifth from the
-        // pitch table plus a detuned fifth is exactly what it sounds like.
-        semitones += nextBipolar() * detuneSemitones;
 
         // Mod's drift: sampled from the shared slow phase, not this grain's
         // own RNG, so every grain spawned near the same point in the cycle
@@ -887,7 +1082,7 @@ private:
 
         double position = 0.0;
 
-        if (frozen && ! capturing)
+        if (frozen && ! capturing && ! barLocked)
         {
             // Scan position, scattered a little either side.
             const double jitter =
@@ -916,26 +1111,67 @@ private:
 
             int offset = timeOffsetSamples;
 
-            const int spread = static_cast<int> (scatter * static_cast<float> (timeOffsetSamples) * 0.5f);
-            if (spread > 0)
-                offset += static_cast<int> (nextBipolar() * static_cast<float> (spread));
-
-            // Most grains come from the last attack, if there was one recently
-            // enough that the note is still ringing. That is what keeps the
-            // cloud sounding like the note that was struck rather than like its
-            // sustain - but it lapses after attackReachSeconds (Window) so a
-            // long silence really does fall silent.
-            const int attackReach = static_cast<int> (attackReachSeconds * static_cast<float> (sampleRate));
-
-            if (attackIndex >= 0 && sinceAttack <= attackReach && sinceAttack <= maxOffset
-                && nextFloat() < tuning.attackShare)
+            if (barLocked)
             {
-                const int jitterSamples = static_cast<int> (config::kAttackJitterMs * 0.001f * static_cast<float> (sampleRate));
-                const int wanted =
-                    sinceAttack + (jitterSamples > 0 ? static_cast<int> (nextFloat() * static_cast<float> (jitterSamples)) : 0);
+                // Grid, frozen: counted back to this bar's line, then forward
+                // by the sixteenth Scatter picks. A slice still in the future
+                // clamps to minOffset below, which reads it live.
+                const float choices = scatter * static_cast<float> (config::kGridMaxSlices) + 1.0f;
+                const int slice = std::min (config::kGridMaxSlices, static_cast<int> (nextFloat() * choices));
+                const double back = samplesIntoBar - static_cast<double> (slice) * samplesPerSixteenth;
 
-                if (wanted >= minOffset && wanted <= maxOffset)
-                    offset = wanted;
+                offset = static_cast<int> (std::lround (std::clamp (back, -1.0, static_cast<double> (size))));
+            }
+            else
+            {
+                const int spread = static_cast<int> (scatter * static_cast<float> (timeOffsetSamples) * 0.5f);
+
+                if (liveGrid)
+                {
+                    // Grid, live: the tap and its scatter both in whole
+                    // sixteenths, and never less than one. The attack grains
+                    // below keep their own timing on purpose.
+                    const double step = samplesPerSixteenth;
+                    double tap = std::max (1.0, std::round (static_cast<double> (timeOffsetSamples) / step));
+                    if (spread > 0)
+                        tap = std::max (1.0, tap + std::round (nextBipolar() * static_cast<double> (spread) / step));
+
+                    offset = static_cast<int> (std::lround (std::min (tap * step, static_cast<double> (size))));
+                }
+                else if (spread > 0)
+                {
+                    offset += static_cast<int> (nextBipolar() * static_cast<float> (spread));
+                }
+
+                // Most grains come from the last attack, if there was one recently
+                // enough that the note is still ringing. That is what keeps the
+                // cloud sounding like the note that was struck rather than like its
+                // sustain - but it lapses after attackReachSeconds (Window) so a
+                // long silence really does fall silent.
+                const int attackReach = static_cast<int> (attackReachSeconds * static_cast<float> (sampleRate));
+
+                if (attackIndex >= 0 && sinceAttack <= attackReach && sinceAttack <= maxOffset
+                    && nextFloat() < tuning.attackShare)
+                {
+                    // The attack is the anchor; Scatter says how far past it into
+                    // the note this particular grain starts. Without a spread here
+                    // every attack grain starts on the very same sample, because
+                    // sinceAttack advances in lockstep with the write head - see
+                    // GrainerConfig.h's note on this window for why that is the
+                    // difference between a cloud and a stutter.
+                    const float windowMs = config::kAttackJitterMs + scatter * config::kAttackSpreadMs;
+                    const int windowSamples = static_cast<int> (windowMs * 0.001f * static_cast<float> (sampleRate));
+                    const int preRoll = static_cast<int> (config::kAttackPreRollMs * 0.001f * static_cast<float> (sampleRate));
+
+                    // Subtracting walks *forward* into the note: offset counts back
+                    // from the write head, so a smaller one is later audio.
+                    const int into =
+                        windowSamples > 0 ? static_cast<int> (nextFloat() * static_cast<float> (windowSamples)) : 0;
+                    const int wanted = sinceAttack + preRoll - into;
+
+                    if (wanted >= minOffset && wanted <= maxOffset)
+                        offset = wanted;
+                }
             }
 
             offset = std::clamp (offset, minOffset, maxOffset);
@@ -961,8 +1197,15 @@ private:
         slot->attackSamples = attackSamples;
         slot->decayEnv = 1.0f;
         slot->decayMul = std::exp (-curDecayShape / static_cast<float> (std::max (1, length - attackSamples)));
-        slot->gainL = std::cos (angle);
-        slot->gainR = std::sin (angle);
+        // Per-grain level, folded into the pan gains rather than carried as a
+        // field of its own. Downward only, so the loudest grain is no louder
+        // than it was before this existed; updateDerived() divides the
+        // distribution's own RMS back out, so dialling it in does not quieten
+        // the cloud.
+        const float level = 1.0f - tuning.grainLevelJitter * nextFloat();
+
+        slot->gainL = std::cos (angle) * level;
+        slot->gainR = std::sin (angle) * level;
         slot->active = true;
 
         // Fresh hold state, so a reused slot's Bit crush starts from this
@@ -1005,7 +1248,19 @@ private:
     float scatter = config::kDefaultScatterPct * 0.01f;
     float reverse = config::kDefaultReversePct * 0.01f;
     float stereo = config::kDefaultStereoPct * 0.01f;
-    float detuneSemitones = config::kDefaultDetuneSemitones;
+
+    // Scale candidate tables - see setScale(). Sentinels of -1 so the first
+    // call (made from prepare()) always populates them.
+    std::array<float, kMaxScaleCandidates> upCandidates {};
+    std::array<float, kMaxScaleCandidates> downCandidates {};
+    int upCount = 0;
+    int downCount = 0;
+    int currentScaleIndex = -1;
+    int currentRootSemitone = -1;
+
+    // Pitch Mix - see setScaleBlend(). 0 is the plain octave, which is what an
+    // engine driven without ever calling it should sound like.
+    float scaleBlend = 0.0f;
 
     // Mod: the shared drift phase every spawning grain samples its pitch
     // bend from - see setMod()/pickRate().
@@ -1023,6 +1278,13 @@ private:
 
     bool frozen = false;
     bool capturing = false;
+
+    // Grid, from the last process() call's Transport, and where the grain
+    // about to spawn sits in its bar - see GrainerConfig.h's GRID.
+    bool barLocked = false;
+    bool liveGrid = false;
+    double samplesIntoBar = 0.0;
+    double samplesPerSixteenth = 1.0;
     int captureRemaining = 0;
     int pendingCaptureLen = 0;
 
@@ -1049,6 +1311,11 @@ private:
     // everything else.
     float cloudHpCoeff = 0.0f;
     float cloudLpCoeff = 0.0f;
+    // The Filter knob, 0..1. Open rather than closed, so an engine nobody has
+    // called setCloudFilter() on sounds like one with the knob where it rests
+    // - under the old bipolar meaning 0 was the resting pair, but here it is
+    // the shut end of the sweep.
+    float cloudFilterAmount = 1.0f;
     float cloudHpX1L = 0.0f, cloudHpY1L = 0.0f;
     float cloudHpX1R = 0.0f, cloudHpY1R = 0.0f;
     float cloudLpZL = 0.0f, cloudLpZR = 0.0f;

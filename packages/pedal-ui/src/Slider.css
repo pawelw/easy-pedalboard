@@ -224,8 +224,13 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--pui-ink-soft);
-  /* Fixed, so "In" and "Out" stacked above each other line their tracks up
-     rather than each starting wherever its own word ends. */
+}
+
+/* Fixed, so "In" and "Out" stacked above each other line their tracks up
+   rather than each starting wherever its own word ends - a vertical fader has
+   no such neighbour to line up with, and the fixed width there just wrapped a
+   longer word (e.g. "Grains") instead of centering it over the track. */
+.pui-fader--horizontal .pui-fader__label {
   width: 20px;
   flex: none;
 }
@@ -236,13 +241,22 @@
   font-size: 9px;
   letter-spacing: 0.04em;
   color: var(--pui-ink-dim);
-  /* Right-aligned in a fixed column: the text is "+3.5 dB" one moment and
-     "-12.0 dB" the next, and a value that re-centres itself on every drag step
-     drags the whole header about with it. */
-  width: 46px;
-  text-align: right;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+
+/* Right-aligned in a fixed column: the text is "+3.5 dB" one moment and
+   "-12.0 dB" the next, and a value that re-centres itself on every drag step
+   drags the whole header about with it. */
+.pui-fader--horizontal .pui-fader__value {
+  width: 46px;
+  text-align: right;
+}
+
+/* A vertical fader has no header row to drag about - centred under its own
+   track, the same stability the fixed width above gives the horizontal one. */
+.pui-fader:not(.pui-fader--horizontal) .pui-fader__value {
+  text-align: center;
 }
 
 .pui-fader__caption {

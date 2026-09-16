@@ -10,6 +10,7 @@
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/PeakLimiter.h"
 #include "ee/dsp/TapeDelay.h"
+#include "ee/dsp/TubeDrive.h"
 #include "ee/plugin/PresetStore.h"
 
 #if EE_HAS_FACTORY_PRESETS
@@ -144,6 +145,11 @@ private:
     ee::dsp::TapeDelay delay;
     ee::dsp::FdnReverb reverb;
 
+    /** Amp's own single-knob drive stage (see ee/dsp/TubeDrive.h), run on the
+        grain cloud alone - same insertion point as the cloud Filter, right
+        after grainer.process() and before the Dry/Grains blend. */
+    ee::dsp::TubeDrive driveStage;
+
     // 0..1 knobs whose Sync switch reinterprets them; built from GrainerConfig.
     ee::dsp::GrainSyncMap sizeMap;
     ee::dsp::GrainSyncMap densityMap;
@@ -160,16 +166,19 @@ private:
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* stretchParam = nullptr;
     std::atomic<float>* freezeParam = nullptr;
+    std::atomic<float>* gridParam = nullptr; // grid: grain read points on sixteenths (bar capture when frozen)
     std::atomic<float>* shapeParam = nullptr;
     std::atomic<float>* scatterParam = nullptr;
     std::atomic<float>* reverseParam = nullptr;
     std::atomic<float>* stereoParam = nullptr;
     std::atomic<float>* modParam = nullptr;
     std::atomic<float>* bitParam = nullptr;
-    std::atomic<float>* detuneParam = nullptr;
+    std::atomic<float>* scaleParam = nullptr;
+    std::atomic<float>* rootParam = nullptr;
     std::atomic<float>* pitchLowParam = nullptr;
     std::atomic<float>* pitchUnisonParam = nullptr;
     std::atomic<float>* pitchHighParam = nullptr;
+    std::atomic<float>* pitchMixParam = nullptr;
     std::atomic<float>* leftTimeParam = nullptr;
     std::atomic<float>* rightTimeParam = nullptr;
     std::atomic<float>* delayLinkParam = nullptr;
@@ -180,13 +189,19 @@ private:
     std::atomic<float>* decayParam = nullptr;
     std::atomic<float>* reverbLoCutParam = nullptr;
     std::atomic<float>* reverbMixParam = nullptr;
-    std::atomic<float>* mixParam = nullptr;
+    std::atomic<float>* reverbSourceParam = nullptr; // rvsrc: Whole (post-delay blend) vs Grains only
+    std::atomic<float>* dryLevelParam = nullptr;
+    std::atomic<float>* grainLevelParam = nullptr;
+    std::atomic<float>* mixLinkParam = nullptr; // mlink: locks the two mixer faders together
+    std::atomic<float>* filterParam = nullptr;  // bipolar: -100 sweeps the cloud LP down, +100 the HP up
+    std::atomic<float>* driveParam = nullptr;   // grain-cloud-only tube drive, same engine as Artifact's amp.drive
     std::atomic<float>* onParam = nullptr;
 
     // One enable switch per face module: off forces that section's controls to
     // their no-op values in processBlock, leaving the knobs where they are.
     std::atomic<float>* grainOnParam = nullptr;
     std::atomic<float>* pitchOnParam = nullptr;
+    std::atomic<float>* scaleOnParam = nullptr; // scaleon: the Scale block's switch, == Scale Mix at 0
     std::atomic<float>* randomOnParam = nullptr;
     std::atomic<float>* delayOnParam = nullptr;
     std::atomic<float>* reverbOnParam = nullptr;

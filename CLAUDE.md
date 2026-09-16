@@ -299,7 +299,7 @@ preset store, and it is meant to be adopted by every pedal. Two banks:
   per-pedal to register: drop a file in the folder and the next build ships it
   (the glob is `CONFIGURE_DEPENDS`). Read-only at runtime, by design.
 - **User** - one XML file per preset under
-  `~/Library/Application Support/Peak/<Product>/Presets`.
+  `~/Library/Peak/<Product>/Presets` (JUCE's `userApplicationDataDirectory` is `~/Library` on macOS, not Application Support).
 
 **A factory preset's category is the prefix in its filename.** `Modulated -
 Deep Wow.xml` is filed under a "Modulated" column in the picker and shown there

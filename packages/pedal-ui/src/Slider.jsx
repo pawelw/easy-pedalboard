@@ -66,18 +66,21 @@ export default function Slider({
   step = 0.01,
   centreValue = 0.5,
   onReset,
+  thumbSize,
 }) {
   const [dragging, setDragging] = useState(false);
   const trackRef = useRef(null);
   const dragStartRef = useRef(null);
 
   const horizontal = orientation === "horizontal";
-  const thumbLong = compact ? COMPACT_THUMB_LONG : THUMB_LONG;
-  const thumbShort = compact ? COMPACT_THUMB_SHORT : THUMB_SHORT;
+  const thumbLong = compact ? (thumbSize ?? COMPACT_THUMB_LONG) : THUMB_LONG;
+  // Track stays 5px wider than the grip, same margin the default compact
+  // size keeps (18 - 13), so a bigger grip still has room to press around it.
+  const thumbShort = compact ? (thumbSize ? thumbSize + 5 : COMPACT_THUMB_SHORT) : THUMB_SHORT;
 
   // Across the travel: the full-size cap spans the track, the compact grip is
   // a circle and so is as wide as it is long.
-  const thumbCross = compact ? COMPACT_THUMB_LONG : THUMB_SHORT;
+  const thumbCross = compact ? (thumbSize ?? COMPACT_THUMB_LONG) : THUMB_SHORT;
   const travel = length - thumbLong;
 
   // onChange/onDragEnd are fresh closures every render, so the drag-tracking

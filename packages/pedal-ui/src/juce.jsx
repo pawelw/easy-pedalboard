@@ -229,7 +229,7 @@ export function JuceMacroKnob({
     `length` is the track's own length. It is a property of the header the
     fader sits in, not of the fader: a 528px pedal card has room for 64px of
     travel beside its preset bar, and a 966px host panel has room for 104. */
-export function JuceFader({ parameterId, label, resetTo = 0, length = 64 }) {
+export function JuceFader({ parameterId, label, resetTo = 0, length = 64, orientation = "horizontal", thumbSize }) {
   const id = useParamId(parameterId);
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const valueLabel = useFormattedText(id, value);
@@ -251,7 +251,7 @@ export function JuceFader({ parameterId, label, resetTo = 0, length = 64 }) {
     <Slider
       compact
       fine
-      orientation="horizontal"
+      orientation={orientation}
       length={length}
       label={label}
       value={value}
@@ -260,6 +260,7 @@ export function JuceFader({ parameterId, label, resetTo = 0, length = 64 }) {
       onReset={reset}
       onDragStart={() => sliderState.sliderDragStarted()}
       onDragEnd={() => sliderState.sliderDragEnded()}
+      thumbSize={thumbSize}
     />
   );
 }
@@ -401,10 +402,15 @@ export function useJuceChoiceValue(parameterId, count, defaultIndex = 0) {
     reads as "nothing switched on" and the two that rewire it announce
     themselves. `labels` is in the parameter's own index order - see
     JuceStageRouter, which passes its two the same way. */
-export function JuceChoicePill({ parameterId, labels }) {
+export function JuceChoicePill({ parameterId, labels, className }) {
   const [index, select] = useJuceChoiceValue(parameterId, labels.length);
 
-  return <Pill label={labels[index] ?? labels[0]} pressed={index > 0} onClick={() => select(index + 1)} />;
+  // Never drawn pressed: this is a value, not a state. The label already says
+  // which one it is ("Wide", "Grains", "Penta Min"), so lighting it up on
+  // anything past the first entry only says "not the default", which is not a
+  // thing the face has any reason to shout about - and it reads as an on/off
+  // that has been switched on.
+  return <Pill label={labels[index] ?? labels[0]} pressed={false} onClick={() => select(index + 1)} className={className} />;
 }
 
 /** One knob in a footer stage, bound to a WebSliderRelay by parameter id -

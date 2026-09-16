@@ -78,6 +78,7 @@
 .pg-header__live {
   display: flex;
   align-items: center;
+  gap: 8px;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -136,17 +137,115 @@
   overflow: hidden;
 }
 
+/* The plate is now two things side by side: everything that was here before,
+   and the mixer as a full-height column down its right edge. The mixer spans
+   both rows, so it cannot live in either grid - hence the split. */
+.pg-plate {
+  display: flex;
+  align-items: stretch;
+}
+
+.pg-plate__main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+/* Inside the grid rows (.pg-row) a vdivider gets its width from the grid's own
+   "1px" column track; here, between .pg-plate__main and the mixer, .pg-plate
+   is a plain flex row instead, so the same empty div has no width to fill and
+   was rendering invisibly. 3px rather than the row dividers' 1px - this one
+   separates the whole mixer column, not two knobs in the same section. */
+.pg-plate > .pg-vdivider {
+  width: 3px;
+  flex: none;
+}
+
 .pg-row {
   display: grid;
   grid-template-columns: 1fr 1px 1fr 1px 1fr;
+}
+
+/* ---------------------------------------------------------------- mixer */
+
+.pg-section--mixer {
+  width: 136px;
+  flex: none;
+  justify-content: flex-start;
+}
+
+/* The two faders with the link between them, all three centred on one row so
+   the button sits level with the middle of their travel. */
+.pg-mixer__faders {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 0 2px;
+}
+
+/* Fixed and equal, wide enough for "Grains" - Dry's own track is narrower
+   than its label, Grains' is narrower still relative to its longer label, so
+   left to auto-size the two boxes came out different widths and the link
+   button (centred between the *boxes*) sat visibly closer to Dry's track
+   than Grains' - both tracks need the same offset from their own label's
+   edge for the button to land equidistant from both. */
+.pg-mixer__faders .pui-fader {
+  width: 40px;
+}
+
+.pg-mixer__link {
+  display: flex;
+  align-items: center;
+  flex: none;
+}
+
+/* Same rounded-square chrome button as Delay's own link pill
+   (.pg-delay__link .pui-pill) - two link buttons on one face read as one
+   control, not two different ones. */
+.pg-mixer__link .pui-pill {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border-radius: 6px;
+  background: var(--pui-chrome);
+  color: var(--pui-chrome-ink);
+  justify-content: center;
+}
+
+.pg-mixer__filter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* Base 7px plus 16px extra now that the curve sits above the knob rather
+     than below it - the two read as too close together otherwise. */
+  gap: 23px;
+  margin-top: auto;
+  padding-top: 10px;
+}
+
+/* The response scope above the Filter knob, in place of the printed value.
+   Same recess as .pg-section__display above - it is the same kind of object,
+   one row down and a little shorter. */
+.pg-filter-curve {
+  box-sizing: border-box;
+  width: 100%;
+  height: 44px;
+  border-radius: 5px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  border: 1px solid var(--pui-module-edge);
+  overflow: hidden;
 }
 
 .pg-vdivider {
   background: var(--pui-module-divider);
 }
 
+/* 3px rather than the row's own 1px vdividers - this one separates the two
+   whole rows (Grain/Pitch/Random above Delay/Reverb), not two knobs in the
+   same row. */
 .pg-hdivider {
-  height: 1px;
+  height: 3px;
   background: var(--pui-module-divider);
 }
 
@@ -173,13 +272,28 @@
   margin-top: 10px;
 }
 
+/* SYNC, moved out of the header and centred under both knob rows - Grain
+   carries no other header-right control now that it has moved. Nudged past
+   the base .pg-section gap so it doesn't crowd the Bit/Shape row above it. */
+.pg-grain__foot {
+  display: flex;
+  justify-content: center;
+  margin-top: 6px;
+}
+
+/* Row 1 (Grain/Pitch/Random) sits right under .pg-plate's own top edge, which
+   carries this same hairline as part of --pui-module-shadow's inset - row 2
+   is past the .pg-hdivider below it and out from under that, so Delay/Reverb
+   need their own copy to read as the same kind of panel. */
 .pg-section--delay {
   grid-column: 1 / span 3;
   padding: 12px 14px 14px;
+  box-shadow: inset 0 1px 0 0 #ffffff14;
 }
 
 .pg-section--reverb {
   grid-column: 5;
+  box-shadow: inset 0 1px 0 0 #ffffff14;
 }
 
 /* One pixel smaller than every other section's knob caption - Reverb's own
@@ -221,15 +335,25 @@
   min-width: 138px;
 }
 
-/* A switched-off section (Delay/Reverb only) dims its body to 0.42 over
-   140ms and keeps the power toggle and name lit - ModulePanel.css's own
-   language for "this is not running", reproduced here since 1c is one plate
-   rather than five ModulePanels. */
+/* A switched-off section (Delay/Reverb here, Scale below) dims to 0.42 over
+   140ms - ModulePanel.css's own language for "this is not running",
+   reproduced here since 1c is one plate rather than five ModulePanels. The
+   head dims with the body rather than staying lit: the power toggle and the
+   title are the section, so a half-lit head reads as a section that is only
+   partly off. Opacity does not touch hit testing, so the toggle stays as
+   clickable as it was - which is the whole reason it can be dimmed. */
+.pg-section__head,
+.pg-section__display,
+.pg-section__knobs,
+.pg-delay__body {
+  transition: opacity 140ms ease;
+}
+
+.pg-section[data-off] .pg-section__head,
 .pg-section[data-off] .pg-section__display,
 .pg-section[data-off] .pg-section__knobs,
 .pg-section[data-off] .pg-delay__body {
   opacity: 0.42;
-  transition: opacity 140ms ease;
 }
 
 .pg-section__display {
@@ -253,21 +377,135 @@
   gap: 4px;
 }
 
-.pg-section--pitch .pg-section__knobs,
 .pg-section--random .pg-section__knobs {
   gap: 8px;
 }
 
 /* space-around spreads 3 knobs to the card's edges much harder than it does
    2 (more items means less free space left per edge), so Grain's rows sat
-   noticeably wider than Pitch/Random's - centered as a group either way, but
-   not reading as the same width of "centred" next to them. A fixed gap and
-   justify-content:center groups the 3 knobs at roughly Pitch/Random's own
-   edge margin instead of the leftover-space one. */
-.pg-section--grain .pg-section__knobs {
+   noticeably wider than Random's (still 2 per row) - centered as a group
+   either way, but not reading as the same width of "centred" next to them.
+   A fixed gap and justify-content:center groups the 3 knobs at roughly
+   Random's own edge margin instead of the leftover-space one. Pitch moved
+   from a 2+2 grid to one row of 3 (Low/Unison/High, once Detune's slot went
+   to the Scale/Root pills in the header) and needs the same fix for the
+   same reason. */
+/* Reverb/Grain-sized (30px) now, not Random's 38px - same caption-size
+   drop as .pg-section--reverb/.pg-section--grain above, for the same
+   reason: two different sizes reading as one family. */
+.pg-section--pitch .pui-knob__caption {
+  font-size: 9px;
+}
+
+/* Grain/Pitch/Random's own titles, in Mixer's neutral #c9cede rather than
+   their own accent - the accent still colours each section's display, knob
+   ticks and dividers, just not this text. */
+.pg-section--grain .pg-section__name,
+.pg-section--pitch .pg-section__name,
+.pg-section--random .pg-section__name {
+  color: #c9cede;
+}
+
+.pg-section--grain .pg-section__knobs,
+.pg-section--pitch .pg-section__knobs {
   justify-content: center;
   gap: 13px;
 }
+
+/* Root/Scale pills, moved out of the header and under the knobs - left
+   aligned rather than the header row's own centered-in-remaining-space. Sits
+   right under Low/Unison/High now (the base .pg-section gap) rather than
+   pushed down to Grain's own second knob row: that slot now belongs to the
+   Mix knob below, which needed the room this freed up. */
+/* Root/Scale/Scale Mix are a different kind of control from the three weights
+   above them - they say *which notes* the High group may take, not how often
+   it fires - so they get a rule across the section and a block of their own. */
+.pg-pitch__divider {
+  height: 1px;
+  background: var(--pui-module-divider);
+  /* Bleeds past .pg-section's own 10px side padding, so it reads as a rule
+     across the card rather than a line floating inside it. */
+  margin: 2px -10px 4px;
+}
+
+/* The Scale block's own header: switch and title hard left, the same shape as
+   a section head one level down. It carries its own data-off rather than
+   sitting inside .pg-pitch__scale below, because it has to dim on the same
+   140ms as that block without inheriting its layout. */
+.pg-pitch__scale-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 18px;
+  transition: opacity 140ms ease;
+}
+
+/* Switch and title fade with the block they switch - the same statement
+   Delay's and Reverb's heads make above, and for the same reason. */
+.pg-pitch__scale-head[data-off] {
+  opacity: 0.42;
+}
+
+.pg-pitch__scale-name {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  /* Same reasoning as .pg-section--pitch .pg-section__name above - Mixer's
+     neutral tone, not the Pitch accent. */
+  color: #c9cede;
+}
+
+/* The power toggle's ring/wash/glyph all follow currentColor (PowerToggle.css)
+   off --pui-accent - same neutral tone as the title beside it, not the pink
+   Pitch accent, while switched on. */
+.pg-pitch__scale-head .pui-power {
+  color: #c9cede;
+}
+
+/* The pills stacked as one block, with Mix centred against the pair of them
+   on their right. */
+.pg-pitch__scale {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+.pg-pitch__scale[data-off] {
+  opacity: 0.42;
+  transition: opacity 140ms ease;
+}
+
+.pg-pitch__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+}
+
+/* A size up from the shared Pill default (padding 6px 10px, 9px label) -
+   these read the same family as the knob captions beside them, which are
+   already at that smaller size, so the pills need their own bump to not
+   look undersized next to Grain/Random's knobs. */
+.pg-pitch__foot .pui-button.pui-pill {
+  padding: 8px 13px;
+}
+
+.pg-pitch__foot .pui-button.pui-pill .pui-button__label {
+  font-size: 10px;
+}
+
+/* Fixed (not min-) width so cycling a pill never resizes it and shoves its
+   neighbour. Both take the wider one's label ("Chromatic"): stacked one above
+   the other they have to share an edge to read as a single block, which a
+   42px "C" sitting over a 94px "Chromatic" does not. */
+.pg-pitch__root-pill,
+.pg-pitch__scale-pill {
+  width: 94px;
+}
+
 
 /* --------------------------------------------------------------- delay */
 

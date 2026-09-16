@@ -214,7 +214,7 @@ draw, and nothing is drawn.
 The preset bar in the header browses two banks. The **factory** presets are
 compiled into the plugin and are the same on every machine; **User Presets** is
 the cascade at the top of the list, and holds whatever you have saved yourself,
-in `~/Library/Application Support/Peak/Peak Delay/Presets`. The arrows step
+in `~/Library/Peak/Peak Delay/Presets`. The arrows step
 through both as one list, factory first.
 
 The save button opens a box to name the preset. Saving always writes to your own
@@ -695,25 +695,29 @@ Reverb and Mix bare underneath.
 
 | Knob        | Range          | What it does                                                              |
 | ----------- | -------------- | ------------------------------------------------------------------------ |
-| **Size**    | 20 - 500 ms    | Grain length. Under ~40 ms the fragments stop being recognisable and turn into a metallic buzz at the spawn rate; over ~300 ms you hear whole notes come back |
+| **Size**    | 20 ms - 1.00 s | Grain length. Under ~40 ms the fragments stop being recognisable and turn into a metallic buzz at the spawn rate; over ~300 ms you hear whole notes come back. Synced, the readout is clamped to the length the engine will actually apply, since a tempo division can be longer than the knob's own ceiling |
 | **Density** | 1 - 40 /s      | Grains spawned per second. Sparse and countable at the bottom, a continuous cloud at the top. It is not a volume knob - the engine divides out the overlap |
 | **Shape**   | 0 - 100 %      | Grain envelope lean: `0` soft, a long fade-in with the energy spread the whole grain; `100` plucky, a click of an attack with the energy up front. The engine divides the envelope's own energy back out, so this does not double as a volume knob |
 
-**Pitch** - weights against each other, not positions on a scale:
+**Pitch** - Low/Unison/High are weights against each other, not positions on a
+scale; the Scale block underneath colours which notes High lands on, and
+nothing else:
 
 | Knob         | What it does                                                          |
 | ------------ | --------------------------------------------------------------------- |
-| **Low**      | How often a grain lands an octave down (a fourth down in one slot)    |
+| **Low**      | How often a grain drops a whole octave. Octaves only, whatever the scale says - an octave is consonant against anything, so the bottom of the cloud adds weight without ever landing on a wrong note |
 | **Unison**   | How often it plays at pitch                                           |
-| **High**     | How often it lands an octave up (a fifth up in one slot)             |
-| **Detune**   | Random detune on every grain, 0 - 100 ct either way. **Off by default**: above zero every grain plays slightly differently, which reads as an unstable cloud rather than as the note that was played |
+| **High**     | How often it jumps into the octave above. A plain octave up on its own; the Scale block below is what turns some of those grains into other notes from up there |
+| **Scale**    | Major, Minor, Pentatonic Major, Pentatonic Minor or Chromatic. Which notes the High group can land on, with its own on/off switch. Low ignores it - an octave is an octave |
+| **Mix**      | How much of that scale High takes. `0`, or the Scale switch off, is a plain octave for every up-grain; `100` draws each one from the scale. It colours High's interval and never its weight, so High stays exactly as loud as it was dialled either way |
+| **Root**     | The key the source material is in (C through B). Peak Grain has no idea what note you are actually playing - there is no pitch tracking - so Root is a best-effort assumption, not a detected one: it tells the engine which note to treat as the scale's tonic, dialled in by ear until the cloud sits in tune with what you are playing |
 
 Any two of Low/Unison/High at once is a chord rather than a transposition, which
 is the whole reason they are separate knobs. All three at zero is treated as
-unison, so a face with no pitch dialled in still makes a sound. Mostly octaves,
-with a fifth up and a fourth down baked into one table slot each; the tables in
-`GrainerTuning.h` will take anything you want, but stray far from those and the
-cloud stops sounding like the note that was played.
+unison, so a face with no pitch dialled in still makes a sound. Chromatic
+(every semitone of the octave above) is the loosest; the other four scales are
+progressively more consonant, at the cost of fewer notes for High to pick
+from.
 
 **Random**:
 
@@ -723,10 +727,26 @@ cloud stops sounding like the note that was played.
 | **Scatter**  | 0 - 100 %      | One knob over all the timing randomness: how much the gap between grains wanders, and how much each grain's length strays from Size. `0` is a metronome spraying identical grains; wound up the cloud stops repeating |
 | **Stereo**   | 0 - 100 %      | Width of the random pan placement. `0` centres every grain, `100` throws them hard left and right. Equal-power, so the middle does not dip |
 
-| Knob        | Range          | What it does                                                              |
-| ----------- | -------------- | ------------------------------------------------------------------------ |
-| **Reverb**  | 0 - 100 %      | One knob for the plate behind the cloud: it opens the mix and lengthens the decay together. The decay comes in over the top half of the travel, so the bottom half is a short room getting louder |
-| **Mix**     | 0 - 100 %      | Blend of dry signal and the whole wet path, tail included                |
+**Reverb** - a plate behind the cloud, plus a button (top right of the
+section) for what feeds it:
+
+| Knob          | Range          | What it does                                                              |
+| ------------- | -------------- | -------------------------------------------------------------------------- |
+| **Mix**       | 0 - 100 %      | Its own dry/wet, independent of the pedal's own Mix below                  |
+| **Decay**     | seconds        | How long the tail rings                                                    |
+| **Low Cut**   | Hz             | Keeps the tail from turning to mud under a dense cloud                     |
+| **Source**    | Whole / Grains | **Whole** (default) sends the reverb everything built up so far - dry/grain blend, then the delay repeats. **Grains** sends it the grain cloud straight off the granular engine instead, skipping the dry blend and the delay entirely - a tail that only ever hears grains, whatever Mix and Delay are doing |
+
+**Mixer** - down the right-hand edge. The dry path and the cloud as two
+independent levels rather than one crossfade, plus a knob over the grain
+cloud's own filter:
+
+| Control      | Range          | What it does                                                              |
+| ------------ | -------------- | -------------------------------------------------------------------------- |
+| **Dry**      | -inf - +6 dB   | Level of the untouched input, reading in decibels. Unity sits at 75 % of the travel rather than at the top, so there is somewhere to go when the dry needs lifting; it rests there, passing the input through untouched. Independent of Grains, so "all of both at once" is a position you can reach - which a single Mix crossfade never could |
+| **Grains**   | -inf - +6 dB   | Level of the grain cloud, on the same law. Rests at -3 dB, the level the old 71 % linear fader sat at, so the defaults sound as they always did |
+| **Link**     | on / off       | Locks the two faders together: move either one and the other follows      |
+| **Filter**   | 0 - 100 %      | The cloud's lowpass cutoff, wide open at 100 % (13 kHz) and closing to 320 Hz at 0. One pole, 6 dB/oct - gentle, and with no resonance anywhere in the engine. It filters the grains only; the dry path is never touched. The scope beside the knob draws the actual rolloff rather than printing a value, and there is no resonance bump on it because there is no Q to draw. A highpass still sits under the cloud to keep the grains tight, but it is fixed and hidden - nothing on the face moves it |
 
 **Live** is a granular delay: the input is recorded into a ten-and-a-half second
 circular buffer, and on a jittered timer the engine spawns a **grain** - a
@@ -741,6 +761,22 @@ delay steady, `0` stutters on one moment, backwards scrubs it - all without
 shifting pitch, because each grain still plays at rate 1. A loud enough input
 retriggers: the engine grabs a fresh `Time` window and re-freezes, so the loop
 starts again on the new sound.
+
+**Grid** beside Live/Freeze keeps where grains read from on sixteenth notes
+while the host transport is rolling. It does nothing when the transport is stopped.
+
+- **Frozen**, it locks the capture to the bar. Every bar line takes a new
+  capture, and every grain for the rest of the bar replays a sixteenth-note
+  slice counted from that downbeat. A loud note in the middle of the bar changes
+  nothing. With Density synced to 1/16 this is a beat-repeat of each bar's
+  downbeat. **Scatter** picks the slice: at `0` every grain plays the downbeat,
+  and turned up, grains draw from the first few sixteenths (at the default 25 %
+  it is an even split between the downbeat and the one after it). Time, Window
+  and Stretch do not apply.
+- **Live**, it makes a rhythmic granular delay. The Time tap is rounded to whole
+  sixteenths (never less than one) and Scatter moves it by whole sixteenths, so
+  every fragment starts on a beat of what you played. Grains drawn from a
+  detected attack keep their own timing, so the pick and your feel survive.
 
 Live, most grains are the **attack**. A plucked string is mostly its first fifty
 milliseconds, and a cloud built from the sustain alone loses whatever made the

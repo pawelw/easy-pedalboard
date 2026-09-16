@@ -9,8 +9,9 @@ namespace ee::dsp
     tapped from (Time), how much comes back round (Feedback), how the read head
     scans a frozen buffer (Stretch), how the grain envelope leans (Shape) and
     how ragged the timing is (Scatter). These say the rest: how the Scatter and
-    Shape knobs map onto the engine, which intervals the pitched grains snap to,
-    and the two reverb fields that are not on the face.
+    Shape knobs map onto the engine, and the two reverb fields that are not on
+    the face. Which intervals the pitched grains snap to is Scale/Root now (a
+    face control, not tuning) - see GrainerConfig.h's SCALE section.
 
     Kept as a struct rather than constants so the development tuning panel can
     drive them live, and so the whole voicing can be read at a glance. The
@@ -37,6 +38,15 @@ struct GrainerTuning
     // identifiable.
     float attackShare = 0.70f;
 
+    // How much each grain's level varies, as a downward fraction of unity: a
+    // grain is scaled by 1 - grainLevelJitter * random(0..1). Every grain
+    // arriving at exactly the same loudness is a large part of why a cloud can
+    // sound sequenced rather than alive - real ones breathe. Downward only, so
+    // the loudest grain is no louder than it would have been; the output trim
+    // divides this distribution's own RMS back out (see Grainer's
+    // updateDerived), so this changes texture rather than level.
+    float grainLevelJitter = 0.35f;
+
     // The two ends the Shape knob morphs the grain envelope between. A
     // symmetric window - a Hann, say - fades a grain in over its whole first
     // half, which throws away the transient and leaves a swell: a plucked
@@ -61,24 +71,6 @@ struct GrainerTuning
     // the dry signal.
     float outputTrim = 1.4f;
 
-    // The intervals the Low and High pitch groups draw from, in semitones -
-    // four slots each, and the repeats are the weighting. Mostly octaves, with
-    // a fifth up / a fourth down in one slot each so a cloud with Low or High
-    // dialled in leans consonant rather than landing on a wrong note. Put a 24
-    // or a 0 in a slot from the tuning panel to change the spread.
-    //
-    // Anything beyond about +/- 19 semitones is clamped by the engine: a grain
-    // faster than that would span more source than the buffer guarantees.
-    float upA = 12.0f;
-    float upB = 12.0f;
-    float upC = 7.0f;
-    float upD = 12.0f;
-
-    float downA = -12.0f;
-    float downB = -12.0f;
-    float downC = -5.0f;
-    float downD = -12.0f;
-
     // The reverb behind the cloud. Peak Grain runs FdnReverb plain, with only
     // its mix and decay on the face; these two are the rest of its voicing.
     // Low resonance is the smeared, plate-like end, which suits a dense cloud;
@@ -102,6 +94,7 @@ inline constexpr GrainerTuningEntry kGrainerTuningEntries[] = {
     { "scatterMaxJitter",   &GrainerTuning::scatterMaxJitter,    0.0f,     1.0f,  3 },
     { "scatterSizeJitter",  &GrainerTuning::scatterSizeJitter,   0.0f,     1.0f,  3 },
     { "attackShare",        &GrainerTuning::attackShare,         0.0f,     1.0f,  3 },
+    { "grainLevelJitter",   &GrainerTuning::grainLevelJitter,    0.0f,     1.0f,  3 },
 
     { "shapeAttackMsSoft",  &GrainerTuning::shapeAttackMsSoft,   0.1f,    20.0f,  2 },
     { "shapeAttackMsHard",  &GrainerTuning::shapeAttackMsHard,   0.1f,    20.0f,  2 },
@@ -109,16 +102,6 @@ inline constexpr GrainerTuningEntry kGrainerTuningEntries[] = {
     { "shapeDecayShapeHard", &GrainerTuning::shapeDecayShapeHard, 0.5f,   10.0f,  2 },
 
     { "outputTrim",         &GrainerTuning::outputTrim,          0.0f,     3.0f,  3 },
-
-    { "upA",                &GrainerTuning::upA,               -19.0f,    19.0f,  0 },
-    { "upB",                &GrainerTuning::upB,               -19.0f,    19.0f,  0 },
-    { "upC",                &GrainerTuning::upC,               -19.0f,    19.0f,  0 },
-    { "upD",                &GrainerTuning::upD,               -19.0f,    19.0f,  0 },
-
-    { "downA",              &GrainerTuning::downA,             -19.0f,    19.0f,  0 },
-    { "downB",              &GrainerTuning::downB,             -19.0f,    19.0f,  0 },
-    { "downC",              &GrainerTuning::downC,             -19.0f,    19.0f,  0 },
-    { "downD",              &GrainerTuning::downD,             -19.0f,    19.0f,  0 },
 
     { "verbResonance",      &GrainerTuning::verbResonance,       0.0f,     1.0f,  3 },
     { "verbLowCutHz",       &GrainerTuning::verbLowCutHz,       20.0f,   800.0f,  0 },

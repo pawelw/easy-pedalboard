@@ -8,6 +8,7 @@
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/Lfo.h"
 #include "ee/dsp/TempoDivision.h"
+#include "ee/dsp/TubeDriveConfig.h"
 #include "ee/ui/PedalEditor.h"
 
 #include "BinaryData.h"
@@ -80,7 +81,8 @@ public:
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rtime", 1 }, "Right Time", time01,
                                                                  defaultTime01));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "sync", 1 }, "Sync L/R", true));
-        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "timeunit", 1 }, "Time Unit", false));
+        layout.add (
+            std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "timeunit", 1 }, "Time Unit", false));
 
         for (const auto* id : { "fb", "mix", "mod", "tape" })
             layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -117,9 +119,8 @@ void drawDelayLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Co
     {
         const auto place = juce::AffineTransform::rotation (juce::MathConstants<float>::pi * 0.25f)
                                .translated (centre.x - sign * diagonal, centre.y + sign * diagonal);
-        g.strokePath (capsule, juce::PathStrokeType (stroke, juce::PathStrokeType::curved,
-                                                     juce::PathStrokeType::rounded),
-                      place);
+        g.strokePath (
+            capsule, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded), place);
     }
 }
 
@@ -143,8 +144,8 @@ void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour
     const float stroke = juce::jmax (1.3f, r.getHeight() * 0.12f);
 
     juce::Path ring;
-    ring.addCentredArc (c.x, c.y, radius, radius, 0.0f, juce::degreesToRadians (38.0f),
-                        juce::degreesToRadians (322.0f), true);
+    ring.addCentredArc (c.x, c.y, radius, radius, 0.0f, juce::degreesToRadians (38.0f), juce::degreesToRadians (322.0f),
+                        true);
 
     g.setColour (colour);
     g.strokePath (ring, juce::PathStrokeType (stroke, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
@@ -188,7 +189,8 @@ void drawGrainIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour
 
 void drawTapeIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour)
 {
-    static const juce::Image img = juce::ImageCache::getFromMemory (BinaryData::tapeicon_png, BinaryData::tapeicon_pngSize);
+    static const juce::Image img =
+        juce::ImageCache::getFromMemory (BinaryData::tapeicon_png, BinaryData::tapeicon_pngSize);
     drawImageIcon (g, area, img);
 }
 
@@ -231,8 +233,7 @@ ee::ui::PedalSpec makeDelaySpec()
 
     spec.toggles = {
         { .parameterID = "sync", .caption = "Sync", .afterKnobIndex = 0, .icon = drawDelayLinkIcon },
-        { .parameterID = "timeunit", .caption = "ms", .afterKnobIndex = 0, .gapRise = -6,
-          .icon = drawMsIcon },
+        { .parameterID = "timeunit", .caption = "ms", .afterKnobIndex = 0, .gapRise = -6, .icon = drawMsIcon },
     };
     spec.knobsPerRow = 3;
     spec.width = ee::ui::knobRowWidth (spec.knobsPerRow);
@@ -466,36 +467,39 @@ public:
 
         const auto sizeText = juce::AudioParameterFloatAttributes()
                                   .withStringFromValueFunction (
-                                      [durationMap] (float v, int) {
+                                      [durationMap] (float v, int)
+                                      {
                                           return durationMap (cfg::kMinGrainMs, cfg::kMaxGrainMs, cfg::kGrainSkewMs)
                                               .toText (v, false, 120.0);
                                       })
                                   .withMeta (true);
-        const auto densityText = juce::AudioParameterFloatAttributes()
-                                      .withStringFromValueFunction (
-                                          [rateMap] (float v, int) {
-                                              return rateMap (cfg::kMinDensityHz, cfg::kMaxDensityHz,
-                                                              cfg::kDensitySkewHz)
-                                                  .toText (v, false, 120.0);
-                                          })
-                                      .withMeta (true);
+        const auto densityText =
+            juce::AudioParameterFloatAttributes()
+                .withStringFromValueFunction (
+                    [rateMap] (float v, int)
+                    {
+                        return rateMap (cfg::kMinDensityHz, cfg::kMaxDensityHz, cfg::kDensitySkewHz)
+                            .toText (v, false, 120.0);
+                    })
+                .withMeta (true);
         const auto delayTimeText = juce::AudioParameterFloatAttributes()
-                                        .withStringFromValueFunction (
-                                            [durationMap] (float v, int) {
-                                                return durationMap (cfg::kMinTimeMs, cfg::kMaxTimeMs,
-                                                                     cfg::kTimeSkewMs)
-                                                    .toText (v, false, 120.0);
-                                            })
-                                        .withMeta (true);
-        const auto windowText = juce::AudioParameterFloatAttributes()
-                                     .withStringFromValueFunction (
-                                         [durationMap] (float v, int) {
-                                             return durationMap (cfg::kMinWindowSeconds * 1000.0f,
-                                                                 cfg::kMaxWindowSeconds * 1000.0f,
-                                                                 cfg::kWindowSkewSeconds * 1000.0f)
-                                                 .toText (v, false, 120.0);
-                                         })
-                                     .withMeta (true);
+                                       .withStringFromValueFunction (
+                                           [durationMap] (float v, int)
+                                           {
+                                               return durationMap (cfg::kMinTimeMs, cfg::kMaxTimeMs, cfg::kTimeSkewMs)
+                                                   .toText (v, false, 120.0);
+                                           })
+                                       .withMeta (true);
+        const auto windowText =
+            juce::AudioParameterFloatAttributes()
+                .withStringFromValueFunction (
+                    [durationMap] (float v, int)
+                    {
+                        return durationMap (cfg::kMinWindowSeconds * 1000.0f, cfg::kMaxWindowSeconds * 1000.0f,
+                                            cfg::kWindowSkewSeconds * 1000.0f)
+                            .toText (v, false, 120.0);
+                    })
+                .withMeta (true);
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "size", 1 }, "Size", unit,
                                                                  cfg::kDefaultSize01, sizeText));
@@ -520,19 +524,21 @@ public:
                                                                  cfg::kDefaultTimeMs));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "feedback", 1 }, "Feedback",
                                                                  percent, cfg::kDefaultFeedbackPct, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "stretch", 1 }, "Stretch", juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
-            cfg::kDefaultStretchPct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "stretch", 1 }, "Stretch",
+                                                                 juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+                                                                 cfg::kDefaultStretchPct));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "freeze", 1 }, "Freeze", false));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "grid", 1 }, "Grid",
+                                                                cfg::kDefaultGrid));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "shape", 1 }, "Shape", percent,
                                                                  cfg::kDefaultShapePct, percentAttributes));
 
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "scatter", 1 }, "Scatter",
-                                                                 percent, cfg::kDefaultScatterPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "scatter", 1 }, "Scatter", percent,
+                                                                 cfg::kDefaultScatterPct, percentAttributes));
 
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "reverse", 1 }, "Reverse",
-                                                                 percent, cfg::kDefaultReversePct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "reverse", 1 }, "Reverse", percent,
+                                                                 cfg::kDefaultReversePct, percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "stereo", 1 }, "Stereo", percent,
                                                                  cfg::kDefaultStereoPct, percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mod", 1 }, "Mod", percent,
@@ -540,20 +546,21 @@ public:
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "bit", 1 }, "Bit", percent,
                                                                  cfg::kDefaultBitPct, percentAttributes));
 
-        auto detuneRange = juce::NormalisableRange<float> (cfg::kMinDetuneSemitones, cfg::kMaxDetuneSemitones);
-        layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "detune", 1 }, "Detune", detuneRange, cfg::kDefaultDetuneSemitones,
-            juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float v, int) { return (v > 0.0f ? "+" : "") + juce::String (v, 1) + " st"; })));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { "scale", 1 }, "Scale",
+            juce::StringArray { "Major", "Minor", "Pentatonic Major", "Pentatonic Minor", "Chromatic" }, 0));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { "root", 1 }, "Root",
+            juce::StringArray { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" }, 0));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "plow", 1 }, "Pitch Low", percent,
                                                                  cfg::kDefaultPitchLowPct, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "puni", 1 }, "Pitch Unison",
-                                                                 percent, cfg::kDefaultPitchUnisonPct,
-                                                                 percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "phigh", 1 }, "Pitch High",
-                                                                 percent, cfg::kDefaultPitchHighPct,
-                                                                 percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "puni", 1 }, "Pitch Unison", percent, cfg::kDefaultPitchUnisonPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "phigh", 1 }, "Pitch High", percent, cfg::kDefaultPitchHighPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "pmix", 1 }, "Pitch Mix", percent,
+                                                                 cfg::kDefaultPitchMixPct, percentAttributes));
 
         // Post delay: independent Left/Right time knobs, a Sync-L/R link
         // (meta, all three - see PluginProcessor.cpp's own note), a routing
@@ -566,9 +573,8 @@ public:
                                                                 juce::AudioParameterBoolAttributes().withMeta (true)));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "dtsync", 1 }, "Delay Sync",
                                                                 cfg::kDefaultDelaySync));
-        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "dtype", 1 }, "Delay Type",
-                                                                  juce::StringArray { "Normal", "Wide", "Ping Pong" },
-                                                                  0));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { "dtype", 1 }, "Delay Type", juce::StringArray { "Normal", "Wide", "Ping Pong" }, 0));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dfb", 1 }, "Delay Feedback",
                                                                  percent, cfg::kDefaultDelayFeedbackPct,
                                                                  percentAttributes));
@@ -582,24 +588,37 @@ public:
             juce::ParameterID { "decay", 1 }, "Decay", decayRange, cfg::kDefaultReverbDecaySeconds,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 2) + " s"; })));
-        auto loCutRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz, ee::dsp::FdnReverb::kMaxLowCutHz);
+        auto loCutRange =
+            juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz, ee::dsp::FdnReverb::kMaxLowCutHz);
         loCutRange.setSkewForCentre (180.0f);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "rlocut", 1 }, "Reverb Low Cut", loCutRange, cfg::kDefaultReverbLoCutHz,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
-                [] (float v, int) {
+                [] (float v, int)
+                {
                     return v >= 1000.0f ? juce::String (v / 1000.0f, 1) + " kHz"
                                         : juce::String (juce::roundToInt (v)) + " Hz";
                 })));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rmix", 1 }, "Reverb Mix", percent,
                                                                  cfg::kDefaultReverbMixPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "rvsrc", 1 }, "Reverb Source",
+                                                                  juce::StringArray { "Whole", "Grains" }, 0));
 
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mix", 1 }, "Mix", percent,
-                                                                 cfg::kDefaultGrainMixPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dry", 1 }, "Dry", percent,
+                                                                 cfg::kDefaultDryLevelPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "grains", 1 }, "Grains", percent,
+                                                                 cfg::kDefaultGrainLevelPct, percentAttributes));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "mlink", 1 }, "Mixer Link", false,
+                                                                juce::AudioParameterBoolAttributes().withMeta (true)));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { "filter", 1 }, "Filter", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f),
+            100.0f));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "drive", 1 }, "Drive", percent,
+                                                                 ee::dsp::tubedrive::kDefaultDrivePct, percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 
-        for (const auto* id : { "grainon", "pitchon", "randon", "delon", "revon" })
+        for (const auto* id : { "grainon", "pitchon", "scaleon", "randon", "delon", "revon" })
             layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, 1 }, id, true));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -637,9 +656,9 @@ ee::ui::PedalSpec makeGrainSpec()
         juce::Path p;
         for (int i = 0; i <= 48; ++i)
         {
-            const float t = (float) i / 48.0f;
-            const float e = t < attack ? t / attack
-                                       : std::exp (-decayK * (t - attack) / juce::jmax (1.0e-4f, 1.0f - attack));
+            const float t = (float)i / 48.0f;
+            const float e =
+                t < attack ? t / attack : std::exp (-decayK * (t - attack) / juce::jmax (1.0e-4f, 1.0f - attack));
             const float x = r.getX() + t * r.getWidth();
             i == 0 ? p.startNewSubPath (x, r.getBottom() - e * r.getHeight())
                    : p.lineTo (x, r.getBottom() - e * r.getHeight());
@@ -649,7 +668,10 @@ ee::ui::PedalSpec makeGrainSpec()
     };
 
     spec.knobs = {
-        { .parameterID = "mix", .caption = "Mix", .capFill = kGrainCol },
+        { .parameterID = "dry", .caption = "Dry", .capFill = kGrainCol },
+        { .parameterID = "grains", .caption = "Grains", .capFill = kGrainCol },
+        { .parameterID = "filter", .caption = "Filter", .capFill = kGrainCol },
+        { .parameterID = "drive", .caption = "Drive", .capFill = kGrainCol },
         { .parameterID = "density", .caption = "Destiny", .capFill = kGrainCol },
         { .parameterID = "window", .caption = "Window", .capFill = kGrainCol },
         { .parameterID = "size", .caption = "Size", .capFill = kGrainCol },
@@ -659,7 +681,8 @@ ee::ui::PedalSpec makeGrainSpec()
         { .parameterID = "plow", .caption = "Low", .capFill = kPitchCol },
         { .parameterID = "puni", .caption = "Unison", .capFill = kPitchCol },
         { .parameterID = "phigh", .caption = "High", .capFill = kPitchCol },
-        { .parameterID = "detune", .caption = "Detune", .capFill = kPitchCol },
+        { .parameterID = "scale", .caption = "Scale", .capFill = kPitchCol },
+        { .parameterID = "root", .caption = "Root", .capFill = kPitchCol },
 
         { .parameterID = "stereo", .caption = "Stereo", .capFill = kRandomCol },
         { .parameterID = "reverse", .caption = "Reverse", .capFill = kRandomCol },
@@ -676,15 +699,27 @@ ee::ui::PedalSpec makeGrainSpec()
         { .parameterID = "rmix", .caption = "Mix", .capFill = kReverbCol },
     };
     const juce::Colour kCardFill { 0xffe9e8f0 };
-    const auto kSyncFooter = [] (const juce::String& id) {
-        return ee::ui::SlideToggleSpec { .parameterID = id, .labelOff = "ms", .labelOn = "Sync", .invertPosition = true };
+    const auto kSyncFooter = [] (const juce::String& id)
+    {
+        return ee::ui::SlideToggleSpec {
+            .parameterID = id, .labelOff = "ms", .labelOn = "Sync", .invertPosition = true
+        };
     };
     spec.knobGroups = {
-        { .caption = "Grain", .count = 6, .columns = 1, .fill = kCardFill, .icon = drawGrainIcon,
-          .footer = kSyncFooter ("ssync"), .footerOnClick = [] {} },
+        { .caption = "Grain",
+          .count = 6,
+          .columns = 1,
+          .fill = kCardFill,
+          .icon = drawGrainIcon,
+          .footer = kSyncFooter ("ssync"),
+          .footerOnClick = [] {} },
         { .caption = "Pitch", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawPitchIcon },
         { .caption = "Random", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawRandomIcon },
-        { .caption = "Delay", .count = 4, .columns = 1, .fill = kCardFill, .icon = drawTapeIcon,
+        { .caption = "Delay",
+          .count = 4,
+          .columns = 1,
+          .fill = kCardFill,
+          .icon = drawTapeIcon,
           .footer = kSyncFooter ("dtsync") },
         { .caption = "Reverb", .count = 3, .columns = 1, .fill = kCardFill, .icon = drawReverbIcon },
     };
@@ -693,15 +728,35 @@ ee::ui::PedalSpec makeGrainSpec()
     spec.captionUntilTouchedKnobs = true;
     spec.knobGroupFooters = true;
     spec.toggles = {
-        { .parameterID = "grainon", .caption = "On", .iconSize = 18, .groupPanelIndex = 0, .icon = drawPowerIcon,
+        { .parameterID = "grainon",
+          .caption = "On",
+          .iconSize = 18,
+          .groupPanelIndex = 0,
+          .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "pitchon", .caption = "On", .iconSize = 18, .groupPanelIndex = 1, .icon = drawPowerIcon,
+        { .parameterID = "pitchon",
+          .caption = "On",
+          .iconSize = 18,
+          .groupPanelIndex = 1,
+          .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "randon", .caption = "On", .iconSize = 18, .groupPanelIndex = 2, .icon = drawPowerIcon,
+        { .parameterID = "randon",
+          .caption = "On",
+          .iconSize = 18,
+          .groupPanelIndex = 2,
+          .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "delon", .caption = "On", .iconSize = 18, .groupPanelIndex = 3, .icon = drawPowerIcon,
+        { .parameterID = "delon",
+          .caption = "On",
+          .iconSize = 18,
+          .groupPanelIndex = 3,
+          .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
-        { .parameterID = "revon", .caption = "On", .iconSize = 18, .groupPanelIndex = 4, .icon = drawPowerIcon,
+        { .parameterID = "revon",
+          .caption = "On",
+          .iconSize = 18,
+          .groupPanelIndex = 4,
+          .icon = drawPowerIcon,
           .controlStyle = ee::ui::ControlStyle::digital },
     };
     spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "freeze", .labelOff = "Live", .labelOn = "Freeze" };
@@ -738,8 +793,7 @@ ee::ui::PedalSpec makeGrainSpec()
     spec.titleRowCentred = true;
     spec.titleRowDrop = 4;
 
-    spec.topRightKnob =
-        ee::ui::KnobSpec { .parameterID = "level", .caption = "Level", .captionUntilTouched = true };
+    spec.topRightKnob = ee::ui::KnobSpec { .parameterID = "level", .caption = "Level", .captionUntilTouched = true };
     spec.topRightKnobDiameter = 40;
 
     // Five modules side by side: a wide face rather than a tall one, small caps,
@@ -1179,19 +1233,27 @@ public:
         const juce::StringArray keys { "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B" };
 
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
-        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "tune.mode", 1 }, "Tuning", modes, 3));
+        layout.add (
+            std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "tune.mode", 1 }, "Tuning", modes, 3));
         layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "tune.key", 1 }, "Key", keys, 9));
         layout.add (std::make_unique<juce::AudioParameterInt> (
             juce::ParameterID { "octave", 1 }, "Octave", -2, 2, 0,
             juce::AudioParameterIntAttributes().withStringFromValueFunction (
                 [] (int v, int) { return juce::String (v > 0 ? "+" : "") + juce::String (v); })));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "decay", 1 }, "Decay", percent, 45.0f, pct));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "damping", 1 }, "Damping", percent, 55.0f, pct));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "coupling", 1 }, "Coupling", percent, 25.0f, pct));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "spread", 1 }, "Spread", percent, 25.0f, pct));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "bloom", 1 }, "Bloom", percent, 0.0f, pct));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "sensitivity", 1 }, "Sensitivity", percent, 55.0f, pct));
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mix", 1 }, "Mix", percent, 50.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "decay", 1 }, "Decay", percent,
+                                                                 45.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "damping", 1 }, "Damping", percent,
+                                                                 55.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "coupling", 1 }, "Coupling",
+                                                                 percent, 25.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "spread", 1 }, "Spread", percent,
+                                                                 25.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "bloom", 1 }, "Bloom", percent,
+                                                                 0.0f, pct));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "sensitivity", 1 }, "Sensitivity",
+                                                                 percent, 55.0f, pct));
+        layout.add (
+            std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "mix", 1 }, "Mix", percent, 50.0f, pct));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "freeze", 1 }, "Freeze", false));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "learn", 1 }, "Key Learn", false));
 
@@ -1220,10 +1282,16 @@ ee::ui::PedalSpec makeSympathySpec()
     spec.version = "v0.10.0";
 
     spec.knobs = {
-        { "tune.mode", "Tuning" }, { "tune.key", "Key" }, { "decay", "Decay" }, { "damping", "Damping" },
-        { "coupling", "Coupling" }, { "spread", "Spread" }, { "bloom", "Bloom" },
+        { "tune.mode", "Tuning" },
+        { "tune.key", "Key" },
+        { "decay", "Decay" },
+        { "damping", "Damping" },
+        { "coupling", "Coupling" },
+        { "spread", "Spread" },
+        { "bloom", "Bloom" },
         { .parameterID = "octave", .caption = "Octave", .bipolarArc = true, .centreDetent = true },
-        { "sensitivity", "Sens" }, { "mix", "Mix" },
+        { "sensitivity", "Sens" },
+        { "mix", "Mix" },
     };
     spec.slideToggle = ee::ui::SlideToggleSpec { .parameterID = "freeze", .labelOff = "Live", .labelOn = "Freeze" };
     spec.presetBar = ee::ui::PresetBarSpec {
@@ -1258,8 +1326,8 @@ void renderTape (const juce::File& outputFile)
     // for contrast against the dark face.
     auto theme = ee::ui::PedalTheme::green();
     theme.controlStyle = ee::ui::ControlStyle::analogSilver;
-    theme.bezel = juce::Colour (0xff5c8b24);      // the outer frame
-    theme.knobTrack = juce::Colour (0xff8fae6f);  // pale resting ring, not a black halo
+    theme.bezel = juce::Colour (0xff5c8b24);     // the outer frame
+    theme.knobTrack = juce::Colour (0xff8fae6f); // pale resting ring, not a black halo
     ee::ui::PedalEditor editor (processor, processor.apvts, makeTapeSpec(), theme);
     writePng (editor, outputFile);
 }
@@ -1278,17 +1346,28 @@ int main (int argc, char* argv[])
     const auto want = [&only] (juce::StringRef name)
     { return only.isEmpty() || juce::String (name).containsIgnoreCase (only); };
 
-    if (want ("delay")) renderDelay (dir.getChildFile ("delay.png"));
-    if (want ("eq")) renderEq (dir.getChildFile ("eq.png"));
-    if (want ("trempan")) renderTremPan (dir.getChildFile ("trempan.png"));
-    if (want ("chorus")) renderChorus (dir.getChildFile ("chorus.png"));
-    if (want ("overdrive")) renderOverdrive (dir.getChildFile ("overdrive.png"));
-    if (want ("phase")) renderPhase (dir.getChildFile ("phase.png"));
-    if (want ("spring")) renderSpring (dir.getChildFile ("spring.png"));
-    if (want ("wah")) renderWah (dir.getChildFile ("wah.png"));
-    if (want ("tape")) renderTape (dir.getChildFile ("tape.png"));
-    if (want ("grain")) renderGrain (dir.getChildFile ("grain.png"));
-    if (want ("sympathy")) renderSympathy (dir.getChildFile ("sympathy.png"));
+    if (want ("delay"))
+        renderDelay (dir.getChildFile ("delay.png"));
+    if (want ("eq"))
+        renderEq (dir.getChildFile ("eq.png"));
+    if (want ("trempan"))
+        renderTremPan (dir.getChildFile ("trempan.png"));
+    if (want ("chorus"))
+        renderChorus (dir.getChildFile ("chorus.png"));
+    if (want ("overdrive"))
+        renderOverdrive (dir.getChildFile ("overdrive.png"));
+    if (want ("phase"))
+        renderPhase (dir.getChildFile ("phase.png"));
+    if (want ("spring"))
+        renderSpring (dir.getChildFile ("spring.png"));
+    if (want ("wah"))
+        renderWah (dir.getChildFile ("wah.png"));
+    if (want ("tape"))
+        renderTape (dir.getChildFile ("tape.png"));
+    if (want ("grain"))
+        renderGrain (dir.getChildFile ("grain.png"));
+    if (want ("sympathy"))
+        renderSympathy (dir.getChildFile ("sympathy.png"));
 
     return 0;
 }

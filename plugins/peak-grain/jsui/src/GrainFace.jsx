@@ -9,7 +9,7 @@ import {
   useParamId,
   useFormattedText,
 } from "@synthpeak/pedal-ui/juce";
-import { GrainEnvelope, PitchWeights, RandomField, ReverbTail } from "./Displays.jsx";
+import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } from "./Displays.jsx";
 import "./GrainFace.css";
 
 // The five section accents, literal rather than `var(--pui-accent-*)`: these
@@ -24,6 +24,12 @@ const PITCH = "#e78fb3";
 const RANDOM = "#dfa878";
 const DELAY = "#a3ce7a";
 const REVERB = "#7fd2d8";
+const MIXER = "#c9cede";
+
+// The knob value arc (--pui-soft-lit) on Grain/Pitch/Random is unified to
+// this instead of each section's own accent - the same orange the three
+// displays above them now share. Delay/Reverb keep their own accent lit.
+const KNOB_LIT = RANDOM;
 
 /** The Grain card's single footer switch, now a section-header pill: writes
     `ssync`, `dsync` and `wsync` on click rather than relying on a native
@@ -77,19 +83,15 @@ function TimeRow({ side, parameterId }) {
 
 function GrainSection() {
   return (
-    <section className="pg-section pg-section--grain" style={{ "--pui-accent": GRAIN, "--pui-soft-lit": GRAIN }}>
+    <section className="pg-section pg-section--grain" style={{ "--pui-accent": GRAIN, "--pui-soft-lit": KNOB_LIT }}>
       <div className="pg-section__head">
         <span className="pg-section__name">Grain</span>
         <span className="pg-section__spacer" />
-        <div className="pg-section__head-right">
-          <GrainSyncPill />
-        </div>
       </div>
       <div className="pg-section__display">
-        <GrainEnvelope accent={GRAIN} />
+        <GrainEnvelope accent={RANDOM} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="mix" caption="Mix" variant="flat" size={30} />
         <JuceKnob parameterId="density" caption="Destiny" variant="flat" size={30} />
         <JuceKnob parameterId="window" caption="Window" variant="flat" size={30} />
       </div>
@@ -98,27 +100,49 @@ function GrainSection() {
         <JuceKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
         <JuceKnob parameterId="bit" caption="Bit" variant="flat" size={30} />
       </div>
+      <div className="pg-grain__foot">
+        <GrainSyncPill />
+      </div>
     </section>
   );
 }
 
 function PitchSection() {
+  const [scaleOn, scalePower] = useSectionPower("scaleon");
+
   return (
-    <section className="pg-section pg-section--pitch" style={{ "--pui-accent": PITCH, "--pui-soft-lit": PITCH }}>
+    <section className="pg-section pg-section--pitch" style={{ "--pui-accent": PITCH, "--pui-soft-lit": KNOB_LIT }}>
       <div className="pg-section__head">
         <span className="pg-section__name">Pitch</span>
         <span className="pg-section__spacer" />
       </div>
       <div className="pg-section__display">
-        <PitchWeights accent={PITCH} />
+        <PitchWeights accent={RANDOM} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="plow" caption="Low" variant="flat" size={38} />
-        <JuceKnob parameterId="puni" caption="Unison" variant="flat" size={38} />
+        <JuceKnob parameterId="plow" caption="Low" variant="flat" size={30} />
+        <JuceKnob parameterId="puni" caption="Unison" variant="flat" size={30} />
+        <JuceKnob parameterId="phigh" caption="High" variant="flat" size={30} />
       </div>
-      <div className="pg-section__knobs">
-        <JuceKnob parameterId="phigh" caption="High" variant="flat" size={38} />
-        <JuceKnob parameterId="detune" caption="Detune" variant="flat" size={38} scaleFrom="centre" />
+      <div className="pg-pitch__divider" />
+      <div className="pg-pitch__scale-head" data-off={!scaleOn || undefined}>
+        {scalePower}
+        <span className="pg-pitch__scale-name">Scale</span>
+      </div>
+      <div className="pg-pitch__scale" data-off={!scaleOn || undefined}>
+        <div className="pg-pitch__foot">
+          <JuceChoicePill
+            parameterId="root"
+            labels={["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]}
+            className="pg-pitch__root-pill"
+          />
+          <JuceChoicePill
+            parameterId="scale"
+            labels={["Major", "Minor", "Penta Maj", "Penta Min", "Chromatic"]}
+            className="pg-pitch__scale-pill"
+          />
+        </div>
+        <JuceKnob parameterId="pmix" caption="Mix" variant="flat" size={30} />
       </div>
     </section>
   );
@@ -126,7 +150,7 @@ function PitchSection() {
 
 function RandomSection() {
   return (
-    <section className="pg-section pg-section--random" style={{ "--pui-accent": RANDOM, "--pui-soft-lit": RANDOM }}>
+    <section className="pg-section pg-section--random" style={{ "--pui-accent": RANDOM, "--pui-soft-lit": KNOB_LIT }}>
       <div className="pg-section__head">
         <span className="pg-section__name">Random</span>
         <span className="pg-section__spacer" />
@@ -141,6 +165,34 @@ function RandomSection() {
       <div className="pg-section__knobs">
         <JuceKnob parameterId="scatter" caption="Scatter" variant="flat" size={38} />
         <JuceKnob parameterId="mod" caption="Mod" variant="flat" size={38} />
+      </div>
+    </section>
+  );
+}
+
+/** The mixer column: the dry path and the cloud as two independent levels
+    (what used to be Grain's single Mix knob), a link that locks them
+    together, and the Filter knob over the grain cloud's own filter. */
+function MixerSection() {
+  return (
+    <section className="pg-section pg-section--mixer" style={{ "--pui-accent": MIXER, "--pui-soft-lit": MIXER }}>
+      <div className="pg-section__head">
+        <span className="pg-section__name">Mixer</span>
+        <span className="pg-section__spacer" />
+      </div>
+      <div className="pg-mixer__faders">
+        <JuceFader parameterId="dry" label="Dry" orientation="vertical" length={148} resetTo={75} thumbSize={18} />
+        <div className="pg-mixer__link">
+          <JucePill parameterId="mlink" icon={<LinkGlyph />} />
+        </div>
+        <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={148} resetTo={65} thumbSize={18} />
+      </div>
+      <div className="pg-mixer__filter">
+        <FilterCurve accent={MIXER} />
+        {/* No value on the knob at all: the scope above it already shows what
+            the filter is doing, so swapping the caption for a percentage
+            mid-drag would only say the same thing worse. */}
+        <JuceKnob parameterId="filter" caption="Filter" variant="scale" size={52} scaleFrom="max" showValueLabel={false} />
       </div>
     </section>
   );
@@ -201,6 +253,9 @@ function ReverbSection() {
         {powerToggle}
         <span className="pg-section__name">Reverb</span>
         <span className="pg-section__spacer" />
+        <div className="pg-section__head-right">
+          <JuceChoicePill parameterId="rvsrc" labels={["Whole", "Grains"]} />
+        </div>
       </div>
       <div className="pg-section__display">
         <ReverbTail accent={REVERB} />
@@ -264,6 +319,10 @@ function Header() {
       <div className="pg-header__row">
         <div className="pg-header__live">
           <LiveFreezeSwitch />
+          {/* Grid: grain read points on sixteenths - frozen, a new capture
+              every bar line; live, the delay tap in whole sixteenths. See
+              GrainerConfig.h's GRID. */}
+          <JucePill parameterId="grid" label="GRID" />
         </div>
         <div className="pg-header__presets">
           <JucePresetBar variant="separated" />
@@ -278,19 +337,23 @@ export default function GrainFace() {
     <>
       <Header />
       <div className="pg-plate">
-        <div className="pg-row">
-          <GrainSection />
-          <div className="pg-vdivider" />
-          <PitchSection />
-          <div className="pg-vdivider" />
-          <RandomSection />
+        <div className="pg-plate__main">
+          <div className="pg-row">
+            <GrainSection />
+            <div className="pg-vdivider" />
+            <PitchSection />
+            <div className="pg-vdivider" />
+            <RandomSection />
+          </div>
+          <div className="pg-hdivider" />
+          <div className="pg-row">
+            <DelaySection />
+            <div className="pg-vdivider" style={{ gridColumn: 4 }} />
+            <ReverbSection />
+          </div>
         </div>
-        <div className="pg-hdivider" />
-        <div className="pg-row">
-          <DelaySection />
-          <div className="pg-vdivider" style={{ gridColumn: 4 }} />
-          <ReverbSection />
-        </div>
+        <div className="pg-vdivider" />
+        <MixerSection />
       </div>
     </>
   );

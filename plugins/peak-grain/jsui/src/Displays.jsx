@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { useJuceSliderValue } from "@synthpeak/pedal-ui/juce";
+import { useJuceSliderValue, useParamId, useFormattedText } from "@synthpeak/pedal-ui/juce";
 
 /**
  * The five recessed displays across the plate (COMPONENTS.md's "Displays"
@@ -7,6 +7,29 @@ import { useJuceSliderValue } from "@synthpeak/pedal-ui/juce";
  * static, matching the design_handoff mock exactly; Grain and Pitch Weights
  * both read live parameter values.
  */
+
+// The Size range, mirroring GrainerConfig.h's kMinGrainMs/kMaxGrainMs. Only
+// GrainEnvelope uses these, to turn the printed duration back into a width.
+const SIZE_MIN_MS = 20;
+const SIZE_MAX_MS = 1000;
+
+function clampMs(ms) {
+  return Math.min(SIZE_MAX_MS, Math.max(SIZE_MIN_MS, ms));
+}
+
+/** Milliseconds out of a readout this codebase printed - "240 ms" or "1.20 s",
+    the two shapes PeakGrainProcessor::sizeReadout() emits. Returns null for
+    anything else, including the empty string a page with no JUCE backend
+    behind it gets back, so the caller can fall back rather than draw nonsense. */
+function parseDurationMs(text) {
+  const match = /^\s*([\d.]+)\s*(ms|s)\s*$/.exec(text || "");
+  if (match == null) return null;
+
+  const value = Number(match[1]);
+  if (! Number.isFinite(value)) return null;
+
+  return match[2] === "s" ? value * 1000 : value;
+}
 
 /** Mirrors ee::dsp::TempoDivision's own table (shared/include/ee/dsp/
     TempoDivision.h) - only the `beats` column, since only how many of a
@@ -47,8 +70,25 @@ export function GrainEnvelope({ accent }) {
   const [density] = useJuceSliderValue("density");
   const [window01] = useJuceSliderValue("window");
 
+  // Width comes from the readout, not from the knob position. The readout is
+  // clamped to the grain length the engine will actually apply (see
+  // PeakGrainProcessor::sizeReadout) - synced, the knob can select a division
+  // far longer than kMaxGrainMs, and every position past that cap produces the
+  // same grain. Drawing off the raw knob made the envelope go on widening
+  // while the value sat still, which is a picture of a sound nothing is
+  // making. Reading it back off the printed text is what guarantees the two
+  // can never disagree.
+  const sizeId = useParamId("size");
+  const sizeMs = parseDurationMs(useFormattedText(sizeId, size));
+  // Logarithmic, because grain length reads to the ear as a ratio, not a
+  // difference - 20 to 40 ms is the same step as 1 to 2 s.
+  const sizeSpan =
+    sizeMs == null
+      ? size // no backend to ask (the gallery) - fall back to the knob
+      : Math.log(clampMs(sizeMs) / SIZE_MIN_MS) / Math.log(SIZE_MAX_MS / SIZE_MIN_MS);
+
   const grainCount = Math.min(8, Math.max(1, Math.round(4 / grainDivisionBeats(density))));
-  const width = 70 + size * 110; // longer Size = wider grain window
+  const width = 70 + sizeSpan * 110; // longer Size = wider grain window
   const spacing = grainCount > 1 ? (234 - width) / (grainCount - 1) : 0;
 
   return (
@@ -227,6 +267,100 @@ export function RandomField({ accent }) {
           </span>
         );
       })}
+    </div>
+  );
+}
+
+// The cloud lowpass's travel, mirroring GrainerConfig.h's CLOUD FILTER block.
+// Only the lowpass is drawn: the highpass underneath is fixed and hidden by
+// design, so putting it on the scope would advertise a control that is not
+// there.
+const CLOUD_LP_HZ = 13000;
+const CLOUD_LP_MIN_HZ = 320;
+
+const CURVE_F_MIN = 20;
+const CURVE_F_MAX = 20000;
+const CURVE_DB_FLOOR = -30;
+const CURVE_GRID_HZ = [100, 1000, 10000];
+const CURVE_W = 120;
+const CURVE_H = 44;
+const CURVE_PAD = 4;
+const CURVE_LOG_MIN = Math.log(CURVE_F_MIN);
+const CURVE_LOG_SPAN = Math.log(CURVE_F_MAX) - CURVE_LOG_MIN;
+
+/** Where the cutoff sits for a given knob position - the same geometric sweep
+    Grainer::updateCloudFilter() does with its own std::pow, so the drawn
+    corner tracks the audible one across the whole travel rather than only at
+    the ends. `openness` is the knob in 0..1, 1 being wide open. */
+function cloudCutoff(openness) {
+  return CLOUD_LP_HZ * Math.pow(CLOUD_LP_MIN_HZ / CLOUD_LP_HZ, 1 - openness);
+}
+
+/** The lowpass's magnitude in dB: one pole at 6 dB/oct and nothing else. No Q
+    term, because the engine has none - a drawn-on bump would be inventing a
+    control that does not exist. */
+function cloudDb(fHz, lpHz) {
+  return 20 * Math.log10(Math.max(1e-6, lpHz / Math.sqrt(fHz * fHz + lpHz * lpHz)));
+}
+
+function curveX(hz) {
+  const clamped = Math.min(CURVE_F_MAX, Math.max(CURVE_F_MIN, hz));
+  return CURVE_PAD + ((Math.log(clamped) - CURVE_LOG_MIN) / CURVE_LOG_SPAN) * (CURVE_W - CURVE_PAD * 2);
+}
+
+function curveY(db) {
+  const clamped = Math.min(0, Math.max(CURVE_DB_FLOOR, db));
+  return CURVE_PAD + (clamped / CURVE_DB_FLOOR) * (CURVE_H - CURVE_PAD * 2);
+}
+
+/** The Mixer's Filter response, in place of a printed value. Reads `filter`
+    live and redraws, so the line moves with the knob: wide open it is flat to
+    13 kHz, and winding down walks the corner to 320 Hz.
+
+    Colours are literals rather than `var(--pui-scope-*)` for the reason at the
+    top of GrainFace.jsx - a custom property in an SVG presentation attribute
+    does not resolve reliably in the plugin's WKWebView - and because onyx only
+    defines --pui-scope-grid, so the rest would fall back to the light theme's
+    dark red. */
+export function FilterCurve({ accent }) {
+  const [filter] = useJuceSliderValue("filter");
+
+  // The parameter is 0..100 % and the hook hands back 0..1, so it is already
+  // the openness the sweep wants.
+  const lpHz = cloudCutoff(filter);
+
+  const steps = 72;
+  let line = "";
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const hz = Math.exp(CURVE_LOG_MIN + t * CURVE_LOG_SPAN);
+    const x = CURVE_PAD + t * (CURVE_W - CURVE_PAD * 2);
+    line += `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${curveY(cloudDb(hz, lpHz)).toFixed(1)} `;
+  }
+
+  const floorY = CURVE_H - CURVE_PAD;
+  const fill = `${line}L ${CURVE_W - CURVE_PAD} ${floorY} L ${CURVE_PAD} ${floorY} Z`;
+
+  return (
+    <div className="pg-filter-curve">
+      <svg width="100%" height="100%" viewBox={`0 0 ${CURVE_W} ${CURVE_H}`} preserveAspectRatio="none" fill="none">
+        <g stroke="#233034" strokeWidth="1" vectorEffect="non-scaling-stroke">
+          {CURVE_GRID_HZ.map((hz) => (
+            <line key={hz} x1={curveX(hz)} y1={CURVE_PAD} x2={curveX(hz)} y2={floorY} />
+          ))}
+          <line x1={CURVE_PAD} y1={curveY(-12)} x2={CURVE_W - CURVE_PAD} y2={curveY(-12)} />
+        </g>
+        <path d={fill} fill={accent} fillOpacity="0.12" stroke="none" />
+        <path
+          d={line}
+          fill="none"
+          stroke={accent}
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
     </div>
   );
 }

@@ -7,9 +7,9 @@ import "./Pill.css";
  * button the lit/unlit distinction a pill needs, so this only adds Pill's
  * own shape/typography (see Pill.css) and an icon slot.
  */
-export default function Pill({ icon, label, pressed, onClick }) {
+export default function Pill({ icon, label, pressed, onClick, className }) {
   return (
-    <Button className="pui-pill" pressed={pressed} onClick={onClick}>
+    <Button className={className ? "pui-pill " + className : "pui-pill"} pressed={pressed} onClick={onClick}>
       {icon}
       {label && <span>{label}</span>}
     </Button>

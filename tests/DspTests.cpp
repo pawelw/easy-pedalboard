@@ -3689,6 +3689,172 @@ void testGrainerAttackCapture()
     check (with > without * 1.2f, "drawing grains from the attack did not keep the cloud present");
 }
 
+void testGrainerGridFrozenCapturesEachBar()
+{
+    std::printf ("Grainer Grid, frozen (bar-locked capture):\n");
+
+    // 120 bpm, so a sixteenth is 6000 samples and a bar 96000. Every sixteenth
+    // is its own tone, and the downbeat's tone changes every bar - so which
+    // tone dominates the cloud says exactly which slice the grains replay.
+    // Bar-locked, each bar should sing its own downbeat for the whole bar.
+    // Plain Freeze on a steady input has no onsets to retrigger on after the
+    // first, so it keeps looping bar 0 and must not.
+    const double ppqPerSample = 2.0 / kSampleRate;
+    const int sixteenth = static_cast<int> (0.25 / ppqPerSample);
+    const int bar = 16 * sixteenth;
+    const auto downbeatHz = [] (int b) { return 1100.0 + 200.0 * b; };
+
+    const auto source = [&] (int n)
+    {
+        const int b = n / bar;
+        const int k = (n % bar) / sixteenth;
+        const double hz = k == 0 ? downbeatHz (b) : 300.0 + 40.0 * k;
+        return 0.5f * static_cast<float> (std::sin (2.0 * juce::MathConstants<double>::pi * hz * n / kSampleRate));
+    };
+
+    // Share of the three candidate downbeat tones that belongs to bar b's own.
+    const auto ownDownbeatShare = [&] (bool grid, int b)
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (100.0f);
+        grainer.setDensityHz (8.0f);
+        grainer.setTimeMs (20.0f);
+        grainer.setFeedback (0.0f);
+        grainer.setScatter (0.0f);
+        grainer.setReverse (0.0f);
+        grainer.setStereo (0.0f);
+        grainer.setFreeze (true);
+
+        std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+        std::vector<float> measured;
+
+        // Skip the first 300 ms of the bar, where the downbeat slice is still
+        // being played in live, and the tail of the last grain.
+        const int from = b * bar + static_cast<int> (0.3 * kSampleRate);
+        const int to = (b + 1) * bar - sixteenth;
+
+        for (int n = 0; n < to; n += kBlock)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = source (n + i);
+
+            ee::dsp::Grainer::Transport transport;
+            transport.synced = true;
+            transport.playing = true;
+            transport.ppqStart = n * ppqPerSample;
+            transport.cyclesPerQuarter = 4.0;
+            transport.ppqPerSample = ppqPerSample;
+            transport.grid = grid;
+
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock, transport);
+
+            for (int i = 0; i < kBlock; ++i)
+                if (n + i >= from && n + i < to)
+                    measured.push_back (outL[static_cast<size_t> (i)]);
+        }
+
+        const double own = goertzelPower (measured, downbeatHz (b), kSampleRate);
+        double all = 0.0;
+        for (int other = 0; other <= 2; ++other)
+            all += goertzelPower (measured, downbeatHz (other), kSampleRate);
+        return own / juce::jmax (1.0e-30, all);
+    };
+
+    for (int b = 1; b <= 2; ++b)
+    {
+        const double locked = ownDownbeatShare (true, b);
+        const double onsets = ownDownbeatShare (false, b);
+        std::printf ("  bar %d: its own downbeat's share of the cloud - Grid %.3f, plain Freeze %.3f\n", b,
+                     locked, onsets);
+        check (locked > 0.9, "Grid did not replay this bar's downbeat");
+        check (onsets < 0.5, "plain Freeze followed the bar line - the control no longer controls anything");
+    }
+}
+
+void testGrainerGridLiveTapsWholeSixteenths()
+{
+    std::printf ("Grainer Grid, live (the Time tap in whole sixteenths):\n");
+
+    // 120 bpm again, one tone per sixteenth. Time is 300 ms - 2.4 sixteenths,
+    // deliberately off the grid. With Grid on it rounds to exactly two, so a
+    // grain spawned on sixteenth j plays nothing but sixteenth j-2's tone.
+    // Off, the tap straddles the line between j-3 and j-2 and every grain is
+    // a mix of both. Attack capture is off: the input has no attacks worth
+    // the name, and Grid leaves attack grains alone by design.
+    const double ppqPerSample = 2.0 / kSampleRate;
+    const int sixteenth = static_cast<int> (0.25 / ppqPerSample);
+    const auto toneHz = [] (int j) { return 400.0 + 100.0 * (((j % 12) + 12) % 12); };
+
+    const auto source = [&] (int n)
+    {
+        return 0.5f
+               * static_cast<float> (std::sin (2.0 * juce::MathConstants<double>::pi * toneHz (n / sixteenth) * n
+                                               / kSampleRate));
+    };
+
+    const auto cleanShare = [&] (bool grid)
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (90.0f);
+        grainer.setDensityHz (8.0f);
+        grainer.setTimeMs (300.0f);
+        grainer.setFeedback (0.0f);
+        grainer.setScatter (0.0f);
+        grainer.setReverse (0.0f);
+        grainer.setStereo (0.0f);
+
+        auto tuning = grainer.getTuning();
+        tuning.attackShare = 0.0f;
+        grainer.setTuning (tuning);
+
+        const int slots = 40;
+        std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+        std::vector<float> rendered;
+        rendered.reserve (static_cast<size_t> (slots * sixteenth + kBlock));
+
+        for (int n = 0; n < slots * sixteenth; n += kBlock)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = source (n + i);
+
+            ee::dsp::Grainer::Transport transport;
+            transport.synced = true;
+            transport.playing = true;
+            transport.ppqStart = n * ppqPerSample;
+            transport.cyclesPerQuarter = 4.0;
+            transport.ppqPerSample = ppqPerSample;
+            transport.grid = grid;
+
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock, transport);
+            rendered.insert (rendered.end(), outL.begin(), outL.end());
+        }
+
+        // Inside each grain, the two tones its tap could straddle: the share
+        // that is the whole-sixteenth one.
+        double wanted = 0.0, both = 0.0;
+        for (int j = 8; j < slots - 1; ++j)
+        {
+            const auto from = rendered.begin() + j * sixteenth + 480;
+            const std::vector<float> grain (from, from + 3600);
+            const double onGrid = goertzelPower (grain, toneHz (j - 2), kSampleRate);
+            const double before = goertzelPower (grain, toneHz (j - 3), kSampleRate);
+            wanted += onGrid;
+            both += onGrid + before;
+        }
+        return wanted / juce::jmax (1.0e-30, both);
+    };
+
+    const double on = cleanShare (true);
+    const double off = cleanShare (false);
+    std::printf ("  share of each grain that is one clean sixteenth: Grid %.3f, off %.3f\n", on, off);
+    check (on > 0.97, "Grid did not put the live tap on a whole sixteenth");
+    check (off < 0.9, "without Grid the tap already sat on the grid - the control no longer controls anything");
+}
+
 void testGrainerStereoIsBalanced()
 {
     std::printf ("Grainer stereo placement:\n");
@@ -3839,6 +4005,287 @@ void testGrainerPitchIsActuallyApplied()
 
     check (up > unison, "an upward pitch spread did not raise the pitch");
     check (down < unison, "a downward pitch spread did not lower the pitch");
+}
+
+void testGrainerHighWithNoScaleIsAnOctaveUp()
+{
+    std::printf ("Grainer pitch: with the scale closed the High group is a plain octave\n");
+
+    // The regression this guards: Pitch Mix used to crossfade High's *weight*
+    // back towards unison, so closing it - which is what switching Scale off
+    // does - meant the up group was never picked at all, and the only pitch
+    // left audible was Low's octave down. Mix colours the interval now and
+    // never the weight, so at 0 every up-grain is a clean +12.
+    const auto tone = [] (int n)
+    { return 0.7f * std::sin (2.0 * juce::MathConstants<double>::pi * 400.0 * n / kSampleRate); };
+
+    const auto crossingsWith = [&tone] (float low, float unison, float high)
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (200.0f);
+        grainer.setDensityHz (20.0f);
+        grainer.setTimeMs (200.0f);
+        grainer.setFeedback (0.0f);
+        // B major, in which the octave is deliberately *not* a scale member -
+        // so a blend leaking the table in could not come back looking like an
+        // octave by coincidence.
+        grainer.setScale (0, 11);
+        grainer.setScaleBlend (0.0f);
+        grainer.setPitchMix (low, unison, high);
+
+        std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+        int crossings = 0;
+        float previous = 0.0f;
+        int n = 0;
+
+        for (int b = 0; b < static_cast<int> (kSampleRate * 4.0 / kBlock); ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = tone (n++);
+
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+            for (int i = 0; i < kBlock; ++i)
+            {
+                const float s = outL[static_cast<size_t> (i)];
+                if ((s > 0.0f) != (previous > 0.0f))
+                    ++crossings;
+                previous = s;
+            }
+        }
+
+        return crossings;
+    };
+
+    const int unison = crossingsWith (0.0f, 1.0f, 0.0f);
+    const int high = crossingsWith (0.0f, 0.0f, 1.0f);
+    const double ratio = unison > 0 ? static_cast<double> (high) / static_cast<double> (unison) : 0.0;
+
+    std::printf ("  zero crossings: unison %d, High with the scale closed %d (%.2fx)\n", unison, high, ratio);
+
+    // An octave is 2x; unison - the bug - is 1x. Half way between the two is
+    // the widest gate that still tells them apart.
+    check (ratio > 1.5, "High with the scale closed did not transpose: it read as unison");
+}
+
+void testGrainerCloudFilterClosesAndDefaultsOpen()
+{
+    std::printf ("Grainer cloud filter:\n");
+
+    // Two things at once. That the knob darkens the cloud at all - and, the
+    // one that actually bites, that an engine nobody has called
+    // setCloudFilter() on starts *open*. The knob is a unipolar cutoff now, so
+    // cloudFilterAmount's 0 means "fully shut" where under the old bipolar
+    // sweep it meant "the resting pair"; a default left at 0 would ship every
+    // fresh instance with the cloud closed and sound like a broken plugin.
+    enum Mode
+    {
+        untouched, // never call setCloudFilter - whatever the member defaults to
+        open,
+        closed
+    };
+
+    const auto cloudRms = [] (Mode mode)
+    {
+        std::mt19937 rng (11);
+        std::uniform_real_distribution<float> noise (-1.0f, 1.0f);
+
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (200.0f);
+        grainer.setDensityHz (30.0f);
+        grainer.setTimeMs (200.0f);
+        grainer.setFeedback (0.0f);
+
+        if (mode == open)
+            grainer.setCloudFilter (1.0f);
+        else if (mode == closed)
+            grainer.setCloudFilter (0.0f);
+
+        std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+        double sum = 0.0;
+        int counted = 0;
+
+        const int blocks = static_cast<int> (kSampleRate * 3.0 / kBlock);
+        const int settled = static_cast<int> (kSampleRate * 1.0 / kBlock);
+
+        for (int b = 0; b < blocks; ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = noise (rng);
+
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+            // Only once the cloud has filled, so this measures the filter and
+            // not how fast the buffer got going.
+            if (b > settled)
+            {
+                for (int i = 0; i < kBlock; ++i)
+                {
+                    const double s = outL[static_cast<size_t> (i)];
+                    sum += s * s;
+                    ++counted;
+                }
+            }
+        }
+
+        return counted > 0 ? std::sqrt (sum / counted) : 0.0;
+    };
+
+    const double untouchedRms = cloudRms (untouched);
+    const double openRms = cloudRms (open);
+    const double closedRms = cloudRms (closed);
+
+    std::printf ("  cloud rms: untouched %.4f, open %.4f, closed %.4f\n", untouchedRms, openRms, closedRms);
+
+    check (closedRms < openRms * 0.7, "closing the Filter knob did not darken the cloud");
+    check (std::abs (untouchedRms - openRms) < openRms * 0.02,
+           "an untouched engine did not start with its filter open");
+}
+
+void testGrainerLowGroupIsOctavesOnly()
+{
+    std::printf ("Grainer pitch: the Low group is octaves, whatever the scale\n");
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+
+    bool allOctaves = true;
+
+    for (int scaleIndex = 0; scaleIndex < ee::dsp::config::kNumScales; ++scaleIndex)
+    {
+        // A root that is nobody's tonic here, so a scale leaking into this
+        // group would show up rather than coinciding with an octave.
+        grainer.setScale (scaleIndex, 3 /* D# */);
+
+        allOctaves = allOctaves && grainer.getDownCandidateCount() > 0;
+
+        for (int i = 0; i < grainer.getDownCandidateCount(); ++i)
+        {
+            const int n = static_cast<int> (grainer.getDownCandidate (i));
+            allOctaves = allOctaves && n < 0 && n % 12 == 0;
+        }
+    }
+
+    std::printf ("  down candidates: %d\n", grainer.getDownCandidateCount());
+    check (allOctaves, "the Low group landed on something that was not a whole octave down");
+}
+
+void testGrainerHighGroupIsTheScaleAnOctaveUp()
+{
+    std::printf ("Grainer pitch: the High group is the scale, an octave up\n");
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.setScale (0 /* Major */, 0 /* C */);
+
+    const int major[] = { 0, 2, 4, 5, 7, 9, 11 };
+    bool clearOfTheOctave = grainer.getUpCandidateCount() > 0;
+    bool allInScale = true;
+
+    for (int i = 0; i < grainer.getUpCandidateCount(); ++i)
+    {
+        const int n = static_cast<int> (grainer.getUpCandidate (i));
+        clearOfTheOctave = clearOfTheOctave && n >= 12;
+
+        bool found = false;
+        for (int m : major)
+            found = found || m == ((n % 12) + 12) % 12;
+        allInScale = allInScale && found;
+    }
+
+    std::printf ("  up candidates: %d\n", grainer.getUpCandidateCount());
+    check (clearOfTheOctave, "the High group landed below an octave up");
+    check (allInScale, "the High group landed off the scale");
+}
+
+void testGrainerScaleRootRotatesThePattern()
+{
+    std::printf ("Grainer pitch: Root rotates which notes the High group can take\n");
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+
+    const auto allows = [&grainer] (int scaleIndex, int root, int semitones)
+    {
+        grainer.setScale (scaleIndex, root);
+        for (int i = 0; i < grainer.getUpCandidateCount(); ++i)
+            if (static_cast<int> (grainer.getUpCandidate (i)) == semitones)
+                return true;
+        return false;
+    };
+
+    // At Root C the octave is the tonic, so +12 is in and +13 (a flat ninth)
+    // is not. At Root F# the pattern has rotated under it: +12 is now the
+    // tritone and out, +13 is the fifth and in.
+    const bool twelveAtC = allows (0 /* Major */, 0 /* C */, 12);
+    const bool thirteenAtC = allows (0, 0, 13);
+    const bool twelveAtFSharp = allows (0, 6 /* F# */, 12);
+    const bool thirteenAtFSharp = allows (0, 6, 13);
+
+    std::printf ("  Root C: +12 %s, +13 %s | Root F#: +12 %s, +13 %s\n", twelveAtC ? "yes" : "no",
+                 thirteenAtC ? "yes" : "no", twelveAtFSharp ? "yes" : "no", thirteenAtFSharp ? "yes" : "no");
+
+    check (twelveAtC && ! thirteenAtC, "C major did not put the octave in and the flat ninth out");
+    check (! twelveAtFSharp && thirteenAtFSharp, "Root did not rotate the pattern");
+}
+
+void testGrainerLevelJitterHoldsTheCloudLevel()
+{
+    std::printf ("Grainer per-grain level jitter holds the cloud's level:\n");
+
+    const auto rmsAtJitter = [] (float jitter)
+    {
+        std::mt19937 rng (31);
+        std::uniform_real_distribution<float> noise (-1.0f, 1.0f);
+
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+
+        auto tuning = grainer.getTuning();
+        tuning.grainLevelJitter = jitter;
+        grainer.setTuning (tuning);
+
+        grainer.setSizeMs (120.0f);
+        grainer.setDensityHz (30.0f);
+        grainer.setTimeMs (300.0f);
+
+        std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+        double sumSquares = 0.0;
+        long long counted = 0;
+
+        for (int b = 0; b < static_cast<int> (kSampleRate * 4.0 / kBlock); ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = noise (rng);
+
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+            for (int i = 0; i < kBlock; ++i)
+            {
+                const double s = outL[static_cast<size_t> (i)];
+                sumSquares += s * s;
+                ++counted;
+            }
+        }
+
+        return static_cast<float> (std::sqrt (sumSquares / static_cast<double> (counted)));
+    };
+
+    const float flat = rmsAtJitter (0.0f);
+    const float jittered = rmsAtJitter (0.35f);
+    const float difference = juce::Decibels::gainToDecibels (jittered / juce::jmax (1.0e-9f, flat));
+
+    std::printf ("  rms flat %.4f, jittered %.4f (%.2f dB)\n", flat, jittered, difference);
+
+    // Not sample-exact by construction: the jittered run draws one extra
+    // random per grain, so grain placement diverges between the two rather
+    // than matching. The trim in updateDerived only has to hold the *level*.
+    check (std::abs (difference) < 1.0f, "per-grain level jitter moved the cloud's level");
 }
 
 void testGrainerFeedbackStaysFinite()
@@ -4514,17 +4961,33 @@ int main()
     std::printf ("\n");
     testGrainerLevelHoldsAcrossDensity();
     std::printf ("\n");
+    testGrainerLevelJitterHoldsTheCloudLevel();
+    std::printf ("\n");
     testGrainerFeedbackLengthensTail();
     std::printf ("\n");
     testGrainerFeedbackStaysFinite();
     std::printf ("\n");
     testGrainerAttackCapture();
     std::printf ("\n");
+    testGrainerGridFrozenCapturesEachBar();
+    std::printf ("\n");
+    testGrainerGridLiveTapsWholeSixteenths();
+    std::printf ("\n");
     testGrainerStereoIsBalanced();
     std::printf ("\n");
     testGrainerTailStops();
     std::printf ("\n");
     testGrainerPitchIsActuallyApplied();
+    std::printf ("\n");
+    testGrainerHighWithNoScaleIsAnOctaveUp();
+    std::printf ("\n");
+    testGrainerCloudFilterClosesAndDefaultsOpen();
+    std::printf ("\n");
+    testGrainerLowGroupIsOctavesOnly();
+    std::printf ("\n");
+    testGrainerHighGroupIsTheScaleAnOctaveUp();
+    std::printf ("\n");
+    testGrainerScaleRootRotatesThePattern();
     std::printf ("\n");
     testGrainerFreezeHoldsAndRetriggers();
     std::printf ("\n");

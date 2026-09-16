@@ -11,9 +11,10 @@
 //                 [--time 300] [--feedback 30] [--stretch 0] [--freeze 0]
 //                 [--shape 55] [--scatter 25] [--reverse 25] [--stereo 85]
 //                 [--mod 0] [--bit 0]
-//                 [--detune 6] [--low 0] [--unison 100] [--high 0]
+//                 [--scale 0] [--root 0] [--low 0] [--unison 100] [--high 0] [--pmix 100]
 //                 [--dtime 0.36] [--dtsync 1] [--dfb 30] [--dmix 30]
-//                 [--decay 2.5] [--rmix 30] [--mix 50]
+//                 [--decay 2.5] [--rmix 30] [--rvsrc 0]
+//                 [--dry 100] [--grains 71] [--filter 100] [--drive 35]
 //                 [--grainon 1] [--pitchon 1] [--randon 1] [--delon 1] [--revon 1]
 //
 // Size, Density and the delay Time (--size/--density/--dtime) are normalised
@@ -23,13 +24,14 @@
 // (processBlock never sees a finite ppq) - pass one to test the synced path.
 // --onsets measures grain spawn instants directly from the rendered audio (a
 // Schmitt-triggered envelope follower), rather than trusting the label under
-// the knob - use with --in dc, --mix 100 and a short unscattered Size so each
+// the knob - use with --in dc, --dry 0 --grains 100 and a short unscattered Size so each
 // grain is a clean, separated blip.
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include <cmath>
+#include <cstdint>
 #include <cstdio>
 #include <cstring>
 #include <random>
@@ -102,6 +104,7 @@ int main (int argc, char* argv[])
     bool reprepare = false;
     bool sweep = false;
     juce::File snapshot;
+    juce::File stateFile;
     double bpm = 0.0; // 0 means no playhead at all - the old behaviour
     bool onsets = false;
 
@@ -114,48 +117,114 @@ int main (int argc, char* argv[])
         const juce::String arg (argv[i]);
         const auto next = [&] { return i + 1 < argc ? juce::String (argv[++i]) : juce::String(); };
 
-        if (arg == "--sr")            sampleRate = next().getDoubleValue();
-        else if (arg == "--block")    block = next().getIntValue();
-        else if (arg == "--level")    inputDb = static_cast<float> (next().getDoubleValue());
-        else if (arg == "--seconds")  seconds = next().getDoubleValue();
-        else if (arg == "--in")       input = inputFromName (next());
-        else if (arg == "--ragged")   ragged = true;
-        else if (arg == "--bpm")      bpm = next().getDoubleValue();
-        else if (arg == "--onsets")   onsets = true;
-        else if (arg == "--mono")     mono = true;
-        else if (arg == "--editor")   withEditor = true;
-        else if (arg == "--reprepare") reprepare = true;
-        else if (arg == "--sweep")    sweep = true;
-        else if (arg == "--size")     knobs.emplace_back ("size", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--density")  knobs.emplace_back ("density", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--ssync")    knobs.emplace_back ("ssync", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--dsync")    knobs.emplace_back ("dsync", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--time")     knobs.emplace_back ("time", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--feedback") knobs.emplace_back ("feedback", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--stretch")  knobs.emplace_back ("stretch", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--freeze")   knobs.emplace_back ("freeze", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--shape")    knobs.emplace_back ("shape", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--scatter")  knobs.emplace_back ("scatter", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--reverse")  knobs.emplace_back ("reverse", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--stereo")   knobs.emplace_back ("stereo", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--mod")      knobs.emplace_back ("mod", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--bit")      knobs.emplace_back ("bit", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--detune")   knobs.emplace_back ("detune", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--low")      knobs.emplace_back ("plow", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--unison")   knobs.emplace_back ("puni", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--high")     knobs.emplace_back ("phigh", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--dtime")    knobs.emplace_back ("dtime", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--dtsync")   knobs.emplace_back ("dtsync", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--dfb")      knobs.emplace_back ("dfb", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--dmix")     knobs.emplace_back ("dmix", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--decay")    knobs.emplace_back ("decay", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--rmix")     knobs.emplace_back ("rmix", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--mix")      knobs.emplace_back ("mix", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--grainon")  knobs.emplace_back ("grainon", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--pitchon")  knobs.emplace_back ("pitchon", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--randon")   knobs.emplace_back ("randon", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--delon")    knobs.emplace_back ("delon", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--revon")    knobs.emplace_back ("revon", static_cast<float> (next().getDoubleValue()));
+        if (arg == "--sr")
+            sampleRate = next().getDoubleValue();
+        else if (arg == "--block")
+            block = next().getIntValue();
+        else if (arg == "--level")
+            inputDb = static_cast<float> (next().getDoubleValue());
+        else if (arg == "--seconds")
+            seconds = next().getDoubleValue();
+        else if (arg == "--in")
+            input = inputFromName (next());
+        else if (arg == "--ragged")
+            ragged = true;
+        else if (arg == "--bpm")
+            bpm = next().getDoubleValue();
+        else if (arg == "--onsets")
+            onsets = true;
+        else if (arg == "--mono")
+            mono = true;
+        else if (arg == "--editor")
+            withEditor = true;
+        else if (arg == "--reprepare")
+            reprepare = true;
+        else if (arg == "--sweep")
+            sweep = true;
+        else if (arg == "--size")
+            knobs.emplace_back ("size", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--density")
+            knobs.emplace_back ("density", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--ssync")
+            knobs.emplace_back ("ssync", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dsync")
+            knobs.emplace_back ("dsync", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--time")
+            knobs.emplace_back ("time", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--feedback")
+            knobs.emplace_back ("feedback", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--stretch")
+            knobs.emplace_back ("stretch", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--freeze")
+            knobs.emplace_back ("freeze", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--shape")
+            knobs.emplace_back ("shape", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--scatter")
+            knobs.emplace_back ("scatter", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--reverse")
+            knobs.emplace_back ("reverse", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--stereo")
+            knobs.emplace_back ("stereo", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--mod")
+            knobs.emplace_back ("mod", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--bit")
+            knobs.emplace_back ("bit", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--scale")
+            knobs.emplace_back ("scale", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--root")
+            knobs.emplace_back ("root", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--low")
+            knobs.emplace_back ("plow", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--unison")
+            knobs.emplace_back ("puni", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--high")
+            knobs.emplace_back ("phigh", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--pmix")
+            knobs.emplace_back ("pmix", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dtime")
+            knobs.emplace_back ("dtime", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dtsync")
+            knobs.emplace_back ("dtsync", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dfb")
+            knobs.emplace_back ("dfb", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dmix")
+            knobs.emplace_back ("dmix", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--decay")
+            knobs.emplace_back ("decay", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--rmix")
+            knobs.emplace_back ("rmix", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--rvsrc")
+            knobs.emplace_back ("rvsrc", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--dry")
+            knobs.emplace_back ("dry", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--grains")
+            knobs.emplace_back ("grains", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--filter")
+            knobs.emplace_back ("filter", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--drive")
+            knobs.emplace_back ("drive", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--grainon")
+            knobs.emplace_back ("grainon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--pitchon")
+            knobs.emplace_back ("pitchon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--randon")
+            knobs.emplace_back ("randon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--delon")
+            knobs.emplace_back ("delon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--revon")
+            knobs.emplace_back ("revon", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--param")
+        {
+            // Any parameter by id, for the ones without a flag of their own.
+            const auto id = next();
+            knobs.emplace_back (id, static_cast<float> (next().getDoubleValue()));
+        }
+        else if (arg == "--save-state")
+        {
+            // Writes the state after the knobs are applied, in exactly the form
+            // ee::plugin::PresetStore saves - for authoring a preset file.
+            stateFile = juce::File::getCurrentWorkingDirectory().getChildFile (next());
+        }
         else if (arg == "--snapshot")
         {
             // Renders the editor - side panel included, when the tuner build
@@ -178,6 +247,14 @@ int main (int argc, char* argv[])
             std::printf ("  unknown parameter \"%s\"\n", id.toRawUTF8());
     }
 
+    if (stateFile != juce::File())
+    {
+        const auto xml = processor.apvts.copyState().createXml();
+        const bool ok = xml != nullptr && stateFile.getParentDirectory().createDirectory() && xml->writeTo (stateFile);
+        std::printf ("%s %s\n", ok ? "wrote" : "FAILED to write", stateFile.getFullPathName().toRawUTF8());
+        return ok ? 0 : 1;
+    }
+
     processor.setPlayConfigDetails (channels, channels, sampleRate, block);
     processor.prepareToPlay (sampleRate, block);
 
@@ -191,11 +268,10 @@ int main (int argc, char* argv[])
 
     for (auto* parameter : processor.getParameters())
         if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (parameter))
-            std::printf ("  %-10s %s\n", withId->paramID.toRawUTF8(),
-                         parameter->getCurrentValueAsText().toRawUTF8());
+            std::printf ("  %-10s %s\n", withId->paramID.toRawUTF8(), parameter->getCurrentValueAsText().toRawUTF8());
 
-    std::printf ("Peak Grain defaults: %.0f Hz, block %d%s, %d ch, %g dBFS %s, %.0f s\n\n",
-                 sampleRate, block, ragged ? " (ragged)" : "", channels, inputDb,
+    std::printf ("Peak Grain defaults: %.0f Hz, block %d%s, %d ch, %g dBFS %s, %.0f s\n\n", sampleRate, block,
+                 ragged ? " (ragged)" : "", channels, inputDb,
                  input == Input::dc        ? "DC"
                  : input == Input::burst   ? "bursts"
                  : input == Input::silence ? "silence"
@@ -243,6 +319,11 @@ int main (int argc, char* argv[])
     int reportedSecond = 0;
     bool reportedNonFinite = false;
 
+    // FNV-1a over the raw bits of every output sample, printed at the end, so
+    // a change meant to alter nothing can be checked sample-exact against a
+    // run from before it (see tests/RegressHarness.h for the same idea).
+    std::uint64_t checksum = 1469598103934665603ull;
+
     // --onsets: a Schmitt-triggered envelope follower on the wet output, so a
     // grain's own spawn instant can be measured directly from rendered audio
     // rather than trusted from the knob label - see the note on kSpawnJumpPpq
@@ -266,22 +347,28 @@ int main (int argc, char* argv[])
 
             switch (input)
             {
-                case Input::noise:   s = noise (rng); break;
-                case Input::dc:      s = amplitude; break;
-                case Input::silence: s = 0.0f; break;
-                case Input::burst:
-                {
-                    // A plucked note: a decaying 220 Hz tone every two seconds,
-                    // silence in between. Closer to a guitar than steady noise,
-                    // and it is the silences that a granular buffer can misread.
-                    const long long into = n % (2 * samplesPerSecond);
-                    const double t = static_cast<double> (into) / sampleRate;
-                    s = t < 0.8 ? amplitude * static_cast<float> (std::exp (-3.0 * t)
-                                                                 * std::sin (2.0 * juce::MathConstants<double>::pi
-                                                                             * 220.0 * t))
-                                : 0.0f;
-                    break;
-                }
+            case Input::noise:
+                s = noise (rng);
+                break;
+            case Input::dc:
+                s = amplitude;
+                break;
+            case Input::silence:
+                s = 0.0f;
+                break;
+            case Input::burst:
+            {
+                // A plucked note: a decaying 220 Hz tone every two seconds,
+                // silence in between. Closer to a guitar than steady noise,
+                // and it is the silences that a granular buffer can misread.
+                const long long into = n % (2 * samplesPerSecond);
+                const double t = static_cast<double> (into) / sampleRate;
+                s = t < 0.8
+                        ? amplitude * static_cast<float> (std::exp (-3.0 * t) *
+                                                          std::sin (2.0 * juce::MathConstants<double>::pi * 220.0 * t))
+                        : 0.0f;
+                break;
+            }
             }
 
             for (int ch = 0; ch < channels; ++ch)
@@ -296,17 +383,16 @@ int main (int argc, char* argv[])
         if (sweep)
         {
             const double t = static_cast<double> (n) / sampleRate;
-            const auto ramp = [t] (double period) { return 0.5 + 0.5 * std::sin (2.0 * juce::MathConstants<double>::pi * t / period); };
+            const auto ramp = [t] (double period)
+            { return 0.5 + 0.5 * std::sin (2.0 * juce::MathConstants<double>::pi * t / period); };
 
             const std::pair<const char*, double> moving[] = {
-                { "size", 3.1 },     { "density", 4.7 },  { "time", 5.3 },
-                { "feedback", 9.7 }, { "stretch", 2.7 },  { "freeze", 13.1 },
-                { "shape", 3.7 },    { "scatter", 4.3 },
-                { "reverse", 2.3 },  { "stereo", 3.7 },   { "detune", 4.1 },
-                { "plow", 2.9 },     { "puni", 6.1 },     { "phigh", 3.3 },
-                { "dtime", 5.9 },    { "dfb", 8.7 },      { "dmix", 6.7 },
-                { "decay", 7.1 },    { "rmix", 4.9 },     { "mix", 8.3 },
-                { "on", 11.3 }   // the host's device on/off, which leaves the tail ringing
+                { "size", 3.1 },    { "density", 4.7 }, { "time", 5.3 },    { "feedback", 9.7 }, { "stretch", 2.7 },
+                { "freeze", 13.1 }, { "shape", 3.7 },   { "scatter", 4.3 }, { "reverse", 2.3 },  { "stereo", 3.7 },
+                { "scale", 4.1 },   { "root", 5.1 },    { "plow", 2.9 },    { "puni", 6.1 },     { "phigh", 3.3 },
+                { "dtime", 5.9 },   { "dfb", 8.7 },     { "dmix", 6.7 },    { "decay", 7.1 },    { "rmix", 4.9 },
+                { "rvsrc", 6.3 },   { "dry", 8.3 },     { "grains", 7.7 }, { "filter", 5.7 },  { "drive", 4.5 },
+                { "on", 11.3 } // the host's device on/off, which leaves the tail ringing
             };
 
             for (const auto& [id, period] : moving)
@@ -333,9 +419,16 @@ int main (int argc, char* argv[])
             {
                 if (! std::isfinite (p[i]) && ! reportedNonFinite)
                 {
-                    std::printf ("  *** non-finite output at %.2f s\n",
-                                 static_cast<double> (n) / sampleRate);
+                    std::printf ("  *** non-finite output at %.2f s\n", static_cast<double> (n) / sampleRate);
                     reportedNonFinite = true;
+                }
+
+                std::uint32_t bits = 0;
+                std::memcpy (&bits, &p[i], sizeof (bits));
+                for (int byte = 0; byte < 4; ++byte)
+                {
+                    checksum ^= (bits >> (8 * byte)) & 0xffu;
+                    checksum *= 1099511628211ull;
                 }
 
                 secondPeak = juce::jmax (secondPeak, std::abs (p[i]));
@@ -388,6 +481,8 @@ int main (int argc, char* argv[])
             sinceReport = 0;
         }
     }
+
+    std::printf ("\nchecksum %016llx\n", static_cast<unsigned long long> (checksum));
 
     if (onsets)
     {
