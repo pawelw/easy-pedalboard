@@ -105,6 +105,7 @@ public:
         capturing = false;
         barLocked = false;
         liveGrid = false;
+        attackStackPending = false;
         samplesIntoBar = 0.0;
         samplesPerSixteenth = 1.0;
         captureRemaining = 0;
@@ -463,6 +464,7 @@ public:
                 {
                     attackIndex = writeIndex;
                     sinceAttack = 0;
+                    attackStackPending = true;
                 }
                 else if (attackIndex >= 0 && sinceAttack < size)
                 {
@@ -553,7 +555,18 @@ public:
                     samplesIntoBar = into / transport.ppqPerSample;
                 }
 
-                spawnGrain();
+                // The first grain after a struck note leads with the octave
+                // below, or all three octaves at once - see GrainerConfig.h's
+                // ATTACK OCTAVES. Anything else spawns exactly as it always has.
+                const int attackReach = static_cast<int> (attackReachSeconds * static_cast<float> (sampleRate));
+                const bool stack = attackStackPending && ! frozen && pitchLow > 0.0f && attackIndex >= 0
+                                   && sinceAttack <= attackReach;
+                attackStackPending = false;
+
+                if (stack)
+                    spawnAttackStack();
+                else
+                    spawnGrain();
             }
 
             float sumL = 0.0f;
@@ -1002,19 +1015,29 @@ private:
             }
             else if (pick >= pitchLow + pitchUnison)
             {
-                // The octave up is where this group lives; the scale is a
-                // colour laid over it, dialled by setScaleBlend(). The octave
-                // is the fallback rather than unison so that closing the blend
-                // (or switching Scale off) still transposes - High reading as
-                // unison was the bug that made the knob inaudible.
-                if (upCount > 0 && nextFloat() < scaleBlend)
-                    semitones = upCandidates[static_cast<size_t> (
-                        std::min (upCount - 1, static_cast<int> (nextFloat() * static_cast<float> (upCount))))];
-                else
-                    semitones = 12.0f;
+                semitones = pickHighSemitones();
             }
         }
 
+        return rateForSemitones (semitones);
+    }
+
+    /** The High group's interval for one grain. The octave up is where this
+        group lives; the scale is a colour laid over it, dialled by
+        setScaleBlend(). The octave is the fallback rather than unison so that
+        closing the blend (or switching Scale off) still transposes - High
+        reading as unison was the bug that made the knob inaudible. */
+    float pickHighSemitones() noexcept
+    {
+        if (upCount > 0 && nextFloat() < scaleBlend)
+            return upCandidates[static_cast<size_t> (
+                std::min (upCount - 1, static_cast<int> (nextFloat() * static_cast<float> (upCount))))];
+        return 12.0f;
+    }
+
+    /** Semitones -> playback rate, with Mod's drift on top. */
+    double rateForSemitones (float semitones) const noexcept
+    {
         // Mod's drift: sampled from the shared slow phase, not this grain's
         // own RNG, so every grain spawned near the same point in the cycle
         // bends the same way - see setMod()'s note. Cents, not semitones -
@@ -1043,32 +1066,7 @@ private:
         content - the read loop wraps and there is nothing to guard. */
     void spawnGrain() noexcept
     {
-        Grain* slot = nullptr;
-
-        for (auto& g : grains)
-        {
-            if (! g.active)
-            {
-                slot = &g;
-                break;
-            }
-        }
-
-        if (slot == nullptr)
-        {
-            // Pool full: take the grain nearest its own end, which is the one
-            // whose window is quietest and so the least audible to cut short.
-            float furthest = -1.0f;
-            for (auto& g : grains)
-            {
-                const float progress = static_cast<float> (g.age) / static_cast<float> (std::max (1, g.length));
-                if (progress > furthest)
-                {
-                    furthest = progress;
-                    slot = &g;
-                }
-            }
-        }
+        Grain* slot = claimSlot();
 
         if (slot == nullptr)
             return;
@@ -1187,21 +1185,7 @@ private:
         }
 
         const float pan = nextBipolar() * stereo;
-        const float angle = (pan + 1.0f) * 0.25f * 3.14159265358979323846f;
 
-        slot->position = position;
-        slot->rate = backwards ? -rate : rate;
-        slot->length = length;
-        slot->age = 0;
-
-        // Just enough fade-in not to click, and never more than half the grain -
-        // a 20 ms grain cannot afford a 5 ms attack.
-        const int attackSamples = std::clamp (
-            static_cast<int> (curAttackMs * 0.001f * static_cast<float> (sampleRate)), 1, std::max (1, length / 2));
-
-        slot->attackSamples = attackSamples;
-        slot->decayEnv = 1.0f;
-        slot->decayMul = std::exp (-curDecayShape / static_cast<float> (std::max (1, length - attackSamples)));
         // Per-grain level, folded into the pan gains rather than carried as a
         // field of its own. Downward only, so the loudest grain is no louder
         // than it was before this existed; updateDerived() divides the
@@ -1209,15 +1193,124 @@ private:
         // the cloud.
         const float level = 1.0f - tuning.grainLevelJitter * nextFloat();
 
-        slot->gainL = std::cos (angle) * level;
-        slot->gainR = std::sin (angle) * level;
-        slot->active = true;
+        startVoice (*slot, position, backwards ? -rate : rate, length, pan, level);
+    }
+
+    /** The first grains after a struck note, in place of one random grain -
+        see GrainerConfig.h's ATTACK OCTAVES. Every voice starts together, at
+        the attack, forwards, with one shared length, pan and level. */
+    void spawnAttackStack() noexcept
+    {
+        float semitones[3];
+        int voices = 0;
+
+        semitones[voices++] = downCount > 0 ? downCandidates[0] : -12.0f;
+        if (pitchHigh > 0.0f)
+        {
+            if (pitchUnison > 0.0f)
+                semitones[voices++] = 0.0f;
+            semitones[voices++] = pickHighSemitones();
+        }
+
+        float lengthF = sizeMs * 0.001f * static_cast<float> (sampleRate);
+        lengthF *= 1.0f + scatter * tuning.scatterSizeJitter * nextBipolar();
+        const int length = std::clamp (static_cast<int> (lengthF), minGrainSamples, maxGrainSamples);
+
+        // Same anchor as an attack-drawn grain in spawnGrain(), drawn once so
+        // every voice starts on the same sample of the note.
+        const float windowMs = config::kAttackJitterMs + scatter * config::kAttackSpreadMs;
+        const int windowSamples = static_cast<int> (windowMs * 0.001f * static_cast<float> (sampleRate));
+        const int preRoll = static_cast<int> (config::kAttackPreRollMs * 0.001f * static_cast<float> (sampleRate));
+        const int into = windowSamples > 0 ? static_cast<int> (nextFloat() * static_cast<float> (windowSamples)) : 0;
+        const int wanted = sinceAttack + preRoll - into;
+
+        const float pan = nextBipolar() * stereo;
+        const float level = 1.0f - tuning.grainLevelJitter * nextFloat();
+
+        const int margin = config::kGrainReadMarginSamples;
+
+        for (int v = 0; v < voices; ++v)
+        {
+            const double rate = rateForSemitones (semitones[v]);
+            int voiceLength = length;
+
+            // Faster than realtime, a grain this close to the write head would
+            // catch it up and read audio not yet recorded. Shorten it to what
+            // the attack has actually delivered so far rather than moving it
+            // back before the attack; only if even the shortest grain will not
+            // fit does the clamp below move it.
+            if (rate > 1.0)
+            {
+                const double fits = static_cast<double> (wanted - 2 * margin) / (rate - 1.0);
+                voiceLength = std::clamp (static_cast<int> (fits), minGrainSamples, length);
+            }
+
+            const int consumed = static_cast<int> (std::ceil (rate * voiceLength)) + margin;
+            const int minOffset = std::max (margin, consumed - voiceLength + margin);
+            const int maxOffset = size - voiceLength - margin;
+
+            if (maxOffset <= minOffset)
+                continue;
+
+            const int offset = std::clamp (wanted, minOffset, maxOffset);
+
+            double position = static_cast<double> (writeIndex - offset);
+            if (position < 0.0)
+                position += static_cast<double> (size);
+
+            if (Grain* slot = claimSlot())
+                startVoice (*slot, position, rate, voiceLength, pan, level);
+        }
+    }
+
+    /** A free grain, or - pool full - the one nearest its own end, which is the
+        one whose window is quietest and so the least audible to cut short. */
+    Grain* claimSlot() noexcept
+    {
+        for (auto& g : grains)
+            if (! g.active)
+                return &g;
+
+        Grain* slot = nullptr;
+        float furthest = -1.0f;
+        for (auto& g : grains)
+        {
+            const float progress = static_cast<float> (g.age) / static_cast<float> (std::max (1, g.length));
+            if (progress > furthest)
+            {
+                furthest = progress;
+                slot = &g;
+            }
+        }
+        return slot;
+    }
+
+    void startVoice (Grain& slot, double position, double rate, int length, float pan, float level) noexcept
+    {
+        const float angle = (pan + 1.0f) * 0.25f * 3.14159265358979323846f;
+
+        slot.position = position;
+        slot.rate = rate;
+        slot.length = length;
+        slot.age = 0;
+
+        // Just enough fade-in not to click, and never more than half the grain -
+        // a 20 ms grain cannot afford a 5 ms attack.
+        const int attackSamples = std::clamp (
+            static_cast<int> (curAttackMs * 0.001f * static_cast<float> (sampleRate)), 1, std::max (1, length / 2));
+
+        slot.attackSamples = attackSamples;
+        slot.decayEnv = 1.0f;
+        slot.decayMul = std::exp (-curDecayShape / static_cast<float> (std::max (1, length - attackSamples)));
+        slot.gainL = std::cos (angle) * level;
+        slot.gainR = std::sin (angle) * level;
+        slot.active = true;
 
         // Fresh hold state, so a reused slot's Bit crush starts from this
         // grain's own first sample rather than wherever the previous grain
         // that lived in this slot left its counter.
-        slot->bitCounter = 0;
-        slot->bitHeld = 0.0f;
+        slot.bitCounter = 0;
+        slot.bitHeld = 0.0f;
     }
 
     //==========================================================================
@@ -1288,6 +1381,10 @@ private:
     // about to spawn sits in its bar - see GrainerConfig.h's GRID.
     bool barLocked = false;
     bool liveGrid = false;
+
+    // Set by the onset detector, spent by the next spawn - see
+    // GrainerConfig.h's ATTACK OCTAVES.
+    bool attackStackPending = false;
     double samplesIntoBar = 0.0;
     double samplesPerSixteenth = 1.0;
     int captureRemaining = 0;

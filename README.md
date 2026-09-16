@@ -788,6 +788,13 @@ standalone app, Freeze and Live behave as described above.
   every fragment starts on a beat of what you played. Grains drawn from a
   detected attack keep their own timing, so the pick and your feel survive.
 
+**Attack octaves.** The Low / Unison / High pitch weights are odds per grain, so
+on their own the octaves flicker in and out. Live, the first grain after a struck
+note is not left to chance: with **Low** on it is the octave below; with **Low and
+High** both on it is the octave below, the note and the octave above all at once
+(the note only if Unison is above 0), starting together on the attack. After
+that first hit the random pick carries on. With Low at 0 nothing changes.
+
 Live, most grains are the **attack**. A plucked string is mostly its first fifty
 milliseconds, and a cloud built from the sustain alone loses whatever made the
 note identifiable. An onset detector (`ee::dsp::OnsetGate`, the same one Peak Wah

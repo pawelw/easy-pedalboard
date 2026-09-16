@@ -1,6 +1,7 @@
 #include <juce_audio_basics/juce_audio_basics.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <limits>
@@ -3898,6 +3899,113 @@ void testGrainerGridLiveTapsWholeSixteenths()
     check (onSomeSixteenth / juce::jmax (1.0e-30, total) > 0.95, "a scattered live grid tap fell between sixteenths");
 }
 
+void testGrainerAttackLeadsWithOctaves()
+{
+    std::printf ("Grainer attack octaves (the first grain after a struck note):\n");
+
+    // 120 bpm, a grain every eighth. A 220 Hz pluck lands just after a spawn
+    // tick, so the next tick's grain is the first one after the attack and
+    // sounds alone - the grain before it ended long ago. Whatever pitches
+    // that grain holds are exactly what the attack spawned.
+    const double ppqPerSample = 2.0 / kSampleRate;
+    const int eighth = static_cast<int> (0.5 / ppqPerSample);
+    const int bar = 8 * eighth;
+    const int plucks = 8;
+
+    const auto pluck = [&] (int n)
+    {
+        const int into = n % bar - eighth / 8;
+        if (into < 0)
+            return 0.0f;
+        const double t = into / kSampleRate;
+        return 0.8f * static_cast<float> (std::exp (-6.0 * t) * std::sin (2.0 * juce::MathConstants<double>::pi * 220.0 * t));
+    };
+
+    // Per pluck: the level of 110 / 220 / 440 Hz in the first grain after it.
+    const auto firstGrains = [&] (float low, float unison, float high)
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (150.0f);
+        grainer.setDensityHz (4.0f);
+        grainer.setTimeMs (100.0f);
+        grainer.setFeedback (0.0f);
+        grainer.setScatter (0.0f);
+        grainer.setReverse (0.0f);
+        grainer.setStereo (0.0f);
+        grainer.setScaleBlend (0.0f);
+        grainer.setPitchMix (low, unison, high);
+
+        std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock), rendered;
+        for (int n = 0; n < plucks * bar; n += kBlock)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = pluck (n + i);
+
+            ee::dsp::Grainer::Transport transport;
+            transport.synced = true;
+            transport.playing = true;
+            transport.ppqStart = n * ppqPerSample;
+            transport.cyclesPerQuarter = 2.0;
+            transport.ppqPerSample = ppqPerSample;
+
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock, transport);
+            rendered.insert (rendered.end(), outL.begin(), outL.end());
+        }
+
+        std::vector<std::array<double, 3>> levels;
+        for (int p = 0; p < plucks; ++p)
+        {
+            const auto from = rendered.begin() + p * bar + eighth + 480;
+            const std::vector<float> grain (from, from + 4800);
+            levels.push_back ({ goertzelPower (grain, 110.0, kSampleRate), goertzelPower (grain, 220.0, kSampleRate),
+                                goertzelPower (grain, 440.0, kSampleRate) });
+        }
+        return levels;
+    };
+
+    const auto describe = [] (const char* name, const std::vector<std::array<double, 3>>& levels, int good)
+    {
+        std::printf ("  %-34s %d of %zu plucks as expected\n", name, good, levels.size());
+    };
+
+    // Low barely on, High off: every first grain is the octave below, alone -
+    // even though the odds say it should almost never be picked.
+    {
+        const auto levels = firstGrains (1.0f, 98.0f, 0.0f);
+        int good = 0;
+        for (const auto& l : levels)
+            good += (l[0] > 10.0 * l[1] && l[0] > 10.0 * l[2]) ? 1 : 0;
+        describe ("Low 1 / Unison 98: octave below", levels, good);
+        check (good == plucks, "the first grain after an attack was not the octave below");
+    }
+
+    // Low and High both barely on: every first grain holds all three octaves.
+    {
+        const auto levels = firstGrains (1.0f, 98.0f, 1.0f);
+        int good = 0;
+        for (const auto& l : levels)
+        {
+            const double loudest = std::max ({ l[0], l[1], l[2] });
+            good += (l[0] > 0.02 * loudest && l[1] > 0.02 * loudest && l[2] > 0.02 * loudest) ? 1 : 0;
+        }
+        describe ("Low 1 / Unison 98 / High 1: all three", levels, good);
+        check (good == plucks, "the first grain after an attack did not hold all three octaves");
+    }
+
+    // Control - Low off: the random pick as before, which at these odds is
+    // the note itself.
+    {
+        const auto levels = firstGrains (0.0f, 98.0f, 1.0f);
+        int noLow = 0;
+        for (const auto& l : levels)
+            noLow += l[0] < 0.01 * l[1] ? 1 : 0;
+        describe ("control, Low 0: no octave below", levels, noLow);
+        check (noLow == plucks, "with Low off the attack still spawned the octave below");
+    }
+}
+
 void testGrainerStereoIsBalanced()
 {
     std::printf ("Grainer stereo placement:\n");
@@ -5015,6 +5123,8 @@ int main()
     testGrainerGridFrozenCapturesEachBar();
     std::printf ("\n");
     testGrainerGridLiveTapsWholeSixteenths();
+    std::printf ("\n");
+    testGrainerAttackLeadsWithOctaves();
     std::printf ("\n");
     testGrainerStereoIsBalanced();
     std::printf ("\n");

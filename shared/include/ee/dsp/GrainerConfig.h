@@ -331,6 +331,16 @@ constexpr float kDefaultPitchLowPct = 0.0f;
 constexpr float kDefaultPitchUnisonPct = 100.0f;
 constexpr float kDefaultPitchHighPct = 0.0f;
 
+// ATTACK OCTAVES. The weights above are odds per grain, so on their own the
+// octaves flicker in and out and a struck note may start on any of them. Live,
+// the first grain spawned after a detected attack is deterministic instead:
+//   Low on, High off   - the octave below, alone
+//   Low on, High on    - the octave below, the note and High's interval (the
+//                        note only if Unison is above 0), all at once
+// Every voice of that first event starts on the same sample of the attack, so
+// the three land as one hit; after it the random pick carries on as normal.
+// Low off leaves everything exactly as it was. Frozen playback is untouched.
+
 // How much of the scale reaches the grain cloud: 0 sends the High group back
 // to the original pitch, 100 lets it land on whatever notes Root and Scale
 // pick out. Low's octaves are not affected - an octave is consonant whatever
