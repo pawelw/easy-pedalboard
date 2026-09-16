@@ -80,7 +80,7 @@ function TimeRow({ side, parameterId }) {
 
   return (
     <div className="pg-time-row">
-      <JuceKnob parameterId={parameterId} variant="concave" size={38} bare showValueLabel={false} />
+      <JuceKnob parameterId={parameterId} variant="concave" size={32} bare showValueLabel={false} />
       <Readout label={side} value={text} />
     </div>
   );
@@ -232,9 +232,11 @@ function DelaySection() {
       <div className="pg-delay__body">
         <div className="pg-delay__leads">
           {/* Same look as Peak Delay's footer knobs (StageControl): concave,
-              38px, value swapped in for the caption only while dragging. */}
-          <JuceKnob parameterId="dmix" caption="Mix" variant="concave" size={38} />
-          <JuceKnob parameterId="dfb" caption="Feedback" variant="concave" size={38} />
+              value swapped in for the caption only while dragging. 30% up
+              from that footer's own 38px - these are Delay's own lead
+              knobs, not footer-sized ones. */}
+          <JuceKnob parameterId="dmix" caption="Mix" variant="concave" size={49} />
+          <JuceKnob parameterId="dfb" caption="Feedback" variant="concave" size={49} />
         </div>
         <div className="pg-delay__times">
           <TimeRow side="L" parameterId="ltime" />
@@ -291,31 +293,30 @@ function ReverbSection() {
   );
 }
 
-/** Live/Freeze: one boolean (`freeze`), drawn as a joined two-button segment
-    (COMPONENTS.md: "LIVE/FREEZE joined pair") rather than two independent
-    pills - there is one flag and exactly one of the two reads as pressed at
-    any time, which a segmented pair says more plainly than two pills with an
-    `invert` on one of them. */
-function LiveFreezeSwitch() {
-  const [freeze, setFreeze] = useJuceToggleValue("freeze");
+/** A two-state switch drawn as a joined two-button segment rather than two
+    independent pills - there is one flag and exactly one of the two reads as
+    pressed at any time, which a segmented pair says more plainly than two
+    pills with an `invert` on one of them. */
+function SegmentSwitch({ parameterId, offLabel, onLabel }) {
+  const [on, setOn] = useJuceToggleValue(parameterId);
 
   return (
-    <div className="pg-live-freeze">
+    <div className="pg-segment">
       <button
         type="button"
-        className="pg-live-freeze__btn"
-        data-on={!freeze || undefined}
-        onClick={() => setFreeze(false)}
+        className="pg-segment__btn"
+        data-on={!on || undefined}
+        onClick={() => setOn(false)}
       >
-        Live
+        {offLabel}
       </button>
       <button
         type="button"
-        className="pg-live-freeze__btn"
-        data-on={freeze || undefined}
-        onClick={() => setFreeze(true)}
+        className="pg-segment__btn"
+        data-on={on || undefined}
+        onClick={() => setOn(true)}
       >
-        Freeze
+        {onLabel}
       </button>
     </div>
   );
@@ -340,7 +341,9 @@ function Header() {
       </div>
       <div className="pg-header__row">
         <div className="pg-header__live">
-          <LiveFreezeSwitch />
+          <SegmentSwitch parameterId="freeze" offLabel="Live" onLabel="Freeze" />
+          {/* Stereo adds Haas width to the grain cloud - GrainerConfig.h's MONO / STEREO. */}
+          <SegmentSwitch parameterId="width" offLabel="Mono" onLabel="Stereo" />
         </div>
         <div className="pg-header__presets">
           <JucePresetBar variant="separated" />

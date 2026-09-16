@@ -78,18 +78,19 @@
 .pg-header__live {
   display: flex;
   align-items: center;
+  gap: 8px;
   flex: 1 1 auto;
   min-width: 0;
 }
 
-/* Live/Freeze: two buttons sharing one edge, only the outer corners
+/* Live/Freeze and Mono/Stereo: two buttons sharing one edge, only the outer corners
    rounded - reads as one segmented object rather than two pills. */
-.pg-live-freeze {
+.pg-segment {
   display: flex;
   align-items: center;
 }
 
-.pg-live-freeze__btn {
+.pg-segment__btn {
   appearance: none;
   font-family: var(--pui-font-label);
   font-weight: 700;
@@ -104,16 +105,16 @@
   cursor: pointer;
 }
 
-.pg-live-freeze__btn:first-child {
+.pg-segment__btn:first-child {
   border-radius: 8px 0 0 8px;
 }
 
-.pg-live-freeze__btn:last-child {
+.pg-segment__btn:last-child {
   border-radius: 0 8px 8px 0;
   margin-left: -1px;
 }
 
-.pg-live-freeze__btn[data-on] {
+.pg-segment__btn[data-on] {
   border-color: transparent;
   background: var(--pui-pill-on-bg);
   color: var(--pui-pill-on-ink);
@@ -199,7 +200,7 @@
 }
 
 /* Same rounded-square chrome button as Delay's own link pill
-   (.pg-delay__link .pui-pill) - two link buttons on one face read as one
+   ( .pui-pill) - two link buttons on one face read as one
    control, not two different ones. */
 .pg-mixer__link .pui-pill {
   width: 22px;
@@ -230,7 +231,6 @@
   display: flex;
   justify-content: center;
   gap: 6px;
-  margin-top: 34px;
 }
 
 /* The response scope above the Filter knob, in place of the printed value.
@@ -551,9 +551,9 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  /* 8px less than .pg-delay__times' own top padding, nudging Mix/Feedback up
-     off the row. */
-  padding-top: 2px;
+  /* Centred on .pg-delay__times' own full height (both time knobs stacked),
+     not pinned to the row's top like everything else in .pg-delay__body. */
+  align-self: center;
 }
 
 .pg-delay__times {
@@ -605,8 +605,8 @@
    real equivalent of the same "free-floating" idea. */
 .pg-delay__link {
   position: absolute;
-  right: 104px;
-  top: 50%;
+  right: 107px;
+  top: 52%;
   transform: translateY(-50%);
 }
 

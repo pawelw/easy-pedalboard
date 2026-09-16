@@ -22,6 +22,7 @@ constexpr const char* kTimeID = "time";
 constexpr const char* kFeedbackID = "feedback";
 constexpr const char* kStretchID = "stretch";
 constexpr const char* kFreezeID = "freeze";
+constexpr const char* kWidthID = "width";
 constexpr const char* kShapeID = "shape";
 constexpr const char* kScatterID = "scatter";
 constexpr const char* kReverseID = "reverse";
@@ -208,6 +209,7 @@ PeakGrainProcessor::PeakGrainProcessor()
     feedbackParam = apvts.getRawParameterValue (kFeedbackID);
     stretchParam = apvts.getRawParameterValue (kStretchID);
     freezeParam = apvts.getRawParameterValue (kFreezeID);
+    widthParam = apvts.getRawParameterValue (kWidthID);
     shapeParam = apvts.getRawParameterValue (kShapeID);
     scatterParam = apvts.getRawParameterValue (kScatterID);
     reverseParam = apvts.getRawParameterValue (kReverseID);
@@ -359,6 +361,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (signedPercentToText)));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kFreezeID, 1 }, "Freeze", false));
+
+    // Mono/Stereo, beside Live/Freeze: Stereo adds the Haas width to the grain
+    // cloud - see GrainerConfig.h's MONO / STEREO.
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kWidthID, 1 }, "Stereo Width",
+                                                            cfg::kDefaultStereoWidth));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kShapeID, 1 }, "Shape", percent,
                                                              cfg::kDefaultShapePct, percentAttributes));
@@ -767,6 +774,7 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
 
     driveStage.prepare (sampleRate);
     driveStage.reset();
+    haas.prepare (sampleRate, ee::dsp::config::kHaasDelayMs, ee::dsp::config::kHaasRampMs);
 
     delay.prepare (sampleRate);
     delay.reset();
@@ -832,6 +840,7 @@ void PeakGrainProcessor::releaseResources()
 {
     grainer.reset();
     driveStage.reset();
+    haas.reset();
     delay.reset();
     reverb.reset();
     outputLimiter.reset();
@@ -943,7 +952,6 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     grainer.setTimeMs (timeParam->load());
     grainer.setFeedback (feedbackParam->load() * 0.01f);
     grainer.setStretch (stretchParam->load() * 0.01f);
-    grainer.setFreeze (freezeParam->load() > 0.5f);
     grainer.setShape (shapeParam->load() * 0.01f);
     grainer.setBit ((grainOn ? bitParam->load() : 0.0f) * 0.01f);
     grainer.setScatter ((randomOn ? scatterParam->load() : 0.0f) * 0.01f);
@@ -955,6 +963,8 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     grainer.setScale (juce::roundToInt (scaleParam->load()), juce::roundToInt (rootParam->load()));
     grainer.setCloudFilter (filterParam->load() * 0.01f);
     driveStage.setDrive01 (driveParam->load() * 0.01f);
+    grainer.setFreeze (freezeParam->load() > 0.5f);
+    haas.setWidth (widthParam->load() > 0.5f ? ee::dsp::config::kHaasWidth : 0.0f);
     if (pitchOn)
     {
         // Pitch Mix belongs to the scale alone, and it colours the High
@@ -1059,6 +1069,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         // Grain-cloud-only, like the cloud Filter above it - the dry path
         // never reaches this stage.
         driveStage.process (grainL, grainR, chunk);
+        haas.process (grainL, grainR, chunk);
 
         // Grain stage: the equal-power blend of the dry note and the cloud - the
         // signal an outboard delay would see at the grain pedal's output. The

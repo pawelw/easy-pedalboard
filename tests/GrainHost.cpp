@@ -27,6 +27,7 @@
 // the knob - use with --in dc, --dry 0 --grains 100 and a short unscattered Size so each
 // grain is a clean, separated blip.
 
+#include <juce_audio_formats/juce_audio_formats.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_basics/juce_gui_basics.h>
 
@@ -46,7 +47,8 @@ enum class Input
     noise,
     dc,
     burst,
-    silence
+    silence,
+    file
 };
 
 Input inputFromName (const juce::String& name)
@@ -57,6 +59,8 @@ Input inputFromName (const juce::String& name)
         return Input::burst;
     if (name == "silence")
         return Input::silence;
+    if (name == "file")
+        return Input::file;
     return Input::noise;
 }
 
@@ -105,6 +109,8 @@ int main (int argc, char* argv[])
     bool sweep = false;
     juce::File snapshot;
     juce::File stateFile;
+    juce::File inFile;
+    juce::File outFile;
     double bpm = 0.0; // 0 means no playhead at all - the old behaviour
     bool onsets = false;
 
@@ -157,6 +163,8 @@ int main (int argc, char* argv[])
             knobs.emplace_back ("stretch", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--freeze")
             knobs.emplace_back ("freeze", static_cast<float> (next().getDoubleValue()));
+        else if (arg == "--width")
+            knobs.emplace_back ("width", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--shape")
             knobs.emplace_back ("shape", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--scatter")
@@ -219,6 +227,18 @@ int main (int argc, char* argv[])
             const auto id = next();
             knobs.emplace_back (id, static_cast<float> (next().getDoubleValue()));
         }
+        else if (arg == "--in-file")
+        {
+            // A recording instead of a generated signal - summed to mono and
+            // played once from the start, then silence, so --seconds past its
+            // end renders the tail. For A/B against a reference.
+            inFile = juce::File::getCurrentWorkingDirectory().getChildFile (next());
+            input = Input::file;
+        }
+        else if (arg == "--out")
+        {
+            outFile = juce::File::getCurrentWorkingDirectory().getChildFile (next());
+        }
         else if (arg == "--save-state")
         {
             // Writes the state after the knobs are applied, in exactly the form
@@ -235,6 +255,35 @@ int main (int argc, char* argv[])
     }
 
     const float amplitude = juce::Decibels::decibelsToGain (inputDb);
+
+    std::vector<float> fileSamples;
+    if (input == Input::file)
+    {
+        juce::AudioFormatManager formats;
+        formats.registerBasicFormats();
+        std::unique_ptr<juce::AudioFormatReader> reader (formats.createReaderFor (inFile));
+        if (reader == nullptr)
+        {
+            std::printf ("could not read %s\n", inFile.getFullPathName().toRawUTF8());
+            return 1;
+        }
+
+        const int length = static_cast<int> (reader->lengthInSamples);
+        const int fileChannels = static_cast<int> (reader->numChannels);
+        juce::AudioBuffer<float> loaded (fileChannels, length);
+        reader->read (&loaded, 0, length, 0, true, true);
+
+        fileSamples.assign (static_cast<size_t> (length), 0.0f);
+        for (int ch = 0; ch < fileChannels; ++ch)
+            for (int i = 0; i < length; ++i)
+                fileSamples[static_cast<size_t> (i)] += loaded.getSample (ch, i) / static_cast<float> (fileChannels);
+
+        if (std::abs (reader->sampleRate - sampleRate) > 0.5)
+            std::printf ("  note: %s is %.0f Hz, rendering at %.0f Hz without resampling\n",
+                         inFile.getFileName().toRawUTF8(), reader->sampleRate, sampleRate);
+    }
+
+    std::vector<float> renderedL, renderedR;
     const int channels = mono ? 1 : 2;
 
     PeakGrainProcessor processor;
@@ -356,6 +405,9 @@ int main (int argc, char* argv[])
             case Input::silence:
                 s = 0.0f;
                 break;
+            case Input::file:
+                s = n < static_cast<long long> (fileSamples.size()) ? fileSamples[static_cast<size_t> (n)] : 0.0f;
+                break;
             case Input::burst:
             {
                 // A plucked note: a decaying 220 Hz tone every two seconds,
@@ -388,7 +440,7 @@ int main (int argc, char* argv[])
 
             const std::pair<const char*, double> moving[] = {
                 { "size", 3.1 },    { "density", 4.7 }, { "time", 5.3 },    { "feedback", 9.7 }, { "stretch", 2.7 },
-                { "freeze", 13.1 }, { "shape", 3.7 },   { "scatter", 4.3 }, { "reverse", 2.3 },  { "stereo", 3.7 },
+                { "freeze", 13.1 }, { "width", 10.3 }, { "shape", 3.7 },   { "scatter", 4.3 }, { "reverse", 2.3 },  { "stereo", 3.7 },
                 { "scale", 4.1 },   { "root", 5.1 },    { "plow", 2.9 },    { "puni", 6.1 },     { "phigh", 3.3 },
                 { "dtime", 5.9 },   { "dfb", 8.7 },     { "dmix", 6.7 },    { "decay", 7.1 },    { "rmix", 4.9 },
                 { "rvsrc", 6.3 },   { "dry", 8.3 },     { "grains", 7.7 },  { "filter", 5.7 },   { "drive", 4.5 },
@@ -401,6 +453,14 @@ int main (int argc, char* argv[])
         }
 
         processor.processBlock (buffer, midi);
+
+        if (outFile != juce::File())
+        {
+            const auto* pl = buffer.getReadPointer (0);
+            const auto* pr = buffer.getReadPointer (channels > 1 ? 1 : 0);
+            renderedL.insert (renderedL.end(), pl, pl + thisBlock);
+            renderedR.insert (renderedR.end(), pr, pr + thisBlock);
+        }
 
         if (playHead != nullptr)
             playHead->advance (thisBlock);
@@ -483,6 +543,23 @@ int main (int argc, char* argv[])
     }
 
     std::printf ("\nchecksum %016llx\n", static_cast<unsigned long long> (checksum));
+
+    if (outFile != juce::File())
+    {
+        outFile.deleteFile();
+        std::unique_ptr<juce::OutputStream> stream (outFile.createOutputStream());
+        juce::WavAudioFormat wav;
+        std::unique_ptr<juce::AudioFormatWriter> writer (
+            stream != nullptr ? wav.createWriterFor (stream.release(), sampleRate, 2, 24, {}, 0) : nullptr);
+        if (writer == nullptr)
+        {
+            std::printf ("could not write %s\n", outFile.getFullPathName().toRawUTF8());
+            return 1;
+        }
+        const float* channelData[] = { renderedL.data(), renderedR.data() };
+        writer->writeFromFloatArrays (channelData, 2, static_cast<int> (renderedL.size()));
+        std::printf ("wrote %s\n", outFile.getFullPathName().toRawUTF8());
+    }
 
     if (onsets)
     {

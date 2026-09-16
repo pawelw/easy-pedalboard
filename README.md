@@ -680,7 +680,7 @@ voicing lives in `shared/include/ee/dsp/AutoWahConfig.h`; the LFO rate range is
 ### Peak Grain
 
 A granular delay into a plain plate. Mono or stereo in, stereo out. Fifteen
-knobs in four captioned sections, a **Live / Freeze** switch across the top, and
+knobs in four captioned sections, **Live / Freeze** and **Mono / Stereo** switches across the top, and
 Reverb and Mix bare underneath.
 
 **Delay** - the echo, and what you do to a frozen buffer:
@@ -762,9 +762,17 @@ shifting pitch, because each grain still plays at rate 1. A loud enough input
 retriggers: the engine grabs a fresh `Time` window and re-freezes, so the loop
 starts again on the new sound.
 
-**Grid** is always on: whenever the host transport is rolling, where grains read
-from stays on sixteenth notes. There is no switch. With the transport stopped, or
-in the standalone app with no transport, Freeze and Live behave as described above.
+**Mono / Stereo** sits beside it. Mono leaves the grain cloud as
+the engine made it (Random's **Stereo** knob still pans individual grains).
+Stereo adds full Haas width to the cloud: the side channel gets the mid back
+6.83 ms late, so the left channel hears the cloud plus that echo and the right
+hears it minus the echo. It reads as wide, and it cancels exactly when the
+output is folded to mono, so nothing is lost on a mono system. The dry signal
+never goes through it.
+
+**Grid** is always on: whenever the host transport is rolling, grains read from
+whole sixteenth notes. There is no switch. With the transport stopped, or in the
+standalone app, Freeze and Live behave as described above.
 
 - **Frozen**, it locks the capture to the bar. Every bar line takes a new
   capture, and every grain for the rest of the bar replays a sixteenth-note

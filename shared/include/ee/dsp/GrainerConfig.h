@@ -209,6 +209,21 @@ constexpr float kMinRecaptureSeconds = 0.5f;
 constexpr float kFreezeLoopSeconds = 3.0f;
 
 // ============================================================================
+// MONO / STEREO  (Haas width on the grain cloud)
+// ============================================================================
+// The header switch beside Live/Freeze. Mono leaves the cloud exactly as the engine and Drive
+// made it (Random's Stereo knob still pans grains). Stereo runs it through
+// ee::dsp::HaasWidener: the side channel gets the mid back 6.83 ms late, which
+// widens the image and cancels exactly in a mono fold-down. Delay and width
+// are the ones measured on the reference grainer this was modelled on (side
+// gain ~0.9 there; full width here, as asked for). Cloud only - the dry path
+// never reaches it.
+constexpr float kHaasDelayMs = 6.83f;
+constexpr float kHaasWidth = 1.0f;
+constexpr float kHaasRampMs = 20.0f;
+constexpr bool kDefaultStereoWidth = false;
+
+// ============================================================================
 // GRID  (grain read points on the tempo grid)
 // ============================================================================
 // Not a switch: always on whenever the host transport is rolling (the

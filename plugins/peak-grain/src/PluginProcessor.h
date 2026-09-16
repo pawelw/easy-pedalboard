@@ -6,6 +6,7 @@
 
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/GrainerConfig.h"
+#include "ee/dsp/HaasWidener.h"
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/PeakLimiter.h"
@@ -149,6 +150,7 @@ private:
         grain cloud alone - same insertion point as the cloud Filter, right
         after grainer.process() and before the Dry/Grains blend. */
     ee::dsp::TubeDrive driveStage;
+    ee::dsp::HaasWidener haas; // Mono/Stereo: Haas width on the grain cloud
 
     // 0..1 knobs whose Sync switch reinterprets them; built from GrainerConfig.
     ee::dsp::GrainSyncMap sizeMap;
@@ -166,6 +168,7 @@ private:
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* stretchParam = nullptr;
     std::atomic<float>* freezeParam = nullptr;
+    std::atomic<float>* widthParam = nullptr; // width: Mono/Stereo, Haas on the grain cloud
     std::atomic<float>* shapeParam = nullptr;
     std::atomic<float>* scatterParam = nullptr;
     std::atomic<float>* reverseParam = nullptr;

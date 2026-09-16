@@ -383,7 +383,7 @@ if(TARGET PeakGrain)
         PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-grain/src)
 
     target_link_libraries(ee_grain_host
-        PRIVATE PeakGrain ee_shared juce::juce_graphics
+        PRIVATE PeakGrain ee_shared juce::juce_graphics juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
