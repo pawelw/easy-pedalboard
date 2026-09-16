@@ -762,8 +762,9 @@ shifting pitch, because each grain still plays at rate 1. A loud enough input
 retriggers: the engine grabs a fresh `Time` window and re-freezes, so the loop
 starts again on the new sound.
 
-**Grid** beside Live/Freeze keeps where grains read from on sixteenth notes
-while the host transport is rolling. It does nothing when the transport is stopped.
+**Grid** is always on: whenever the host transport is rolling, where grains read
+from stays on sixteenth notes. There is no switch. With the transport stopped, or
+in the standalone app with no transport, Freeze and Live behave as described above.
 
 - **Frozen**, it locks the capture to the bar. Every bar line takes a new
   capture, and every grain for the rest of the bar replays a sixteenth-note
@@ -774,7 +775,8 @@ while the host transport is rolling. It does nothing when the transport is stopp
   it is an even split between the downbeat and the one after it). Time, Window
   and Stretch do not apply.
 - **Live**, it makes a rhythmic granular delay. The Time tap is rounded to whole
-  sixteenths (never less than one) and Scatter moves it by whole sixteenths, so
+  sixteenths (never less than one) and Scatter moves it by up to four whole
+  sixteenths either way (at 25 % about half the grains land one early or late), so
   every fragment starts on a beat of what you played. Grains drawn from a
   detected attack keep their own timing, so the pick and your feel survive.
 

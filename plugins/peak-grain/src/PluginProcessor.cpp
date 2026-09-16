@@ -22,7 +22,6 @@ constexpr const char* kTimeID = "time";
 constexpr const char* kFeedbackID = "feedback";
 constexpr const char* kStretchID = "stretch";
 constexpr const char* kFreezeID = "freeze";
-constexpr const char* kGridID = "grid";
 constexpr const char* kShapeID = "shape";
 constexpr const char* kScatterID = "scatter";
 constexpr const char* kReverseID = "reverse";
@@ -209,7 +208,6 @@ PeakGrainProcessor::PeakGrainProcessor()
     feedbackParam = apvts.getRawParameterValue (kFeedbackID);
     stretchParam = apvts.getRawParameterValue (kStretchID);
     freezeParam = apvts.getRawParameterValue (kFreezeID);
-    gridParam = apvts.getRawParameterValue (kGridID);
     shapeParam = apvts.getRawParameterValue (kShapeID);
     scatterParam = apvts.getRawParameterValue (kScatterID);
     reverseParam = apvts.getRawParameterValue (kReverseID);
@@ -362,12 +360,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kFreezeID, 1 }, "Freeze", false));
 
-    // Grid: while the transport rolls, grain read points stay on sixteenths -
-    // frozen, re-captured on every bar line instead of on loud onsets; live,
-    // the Time tap in whole sixteenths. See GrainerConfig.h's GRID.
-    layout.add (
-        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kGridID, 1 }, "Grid", cfg::kDefaultGrid));
-
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kShapeID, 1 }, "Shape", percent,
                                                              cfg::kDefaultShapePct, percentAttributes));
 
@@ -475,10 +467,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kReverbMixID, 1 }, "Reverb Mix",
                                                              percent, cfg::kDefaultReverbMixPct, percentAttributes));
 
-    // Whole first, so a session saved before this parameter existed loads at
+    // Global first, so a session saved before this parameter existed loads at
     // index 0 and hears exactly what it always did.
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kReverbSourceID, 1 }, "Reverb Source",
-                                                              juce::StringArray { "Whole", "Grains" }, 0));
+                                                              juce::StringArray { "Global", "Grains" }, 0));
 
     // Two independent levels rather than one crossfade knob: a crossfade
     // cannot give you full dry and a full cloud at once, which is the whole
@@ -929,7 +921,9 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     grainTransport.cyclesPerQuarter =
         1.0 / juce::jmax (1.0e-4, static_cast<double> (densityMap.divisionBeats (densityParam->load())));
     grainTransport.ppqPerSample = bpm / (60.0 * getSampleRate());
-    grainTransport.grid = gridParam->load() > 0.5f && havePpq && isPlaying;
+    // Grid is not a switch: whenever the host transport rolls, grain read
+    // points sit on sixteenths - see GrainerConfig.h's GRID.
+    grainTransport.grid = havePpq && isPlaying;
     grainTransport.barStartPpq = barStartPpq;
     grainTransport.quartersPerBar = quartersPerBar;
 
@@ -1099,7 +1093,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             // at, in place. The "Grains" reverb source below reads this buffer
             // directly, and read raw it fed the tank a full-scale cloud however
             // far down the Grains fader was - which is why that mode came out
-            // enormous next to "Whole", where the cloud arrives already scaled
+            // enormous next to "Global", where the cloud arrives already scaled
             // inside the stage blend. Nothing else reads grainL/R past this
             // point, and the next chunk refills them from the input.
             grainL[i] *= gw;
@@ -1128,7 +1122,7 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             postL[i] = pL;
             postR[i] = pR;
 
-            // Reverb Source: "Whole" sends what the pedal has built up to this
+            // Reverb Source: "Global" sends what the pedal has built up to this
             // point (dry/grain blend then delay); "Grains" sends the cloud
             // straight from Grainer::process instead, skipping the dry blend
             // and the delay stage entirely - a send that only ever hears

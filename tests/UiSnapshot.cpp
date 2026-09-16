@@ -528,8 +528,6 @@ public:
                                                                  juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
                                                                  cfg::kDefaultStretchPct));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "freeze", 1 }, "Freeze", false));
-        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "grid", 1 }, "Grid",
-                                                                cfg::kDefaultGrid));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "shape", 1 }, "Shape", percent,
                                                                  cfg::kDefaultShapePct, percentAttributes));
@@ -602,7 +600,7 @@ public:
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rmix", 1 }, "Reverb Mix", percent,
                                                                  cfg::kDefaultReverbMixPct, percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "rvsrc", 1 }, "Reverb Source",
-                                                                  juce::StringArray { "Whole", "Grains" }, 0));
+                                                                  juce::StringArray { "Global", "Grains" }, 0));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dry", 1 }, "Dry", percent,
                                                                  cfg::kDefaultDryLevelPct, percentAttributes));
@@ -611,10 +609,10 @@ public:
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "mlink", 1 }, "Mixer Link", false,
                                                                 juce::AudioParameterBoolAttributes().withMeta (true)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
-            juce::ParameterID { "filter", 1 }, "Filter", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f),
-            100.0f));
+            juce::ParameterID { "filter", 1 }, "Filter", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "drive", 1 }, "Drive", percent,
-                                                                 ee::dsp::tubedrive::kDefaultDrivePct, percentAttributes));
+                                                                 ee::dsp::tubedrive::kDefaultDrivePct,
+                                                                 percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
 

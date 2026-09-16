@@ -3794,7 +3794,10 @@ void testGrainerGridLiveTapsWholeSixteenths()
                                                / kSampleRate));
     };
 
-    const auto cleanShare = [&] (bool grid)
+    const int slots = 40;
+
+    // The grain spawned on each sixteenth j from 8 on, rendered.
+    const auto render = [&] (bool grid, float scatter)
     {
         ee::dsp::Grainer grainer;
         grainer.prepare (kSampleRate);
@@ -3803,7 +3806,7 @@ void testGrainerGridLiveTapsWholeSixteenths()
         grainer.setDensityHz (8.0f);
         grainer.setTimeMs (300.0f);
         grainer.setFeedback (0.0f);
-        grainer.setScatter (0.0f);
+        grainer.setScatter (scatter);
         grainer.setReverse (0.0f);
         grainer.setStereo (0.0f);
 
@@ -3811,7 +3814,6 @@ void testGrainerGridLiveTapsWholeSixteenths()
         tuning.attackShare = 0.0f;
         grainer.setTuning (tuning);
 
-        const int slots = 40;
         std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
         std::vector<float> rendered;
         rendered.reserve (static_cast<size_t> (slots * sixteenth + kBlock));
@@ -3833,13 +3835,24 @@ void testGrainerGridLiveTapsWholeSixteenths()
             rendered.insert (rendered.end(), outL.begin(), outL.end());
         }
 
-        // Inside each grain, the two tones its tap could straddle: the share
-        // that is the whole-sixteenth one.
+        return rendered;
+    };
+
+    const auto grainOf = [&] (const std::vector<float>& rendered, int j)
+    {
+        const auto from = rendered.begin() + j * sixteenth + 480;
+        return std::vector<float> (from, from + 3600);
+    };
+
+    // Inside each grain, the two tones its tap could straddle: the share that
+    // is the whole-sixteenth one.
+    const auto cleanShare = [&] (bool grid)
+    {
+        const auto rendered = render (grid, 0.0f);
         double wanted = 0.0, both = 0.0;
         for (int j = 8; j < slots - 1; ++j)
         {
-            const auto from = rendered.begin() + j * sixteenth + 480;
-            const std::vector<float> grain (from, from + 3600);
+            const auto grain = grainOf (rendered, j);
             const double onGrid = goertzelPower (grain, toneHz (j - 2), kSampleRate);
             const double before = goertzelPower (grain, toneHz (j - 3), kSampleRate);
             wanted += onGrid;
@@ -3853,6 +3866,36 @@ void testGrainerGridLiveTapsWholeSixteenths()
     std::printf ("  share of each grain that is one clean sixteenth: Grid %.3f, off %.3f\n", on, off);
     check (on > 0.97, "Grid did not put the live tap on a whole sixteenth");
     check (off < 0.9, "without Grid the tap already sat on the grid - the control no longer controls anything");
+
+    // Scatter counts whole sixteenths: at 25 % a good share of grains should
+    // move off the two-sixteenth tap onto a neighbour, still landing cleanly on
+    // one. The old share-of-Time mapping could not move it below ~42 % here.
+    const auto scattered = render (true, 0.25f);
+    int moved = 0, counted = 0;
+    double onSomeSixteenth = 0.0, total = 0.0;
+    for (int j = 8; j < slots - 1; ++j)
+    {
+        const auto grain = grainOf (scattered, j);
+        double best = 0.0;
+        int bestTap = 0;
+        for (int tap = 1; tap <= 6; ++tap)
+        {
+            const double p = goertzelPower (grain, toneHz (j - tap), kSampleRate);
+            if (p > best)
+            {
+                best = p;
+                bestTap = tap;
+            }
+            total += p;
+        }
+        onSomeSixteenth += best;
+        moved += bestTap != 2 ? 1 : 0;
+        ++counted;
+    }
+    std::printf ("  Scatter 25 %%: %d of %d grains moved off the two-sixteenth tap, %.3f of energy on one sixteenth\n",
+                 moved, counted, onSomeSixteenth / juce::jmax (1.0e-30, total));
+    check (moved >= counted / 5 && moved <= (4 * counted) / 5, "Scatter 25 % did not move the live grid tap");
+    check (onSomeSixteenth / juce::jmax (1.0e-30, total) > 0.95, "a scattered live grid tap fell between sixteenths");
 }
 
 void testGrainerStereoIsBalanced()

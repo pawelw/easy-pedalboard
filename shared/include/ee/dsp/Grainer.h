@@ -356,7 +356,8 @@ public:
         double ppqPerSample = 0.0;
 
         // Grid (see GrainerConfig.h's GRID). The caller sets grid only when it
-        // has a finite ppq and the transport is rolling. barStartPpq is the
+        // has a finite ppq and the transport is rolling - Peak Grain always
+        // does then; there is no switch. barStartPpq is the
         // ppq of any bar line, quartersPerBar the bar's length.
         bool grid = false;
         double barStartPpq = 0.0;
@@ -1128,13 +1129,17 @@ private:
 
                 if (liveGrid)
                 {
-                    // Grid, live: the tap and its scatter both in whole
-                    // sixteenths, and never less than one. The attack grains
-                    // below keep their own timing on purpose.
+                    // Grid, live: the tap in whole sixteenths, never less than
+                    // one, and Scatter as a count of sixteenths either side -
+                    // the same kGridMaxSlices scale the frozen branch uses, so
+                    // the knob answers across its whole travel whatever the
+                    // tempo or Time. The attack grains below keep their own
+                    // timing on purpose.
                     const double step = samplesPerSixteenth;
                     double tap = std::max (1.0, std::round (static_cast<double> (timeOffsetSamples) / step));
-                    if (spread > 0)
-                        tap = std::max (1.0, tap + std::round (nextBipolar() * static_cast<double> (spread) / step));
+                    if (scatter > 0.0f)
+                        tap = std::max (1.0, tap + std::round (static_cast<double> (nextBipolar() * scatter)
+                                                               * config::kGridMaxSlices));
 
                     offset = static_cast<int> (std::lround (std::min (tap * step, static_cast<double> (size))));
                 }

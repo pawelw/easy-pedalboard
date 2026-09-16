@@ -211,9 +211,11 @@ constexpr float kFreezeLoopSeconds = 3.0f;
 // ============================================================================
 // GRID  (grain read points on the tempo grid)
 // ============================================================================
-// One switch beside Live/Freeze, active only while the host transport is
-// rolling. It keeps where grains read from on sixteenth-note boundaries, so
-// every fragment starts on a beat of the source as well as landing on one.
+// Not a switch: always on whenever the host transport is rolling (the
+// processor sets Transport::grid from that alone; standalone or stopped, the
+// engine behaves as it did before Grid existed). It keeps where grains read
+// from on sixteenth-note boundaries, so every fragment starts on a beat of the
+// source as well as landing on one.
 //
 // FROZEN - bar-locked capture. The held slice is re-captured on every bar line
 // instead of on loud onsets, and every grain for the rest of that bar replays
@@ -229,8 +231,10 @@ constexpr float kFreezeLoopSeconds = 3.0f;
 //
 // LIVE - a rhythmic granular delay. The Time tap is rounded to whole
 // sixteenths (never under one, so a grain is always a repeat rather than the
-// input itself), and Scatter moves it by whole sixteenths rather than
-// continuously. Attack-drawn grains are deliberately left alone: they follow
+// input itself), and Scatter moves it by up to kGridMaxSlices sixteenths either
+// side - Scatter 25 % already lands half the grains one sixteenth early or
+// late, 100 % anywhere within four. It is a count of sixteenths rather than a
+// share of Time, so the knob does the same at every tempo. Attack-drawn grains are deliberately left alone: they follow
 // where the note was actually played, and snapping them would clip the pick
 // or quantize away the player's feel.
 constexpr int kGridMaxSlices = 4;
@@ -240,8 +244,6 @@ constexpr int kGridMaxSlices = 4;
 // counts as belonging to the new bar, rather than replaying the old bar's
 // downbeat for one grain.
 constexpr float kGridBarSnapMs = 5.0f;
-
-constexpr bool kDefaultGrid = false;
 
 // ============================================================================
 // REVERSE, STEREO

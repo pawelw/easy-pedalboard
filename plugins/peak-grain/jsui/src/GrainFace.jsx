@@ -31,6 +31,11 @@ const MIXER = "#c9cede";
 // displays above them now share. Delay/Reverb keep their own accent lit.
 const KNOB_LIT = RANDOM;
 
+// Peak Wah's own red (--pui-knob-sweep-lit in tokens.css) - Drive borrows it
+// rather than Mixer's own pale MIXER lit, the way a drive/overdrive control
+// reads on hardware.
+const DRIVE_LIT = "#c60000";
+
 /** The Grain card's single footer switch, now a section-header pill: writes
     `ssync`, `dsync` and `wsync` on click rather than relying on a native
     click hook, so a plain RelaySet-bound WebView still gets the "drives
@@ -75,7 +80,7 @@ function TimeRow({ side, parameterId }) {
 
   return (
     <div className="pg-time-row">
-      <JuceKnob parameterId={parameterId} variant="flat" size={30} bare showValueLabel={false} />
+      <JuceKnob parameterId={parameterId} variant="concave" size={38} bare showValueLabel={false} />
       <Readout label={side} value={text} />
     </div>
   );
@@ -98,7 +103,6 @@ function GrainSection() {
       <div className="pg-section__knobs">
         <JuceKnob parameterId="size" caption="Size" variant="flat" size={30} />
         <JuceKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
-        <JuceKnob parameterId="bit" caption="Bit" variant="flat" size={30} />
       </div>
       <div className="pg-grain__foot">
         <GrainSyncPill />
@@ -158,13 +162,13 @@ function RandomSection() {
       <div className="pg-section__display">
         <RandomField accent={RANDOM} />
       </div>
-      <div className="pg-section__knobs">
+      <div className="pg-section__knobs pg-random__lead-row">
         <JuceKnob parameterId="stereo" caption="Stereo" variant="flat" size={38} />
-        <JuceKnob parameterId="reverse" caption="Reverse" variant="flat" size={38} />
+        <JuceKnob parameterId="reverse" caption="Reverse" variant="flat" size={30} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="scatter" caption="Scatter" variant="flat" size={38} />
-        <JuceKnob parameterId="mod" caption="Mod" variant="flat" size={38} />
+        <JuceKnob parameterId="scatter" caption="Scatter" variant="flat" size={30} />
+        <JuceKnob parameterId="mod" caption="Mod" variant="flat" size={30} />
       </div>
     </section>
   );
@@ -181,11 +185,24 @@ function MixerSection() {
         <span className="pg-section__spacer" />
       </div>
       <div className="pg-mixer__faders">
-        <JuceFader parameterId="dry" label="Dry" orientation="vertical" length={148} resetTo={75} thumbSize={18} />
+        <JuceFader parameterId="dry" label="Dry" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
         <div className="pg-mixer__link">
           <JucePill parameterId="mlink" icon={<LinkGlyph />} />
         </div>
-        <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={148} resetTo={65} thumbSize={18} />
+        <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={110} resetTo={65} thumbSize={18} />
+      </div>
+      {/* Tube Drive on the grain cloud alone, same engine and default as Peak
+          Artifact's amp.drive - see PluginProcessor.cpp's driveStage. Bit
+          (moved off Grain's own row) sits right beside it, sharing Drive's
+          own red lit arc (DRIVE_LIT) now rather than KNOB_LIT - the two read
+          as one pair of grain-cloud "character" controls. */}
+      <div className="pg-mixer__drive">
+        <div style={{ "--pui-soft-lit": DRIVE_LIT }}>
+          <JuceKnob parameterId="drive" caption="Drive" variant="flat" size={36} />
+        </div>
+        <div style={{ "--pui-soft-lit": DRIVE_LIT }}>
+          <JuceKnob parameterId="bit" caption="Bit" variant="flat" size={36} />
+        </div>
       </div>
       <div className="pg-mixer__filter">
         <FilterCurve accent={MIXER} />
@@ -214,8 +231,10 @@ function DelaySection() {
       </div>
       <div className="pg-delay__body">
         <div className="pg-delay__leads">
-          <JuceKnob parameterId="dmix" caption="Mix" variant="scale" size={52} showValueBelow />
-          <JuceKnob parameterId="dfb" caption="Feedback" variant="scale" size={52} showValueBelow />
+          {/* Same look as Peak Delay's footer knobs (StageControl): concave,
+              38px, value swapped in for the caption only while dragging. */}
+          <JuceKnob parameterId="dmix" caption="Mix" variant="concave" size={38} />
+          <JuceKnob parameterId="dfb" caption="Feedback" variant="concave" size={38} />
         </div>
         <div className="pg-delay__times">
           <TimeRow side="L" parameterId="ltime" />
@@ -254,16 +273,19 @@ function ReverbSection() {
         <span className="pg-section__name">Reverb</span>
         <span className="pg-section__spacer" />
         <div className="pg-section__head-right">
-          <JuceChoicePill parameterId="rvsrc" labels={["Whole", "Grains"]} />
+          <JuceChoicePill parameterId="rvsrc" labels={["Global", "Grains"]} className="pg-reverb__source-pill" />
         </div>
       </div>
       <div className="pg-section__display">
         <ReverbTail accent={REVERB} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="rmix" caption="Mix" variant="flat" size={30} />
-        <JuceKnob parameterId="decay" caption="Decay" variant="flat" size={30} />
-        <JuceKnob parameterId="rlocut" caption="Low Cut" variant="flat" size={30} />
+        {/* Same concave look as Delay's own Mix/Feedback, sized down from
+            38px to fit Reverb's own row of three - 32px, 5% up from an
+            initial 30. */}
+        <JuceKnob parameterId="rmix" caption="Mix" variant="concave" size={32} />
+        <JuceKnob parameterId="decay" caption="Decay" variant="concave" size={32} />
+        <JuceKnob parameterId="rlocut" caption="Low Cut" variant="concave" size={32} />
       </div>
     </section>
   );
@@ -319,10 +341,6 @@ function Header() {
       <div className="pg-header__row">
         <div className="pg-header__live">
           <LiveFreezeSwitch />
-          {/* Grid: grain read points on sixteenths - frozen, a new capture
-              every bar line; live, the delay tap in whole sixteenths. See
-              GrainerConfig.h's GRID. */}
-          <JucePill parameterId="grid" label="GRID" />
         </div>
         <div className="pg-header__presets">
           <JucePresetBar variant="separated" />

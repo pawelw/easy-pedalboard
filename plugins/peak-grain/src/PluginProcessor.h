@@ -166,7 +166,6 @@ private:
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* stretchParam = nullptr;
     std::atomic<float>* freezeParam = nullptr;
-    std::atomic<float>* gridParam = nullptr; // grid: grain read points on sixteenths (bar capture when frozen)
     std::atomic<float>* shapeParam = nullptr;
     std::atomic<float>* scatterParam = nullptr;
     std::atomic<float>* reverseParam = nullptr;

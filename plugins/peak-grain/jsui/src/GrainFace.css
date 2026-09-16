@@ -78,7 +78,6 @@
 .pg-header__live {
   display: flex;
   align-items: center;
-  gap: 8px;
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -223,6 +222,17 @@
   padding-top: 10px;
 }
 
+/* Bit and Drive, between the faders and the Filter block - its own row so it
+   isn't read as part of either. 10px base plus 24px extra, nudged down off
+   the faders. Tight gap: these two read as one pair, not spaced out like the
+   fader row above them. */
+.pg-mixer__drive {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 34px;
+}
+
 /* The response scope above the Filter knob, in place of the printed value.
    Same recess as .pg-section__display above - it is the same kind of object,
    one row down and a little shorter. */
@@ -296,14 +306,12 @@
   box-shadow: inset 0 1px 0 0 #ffffff14;
 }
 
-/* One pixel smaller than every other section's knob caption - Reverb's own
-   ask, not a global .pui-knob__caption change. Grain matches it now: its own
-   second row is Size/Shape/Bit, three 30px knobs the same as Reverb's own
-   three (Grain and Reverb are the only sections with a three-across row),
-   so the two read as one family of "narrow, three-across" knobs rather than
-   two different sizes that happen to be neighbours. */
-.pg-section--reverb .pui-knob__caption,
-.pg-section--grain .pui-knob__caption {
+/* One pixel smaller than every other section's knob caption - both are 30px
+   knobs (Reverb's concave ones now match Grain's own size, just shrunk 20%
+   off Delay's 38px), so the two read as one family of "narrow" knobs rather
+   than two different sizes that happen to be neighbours. */
+.pg-section--grain .pui-knob__caption,
+.pg-section--reverb .pui-knob__caption {
   font-size: 9px;
 }
 
@@ -379,6 +387,14 @@
 
 .pg-section--random .pg-section__knobs {
   gap: 8px;
+}
+
+/* Stereo stayed at 38px while Reverse dropped to 30 alongside it - bottom
+   aligned rather than the base flex-start, so the two captions land level
+   (Reverse's own knob sits lower than Stereo's to make that happen, since
+   Reverse's whole box is shorter). */
+.pg-random__lead-row {
+  align-items: flex-end;
 }
 
 /* space-around spreads 3 knobs to the card's edges much harder than it does
@@ -506,6 +522,12 @@
   width: 94px;
 }
 
+/* Sized to "Global", the wider-reading of the two - Reverb Source cycling
+   between it and "Grains" doesn't visibly resize the pill. */
+.pg-reverb__source-pill {
+  min-width: 60px;
+}
+
 
 /* --------------------------------------------------------------- delay */
 
@@ -529,7 +551,9 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding-top: 10px;
+  /* 8px less than .pg-delay__times' own top padding, nudging Mix/Feedback up
+     off the row. */
+  padding-top: 2px;
 }
 
 .pg-delay__times {
