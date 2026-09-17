@@ -1,0 +1,89 @@
+/* The Mod tab's own accent - a green independent of whichever section's
+   knob is receiving the modulation, and of Grain/Pitch/Random's shared
+   orange (KNOB_LIT). Also feeds --pui-soft-lit below, so the Rate knob's
+   own value arc matches the curve/point colour instead of inheriting
+   whatever ambient --pui-soft-lit this tab happens to sit under. */
+.pg-lfo {
+  --pg-lfo-accent: #06e788;
+  --pui-soft-lit: var(--pg-lfo-accent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  width: 100%;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+}
+
+.pg-lfo__graph {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 90px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  border: 1px solid var(--pui-module-edge);
+}
+
+.pg-lfo__bg {
+  fill: transparent;
+  cursor: default;
+}
+
+.pg-lfo__midline {
+  stroke: #1b2529;
+  stroke-width: 1;
+}
+
+.pg-lfo__curve {
+  fill: none;
+  stroke: var(--pg-lfo-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.pg-lfo__point {
+  fill: var(--pui-panel, #f3f2ed);
+  stroke: var(--pg-lfo-accent);
+  stroke-width: 2;
+  cursor: grab;
+}
+
+.pg-lfo__point:hover {
+  fill: var(--pg-lfo-accent);
+}
+
+/* The live playhead - the processor's own phase (PeakGrainWebEditor's
+   "lfoPhase" event), not a breakpoint the user placed, so it reads as a
+   moving marker riding the curve rather than another editable point: no
+   accent stroke, no hover state, no pointer events. */
+.pg-lfo__playhead {
+  fill: #ffffff;
+  opacity: 0.85;
+}
+
+.pg-lfo__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex: none;
+}
+
+.pg-lfo__rate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pg-lfo__rate-label {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pui-ink-dim);
+}

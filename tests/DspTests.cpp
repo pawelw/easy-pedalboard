@@ -11,6 +11,7 @@
 
 #include "ee/dsp/AutoWah.h"
 #include "ee/dsp/BitCrusher.h"
+#include "ee/dsp/BreakpointLfo.h"
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/Grainer.h"
@@ -4989,6 +4990,112 @@ void testPeakLimiterCapsAStackedPeak()
     check (worstOver < 0.05f, "limiter let a stacked peak through uncontrolled");
 }
 
+// Peak Grain's Mod tab LFO. sr=1000, period=1s gives a clean 0.001-per-sample
+// phase increment, so a block of N samples lands on phase N/1000 exactly -
+// every test below picks N to land on the phase it wants to check, rather
+// than approximating.
+ee::dsp::Tremolo::Transport unsyncedLfoTransport()
+{
+    ee::dsp::Tremolo::Transport t;
+    t.synced = false;
+    t.playing = false;
+    return t;
+}
+
+void testBreakpointLfoLinearSegment()
+{
+    std::printf ("Breakpoint LFO: linear segment midpoint:\n");
+
+    ee::dsp::BreakpointLfo lfo;
+    lfo.prepare (1000.0);
+    lfo.setPeriodSeconds (1.0f);
+    lfo.setBreakpoints ({ { 0.0f, 0.0f, 0.0f, false }, { 0.5f, 1.0f, 0.0f, false } });
+
+    lfo.advance (250, unsyncedLfoTransport()); // phase 0.25, halfway through 0 -> 0.5
+
+    std::printf ("  value at phase 0.25: %.4f\n", lfo.currentValue());
+    check (std::abs (lfo.currentValue() - 0.5f) < 1.0e-4f, "linear segment midpoint is not the arithmetic mean");
+}
+
+void testBreakpointLfoHoldSteps()
+{
+    std::printf ("Breakpoint LFO: hold segments step rather than interpolate:\n");
+
+    ee::dsp::BreakpointLfo lfo;
+    lfo.prepare (1000.0);
+    lfo.setPeriodSeconds (1.0f);
+    lfo.setBreakpoints ({ { 0.0f, 1.0f, 0.0f, true }, { 0.5f, -1.0f, 0.0f, true } });
+
+    lfo.reset();
+    lfo.advance (250, unsyncedLfoTransport()); // phase 0.25, inside the first hold
+    check (std::abs (lfo.currentValue() - 1.0f) < 1.0e-4f, "hold segment drifted off its own value");
+
+    lfo.reset();
+    lfo.advance (750, unsyncedLfoTransport()); // phase 0.75, inside the second hold
+    check (std::abs (lfo.currentValue() - (-1.0f)) < 1.0e-4f, "hold segment did not jump to the next point's value");
+}
+
+void testBreakpointLfoWraps()
+{
+    std::printf ("Breakpoint LFO: the wrap segment (last point back to the first):\n");
+
+    ee::dsp::BreakpointLfo lfo;
+    lfo.prepare (1000.0);
+    lfo.setPeriodSeconds (1.0f);
+    // First point at x=0.2 (not 0), so phase 0.1 falls in the wrap segment:
+    // last (0.8, -1) back to first-plus-a-cycle (1.2, 1). t = (1.1-0.8)/0.4 = 0.75.
+    lfo.setBreakpoints ({ { 0.2f, 1.0f, 0.0f, false }, { 0.8f, -1.0f, 0.0f, false } });
+
+    lfo.advance (100, unsyncedLfoTransport()); // phase 0.1
+
+    std::printf ("  value at phase 0.1 (in the wrap segment): %.4f\n", lfo.currentValue());
+    check (std::abs (lfo.currentValue() - 0.5f) < 1.0e-4f, "wrap segment does not interpolate back to the first point");
+}
+
+void testBreakpointLfoPhaseWrapsOverManyBlocks()
+{
+    std::printf ("Breakpoint LFO: phase wraps to [0, 1) over many blocks:\n");
+
+    ee::dsp::BreakpointLfo lfo;
+    lfo.prepare (kSampleRate);
+    lfo.setPeriodSeconds (0.037f); // an awkward period, deliberately not a clean divisor of the block
+    lfo.setBreakpoints ({ { 0.0f, 0.0f, 0.0f, false }, { 0.5f, 1.0f, 0.0f, false } });
+
+    bool finite = true;
+    for (int b = 0; b < static_cast<int> (kSampleRate * 5.0 / kBlock); ++b)
+    {
+        lfo.advance (kBlock, unsyncedLfoTransport());
+        finite = finite && std::isfinite (lfo.phase01()) && std::isfinite (lfo.currentValue());
+    }
+
+    const float phase = lfo.phase01();
+    std::printf ("  phase after 5 s free-running: %.4f\n", phase);
+    check (finite, "phase or value went non-finite over many blocks");
+    check (phase >= 0.0f && phase < 1.0f, "phase escaped [0, 1)");
+}
+
+void testBreakpointLfoSelfHeals()
+{
+    std::printf ("Breakpoint LFO: recovers from a non-finite host ppq:\n");
+
+    ee::dsp::BreakpointLfo lfo;
+    lfo.prepare (1000.0);
+    lfo.setPeriodSeconds (1.0f);
+    lfo.setBreakpoints ({ { 0.0f, 0.0f, 0.0f, false }, { 0.5f, 1.0f, 0.0f, false } });
+
+    ee::dsp::Tremolo::Transport poisoned;
+    poisoned.synced = true;
+    poisoned.playing = true;
+    poisoned.ppqStart = std::numeric_limits<double>::quiet_NaN();
+    poisoned.cyclesPerQuarter = 1.0;
+    poisoned.ppqPerSample = 0.001;
+
+    lfo.advance (100, poisoned); // first synced block is a hard "jump" - lands on the poisoned target
+
+    check (std::isfinite (lfo.phase01()), "phase stayed non-finite after a poisoned host ppq");
+    check (std::isfinite (lfo.currentValue()), "value stayed non-finite after a poisoned host ppq");
+}
+
 } // namespace
 
 int main()
@@ -5163,6 +5270,16 @@ int main()
     testPeakLimiterTransparentBelowCeiling();
     std::printf ("\n");
     testPeakLimiterCapsAStackedPeak();
+    std::printf ("\n");
+    testBreakpointLfoLinearSegment();
+    std::printf ("\n");
+    testBreakpointLfoHoldSteps();
+    std::printf ("\n");
+    testBreakpointLfoWraps();
+    std::printf ("\n");
+    testBreakpointLfoPhaseWrapsOverManyBlocks();
+    std::printf ("\n");
+    testBreakpointLfoSelfHeals();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

@@ -11,6 +11,7 @@ constexpr const char* kParamDensity = "density";
 constexpr const char* kParamWindow = "window";
 constexpr const char* kParamLeftTime = "ltime";
 constexpr const char* kParamRightTime = "rtime";
+constexpr const char* kParamLfoRate = "lforate";
 } // namespace
 
 // Port 3006 - Wah is 3000, Delay 3001, Alpine 3002, Artifact 3003, Modulation
@@ -85,10 +86,29 @@ PeakGrainWebEditor::PeakGrainWebEditor (PeakGrainProcessor& p)
                                                text = processorRef.leftTimeReadout();
                                            else if (id == kParamRightTime)
                                                text = processorRef.rightTimeReadout();
+                                           else if (id == kParamLfoRate)
+                                               text = processorRef.lfoRateReadout();
                                            else if (auto* param = processorRef.apvts.getParameter (id))
                                                text = param->getCurrentValueAsText();
 
                                            complete (text);
+                                       })
+                  // The Mod tab's breakpoint shape: not a parameter (see
+                  // PluginProcessor.cpp's kLfoBreakpointsProp), so it needs
+                  // its own pair of native functions rather than riding on
+                  // RelaySet - one to read the current shape on mount, one
+                  // for every edit the JS editor commits.
+                  .withNativeFunction ("lfoGetBreakpoints",
+                                       [this] (const juce::Array<juce::var>&,
+                                               juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                       { complete (processorRef.lfoBreakpointsAsJson()); })
+                  .withNativeFunction ("lfoSetBreakpoints",
+                                       [this] (const juce::Array<juce::var>& args,
+                                               juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                       {
+                                           processorRef.setLfoBreakpointsFromJson (
+                                               args.size() >= 1 ? args[0].toString() : juce::String());
+                                           complete (true);
                                        })
                   .withResourceProvider ([this] (const auto& url) { return getResource (url); },
                                          juce::URL { devServerAddress }.getOrigin())),
@@ -135,6 +155,15 @@ void PeakGrainWebEditor::timerCallback()
     auto* payload = new juce::DynamicObject();
     payload->setProperty ("bpm", processorRef.hostBpm());
     webView.emitEventIfBrowserIsVisible ("grainTempo", juce::var (payload));
+
+    webView.emitEventIfBrowserIsVisible ("lfoPhase", processorRef.lfoPhase01());
+
+    const int generation = processorRef.lfoBreakpointsGeneration();
+    if (generation != lastLfoGeneration)
+    {
+        lastLfoGeneration = generation;
+        webView.emitEventIfBrowserIsVisible ("lfoBreakpoints", processorRef.lfoBreakpointsAsJson());
+    }
 }
 
 void PeakGrainWebEditor::resized()

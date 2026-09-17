@@ -1,4 +1,5 @@
-import { Logo, JucePresetBar, PowerToggle, Pill, Readout } from "@synthpeak/pedal-ui";
+import { useState } from "react";
+import { Logo, JucePresetBar, PowerToggle, Pill, Readout, VerticalTabs } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceFader,
@@ -10,7 +11,13 @@ import {
   useFormattedText,
 } from "@synthpeak/pedal-ui/juce";
 import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } from "./Displays.jsx";
+import ModTab from "./ModTab.jsx";
 import "./GrainFace.css";
+
+const FACE_TABS = [
+  { id: "effects", label: "Effects" },
+  { id: "mod", label: "Mod" },
+];
 
 // The five section accents, literal rather than `var(--pui-accent-*)`: these
 // reach an SVG `stroke`/`fill` presentation attribute in Displays.jsx, and
@@ -22,8 +29,10 @@ import "./GrainFace.css";
 const GRAIN = "#b39bd8";
 const PITCH = "#e78fb3";
 const RANDOM = "#dfa878";
-const DELAY = "#a3ce7a";
+// Delay now shares Reverb's own blue rather than its old green - one colour,
+// not two independently-declared literals that could drift apart.
 const REVERB = "#7fd2d8";
+const DELAY = REVERB;
 const MIXER = "#c9cede";
 
 // The knob value arc (--pui-soft-lit) on Grain/Pitch/Random is unified to
@@ -92,6 +101,12 @@ function GrainSection() {
       <div className="pg-section__head">
         <span className="pg-section__name">Grain</span>
         <span className="pg-section__spacer" />
+        {/* Stereo adds Haas width to the grain cloud - GrainerConfig.h's
+            MONO / STEREO. Same control as before (still one boolean, still
+            toggles the same way), moved here and widened to match Reverb's
+            own header-right pill (pg-reverb__source-pill) rather than
+            living in the header next to Live/Freeze. */}
+        <SegmentSwitch parameterId="width" offLabel="Mono" onLabel="Stereo" className="pg-grain__width-pill" />
       </div>
       <div className="pg-section__display">
         <GrainEnvelope accent={RANDOM} />
@@ -293,32 +308,24 @@ function ReverbSection() {
   );
 }
 
-/** A two-state switch drawn as a joined two-button segment rather than two
-    independent pills - there is one flag and exactly one of the two reads as
-    pressed at any time, which a segmented pair says more plainly than two
-    pills with an `invert` on one of them. */
-function SegmentSwitch({ parameterId, offLabel, onLabel }) {
+/** A two-state toggle, one button whose own label and colour both track the
+    current state - "Live" dark, click it and it reads "Freeze" light, click
+    again and it's back to "Live" dark. Was a joined two-button segment (one
+    button per state, the current one lit); this is the same on/off styling
+    (`.pg-segment__btn[data-on]`, unchanged) collapsed onto a single control
+    now that only one label needs to be visible at a time. */
+function SegmentSwitch({ parameterId, offLabel, onLabel, className }) {
   const [on, setOn] = useJuceToggleValue(parameterId);
 
   return (
-    <div className="pg-segment">
-      <button
-        type="button"
-        className="pg-segment__btn"
-        data-on={!on || undefined}
-        onClick={() => setOn(false)}
-      >
-        {offLabel}
-      </button>
-      <button
-        type="button"
-        className="pg-segment__btn"
-        data-on={on || undefined}
-        onClick={() => setOn(true)}
-      >
-        {onLabel}
-      </button>
-    </div>
+    <button
+      type="button"
+      className={className ? `pg-segment__btn ${className}` : "pg-segment__btn"}
+      data-on={on || undefined}
+      onClick={() => setOn(!on)}
+    >
+      {on ? onLabel : offLabel}
+    </button>
   );
 }
 
@@ -342,8 +349,6 @@ function Header() {
       <div className="pg-header__row">
         <div className="pg-header__live">
           <SegmentSwitch parameterId="freeze" offLabel="Live" onLabel="Freeze" />
-          {/* Stereo adds Haas width to the grain cloud - GrainerConfig.h's MONO / STEREO. */}
-          <SegmentSwitch parameterId="width" offLabel="Mono" onLabel="Stereo" />
         </div>
         <div className="pg-header__presets">
           <JucePresetBar variant="separated" />
@@ -354,6 +359,8 @@ function Header() {
 }
 
 export default function GrainFace() {
+  const [tab, setTab] = useState("effects");
+
   return (
     <>
       <Header />
@@ -367,10 +374,23 @@ export default function GrainFace() {
             <RandomSection />
           </div>
           <div className="pg-hdivider" />
-          <div className="pg-row">
-            <DelaySection />
-            <div className="pg-vdivider" style={{ gridColumn: 4 }} />
-            <ReverbSection />
+          <div className="pg-row2" data-active-tab={tab}>
+            <VerticalTabs tabs={FACE_TABS} value={tab} onChange={setTab} />
+            {/* Both tab bodies stay mounted, toggled with plain CSS rather
+                than conditional JSX - Mod's whole point is a breakpoint shape
+                you build up by hand, and unmounting LfoEditor on every tab
+                switch was throwing that state away and resetting it to the
+                default preset each time you came back. */}
+            <div className="pg-row2__content" hidden={tab !== "effects"}>
+              <div className="pg-row">
+                <DelaySection />
+                <div className="pg-vdivider" style={{ gridColumn: 4 }} />
+                <ReverbSection />
+              </div>
+            </div>
+            <div className="pg-row2__content" hidden={tab !== "mod"}>
+              <ModTab />
+            </div>
           </div>
         </div>
         <div className="pg-vdivider" />

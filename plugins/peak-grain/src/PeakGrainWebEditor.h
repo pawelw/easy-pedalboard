@@ -47,7 +47,10 @@ private:
     /** Re-emits the host tempo as a "grainTempo" event at a rate that's
         plenty for a number nobody is watching move in real time - Grain's
         scope is still and knob-tracking only, unlike Delay's, so there's no
-        45 Hz meter feed to ride along with here. */
+        45 Hz meter feed to ride along with here. Also re-emits the Mod LFO's
+        phase ("lfoPhase") for the Mod tab's live playhead marker, and, only
+        when it has actually changed, the breakpoint shape itself
+        ("lfoBreakpoints") - see lastLfoGeneration. */
     void timerCallback() override;
 
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
@@ -71,6 +74,12 @@ private:
     };
 
     SinglePageBrowser webView;
+
+    /** The last lfoBreakpointsGeneration() this editor saw - a preset load
+        (or a host session restore) bumps the processor's own counter, and
+        the timer resends "lfoBreakpoints" only when it moves, rather than
+        every tick regardless. -1 so the very first tick always sends once. */
+    int lastLfoGeneration = -1;
 
 #if EE_GRAIN_TUNER
     // Flip showTuner in the .cpp to bring this back without reconfiguring

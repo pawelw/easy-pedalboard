@@ -45,6 +45,7 @@ export { default as FilterIcon } from "./FilterIcon.jsx";
 // it are what a module's own chrome is made of.
 export { default as ModulePanel } from "./ModulePanel.jsx";
 export { default as ModuleTabs } from "./ModuleTabs.jsx";
+export { default as VerticalTabs } from "./VerticalTabs.jsx";
 export { default as PowerToggle } from "./PowerToggle.jsx";
 export { default as EngineStepper } from "./EngineStepper.jsx";
 export { default as BarDisplay } from "./BarDisplay.jsx";

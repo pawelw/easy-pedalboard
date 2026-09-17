@@ -1,0 +1,51 @@
+/* Same recessed-slab per tab as ModuleTabs, stacked instead of side by side.
+   No radius/edge treatment here - a caller sitting this rail next to its own
+   panel (Peak Grain's plate) is responsible for rounding the outer corners to
+   match, the way ModuleTabs leaves its own panel-fitting to its caller too. */
+.pui-vtabs {
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  width: 22px;
+}
+
+.pui-vtabs__tab {
+  flex: 1 1 0;
+  padding: 0;
+  border: 0;
+  border-right: 1px solid var(--pui-module-divider);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--pui-font-label);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  /* Not selected: a recessed slab, one shade under the module's own ground -
+     same literal ModuleTabs uses, since both only ever sit on the onyx face. */
+  background: #191f22;
+  color: var(--pui-ink-dim);
+}
+
+.pui-vtabs__tab + .pui-vtabs__tab {
+  border-top: 1px solid var(--pui-module-divider);
+}
+
+/* Selected: no right border and the panel's own fill, so the content beside
+   it and this tab read as one surface - the literal panel token rather than
+   `transparent`, so it matches whatever sits behind it even where that isn't
+   the page background (a tab rail nested inside an already-panelled area). */
+.pui-vtabs__tab[data-active] {
+  border-right-color: transparent;
+  background: var(--pui-module);
+  color: var(--pui-ink);
+}
+
+.pui-vtabs__label {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}

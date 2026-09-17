@@ -4,6 +4,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "ee/dsp/BreakpointLfo.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/HaasWidener.h"
@@ -69,6 +70,38 @@ public:
     juce::String windowReadout() const;
     juce::String leftTimeReadout() const;
     juce::String rightTimeReadout() const;
+
+    /** Text under the Mod tab's Rate knob - same tempo-synced-text shape as
+        the readouts above. */
+    juce::String lfoRateReadout() const;
+
+    /** The Mod tab's breakpoint shape, as JSON (see ee/plugin/
+        LfoBreakpointJson.h) - what the web editor's "lfoGetBreakpoints"
+        native function returns and "lfoBreakpoints" event resends after a
+        preset load. Reads straight off the live apvts.state property, which
+        is also what PresetStore::saveUser copies - see setLfoBreakpointsFromJson. */
+    juce::String lfoBreakpointsAsJson() const;
+
+    /** Called by the web editor's "lfoSetBreakpoints" native function
+        whenever the Mod tab commits an edit (a drag release, a preset pick).
+        Writes straight onto the *live* apvts.state tree rather than only
+        inside getStateInformation's local copy, so PresetStore::saveUser's
+        own copyState() - which copies that same live tree - picks it up too;
+        the old pattern (see kSizeFreeProp et al.) only survives a DAW
+        session, not a saved preset. */
+    void setLfoBreakpointsFromJson (const juce::String& json);
+
+    /** Bumped whenever installState (a preset load, a host session restore)
+        changes the breakpoints - the web editor's timer polls this to know
+        when to push a fresh "lfoBreakpoints" event, rather than resending it
+        every tick regardless. Not bumped by setLfoBreakpointsFromJson: the
+        page that just sent an edit already has it, so echoing it back would
+        be pure waste. */
+    int lfoBreakpointsGeneration() const { return lfoGeneration.load(); }
+
+    /** The Mod LFO's current phase, for the web editor's live playhead
+        marker. Safe from any thread - see BreakpointLfo::phase01(). */
+    float lfoPhase01() const noexcept { return modLfo.phase01(); }
 
     /** The host tempo the readouts above were worked out at, for the web
         editor's timer feed - a synced knob is a note division, so its printed
@@ -142,6 +175,13 @@ private:
         and the preset store, which is handed this as its install hook. */
     void installState (const juce::ValueTree& tree);
 
+    /** Re-reads the Mod tab's breakpoint shape off the live apvts.state
+        property, falling back to (and writing back) a default shape if it is
+        missing - a brand-new instance, or a preset saved before this
+        property existed. Called from the constructor and from installState;
+        bumps lfoGeneration so the web editor's timer knows to resend it. */
+    void refreshLfoBreakpointsFromState();
+
     ee::dsp::Grainer grainer;
     ee::dsp::TapeDelay delay;
     ee::dsp::FdnReverb reverb;
@@ -151,6 +191,21 @@ private:
         after grainer.process() and before the Dry/Grains blend. */
     ee::dsp::TubeDrive driveStage;
     ee::dsp::HaasWidener haas; // Mono/Stereo: Haas width on the grain cloud
+
+    /** The Mod tab's LFO. Not routed to anything yet - Stage 3 adds the
+        drag-and-drop modulation targets; this stage only ticks its phase and
+        exposes it for the live playhead marker. */
+    ee::dsp::BreakpointLfo modLfo;
+
+    /** Message-thread cache of the breakpoints currently installed into
+        modLfo, kept only so installState/setLfoBreakpointsFromJson have
+        something to hand modLfo.setBreakpoints() without re-parsing JSON on
+        every read; lfoBreakpointsAsJson() itself reads the apvts.state
+        property directly, not this. */
+    std::vector<ee::dsp::LfoBreakpoint> currentLfoBreakpoints;
+
+    /** See lfoBreakpointsGeneration(). */
+    std::atomic<int> lfoGeneration { 0 };
 
     // 0..1 knobs whose Sync switch reinterprets them; built from GrainerConfig.
     ee::dsp::GrainSyncMap sizeMap;
@@ -198,6 +253,9 @@ private:
     std::atomic<float>* filterParam = nullptr;  // bipolar: -100 sweeps the cloud LP down, +100 the HP up
     std::atomic<float>* driveParam = nullptr;   // grain-cloud-only tube drive, same engine as Artifact's amp.drive
     std::atomic<float>* onParam = nullptr;
+
+    std::atomic<float>* lfoRateParam = nullptr;
+    std::atomic<float>* lfoSyncParam = nullptr;
 
     // One enable switch per face module: off forces that section's controls to
     // their no-op values in processBlock, leaving the knobs where they are.

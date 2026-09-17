@@ -1,8 +1,10 @@
 #include "PluginProcessor.h"
 
 #include "ee/dsp/GrainerConfig.h"
+#include "ee/dsp/RateMap.h"
 #include "ee/dsp/TubeDriveConfig.h"
 #include "ee/plugin/Bypass.h"
+#include "ee/plugin/LfoBreakpointJson.h"
 #include "ee/plugin/ParamText.h"
 #include "PeakGrainWebEditor.h"
 
@@ -55,6 +57,17 @@ constexpr const char* kDriveID = "drive";
 constexpr const char* kOnID = "on";
 constexpr const char* kLevelID = "level";
 
+constexpr const char* kLfoRateID = "lforate";
+constexpr const char* kLfoSyncID = "lfosync";
+
+// The Mod tab's LFO Rate: a plain 0..1 knob, no duration-vs-rate ambiguity
+// like Size/Density/Window have, so it uses the shared ee::dsp::RateMap
+// (period-only) rather than GrainSyncMap - the same map shape Peak Trem&Pan's
+// own Rate knob uses. A free constant rather than a per-instance member: the
+// map carries no state of its own, and createParameterLayout() is static and
+// needs to reach it too (for the parameter's own host-facing text).
+constexpr ee::dsp::RateMap kLfoRateMap { 30.0f, 4000.0f, 500.0f };
+
 // Per-module enable switches, one per face panel.
 constexpr const char* kGrainOnID = "grainon";
 constexpr const char* kPitchOnID = "pitchon";
@@ -74,6 +87,29 @@ constexpr const char* kDensityFreeProp = "densityFree01";
 constexpr const char* kDensitySyncProp = "densitySync01";
 constexpr const char* kWindowFreeProp = "windowFree01";
 constexpr const char* kWindowSyncProp = "windowSync01";
+
+// The Mod tab's breakpoint shape, as JSON (ee/plugin/LfoBreakpointJson.h).
+// Unlike the six properties above, this one is written directly onto the
+// *live* apvts.state whenever the shape changes (see
+// PeakGrainProcessor::setLfoBreakpointsFromJson), not only into a local copy
+// inside getStateInformation - so PresetStore::saveUser's own copyState(),
+// which copies that same live tree, picks it up too. See CLAUDE.md's Presets
+// section on why the older pattern above only survives a DAW session, never
+// a saved preset.
+constexpr const char* kLfoBreakpointsProp = "lfoBreakpoints";
+
+/** What a brand-new instance (or a preset saved before the Mod tab existed)
+    opens with - a plain sine, matching lfoShapes.js's own sineBreakpoints()
+    exactly so the JS editor and the audio engine agree on what "Sine" means. */
+std::vector<ee::dsp::LfoBreakpoint> defaultLfoBreakpoints()
+{
+    return {
+        { 0.0f, 0.0f, -0.5f, false },
+        { 0.25f, 1.0f, 0.5f, false },
+        { 0.5f, 0.0f, -0.5f, false },
+        { 0.75f, -1.0f, 0.5f, false },
+    };
+}
 
 // The reverb network is normalised to ~0.42 RMS gain; this is Peak Reverb's
 // trim, kept so a given Decay lands at the same level on both pedals.
@@ -239,6 +275,8 @@ PeakGrainProcessor::PeakGrainProcessor()
     filterParam = apvts.getRawParameterValue (kFilterID);
     driveParam = apvts.getRawParameterValue (kDriveID);
     onParam = apvts.getRawParameterValue (kOnID);
+    lfoRateParam = apvts.getRawParameterValue (kLfoRateID);
+    lfoSyncParam = apvts.getRawParameterValue (kLfoSyncID);
     grainOnParam = apvts.getRawParameterValue (kGrainOnID);
     pitchOnParam = apvts.getRawParameterValue (kPitchOnID);
     scaleOnParam = apvts.getRawParameterValue (kScaleOnID);
@@ -265,6 +303,8 @@ PeakGrainProcessor::PeakGrainProcessor()
     apvts.addParameterListener (kSizeSyncID, this);
     apvts.addParameterListener (kDensitySyncID, this);
     apvts.addParameterListener (kWindowSyncID, this);
+
+    refreshLfoBreakpointsFromState();
 
 #if EE_GRAIN_TRACE
     trace = std::make_unique<GrainTrace> (apvts);
@@ -524,6 +564,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
 
+    // The Mod tab's LFO. The breakpoint shape itself is not a parameter (see
+    // kLfoBreakpointsProp) - it is not host-automatable, the same way a
+    // preset's saved wave shape on any synth is data, not a knob.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kLfoRateID, 1 }, "Mod Rate", juce::NormalisableRange<float> (0.0f, 1.0f), 0.3f,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction (
+            [] (float v, int) { return kLfoRateMap.rateToText (v, true); })));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kLfoSyncID, 1 }, "Mod Sync", false));
+
     // Per-module enables. Default on, so a fresh instance behaves as before.
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kGrainOnID, 1 }, "Grain On", true));
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kPitchOnID, 1 }, "Pitch On", true));
@@ -610,6 +659,46 @@ juce::String PeakGrainProcessor::rightTimeReadout() const
     return delayMap.toText (rightTimeParam->load(), delaySyncParam->load() > 0.5f, currentBpm());
 }
 
+juce::String PeakGrainProcessor::lfoRateReadout() const
+{
+    return kLfoRateMap.rateToText (lfoRateParam->load(), lfoSyncParam->load() > 0.5f);
+}
+
+juce::String PeakGrainProcessor::lfoBreakpointsAsJson() const
+{
+    return apvts.state.getProperty (kLfoBreakpointsProp, "").toString();
+}
+
+void PeakGrainProcessor::setLfoBreakpointsFromJson (const juce::String& json)
+{
+    auto points = ee::plugin::lfoBreakpointsFromJson (json);
+    if (points.empty())
+        return;
+
+    currentLfoBreakpoints = points;
+    modLfo.setBreakpoints (points);
+
+    // The live tree, not a local copy - see kLfoBreakpointsProp's own note.
+    apvts.state.setProperty (kLfoBreakpointsProp, json, nullptr);
+}
+
+void PeakGrainProcessor::refreshLfoBreakpointsFromState()
+{
+    auto json = apvts.state.getProperty (kLfoBreakpointsProp, "").toString();
+    auto points = ee::plugin::lfoBreakpointsFromJson (json);
+
+    if (points.empty())
+    {
+        points = defaultLfoBreakpoints();
+        json = ee::plugin::lfoBreakpointsToJson (points);
+        apvts.state.setProperty (kLfoBreakpointsProp, json, nullptr);
+    }
+
+    currentLfoBreakpoints = points;
+    modLfo.setBreakpoints (points);
+    lfoGeneration.fetch_add (1, std::memory_order_relaxed);
+}
+
 void PeakGrainProcessor::syncToggled (const char* paramID,
                                       std::atomic<float>& freeSlot,
                                       std::atomic<float>& syncSlot,
@@ -691,6 +780,8 @@ void PeakGrainProcessor::installState (const juce::ValueTree& tree)
     installingState = true;
     apvts.replaceState (tree);
     installingState = false;
+
+    refreshLfoBreakpointsFromState();
 }
 
 void PeakGrainProcessor::parameterChanged (const juce::String& parameterID, float newValue)
@@ -781,6 +872,9 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     delay.setModulation (0.0f);
     delay.setRouting (routing());
     snapDelayNextBlock = true;
+
+    modLfo.prepare (sampleRate);
+    modLfo.reset();
 
     reverb.prepare (sampleRate);
     reverb.reset();
@@ -935,6 +1029,25 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     grainTransport.grid = havePpq && isPlaying;
     grainTransport.barStartPpq = barStartPpq;
     grainTransport.quartersPerBar = quartersPerBar;
+
+    // The Mod tab's LFO - same three transport facts, reusing
+    // ee::dsp::Tremolo::Transport rather than a parallel struct since this
+    // engine's phase-align code is copied from Tremolo's own. Not routed to
+    // anything yet (Stage 3); this only ticks the phase forward so the live
+    // playhead marker and, later, modulation both read a moving value.
+    const bool lfoSynced = lfoSyncParam->load() > 0.5f;
+    const float lfoRate01 = lfoRateParam->load();
+    modLfo.setPeriodSeconds (kLfoRateMap.rateToPeriodSeconds (lfoRate01, lfoSynced, bpm));
+
+    ee::dsp::Tremolo::Transport lfoTransport;
+    lfoTransport.synced = lfoSynced && havePpq && isPlaying;
+    lfoTransport.playing = isPlaying;
+    lfoTransport.ppqStart = ppqStart;
+    lfoTransport.cyclesPerQuarter =
+        1.0 / juce::jmax (1.0e-4, static_cast<double> (kLfoRateMap.syncedDivisionBeats (lfoRate01)));
+    lfoTransport.ppqPerSample = bpm / (60.0 * getSampleRate());
+
+    modLfo.advance (numSamples, lfoTransport);
 
     // Each face module has an enable switch. Off leaves the knobs alone but
     // feeds the engine that section's no-op values: Grain's own Bit crush
