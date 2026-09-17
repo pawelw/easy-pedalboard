@@ -431,15 +431,15 @@
   align-items: flex-end;
 }
 
-/* space-around spreads 3 knobs to the card's edges much harder than it does
-   2 (more items means less free space left per edge), so Grain's rows sat
-   noticeably wider than Random's (still 2 per row) - centered as a group
-   either way, but not reading as the same width of "centred" next to them.
-   A fixed gap and justify-content:center groups the 3 knobs at roughly
-   Random's own edge margin instead of the leftover-space one. Pitch moved
-   from a 2+2 grid to one row of 3 (Low/Unison/High, once Detune's slot went
-   to the Scale/Root pills in the header) and needs the same fix for the
-   same reason. */
+/* space-around spreads Grain's 2-per-row knobs to the card's edges much
+   harder than Random's own 2-per-row (more room per edge relative to the
+   knobs is exactly the leftover-space case) - centered as a group either
+   way, but not reading as the same width of "centred" next to them. A fixed
+   gap and justify-content:center groups them at roughly Random's own edge
+   margin instead. Pitch is a row of 3 (Low/Unison/High), not 2 - the same
+   fixed gap there ran wider than its own column and spilled past both
+   edges, so it stays on the base space-around rule below instead (same as
+   Reverb's own row of 3, which fits it fine). */
 /* Reverb/Grain-sized (30px) now, not Random's 38px - same caption-size
    drop as .pg-section--reverb/.pg-section--grain above, for the same
    reason: two different sizes reading as one family. */
@@ -456,8 +456,7 @@
   color: #c9cede;
 }
 
-.pg-section--grain .pg-section__knobs,
-.pg-section--pitch .pg-section__knobs {
+.pg-section--grain .pg-section__knobs {
   justify-content: center;
   gap: 13px;
 }
@@ -554,21 +553,6 @@
 .pg-pitch__root-pill,
 .pg-pitch__scale-pill {
   width: 94px;
-}
-
-/* Sized to "Global", the wider-reading of the two - Reverb Source cycling
-   between it and "Grains" doesn't visibly resize the pill. */
-.pg-reverb__source-pill {
-  min-width: 60px;
-}
-
-/* Grain's own Mono/Stereo toggle, in its section header rather than the
-   page header - same on/off styling as every other .pg-segment__btn, just
-   full pill radius and sized like Reverb's own header-right pill above so
-   cycling between "Mono" and "Stereo" doesn't visibly resize it. */
-.pg-grain__width-pill {
-  border-radius: var(--pui-radius-pill);
-  min-width: 60px;
 }
 
 

@@ -12,6 +12,7 @@
 #include "ee/dsp/AutoWah.h"
 #include "ee/dsp/BitCrusher.h"
 #include "ee/dsp/BreakpointLfo.h"
+#include "ee/plugin/ModRouter.h"
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/Grainer.h"
@@ -5096,6 +5097,35 @@ void testBreakpointLfoSelfHeals()
     check (std::isfinite (lfo.currentValue()), "value stayed non-finite after a poisoned host ppq");
 }
 
+void testModRouterAssignments()
+{
+    std::printf ("Mod router: assignment lookup and the 8-slot cap:\n");
+
+    ee::plugin::ModRouter router;
+    check (! router.hasAssignments(), "a fresh router already has assignments");
+    check (router.depthFor ("size") == 0.0f, "an unassigned parameter is not silently non-zero");
+
+    router.setAssignments ({ { "size", 0.5f }, { "density", -0.25f } });
+    check (router.hasAssignments(), "hasAssignments did not notice a real assignment");
+    check (std::abs (router.depthFor ("size") - 0.5f) < 1.0e-6f, "depth for an assigned parameter is wrong");
+    check (std::abs (router.depthFor ("density") - (-0.25f)) < 1.0e-6f, "a negative depth did not round-trip");
+    check (router.depthFor ("window") == 0.0f, "a third, unassigned parameter is not zero");
+
+    std::vector<ee::plugin::ModAssignment> tooMany;
+    for (int i = 0; i < ee::plugin::ModRouter::kMaxAssignments + 3; ++i)
+        tooMany.push_back ({ "p" + juce::String (i), 0.1f });
+    router.setAssignments (tooMany);
+
+    const auto current = router.currentAssignments();
+    std::printf ("  assignments after handing it %d: %d\n", static_cast<int> (tooMany.size()),
+                static_cast<int> (current.size()));
+    check (static_cast<int> (current.size()) == ee::plugin::ModRouter::kMaxAssignments,
+          "more assignments than the cap were not trimmed to it");
+
+    router.setAssignments ({});
+    check (! router.hasAssignments(), "clearing the assignment list left something behind");
+}
+
 } // namespace
 
 int main()
@@ -5280,6 +5310,8 @@ int main()
     testBreakpointLfoPhaseWrapsOverManyBlocks();
     std::printf ("\n");
     testBreakpointLfoSelfHeals();
+    std::printf ("\n");
+    testModRouterAssignments();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

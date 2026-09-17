@@ -110,6 +110,21 @@ PeakGrainWebEditor::PeakGrainWebEditor (PeakGrainProcessor& p)
                                                args.size() >= 1 ? args[0].toString() : juce::String());
                                            complete (true);
                                        })
+                  // The drag-and-drop modulation routing: same shape as the
+                  // breakpoints pair above, and for the same reason - not a
+                  // parameter, so RelaySet has nothing to bind here.
+                  .withNativeFunction ("lfoRoutingGet",
+                                       [this] (const juce::Array<juce::var>&,
+                                               juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                       { complete (processorRef.lfoRoutingAsJson()); })
+                  .withNativeFunction ("lfoRoutingSet",
+                                       [this] (const juce::Array<juce::var>& args,
+                                               juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                       {
+                                           processorRef.setLfoRoutingFromJson (
+                                               args.size() >= 1 ? args[0].toString() : juce::String());
+                                           complete (true);
+                                       })
                   .withResourceProvider ([this] (const auto& url) { return getResource (url); },
                                          juce::URL { devServerAddress }.getOrigin())),
           p.presets,
@@ -158,11 +173,12 @@ void PeakGrainWebEditor::timerCallback()
 
     webView.emitEventIfBrowserIsVisible ("lfoPhase", processorRef.lfoPhase01());
 
-    const int generation = processorRef.lfoBreakpointsGeneration();
+    const int generation = processorRef.lfoStateGeneration();
     if (generation != lastLfoGeneration)
     {
         lastLfoGeneration = generation;
         webView.emitEventIfBrowserIsVisible ("lfoBreakpoints", processorRef.lfoBreakpointsAsJson());
+        webView.emitEventIfBrowserIsVisible ("lfoRouting", processorRef.lfoRoutingAsJson());
     }
 }
 

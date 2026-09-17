@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
-import { Pill, Dropdown } from "@synthpeak/pedal-ui";
-import { JuceKnob, useJuceToggleValue } from "@synthpeak/pedal-ui/juce";
+import { Pill, Dropdown, PowerToggle } from "@synthpeak/pedal-ui";
+import { JuceKnob, useFormattedText, useJuceSliderValue, useJuceToggleValue, useParamId } from "@synthpeak/pedal-ui/juce";
 import { evalBreakpoints, kMaxBreakpoints, LFO_PRESETS, parseBreakpointsJson, toBreakpointsJson } from "./lfoShapes.js";
+import ModSourceChip from "./ModSourceChip.jsx";
+import { useSetLfoValue } from "./LfoPlayback.jsx";
 import "./LfoEditor.css";
 
 // Resolved once at module scope, the same way packages/pedal-ui/src/juce.jsx
@@ -85,7 +87,24 @@ export default function LfoEditor() {
   const [points, setPoints] = useState(() => withIds(LFO_PRESETS[0].make()));
   const [presetId, setPresetId] = useState(LFO_PRESETS[0].id);
   const [sync, setSync] = useJuceToggleValue("lfosync");
+  // The Mod tab's own master switch - off silences every assignment at once
+  // (PluginProcessor.cpp's modulatedValue(), gated on "lfoon") without
+  // having to remove them one by one. Same useSectionPower shape Delay and
+  // Reverb's own PowerToggle use (GrainFace.jsx), inlined here rather than
+  // imported - it's three lines and this file has no other reason to share
+  // a helper with GrainFace.jsx.
+  const [lfoOn, setLfoOn] = useJuceToggleValue("lfoon", true);
   const [playheadPhase, setPlayheadPhase] = useState(null);
+  // The graph's own corner readout - "1/2" etc. synced, "500 ms" free. The
+  // backend already computes exactly this string (PluginProcessor.cpp's
+  // lfoRateReadout(), wired to formatKnobValue("lforate") - see
+  // PeakGrainWebEditor.cpp), reading the sync flag itself, so this only has
+  // to re-fetch it on either input changing; the composite dependency below
+  // is there purely to trigger that (useFormattedText re-fetches whenever
+  // its own `value` argument changes, whatever type it is).
+  const rateId = useParamId("lforate");
+  const [rate01] = useJuceSliderValue("lforate");
+  const rateText = useFormattedText(rateId, `${rate01}:${sync}`);
   const svgRef = useRef(null);
   // Mirrors `points` synchronously (written inside every setPoints updater,
   // not via a separate effect) so a gesture-end handler can read the exact
@@ -140,14 +159,62 @@ export default function LfoEditor() {
   // The live playhead marker - the processor's own phase, not something this
   // page derives from the Rate knob itself (which would drift the moment the
   // engine's tempo-sync alignment nudges the real phase).
+  //
+  // The processor only emits its phase at PeakGrainWebEditor's own timer
+  // rate (10 Hz), which would read as the dot stepping once a tick rather
+  // than riding the curve smoothly. Each tick below instead records that
+  // phase, when it arrived, and the cycles-per-second observed since the
+  // previous tick (unwrapping the 1 -> 0 jump first); a requestAnimationFrame
+  // loop then extrapolates forward from the latest tick every frame, so the
+  // motion looks continuous even though the ground truth under it only moves
+  // ten times a second. It briefly lags the true velocity right after a rate
+  // change (still riding the previous tick's estimate until the next one
+  // lands), which is the trade this makes for smoothness elsewhere.
+  const lastPhaseTickRef = useRef({ phase: 0, time: 0, velocity: 0, received: false });
+
   useEffect(() => {
     const handle = window.__JUCE__?.backend?.addEventListener("lfoPhase", (phase) => {
-      if (typeof phase === "number" && Number.isFinite(phase)) setPlayheadPhase(phase);
+      if (typeof phase !== "number" || !Number.isFinite(phase)) return;
+
+      const now = performance.now();
+      const prev = lastPhaseTickRef.current;
+      const dt = (now - prev.time) / 1000;
+
+      let delta = phase - prev.phase;
+      delta -= Math.round(delta); // wrap to [-0.5, 0.5] - the 1 -> 0 jump
+      const velocity = prev.received && dt > 0 ? delta / dt : 0;
+
+      lastPhaseTickRef.current = { phase, time: now, velocity, received: true };
     });
+
     return () => {
       if (handle) window.__JUCE__.backend.removeEventListener(handle);
     };
   }, []);
+
+  // Broadcasts the same interpolated phase's evaluated value (not just the
+  // phase itself) to every ModdableKnob's live modulation indicator - see
+  // LfoPlayback.jsx. Reads pointsRef rather than `points` so this effect
+  // never needs to restart as the shape is edited.
+  const setLfoValue = useSetLfoValue();
+
+  useEffect(() => {
+    let raf;
+
+    const tick = () => {
+      const { phase, time, velocity, received } = lastPhaseTickRef.current;
+      if (received) {
+        const dt = (performance.now() - time) / 1000;
+        const interpolated = (((phase + velocity * dt) % 1) + 1) % 1;
+        setPlayheadPhase(interpolated);
+        setLfoValue?.(evalBreakpoints(pointsRef.current, interpolated));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [setLfoValue]);
 
   const toSvgX = useCallback((x) => x * graphW, [graphW]);
   const toSvgY = useCallback((y) => midY - y * amp, [midY, amp]);
@@ -273,7 +340,7 @@ export default function LfoEditor() {
   const sortedPoints = [...points].sort((a, b) => a.x - b.x);
 
   return (
-    <div className="pg-lfo">
+    <div className="pg-lfo" data-off={!lfoOn || undefined}>
       <svg ref={svgRef} className="pg-lfo__graph" viewBox={`0 0 ${graphW} ${graphH}`}>
         <rect
           className="pg-lfo__bg"
@@ -284,6 +351,24 @@ export default function LfoEditor() {
           onPointerDown={handleBackgroundPointerDown}
         />
         <line className="pg-lfo__midline" x1={0} y1={midY} x2={graphW} y2={midY} />
+        {/* Purely a relabel, not a rescale: a point's own y is still -1..1
+            internally (lfoShapes.js) and still feeds PluginProcessor.cpp's
+            modulatedValue() as base01 + depth * y unchanged - top still
+            pushes a modulated knob up, bottom still pushes it down, the
+            midline is still "no push". Only these three numbers change, from
+            "1 / 0 / -1" to "100 / 50 / 0", to read on the same 0-100 scale
+            Depth's own slider already uses (ModAssignmentPopover.jsx) - so
+            the two controls stop looking like they disagree about what
+            range this is, even though neither's actual behaviour moved. */}
+        <text className="pg-lfo__axis-label" x={4} y={midY - amp + 10}>
+          100
+        </text>
+        <text className="pg-lfo__axis-label" x={4} y={midY + 3}>
+          50
+        </text>
+        <text className="pg-lfo__axis-label" x={4} y={midY + amp - 4}>
+          0
+        </text>
         <path className="pg-lfo__curve" d={pathFor(points)} />
         {playheadPhase != null && (
           <circle
@@ -305,8 +390,12 @@ export default function LfoEditor() {
             onDoubleClick={handlePointDoubleClick(point.id)}
           />
         ))}
+        <text className="pg-lfo__rate-readout" x={8} y={graphH - 8} pointerEvents="none">
+          {rateText}
+        </text>
       </svg>
       <div className="pg-lfo__toolbar">
+        <ModSourceChip />
         <div className="pg-lfo__rate">
           <JuceKnob parameterId="lforate" size={28} variant="flat" bare />
           <span className="pg-lfo__rate-label">Rate</span>
@@ -319,6 +408,16 @@ export default function LfoEditor() {
           openDirection="up"
           tone="chrome"
         />
+        {/* Pinned to the row's own right edge (margin-left: auto on the
+            wrapper, LfoEditor.css) while everything else here stays centred
+            as a group - the standard flex trick for "one item breaks out of
+            an otherwise-centred row" (no `justify-content` restructuring
+            needed). PowerToggle takes no className of its own, hence the
+            wrapper rather than a prop straight through. The Mod tab's own
+            master switch - see the `lfoOn` state above for what it does. */}
+        <div className="pg-lfo__power">
+          <PowerToggle on={lfoOn} onToggle={setLfoOn} ariaLabel="Mod on" />
+        </div>
       </div>
     </div>
   );

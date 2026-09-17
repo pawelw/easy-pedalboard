@@ -1,0 +1,35 @@
+/* Small enough to sit in the toolbar beside Rate/Sync/Shape, but reads as
+   "pick me up" rather than another button - dashed border, grab cursor, the
+   Mod tab's own green rather than the toolbar's neutral chrome. */
+.pg-mod-chip {
+  appearance: none;
+  -webkit-appearance: none;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1.5px dashed var(--pg-lfo-accent, #06e788);
+  background: transparent;
+  color: var(--pg-lfo-accent, #06e788);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.pg-mod-chip:hover {
+  background: color-mix(in srgb, var(--pg-lfo-accent, #06e788) 14%, transparent);
+}
+
+.pg-mod-chip[data-dragging] {
+  cursor: grabbing;
+  background: var(--pg-lfo-accent, #06e788);
+  color: #0a0d0e;
+  border-style: solid;
+  /* Sits above the knobs it is being dragged over. */
+  position: relative;
+  z-index: 1000;
+}

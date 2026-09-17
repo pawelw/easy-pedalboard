@@ -601,8 +601,6 @@ public:
                 })));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rmix", 1 }, "Reverb Mix", percent,
                                                                  cfg::kDefaultReverbMixPct, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "rvsrc", 1 }, "Reverb Source",
-                                                                  juce::StringArray { "Global", "Grains" }, 0));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dry", 1 }, "Dry", percent,
                                                                  cfg::kDefaultDryLevelPct, percentAttributes));

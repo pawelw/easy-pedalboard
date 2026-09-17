@@ -13,6 +13,7 @@
 #include "ee/dsp/PeakLimiter.h"
 #include "ee/dsp/TapeDelay.h"
 #include "ee/dsp/TubeDrive.h"
+#include "ee/plugin/ModRouter.h"
 #include "ee/plugin/PresetStore.h"
 
 #if EE_HAS_FACTORY_PRESETS
@@ -91,13 +92,23 @@ public:
         session, not a saved preset. */
     void setLfoBreakpointsFromJson (const juce::String& json);
 
+    /** The Mod tab's drag-and-drop modulation routing, as JSON (see ee/plugin/
+        ModRoutingJson.h) - what "lfoRoutingGet" returns and "lfoRouting"
+        resends after a preset load. Same live-apvts.state-property shape as
+        lfoBreakpointsAsJson(), for the same reason. */
+    juce::String lfoRoutingAsJson() const;
+
+    /** Called by "lfoRoutingSet" whenever a knob is dropped onto, a depth is
+        edited, or an assignment is removed. */
+    void setLfoRoutingFromJson (const juce::String& json);
+
     /** Bumped whenever installState (a preset load, a host session restore)
-        changes the breakpoints - the web editor's timer polls this to know
-        when to push a fresh "lfoBreakpoints" event, rather than resending it
-        every tick regardless. Not bumped by setLfoBreakpointsFromJson: the
-        page that just sent an edit already has it, so echoing it back would
-        be pure waste. */
-    int lfoBreakpointsGeneration() const { return lfoGeneration.load(); }
+        changes the breakpoints or the routing - the web editor's timer polls
+        this to know when to push fresh "lfoBreakpoints"/"lfoRouting" events,
+        rather than resending both every tick regardless. Not bumped by
+        setLfoBreakpointsFromJson/setLfoRoutingFromJson: the page that just
+        sent an edit already has it, so echoing it back would be pure waste. */
+    int lfoStateGeneration() const { return lfoGeneration.load(); }
 
     /** The Mod LFO's current phase, for the web editor's live playhead
         marker. Safe from any thread - see BreakpointLfo::phase01(). */
@@ -175,12 +186,22 @@ private:
         and the preset store, which is handed this as its install hook. */
     void installState (const juce::ValueTree& tree);
 
-    /** Re-reads the Mod tab's breakpoint shape off the live apvts.state
-        property, falling back to (and writing back) a default shape if it is
-        missing - a brand-new instance, or a preset saved before this
-        property existed. Called from the constructor and from installState;
-        bumps lfoGeneration so the web editor's timer knows to resend it. */
-    void refreshLfoBreakpointsFromState();
+    /** Re-reads the Mod tab's breakpoint shape and routing off their live
+        apvts.state properties - breakpoints fall back to (and write back) a
+        default shape if missing (a brand-new instance, or a preset saved
+        before this property existed); routing's own missing/empty case
+        already means "nothing assigned", so it needs no such fallback.
+        Called from the constructor and from installState; bumps lfoGeneration
+        once for both, so the web editor's timer knows to resend either. */
+    void refreshLfoStateFromApvts();
+
+    /** Applies the Mod LFO's offset (scaled into `paramID`'s own normalised
+        range) when it currently has an assignment - see modRouter. The fast
+        path (nothing assigned at all) costs one bool check and nothing more.
+        Grain/Pitch/Random's modulatable knobs all read through this now,
+        inside processBlock's own per-chunk loop, so a change actually moves
+        within a block rather than stepping once per host callback. */
+    float modulatedValue (const char* paramID, float rawValue) const noexcept;
 
     ee::dsp::Grainer grainer;
     ee::dsp::TapeDelay delay;
@@ -196,6 +217,11 @@ private:
         drag-and-drop modulation targets; this stage only ticks its phase and
         exposes it for the live playhead marker. */
     ee::dsp::BreakpointLfo modLfo;
+
+    /** Which of Grain/Pitch/Random's knobs the Mod LFO is currently wired
+        into, and how deep - see modulatedValue(). Delay, Reverb and the
+        Mixer are not modulation targets (scope cut for this feature). */
+    ee::plugin::ModRouter modRouter;
 
     /** Message-thread cache of the breakpoints currently installed into
         modLfo, kept only so installState/setLfoBreakpointsFromJson have
@@ -246,7 +272,6 @@ private:
     std::atomic<float>* decayParam = nullptr;
     std::atomic<float>* reverbLoCutParam = nullptr;
     std::atomic<float>* reverbMixParam = nullptr;
-    std::atomic<float>* reverbSourceParam = nullptr; // rvsrc: Whole (post-delay blend) vs Grains only
     std::atomic<float>* dryLevelParam = nullptr;
     std::atomic<float>* grainLevelParam = nullptr;
     std::atomic<float>* mixLinkParam = nullptr; // mlink: locks the two mixer faders together
@@ -256,6 +281,7 @@ private:
 
     std::atomic<float>* lfoRateParam = nullptr;
     std::atomic<float>* lfoSyncParam = nullptr;
+    std::atomic<float>* lfoOnParam = nullptr; // the Mod tab's own master switch - see modulatedValue()
 
     // One enable switch per face module: off forces that section's controls to
     // their no-op values in processBlock, leaving the knobs where they are.
@@ -307,12 +333,16 @@ private:
     juce::SmoothedValue<float> reverbWet;
     juce::SmoothedValue<float> engageGain;
 
-    // Scratch, sized once in prepareToPlay: the grain cloud, the grain-stage
-    // blend fed on to the delay, a gated copy of it for the delay's input (the
-    // delay line reads before it writes, so it cannot run in place), the delay's
-    // own return, the mono sum sent to the reverb, and the reverb's stereo
-    // return.
+    // Scratch, sized once in prepareToPlay: the grain cloud, the dry note's
+    // own level (kept apart from the grain chain and added back in full at
+    // the very end - see processBlock's own note by dryBuffer's first write),
+    // the post-delay grain chain (stageBuffer - the name is a holdover from
+    // when it held the dry+grain blend), a gated copy of the grain send for
+    // the delay's input (the delay line reads before it writes, so it cannot
+    // run in place), the delay's own return, the mono sum sent to the reverb,
+    // and the reverb's stereo return.
     juce::AudioBuffer<float> grainBuffer;
+    juce::AudioBuffer<float> dryBuffer;
     juce::AudioBuffer<float> stageBuffer;
     juce::AudioBuffer<float> delayInBuffer;
     juce::AudioBuffer<float> delayWetBuffer;

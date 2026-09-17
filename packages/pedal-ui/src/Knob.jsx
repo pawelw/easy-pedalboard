@@ -31,6 +31,31 @@ function angleFor(value01) {
   return MIN_ANGLE + value01 * (MAX_ANGLE - MIN_ANGLE);
 }
 
+/** A short radial tick riding on top of an arc/tick-ring the knob already
+    draws, at `value01`'s own angle - Peak Grain's live "this is where the
+    LFO has the value pushed to right now" marker (see ModdableKnob.jsx),
+    separate from the knob's own value pointer so the two can move
+    independently: the knob's own arc/needle stays at the automatable
+    parameter's value, this rides the modulated position around it.
+    `rInner`/`rOuter` are in the caller's own SVG units, so it always lines
+    up exactly with whichever ring (Sweep's arc or TickScale's dashes) it is
+    drawn over. Colour comes from a CSS class, not a `stroke` attribute -
+    see TickScale's own note on why WKWebView needs that. */
+function ModTick({ value01, rInner, rOuter }) {
+  const angle = angleFor(value01);
+  const toRad = (d) => ((d - 90) * Math.PI) / 180;
+  const rad = toRad(angle);
+  return (
+    <line
+      className="pui-knob__mod-tick"
+      x1={Math.cos(rad) * rInner}
+      y1={Math.sin(rad) * rInner}
+      x2={Math.cos(rad) * rOuter}
+      y2={Math.sin(rad) * rOuter}
+    />
+  );
+}
+
 function arcPath(r, fromDeg, toDeg) {
   const toRad = (d) => ((d - 90) * Math.PI) / 180;
   const x1 = Math.cos(toRad(fromDeg)) * r;
@@ -102,6 +127,11 @@ function Sweep({
   trackColor = "var(--pui-knob-sweep)",
   litColor = "var(--pui-knob-sweep-lit)",
   from = "min",
+  // Peak Grain's live modulation marker (see ModTick above) - 0..1 or
+  // undefined/null to draw nothing. Spans exactly the arc's own stroke
+  // width so it reads as a mark riding the existing ring rather than a
+  // second, separate arc.
+  modValue,
 }) {
   const r = diameter / 2 + gap;
   const box = r + width;
@@ -130,6 +160,7 @@ function Sweep({
         <path d={arcPath(r, MIN_ANGLE, MAX_ANGLE)} stroke={trackColor} />
         {lit && <path d={span} stroke={litColor} />}
       </g>
+      {modValue != null && <ModTick value01={modValue} rInner={r - width / 2} rOuter={r + width / 2} />}
     </svg>
   );
 }
@@ -272,7 +303,7 @@ const TICK_THICKNESS_SMALL = 1.4;
     above them (see Knob's own comment on this below). Below `diameter` 60,
     the dashes themselves also shrink - full-size ones looked oversized next
     to a 42px knob. */
-function TickScale({ diameter, value, gap = SWEEP_GAP, from = "min" }) {
+function TickScale({ diameter, value, gap = SWEEP_GAP, from = "min", modValue }) {
   const small = diameter < 60;
   const tickLength = small ? TICK_LENGTH_SMALL : TICK_LENGTH;
   const tickThickness = small ? TICK_THICKNESS_SMALL : TICK_THICKNESS;
@@ -337,6 +368,7 @@ function TickScale({ diameter, value, gap = SWEEP_GAP, from = "min" }) {
           />
         ))}
       </g>
+      {modValue != null && <ModTick value01={modValue} rInner={rInner} rOuter={rOuter} />}
     </svg>
   );
 }
@@ -453,6 +485,36 @@ export default function Knob({
   scaleFrom = "min",
   bare = false,
   centreValue = 0.5,
+  // A drop target for a drag-and-drop library this component knows nothing
+  // about (a caller wires up its own useDroppable/useDrop and hands the
+  // pieces in) - `dropRef` is that library's node ref, attached to the dial
+  // box rather than the whole control, so a drop-active outline never
+  // touches the caption below it or the pointer-drag body inside it.
+  // `dropActive` just toggles the outline; this component does no drag
+  // detection of its own.
+  dropRef,
+  dropActive = false,
+  // A small marker in the dial box's own top-right corner (Peak Grain's
+  // "modulated by the LFO" dot) - rendered inside .pui-knob__dial via
+  // .pui-knob__badge below, not positioned by the caller against the outer
+  // .pui-knob box, so it lands in the same spot relative to the dial
+  // whatever size that outer box ends up rendered at (a flex-shrunk row,
+  // say) rather than drifting with it.
+  badge,
+  // A style override for the badge's own wrapper (.pui-knob__badge below,
+  // which carries the shared top/right anchor every badge starts from) -
+  // Peak Grain's Filter knob is close enough to the plate's own edge that
+  // the shared anchor reads ambiguous there, so it passes badgeStyle to move
+  // just its own badge (ModdableKnob.jsx). Undefined for every other caller,
+  // so nothing here changes for a knob that doesn't ask.
+  badgeStyle,
+  // Peak Grain's live "the LFO has this knob pushed to here right now"
+  // marker - 0..1 or undefined/null to draw nothing. Deliberately separate
+  // from `value`: the knob's own arc/needle keeps showing the automatable
+  // parameter's own value and never moves for this, only the extra tick
+  // drawn on top of it does (see ModTick above and ModdableKnob.jsx, which
+  // computes this every animation frame from the live LFO output).
+  modIndicator,
 }) {
   const [dragging, setDragging] = useState(false);
   const dragStartRef = useRef(null);
@@ -576,7 +638,12 @@ export default function Knob({
       className={`pui-reset pui-knob${isScale ? " pui-knob--scale" : ""}${isSoft ? " pui-knob--soft" : ""}${isConcave ? " pui-knob--concave" : ""}${isSpoke ? " pui-knob--spoke" : ""}`}
       style={{ width: bare ? size : size + 28 }}
     >
-      <div className="pui-knob__dial" style={{ width: dialSize, height: dialSize }}>
+      <div
+        ref={dropRef}
+        className="pui-knob__dial"
+        data-drop-active={dropActive || undefined}
+        style={{ width: dialSize, height: dialSize }}
+      >
         {isSpoke ? (
           <SpokeKnob diameter={size} value={value} from={scaleFrom} />
         ) : isConcave ? (
@@ -588,6 +655,7 @@ export default function Knob({
             trackColor="var(--pui-concave-track)"
             litColor="var(--pui-soft-lit)"
             from={scaleFrom}
+            modValue={modIndicator}
           />
         ) : isSoft ? (
           // The same arc the collar variant draws, on the soft palette and
@@ -602,6 +670,7 @@ export default function Knob({
             trackColor="var(--pui-soft-track)"
             litColor="var(--pui-soft-lit)"
             from={scaleFrom}
+            modValue={modIndicator}
           />
         ) : isScale ? (
           <TickScale
@@ -619,11 +688,18 @@ export default function Knob({
             // relying on the size default.
             gap={sweepGap ?? (size >= 60 ? 9 : 6)}
             from={scaleFrom}
+            modValue={modIndicator}
           />
         ) : (
           <Sweep diameter={size} value={value} />
         )}
         <EndMarker label={endMarkerLabel} radius={radius} lit={value >= 0.999} />
+
+        {badge && (
+          <div className="pui-knob__badge" style={badgeStyle}>
+            {badge}
+          </div>
+        )}
 
         {cornerLabels?.topLeft && <span className="pui-knob__corner pui-knob__corner--tl">{cornerLabels.topLeft}</span>}
         {cornerLabels?.topRight && <span className="pui-knob__corner pui-knob__corner--tr">{cornerLabels.topRight}</span>}

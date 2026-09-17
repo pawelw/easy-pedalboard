@@ -13,9 +13,19 @@
 //                 [--mod 0] [--bit 0]
 //                 [--scale 0] [--root 0] [--low 0] [--unison 100] [--high 0] [--pmix 100]
 //                 [--dtime 0.36] [--dtsync 1] [--dfb 30] [--dmix 30]
-//                 [--decay 2.5] [--rmix 30] [--rvsrc 0]
+//                 [--decay 2.5] [--rmix 30]
 //                 [--dry 100] [--grains 71] [--filter 100] [--drive 35]
 //                 [--grainon 1] [--pitchon 1] [--randon 1] [--delon 1] [--revon 1]
+//                 [--modroute]
+//
+// --modroute assigns the Mod LFO to eight of its modulation targets at once
+// (size/density/shape/scatter/stereo/filter/drive/bit, mixed depth signs -
+// ModRouter::kMaxAssignments' own cap) and, unless --param
+// lforate was also given, pushes the Rate knob to its fastest free-running
+// period so a short render still covers several LFO cycles. For hunting
+// non-finite/runaway output or clicks at the modulation-chunk boundaries
+// PluginProcessor.cpp's own processBlock introduces when anything is
+// assigned - see its kModChunk.
 //
 // Size, Density and the delay Time (--size/--density/--dtime) are normalised
 // 0..1 knobs now - their Sync switch decides what that maps to.
@@ -113,6 +123,7 @@ int main (int argc, char* argv[])
     juce::File outFile;
     double bpm = 0.0; // 0 means no playhead at all - the old behaviour
     bool onsets = false;
+    bool modRoute = false;
 
     // Knob overrides, applied through the parameter tree the way a host would.
     // Empty means "leave at the default".
@@ -139,6 +150,8 @@ int main (int argc, char* argv[])
             bpm = next().getDoubleValue();
         else if (arg == "--onsets")
             onsets = true;
+        else if (arg == "--modroute")
+            modRoute = true;
         else if (arg == "--mono")
             mono = true;
         else if (arg == "--editor")
@@ -201,8 +214,6 @@ int main (int argc, char* argv[])
             knobs.emplace_back ("decay", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--rmix")
             knobs.emplace_back ("rmix", static_cast<float> (next().getDoubleValue()));
-        else if (arg == "--rvsrc")
-            knobs.emplace_back ("rvsrc", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--dry")
             knobs.emplace_back ("dry", static_cast<float> (next().getDoubleValue()));
         else if (arg == "--grains")
@@ -294,6 +305,37 @@ int main (int argc, char* argv[])
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
         else
             std::printf ("  unknown parameter \"%s\"\n", id.toRawUTF8());
+    }
+
+    if (modRoute)
+    {
+        bool rateWasOverridden = false;
+        for (const auto& [id, value] : knobs)
+            if (id == "lforate")
+                rateWasOverridden = true;
+
+        // Fastest free-running period (30 ms - see kLfoRateMap in
+        // PluginProcessor.cpp) unless the caller already asked for a specific
+        // Rate, so a short render still covers several LFO cycles.
+        if (! rateWasOverridden)
+            if (auto* rate = processor.apvts.getParameter ("lforate"))
+                rate->setValueNotifyingHost (1.0f);
+
+        // A representative spread across every modulation target this pedal
+        // has - Grain/Pitch/Random plus the Mixer's Filter/Drive/Bit - mixed
+        // depth signs, right up to ModRouter::kMaxAssignments, exercising
+        // "several targets at once" and the 8-slot cap together.
+        processor.setLfoRoutingFromJson (R"([
+            {"paramId":"size","depth":0.6},
+            {"paramId":"density","depth":-0.5},
+            {"paramId":"shape","depth":-0.7},
+            {"paramId":"scatter","depth":0.8},
+            {"paramId":"stereo","depth":0.5},
+            {"paramId":"filter","depth":-0.6},
+            {"paramId":"drive","depth":0.4},
+            {"paramId":"bit","depth":0.3}
+        ])");
+        std::printf ("  modulation routing: LFO -> size/density/shape/scatter/stereo/filter/drive/bit\n");
     }
 
     if (stateFile != juce::File())
@@ -443,7 +485,7 @@ int main (int argc, char* argv[])
                 { "freeze", 13.1 }, { "width", 10.3 }, { "shape", 3.7 },   { "scatter", 4.3 }, { "reverse", 2.3 },  { "stereo", 3.7 },
                 { "scale", 4.1 },   { "root", 5.1 },    { "plow", 2.9 },    { "puni", 6.1 },     { "phigh", 3.3 },
                 { "dtime", 5.9 },   { "dfb", 8.7 },     { "dmix", 6.7 },    { "decay", 7.1 },    { "rmix", 4.9 },
-                { "rvsrc", 6.3 },   { "dry", 8.3 },     { "grains", 7.7 },  { "filter", 5.7 },   { "drive", 4.5 },
+                { "dry", 8.3 },     { "grains", 7.7 },  { "filter", 5.7 },   { "drive", 4.5 },
                 { "on", 11.3 } // the host's device on/off, which leaves the tail ringing
             };
 

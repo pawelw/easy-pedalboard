@@ -141,6 +141,18 @@ export function JuceKnob({
   showValueLabel = true,
   showValueBelow = false,
   bare = false,
+  // Passed straight through to Knob - see its own note on these two. Lets a
+  // caller (Peak Grain's ModdableKnob) turn a parameter's own knob into a
+  // drag-and-drop drop target without this component knowing anything about
+  // whatever drag library is doing the dropping.
+  dropRef,
+  dropActive,
+  // Also passed straight through - see Knob's own note on it.
+  badge,
+  // Also passed straight through - see Knob's own note on it.
+  badgeStyle,
+  // Also passed straight through - see Knob's own note on it.
+  modIndicator,
 }) {
   const id = useParamId(parameterId);
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
@@ -161,6 +173,11 @@ export function JuceKnob({
       onChange={setValue}
       onDragStart={() => sliderState.sliderDragStarted()}
       onDragEnd={() => sliderState.sliderDragEnded()}
+      dropRef={dropRef}
+      dropActive={dropActive}
+      badge={badge}
+      badgeStyle={badgeStyle}
+      modIndicator={modIndicator}
     />
   );
 }

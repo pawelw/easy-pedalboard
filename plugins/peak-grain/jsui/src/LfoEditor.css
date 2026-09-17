@@ -6,6 +6,10 @@
 .pg-lfo {
   --pg-lfo-accent: #06e788;
   --pui-soft-lit: var(--pg-lfo-accent);
+  /* So PowerToggle's ring lights in the Mod tab's own green when on, the
+     same way a ModulePanel's own accent lights its power switch - .pg-lfo
+     carries no ModulePanel of its own for it to inherit that from. */
+  --pui-accent: var(--pg-lfo-accent);
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -24,6 +28,18 @@
   background: var(--pui-recess);
   box-shadow: var(--pui-well-shadow);
   border: 1px solid var(--pui-module-edge);
+  transition: opacity 140ms ease;
+}
+
+/* The Mod tab's own master switch (LfoEditor.jsx's `lfoOn`, PowerToggle
+   below) - dims the graph, the same 0.42 every other module's off state
+   uses (GrainFace.css), when every assignment has gone silent
+   (PluginProcessor.cpp's modulatedValue(), gated on "lfoon"). The toolbar
+   stays at full opacity: Rate/Sync/the preset picker/the switch itself all
+   stay fully legible and clickable while off, since turning it back on or
+   reshaping the curve while it's off are both still real things to do here. */
+.pg-lfo[data-off] .pg-lfo__graph {
+  opacity: 0.42;
 }
 
 .pg-lfo__bg {
@@ -34,6 +50,20 @@
 .pg-lfo__midline {
   stroke: #1b2529;
   stroke-width: 1;
+}
+
+/* The graph's own y-axis reading, 100 (top) / 50 (mid) / 0 (bottom) - a
+   relabel of the same -1..1 range the curve has always used, not a rescale;
+   see LfoEditor.jsx's own note by the text elements. Dim and small so it
+   reads as axis chrome, not another editable value alongside the points. */
+.pg-lfo__axis-label {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 8px;
+  fill: var(--pui-ink-dim);
+  opacity: 0.65;
+  pointer-events: none;
+  user-select: none;
 }
 
 .pg-lfo__curve {
@@ -65,6 +95,19 @@
   opacity: 0.85;
 }
 
+/* The graph's own corner readout - the Rate knob's value in whichever unit
+   the Sync toggle currently means (a note division or a millisecond count),
+   the same text LfoEditor's rate knob would show mid-drag if it weren't
+   `bare` - see LfoEditor.jsx's own note on where this comes from. */
+.pg-lfo__rate-readout {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  fill: var(--pui-ink-dim);
+  user-select: none;
+}
+
 .pg-lfo__toolbar {
   display: flex;
   align-items: center;
@@ -86,4 +129,13 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--pui-ink-dim);
+}
+
+/* Pushes the master switch to the toolbar's own right edge while
+   ModSourceChip/Rate/Sync/the preset picker stay centred as a group - see
+   LfoEditor.jsx's own note on this trick. */
+.pg-lfo__power {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
 }

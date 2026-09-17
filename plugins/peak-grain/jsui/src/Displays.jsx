@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useJuceSliderValue, useParamId, useFormattedText } from "@synthpeak/pedal-ui/juce";
+import { useModAssignment } from "./ModRouting.jsx";
+import { useLfoValue } from "./LfoPlayback.jsx";
 
 /**
  * The five recessed displays across the plate (COMPONENTS.md's "Displays"
@@ -15,6 +17,16 @@ const SIZE_MAX_MS = 1000;
 
 function clampMs(ms) {
   return Math.min(SIZE_MAX_MS, Math.max(SIZE_MIN_MS, ms));
+}
+
+/** A parameter's live modulated 0..1, mirroring PluginProcessor.cpp's own
+    modulatedValue() exactly - base01 + depth * lfoValue, clamped. `assignment`
+    is `useModAssignment(paramId)`'s result, `undefined` when the parameter
+    carries no assignment, in which case this is the identity (the base value,
+    untouched). Shared by every display below that reads a modulation target,
+    so the DSP-matching formula lives in exactly one place. */
+function resolveModulated(base01, assignment, lfoValue) {
+  return assignment ? Math.min(1, Math.max(0, base01 + assignment.depth * lfoValue)) : base01;
 }
 
 /** Milliseconds out of a readout this codebase printed - "240 ms" or "1.20 s",
@@ -70,6 +82,11 @@ export function GrainEnvelope({ accent }) {
   const [density] = useJuceSliderValue("density");
   const [window01] = useJuceSliderValue("window");
 
+  const shapeA = useModAssignment("shape");
+  const sizeA = useModAssignment("size");
+  const densityA = useModAssignment("density");
+  const windowA = useModAssignment("window");
+
   // Width comes from the readout, not from the knob position. The readout is
   // clamped to the grain length the engine will actually apply (see
   // PeakGrainProcessor::sizeReadout) - synced, the knob can select a division
@@ -77,16 +94,62 @@ export function GrainEnvelope({ accent }) {
   // same grain. Drawing off the raw knob made the envelope go on widening
   // while the value sat still, which is a picture of a sound nothing is
   // making. Reading it back off the printed text is what guarantees the two
-  // can never disagree.
-  const sizeId = useParamId("size");
-  const sizeMs = parseDurationMs(useFormattedText(sizeId, size));
+  // can never disagree - always off the BASE size, since the readout is the
+  // unmodulated value: there is no live text equivalent for a modulated one.
+  // A size assignment instead falls back to the raw 0..1 (GrainEnvelopeLive
+  // below), same as this display already does with no backend to ask at all.
   // Logarithmic, because grain length reads to the ear as a ratio, not a
   // difference - 20 to 40 ms is the same step as 1 to 2 s.
-  const sizeSpan =
-    sizeMs == null
-      ? size // no backend to ask (the gallery) - fall back to the knob
-      : Math.log(clampMs(sizeMs) / SIZE_MIN_MS) / Math.log(SIZE_MAX_MS / SIZE_MIN_MS);
+  const sizeId = useParamId("size");
+  const sizeMs = parseDurationMs(useFormattedText(sizeId, size));
+  const sizeSpanBase =
+    sizeMs == null ? size : Math.log(clampMs(sizeMs) / SIZE_MIN_MS) / Math.log(SIZE_MAX_MS / SIZE_MIN_MS);
 
+  if (shapeA || sizeA || densityA || windowA)
+    return (
+      <GrainEnvelopeLive
+        accent={accent}
+        shape={shape}
+        shapeA={shapeA}
+        density={density}
+        densityA={densityA}
+        window01={window01}
+        windowA={windowA}
+        sizeSpanBase={sizeSpanBase}
+        size={size}
+        sizeA={sizeA}
+      />
+    );
+
+  return <GrainEnvelopeBody accent={accent} shape={shape} density={density} window01={window01} sizeSpan={sizeSpanBase} />;
+}
+
+/** GrainEnvelope's own live subscription to the LFO's per-frame output - see
+    ModdableKnob.jsx's ModulatedKnob and FilterCurve's ModulatedFilterCurve for
+    the same split, and why it is a separate component (useLfoValue()
+    re-renders its subscriber every frame; an unmodulated display, the common
+    case, should not pay for that). */
+function GrainEnvelopeLive({ accent, shape, shapeA, density, densityA, window01, windowA, sizeSpanBase, size, sizeA }) {
+  const lfoValue = useLfoValue();
+
+  return (
+    <GrainEnvelopeBody
+      accent={accent}
+      shape={resolveModulated(shape, shapeA, lfoValue)}
+      density={resolveModulated(density, densityA, lfoValue)}
+      window01={resolveModulated(window01, windowA, lfoValue)}
+      // No live duration text to read a modulated size off (see GrainEnvelope
+      // above) - substitutes the raw modulated 0..1 straight in, the same
+      // fallback sizeSpanBase itself uses when there is no text to ask.
+      sizeSpan={sizeA ? resolveModulated(size, sizeA, lfoValue) : sizeSpanBase}
+    />
+  );
+}
+
+/** The envelope's own drawing, given already-resolved 0..1 inputs (the base
+    parameters, or their live modulated values - GrainEnvelope/GrainEnvelopeLive's
+    own concern, not this component's). */
+function GrainEnvelopeBody({ accent, shape, density, window01, sizeSpan }) {
   const grainCount = Math.min(8, Math.max(1, Math.round(4 / grainDivisionBeats(density))));
   const width = 70 + sizeSpan * 110; // longer Size = wider grain window
   const spacing = grainCount > 1 ? (234 - width) / (grainCount - 1) : 0;
@@ -146,6 +209,34 @@ export function PitchWeights({ accent }) {
   const [unison] = useJuceSliderValue("puni");
   const [high] = useJuceSliderValue("phigh");
 
+  const lowA = useModAssignment("plow");
+  const uniA = useModAssignment("puni");
+  const highA = useModAssignment("phigh");
+
+  if (lowA || uniA || highA)
+    return (
+      <PitchWeightsLive accent={accent} low={low} lowA={lowA} unison={unison} uniA={uniA} high={high} highA={highA} />
+    );
+
+  return <PitchWeightsBody accent={accent} low={low} unison={unison} high={high} />;
+}
+
+/** PitchWeights's own live subscription to the LFO's per-frame output - see
+    GrainEnvelopeLive's own note on why this split exists. */
+function PitchWeightsLive({ accent, low, lowA, unison, uniA, high, highA }) {
+  const lfoValue = useLfoValue();
+
+  return (
+    <PitchWeightsBody
+      accent={accent}
+      low={resolveModulated(low, lowA, lfoValue)}
+      unison={resolveModulated(unison, uniA, lfoValue)}
+      high={resolveModulated(high, highA, lfoValue)}
+    />
+  );
+}
+
+function PitchWeightsBody({ accent, low, unison, high }) {
   return (
     <div className="pg-weights">
       <div className="pg-weights__baseline" />
@@ -208,6 +299,47 @@ export function RandomField({ accent }) {
   const [reverse] = useJuceSliderValue("reverse");
   const [scatter] = useJuceSliderValue("scatter");
 
+  const stereoA = useModAssignment("stereo");
+  const reverseA = useModAssignment("reverse");
+  const scatterA = useModAssignment("scatter");
+
+  if (stereoA || reverseA || scatterA)
+    return (
+      <RandomFieldLive
+        accent={accent}
+        stereo={stereo}
+        stereoA={stereoA}
+        reverse={reverse}
+        reverseA={reverseA}
+        scatter={scatter}
+        scatterA={scatterA}
+      />
+    );
+
+  return <RandomFieldBody accent={accent} stereo={stereo} reverse={reverse} scatter={scatter} />;
+}
+
+/** RandomField's own live subscription to the LFO's per-frame output - see
+    GrainEnvelopeLive's own note on why this split exists. Stacks on top of
+    RandomFieldBody's own animation frame loop (the grains' jitter, a
+    different and unrelated motion) rather than replacing it - this one only
+    re-resolves the three knob-derived numbers the jitter loop and the layout
+    below already read every frame; it does not touch how the jitter itself
+    moves. */
+function RandomFieldLive({ accent, stereo, stereoA, reverse, reverseA, scatter, scatterA }) {
+  const lfoValue = useLfoValue();
+
+  return (
+    <RandomFieldBody
+      accent={accent}
+      stereo={resolveModulated(stereo, stereoA, lfoValue)}
+      reverse={resolveModulated(reverse, reverseA, lfoValue)}
+      scatter={resolveModulated(scatter, scatterA, lfoValue)}
+    />
+  );
+}
+
+function RandomFieldBody({ accent, stereo, reverse, scatter }) {
   const n = RANDOM_DOTS.length;
   const liveRef = useRef({ reverse, scatter });
   liveRef.current = { reverse, scatter };
@@ -276,7 +408,10 @@ export function RandomField({ accent }) {
 // design, so putting it on the scope would advertise a control that is not
 // there.
 const CLOUD_LP_HZ = 13000;
-const CLOUD_LP_MIN_HZ = 320;
+// Mirrors GrainerConfig.h's kCloudLowpassMinHz exactly - was 320, moved to
+// 150 so the shut end of the knob reads as an actual cut rather than a
+// gentle darkening (see that constant's own note).
+const CLOUD_LP_MIN_HZ = 150;
 
 const CURVE_F_MIN = 20;
 const CURVE_F_MAX = 20000;
@@ -313,21 +448,42 @@ function curveY(db) {
   return CURVE_PAD + (clamped / CURVE_DB_FLOOR) * (CURVE_H - CURVE_PAD * 2);
 }
 
+/** FilterCurve's own live subscription to the LFO's per-frame output - split
+    out so it only ever mounts while `filter` actually has an assignment (see
+    FilterCurve below), the same reason ModdableKnob.jsx's ModulatedKnob is a
+    separate component from ModdableKnob itself: useLfoValue() re-renders its
+    subscriber every animation frame, and an unmodulated Filter knob (the
+    common case) should not pay for that. Mirrors PluginProcessor.cpp's own
+    modulatedValue() exactly - base01 + depth * lfoValue, clamped - so the
+    curve drawn here is the filter the DSP is actually running, not a
+    separate UI-only approximation of it. */
+function ModulatedFilterCurve({ accent, filter, assignment }) {
+  const lfoValue = useLfoValue();
+  return <FilterCurveBody accent={accent} openness={resolveModulated(filter, assignment, lfoValue)} />;
+}
+
 /** The Mixer's Filter response, in place of a printed value. Reads `filter`
     live and redraws, so the line moves with the knob: wide open it is flat to
-    13 kHz, and winding down walks the corner to 320 Hz.
-
-    Colours are literals rather than `var(--pui-scope-*)` for the reason at the
-    top of GrainFace.jsx - a custom property in an SVG presentation attribute
-    does not resolve reliably in the plugin's WKWebView - and because onyx only
-    defines --pui-scope-grid, so the rest would fall back to the light theme's
-    dark red. */
+    13 kHz, and winding down walks the corner to 150 Hz. While the Mod tab has
+    an LFO assigned to Filter, it instead redraws every frame from the live
+    modulated value (ModulatedFilterCurve above) - the curve *is* this knob's
+    value readout, so it is the one place a moving LFO assignment has to show
+    up for the display to keep meaning what it says. */
 export function FilterCurve({ accent }) {
   const [filter] = useJuceSliderValue("filter");
+  const assignment = useModAssignment("filter");
 
+  if (assignment) return <ModulatedFilterCurve accent={accent} filter={filter} assignment={assignment} />;
+  return <FilterCurveBody accent={accent} openness={filter} />;
+}
+
+/** The curve's own drawing, given the filter's openness (0..1, already
+    resolved - the base parameter or the live modulated value, FilterCurve's
+    own concern, not this component's). */
+function FilterCurveBody({ accent, openness }) {
   // The parameter is 0..100 % and the hook hands back 0..1, so it is already
   // the openness the sweep wants.
-  const lpHz = cloudCutoff(filter);
+  const lpHz = cloudCutoff(openness);
 
   const steps = 72;
   let line = "";

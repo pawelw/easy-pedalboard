@@ -1,8 +1,39 @@
 import { useEffect } from "react";
+import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Card } from "@synthpeak/pedal-ui";
 import { installAutoResize } from "@synthpeak/pedal-ui/juce";
 import GrainFace from "./GrainFace.jsx";
+import { ModRoutingProvider, useModRouting } from "./ModRouting.jsx";
+import { MOD_SOURCE_LFO } from "./ModSourceChip.jsx";
+import { LfoPlaybackProvider } from "./LfoPlayback.jsx";
 import "./index.css";
+
+/** The only drag gesture this feature has: the Mod tab's LFO chip
+    (MOD_SOURCE_LFO) dropped onto a ModdableKnob, whose droppable id is that
+    knob's own parameterId. Reads the routing context set up below to assign
+    it - see ModRouting.jsx's own note on why this lives in a context rather
+    than being threaded down as props. */
+function ModDropHandler({ children }) {
+  const routing = useModRouting();
+
+  // Same move threshold Peak Alpine's own DndContext uses, for the same
+  // reason - a click on the chip shouldn't misfire as a drag.
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  );
+
+  const handleDragEnd = ({ active, over }) => {
+    if (!over || active.id !== MOD_SOURCE_LFO) return;
+    routing.assign(over.id);
+  };
+
+  return (
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      {children}
+    </DndContext>
+  );
+}
 
 /**
  * Peak Grain's enclosure: a 697px Card with no title/logo/preset-bar slots
@@ -29,9 +60,15 @@ export default function App() {
 
   return (
     <div className="page">
-      <Card className="pg-card" width={719}>
-        <GrainFace />
-      </Card>
+      <LfoPlaybackProvider>
+        <ModRoutingProvider>
+          <ModDropHandler>
+            <Card className="pg-card" width={719}>
+              <GrainFace />
+            </Card>
+          </ModDropHandler>
+        </ModRoutingProvider>
+      </LfoPlaybackProvider>
     </div>
   );
 }
