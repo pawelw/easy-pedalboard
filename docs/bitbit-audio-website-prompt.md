@@ -78,7 +78,12 @@ look like it was designed by whoever designed these plugins. Send, at minimum:
 > and Mix. Every engine keeps running while another is selected, so switching
 > engines never clicks and never loses your settings.
 >
-> **2. BitBit Grains — $49.** A granular delay into a plate reverb. It records
+> **2. BitBit Grains — $49.** Tagline, use verbatim: **"Shatter a sound into
+> grains. Freeze it, scrub it, keep it in key."** — the three verbs are three
+> real controls (Freeze, Stretch, Scale), so the product page can hang a section
+> on each.
+>
+> A granular delay into a plate reverb. It records
 > into a 10.5-second buffer and sprays windowed grains out of it — each one at a
 > random pitch, direction, and pan position — up to 32 overlapping at once.
 > Freeze the buffer and scrub through it with Stretch. A scale-aware pitch
@@ -393,6 +398,8 @@ look like it was designed by whoever designed these plugins. Send, at minimum:
 > Shimmer Phase · Dub Chamber · Tape Wash · Slapback · Dotted Wide.*
 >
 > ### BitBit Grains — $49
+> **Shatter a sound into grains. Freeze it, scrub it, keep it in key.**
+>
 > A granular delay into a plate. Mono or stereo in, stereo out. A 10.5-second
 > circular buffer, up to 32 overlapping grains, each at its own pitch,
 > direction and pan. A **Live / Freeze** pill sits top-left; a **Wide** pill in
@@ -467,7 +474,8 @@ look like it was designed by whoever designed these plugins. Send, at minimum:
 >
 > Two products: **BitBit Alpine, $99** — a multi-effect of four drag-to-reorder
 > modules (Artifact / Mod / Delay / Reverb) with eleven engines; and
-> **BitBit Grains, $49** — a granular delay into a plate, with freeze, scrubbing,
+> **BitBit Grains, $49** — "Shatter a sound into grains. Freeze it, scrub it,
+> keep it in key." A granular delay into a plate, with freeze, scrubbing,
 > scale-aware pitch and a hand-drawn breakpoint LFO. The four Alpine modules are
 > also sold standalone at **$19 each**, and the pricing page must make that
 > upgrade decision obvious ($19 × 4 = $76 of modules; Alpine is $99 and adds the

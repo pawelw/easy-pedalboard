@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  body{margin:0;background:#0f1315}
+  a{color:#b9d3d9;text-decoration:none}
+  a:hover{color:#e5f2f5}
+</style>
+</helmet>
+<div style="font-family:'Space Grotesk',sans-serif;color:#b9d3d9;background:#0f1315;min-height:100vh">
+
+  <nav style="position:sticky;top:0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:18px 32px;background:rgba(15,19,21,0.82);backdrop-filter:blur(12px);border-bottom:1px solid #222b2e;gap:24px;flex-wrap:wrap">
+    <a href="Home.dc.html" style="display:flex;align-items:center;gap:12px;color:#b9d3d9">
+      <svg width="28" height="20" viewBox="0 0 28 20" fill="none"><polyline points="1,18 7,6 11,13 16,3 22,14 27,8" stroke="#b9d3d9" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/></svg>
+      <span style="font-weight:600;font-size:17px;letter-spacing:-0.01em">BitBit Audio</span>
+    </a>
+    <div style="display:flex;gap:32px;font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#8ba3a9">
+      <a href="Home.dc.html#alpine" style="color:#8ba3a9">Alpine</a>
+      <a href="Home.dc.html#grains" style="color:#8ba3a9">Grains</a>
+      <a href="Home.dc.html#modules-explorer" style="color:#8ba3a9">Modules</a>
+      <a href="Home.dc.html#ab-player" style="color:#8ba3a9">Demos</a>
+    </div>
+    <a href="#matrix" style="background:#b9d3d9;color:#0f1315;padding:10px 22px;border-radius:999px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;font-weight:600">Buy</a>
+  </nav>
+
+  <section style="max-width:900px;margin:0 auto;padding:100px 32px 60px;text-align:left">
+    <div style="font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#6c8288;margin-bottom:16px">Pricing</div>
+    <h1 style="font-size:clamp(36px,5vw,56px);font-weight:400;letter-spacing:-0.02em;margin:0 0 20px">Buy one module, or buy the host.</h1>
+    <p style="font-size:16px;line-height:1.65;color:#8ba3a9;max-width:560px;margin:0">Every module is identical DSP whether it lives inside Alpine or stands alone. Buy what you need, or buy the chain that reorders them.</p>
+  </section>
+
+  <section id="matrix" style="max-width:1280px;margin:0 auto;padding:20px 32px 80px;display:flex;gap:24px;flex-wrap:wrap;align-items:stretch">
+
+    <div style="flex:1;min-width:260px;background:#171d20;border:1px solid #222b2e;border-radius:20px;padding:36px;display:flex;flex-direction:column">
+      <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#8ba3a9;margin-bottom:24px">Single module</div>
+      <div style="font-size:44px;font-variant-numeric:tabular-nums;margin-bottom:6px">$19</div>
+      <div style="font-size:13px;color:#6c8288;margin-bottom:32px">per module</div>
+      <ul style="margin:0 0 32px;padding:0;list-style:none;color:#8ba3a9;font-size:14px;line-height:2;flex:1">
+        <li>— Choose Artifact, Modulation, Delay or Reverb</li>
+        <li>— The exact DSP that ships inside Alpine</li>
+        <li>— Its own stepper through every engine</li>
+        <li>— Mix knob in the footer</li>
+      </ul>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #222b2e"><div style="width:8px;height:8px;border-radius:50%;background:#c00001"></div><span style="font-size:13px">Artifact</span></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #222b2e"><div style="width:8px;height:8px;border-radius:50%;background:#e0b23c"></div><span style="font-size:13px">Modulation</span></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #222b2e"><div style="width:8px;height:8px;border-radius:50%;background:#a3ce7a"></div><span style="font-size:13px">Delay</span></div>
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid #222b2e;border-bottom:1px solid #222b2e"><div style="width:8px;height:8px;border-radius:50%;background:#7fd2d8"></div><span style="font-size:13px">Reverb</span></div>
+      </div>
+      <a href="#" style="margin-top:28px;text-align:center;padding:14px;border-radius:999px;border:1px solid #222b2e;font-size:14px" style-hover="border-color:#6c8288">Buy a module</a>
+    </div>
+
+    <div style="flex:1;min-width:260px;background:#171d20;border:1px solid #b39bd8;border-radius:20px;padding:36px;display:flex;flex-direction:column">
+      <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#b39bd8;margin-bottom:24px">BitBit Grains</div>
+      <div style="font-size:44px;font-variant-numeric:tabular-nums;margin-bottom:6px">$49</div>
+      <div style="font-size:13px;color:#6c8288;margin-bottom:32px">one-time</div>
+      <ul style="margin:0 0 32px;padding:0;list-style:none;color:#8ba3a9;font-size:14px;line-height:2;flex:1">
+        <li>— Granular delay into a plate reverb</li>
+        <li>— Freeze the buffer, scrub it with Stretch</li>
+        <li>— Scale-aware pitch section</li>
+        <li>— Hand-drawn breakpoint LFO editor</li>
+        <li>— Up to 32 overlapping grains</li>
+      </ul>
+      <a href="#" style="margin-top:28px;text-align:center;padding:14px;border-radius:999px;background:#b39bd8;color:#0f1315;font-size:14px;font-weight:600" style-hover="background:#c7b3e6">Buy Grains</a>
+    </div>
+
+    <div style="flex:1.1;min-width:280px;background:#171d20;border:1px solid #b9d3d9;border-radius:20px;padding:36px;display:flex;flex-direction:column;position:relative">
+      <div style="height:4px;border-radius:4px;background:linear-gradient(90deg,#c00001,#e0b23c,#a3ce7a,#7fd2d8);margin-bottom:20px"></div>
+      <div style="font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:#b9d3d9;margin-bottom:24px">BitBit Alpine · Best value</div>
+      <div style="font-size:44px;font-variant-numeric:tabular-nums;margin-bottom:6px">$99</div>
+      <div style="font-size:13px;color:#6c8288;margin-bottom:32px">one-time · all four modules + host</div>
+      <ul style="margin:0 0 32px;padding:0;list-style:none;color:#8ba3a9;font-size:14px;line-height:2;flex:1">
+        <li>— All four modules, eleven engines</li>
+        <li>— Drag-to-reorder signal chain</li>
+        <li>— Per-module power, trim and Mix</li>
+        <li>— Global presets across the whole chain</li>
+      </ul>
+      <a href="#" style="margin-top:28px;text-align:center;padding:14px;border-radius:999px;background:#b9d3d9;color:#0f1315;font-size:14px;font-weight:600" style-hover="background:#e5f2f5">Buy Alpine</a>
+    </div>
+  </section>
+
+  <section style="max-width:1280px;margin:0 auto;padding:0 32px 100px">
+    <div style="background:#101416;border-radius:16px;padding:36px 40px;box-shadow:inset 0 2px 6px rgba(0,0,0,0.6);display:flex;align-items:center;gap:32px;flex-wrap:wrap">
+      <div style="display:flex;align-items:baseline;gap:14px;font-variant-numeric:tabular-nums;font-size:20px">
+        <span>$19 × 4</span><span style="color:#6c8288">=</span><span>$76</span>
+      </div>
+      <div style="width:1px;height:32px;background:#222b2e"></div>
+      <p style="margin:0;font-size:14px;color:#8ba3a9;flex:1;min-width:260px">Alpine is $99 and adds the host, the drag-to-reorder chain, per-module trims and global presets — $23 for all of that on top of the same eleven engines.</p>
+    </div>
+  </section>
+
+  <section style="max-width:1280px;margin:0 auto;padding:0 32px 120px">
+    <div style="font-size:12px;letter-spacing:0.14em;text-transform:uppercase;color:#6c8288;margin-bottom:24px">Specification</div>
+    <div style="border-top:1px solid #222b2e">
+      <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid #222b2e;font-size:14px"><span style="color:#8ba3a9">Formats</span><span style="font-variant-numeric:tabular-nums">VST3 · AU · AAX</span></div>
+      <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid #222b2e;font-size:14px"><span style="color:#8ba3a9">macOS</span><span style="font-variant-numeric:tabular-nums">11+, Universal, Apple Silicon native</span></div>
+      <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid #222b2e;font-size:14px"><span style="color:#8ba3a9">Windows</span><span style="font-variant-numeric:tabular-nums">10+, 64-bit</span></div>
+      <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid #222b2e;font-size:14px"><span style="color:#8ba3a9">Latency</span><span style="font-variant-numeric:tabular-nums">~6 ms, reported and compensated</span></div>
+      <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid #222b2e;font-size:14px"><span style="color:#8ba3a9">Refund window</span><span style="font-variant-numeric:tabular-nums">14 days</span></div>
+      <div style="display:flex;justify-content:space-between;padding:16px 0;border-bottom:1px solid #222b2e;font-size:14px"><span style="color:#8ba3a9">Updates</span><span style="font-variant-numeric:tabular-nums">Free</span></div>
+    </div>
+  </section>
+
+  <footer style="padding:0 32px 48px;max-width:1280px;margin:0 auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding-top:28px;border-top:1px solid #222b2e;flex-wrap:wrap;gap:16px">
+      <span style="font-size:13px;color:#6c8288">© 2026 BitBit Audio</span>
+      <a href="Home.dc.html" style="font-size:13px;color:#6c8288">Back to home</a>
+    </div>
+  </footer>
+</div>
+
+</x-dc>
+</body>
+</html>
