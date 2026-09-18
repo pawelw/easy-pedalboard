@@ -316,15 +316,6 @@
   margin-top: 10px;
 }
 
-/* SYNC, moved out of the header and centred under both knob rows - Grain
-   carries no other header-right control now that it has moved. Nudged past
-   the base .pg-section gap so it doesn't crowd the Bit/Shape row above it. */
-.pg-grain__foot {
-  display: flex;
-  justify-content: center;
-  margin-top: 6px;
-}
-
 /* Row 1 (Grain/Pitch/Random) sits right under .pg-plate's own top edge, which
    carries this same hairline as part of --pui-module-shadow's inset - row 2
    is past the .pg-hdivider below it and out from under that, so Delay/Reverb

@@ -241,6 +241,11 @@ private:
 
     std::atomic<float>* sizeParam = nullptr;
     std::atomic<float>* densityParam = nullptr;
+    // ssync/dsync/wsync: the GRAINS panel carries no Sync switch any more -
+    // Size/Density/Window are always tempo-locked (processBlock hardcodes
+    // sizeSynced/densitySynced/windowSynced to true rather than reading
+    // these). Kept registered, like grainon/pitchon/randon below, only so an
+    // old preset or automation lane referencing them still resolves.
     std::atomic<float>* sizeSyncParam = nullptr;
     std::atomic<float>* densitySyncParam = nullptr;
     std::atomic<float>* windowParam = nullptr;
@@ -283,12 +288,13 @@ private:
     std::atomic<float>* lfoSyncParam = nullptr;
     std::atomic<float>* lfoOnParam = nullptr; // the Mod tab's own master switch - see modulatedValue()
 
-    // One enable switch per face module: off forces that section's controls to
-    // their no-op values in processBlock, leaving the knobs where they are.
-    std::atomic<float>* grainOnParam = nullptr;
-    std::atomic<float>* pitchOnParam = nullptr;
+    // grainon/pitchon/randon (below in the .cpp's createParameterLayout) are
+    // NOT read anywhere any more - the face never grew a toggle for Grain,
+    // Pitch or Random (unlike Delay/Reverb/Scale below), so a preset saved
+    // with one at 0 used to silently and permanently mute that whole section
+    // with no way back in the UI. Kept in the layout only so an old preset
+    // or host automation lane referencing them still resolves to something.
     std::atomic<float>* scaleOnParam = nullptr; // scaleon: the Scale block's switch, == Scale Mix at 0
-    std::atomic<float>* randomOnParam = nullptr;
     std::atomic<float>* delayOnParam = nullptr;
     std::atomic<float>* reverbOnParam = nullptr;
     std::atomic<float>* levelParam = nullptr;

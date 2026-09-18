@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
-import { Pill, Dropdown, PowerToggle } from "@synthpeak/pedal-ui";
-import { JuceKnob, useFormattedText, useJuceSliderValue, useJuceToggleValue, useParamId } from "@synthpeak/pedal-ui/juce";
+import { Knob, Pill, Dropdown, PowerToggle } from "@synthpeak/pedal-ui";
+import { useFormattedText, useJuceSliderValue, useJuceToggleValue, useParamId } from "@synthpeak/pedal-ui/juce";
 import { evalBreakpoints, kMaxBreakpoints, LFO_PRESETS, parseBreakpointsJson, toBreakpointsJson } from "./lfoShapes.js";
 import ModSourceChip from "./ModSourceChip.jsx";
 import { useSetLfoValue } from "./LfoPlayback.jsx";
@@ -95,16 +95,24 @@ export default function LfoEditor() {
   // a helper with GrainFace.jsx.
   const [lfoOn, setLfoOn] = useJuceToggleValue("lfoon", true);
   const [playheadPhase, setPlayheadPhase] = useState(null);
-  // The graph's own corner readout - "1/2" etc. synced, "500 ms" free. The
-  // backend already computes exactly this string (PluginProcessor.cpp's
-  // lfoRateReadout(), wired to formatKnobValue("lforate") - see
-  // PeakGrainWebEditor.cpp), reading the sync flag itself, so this only has
-  // to re-fetch it on either input changing; the composite dependency below
-  // is there purely to trigger that (useFormattedText re-fetches whenever
-  // its own `value` argument changes, whatever type it is).
+  // The Rate knob's own label, in whichever unit the Sync toggle currently
+  // means (a note division or a millisecond count) - "1/2" etc. synced,
+  // "500 ms" free. The backend already computes exactly this string
+  // (PluginProcessor.cpp's lfoRateReadout(), wired to
+  // formatKnobValue("lforate") - see PeakGrainWebEditor.cpp), reading the
+  // sync flag itself, so this only has to re-fetch it on either input
+  // changing; the composite dependency below is there purely to trigger
+  // that (useFormattedText re-fetches whenever its own `value` argument
+  // changes, whatever type it is). Shown in place of the "Rate" caption
+  // only while the knob is actually being dragged (rateDragging below) -
+  // this file uses the raw Knob rather than JuceKnob for this one control
+  // so it can track that drag itself and drive the label beside the knob,
+  // rather than JuceKnob's own built-in caption-swap, which renders the
+  // caption under the dial, not beside it (see the .pg-lfo__rate layout).
   const rateId = useParamId("lforate");
-  const [rate01] = useJuceSliderValue("lforate");
+  const [rate01, setRate01, rateSliderState] = useJuceSliderValue("lforate");
   const rateText = useFormattedText(rateId, `${rate01}:${sync}`);
+  const [rateDragging, setRateDragging] = useState(false);
   const svgRef = useRef(null);
   // Mirrors `points` synchronously (written inside every setPoints updater,
   // not via a separate effect) so a gesture-end handler can read the exact
@@ -216,6 +224,9 @@ export default function LfoEditor() {
     return () => cancelAnimationFrame(raf);
   }, [setLfoValue]);
 
+  // 15 dividers at 1/16, 2/16, ... 15/16 of the width - 16 equal sections.
+  const gridX = useMemo(() => Array.from({ length: 15 }, (_, i) => ((i + 1) / 16) * graphW), [graphW]);
+
   const toSvgX = useCallback((x) => x * graphW, [graphW]);
   const toSvgY = useCallback((y) => midY - y * amp, [midY, amp]);
   const fromSvgX = useCallback((px) => Math.min(1, Math.max(0, px / graphW)), [graphW]);
@@ -276,8 +287,19 @@ export default function LfoEditor() {
       window.removeEventListener("pointerup", handleUp);
       if (start.moved || pointsRef.current.length >= kMaxBreakpoints) return;
       const { x, y } = svgPointFromEvent(upEvent);
-      setPointsAnd((prev) => [...prev, { id: makePointId(), x, y, curve: 0, hold: false }]);
-      commitBreakpoints(pointsRef.current);
+      // Built here rather than inside a setPointsAnd(prev => ...) updater and
+      // read back off pointsRef on the next line: React only calls a
+      // functional updater once it gets around to processing the update,
+      // which is not guaranteed to have happened yet by the very next
+      // statement - pointsRef.current could still be the pre-add array,
+      // committing a shape to the backend that's silently missing the point
+      // that just appeared on screen (confirmed - this was happening on
+      // every add). Computing the array plainly means it's already correct
+      // the instant it's built, so the state update and the commit below
+      // are guaranteed to agree.
+      const next = [...pointsRef.current, { id: makePointId(), x, y, curve: 0, hold: false }];
+      setPointsAnd(next);
+      commitBreakpoints(next);
     };
 
     window.addEventListener("pointermove", handleMove);
@@ -300,29 +322,40 @@ export default function LfoEditor() {
     // Every move updates local state only, for a smooth drag - the backend
     // only hears about the final position, on release below, so a fast drag
     // does not flood the native bridge with one call per pointermove.
+    //
+    // `current` mirrors the array through the gesture in a plain local
+    // variable, computed synchronously by every handleMove call, rather than
+    // being read back off pointsRef in handleUp below - pointsRef only
+    // catches up once React gets around to actually running each queued
+    // update, which the final commit can't rely on having already happened
+    // (see handleBackgroundPointerDown's identical note on this - it can
+    // drop the last move's position from what gets committed to the backend
+    // if a drag ends fast enough that the very last update hasn't flushed
+    // yet). A plain local variable has no such delay.
+    let current = pointsRef.current;
+
     const handleMove = (moveEvent) => {
       const { x, y } = svgPointFromEvent(moveEvent);
-      setPointsAnd((prev) => {
-        const sorted = [...prev].sort((a, b) => a.x - b.x);
-        const n = sorted.length;
-        const i = sorted.findIndex((point) => point.id === id);
-        if (i === -1 || n <= 1) return sorted;
+      const sorted = [...current].sort((a, b) => a.x - b.x);
+      const n = sorted.length;
+      const i = sorted.findIndex((point) => point.id === id);
+      if (i === -1 || n <= 1) return;
 
-        const prevNeighbourX = sorted[(i - 1 + n) % n].x - (i === 0 ? 1 : 0);
-        const nextNeighbourX = sorted[(i + 1) % n].x + (i === n - 1 ? 1 : 0);
-        const lo = prevNeighbourX + MIN_POINT_SPACING;
-        const hi = nextNeighbourX - MIN_POINT_SPACING;
-        const clampedX = ((Math.min(Math.max(x, lo), hi) % 1) + 1) % 1;
+      const prevNeighbourX = sorted[(i - 1 + n) % n].x - (i === 0 ? 1 : 0);
+      const nextNeighbourX = sorted[(i + 1) % n].x + (i === n - 1 ? 1 : 0);
+      const lo = prevNeighbourX + MIN_POINT_SPACING;
+      const hi = nextNeighbourX - MIN_POINT_SPACING;
+      const clampedX = ((Math.min(Math.max(x, lo), hi) % 1) + 1) % 1;
 
-        sorted[i] = { ...sorted[i], x: clampedX, y };
-        return sorted;
-      });
+      sorted[i] = { ...sorted[i], x: clampedX, y };
+      current = sorted;
+      setPointsAnd(current);
     };
 
     const handleUp = () => {
       window.removeEventListener("pointermove", handleMove);
       window.removeEventListener("pointerup", handleUp);
-      commitBreakpoints(pointsRef.current);
+      commitBreakpoints(current);
     };
 
     window.addEventListener("pointermove", handleMove);
@@ -331,10 +364,14 @@ export default function LfoEditor() {
 
   const handlePointDoubleClick = (id) => (event) => {
     event.stopPropagation();
-    setPointsAnd((prev) => (prev.length > 2 ? prev.filter((point) => point.id !== id) : prev));
-    // Harmless even when the guard above left the list untouched (down to
-    // its floor of 2 points) - re-sending the same shape is a no-op.
-    commitBreakpoints(pointsRef.current);
+    // Computed directly rather than via pointsRef, same reason as the two
+    // gestures above - reading pointsRef back on the very next line isn't
+    // guaranteed to see this removal yet.
+    const next = points.length > 2 ? points.filter((point) => point.id !== id) : points;
+    setPointsAnd(next);
+    // Harmless when the guard above left the list untouched (down to its
+    // floor of 2 points) - re-sending the same shape is a no-op.
+    commitBreakpoints(next);
   };
 
   const sortedPoints = [...points].sort((a, b) => a.x - b.x);
@@ -351,6 +388,12 @@ export default function LfoEditor() {
           onPointerDown={handleBackgroundPointerDown}
         />
         <line className="pg-lfo__midline" x1={0} y1={midY} x2={graphW} y2={midY} />
+        {/* 15 evenly-spaced dividers, the same 16th-note grid a DAW's own
+            piano roll draws - purely a visual guide for placing breakpoints
+            by eye, no snapping tied to it. */}
+        {gridX.map((x, i) => (
+          <line key={i} className="pg-lfo__gridline" x1={x} y1={0} x2={x} y2={graphH} />
+        ))}
         {/* Purely a relabel, not a rescale: a point's own y is still -1..1
             internally (lfoShapes.js) and still feeds PluginProcessor.cpp's
             modulatedValue() as base01 + depth * y unchanged - top still
@@ -390,15 +433,26 @@ export default function LfoEditor() {
             onDoubleClick={handlePointDoubleClick(point.id)}
           />
         ))}
-        <text className="pg-lfo__rate-readout" x={8} y={graphH - 8} pointerEvents="none">
-          {rateText}
-        </text>
       </svg>
       <div className="pg-lfo__toolbar">
         <ModSourceChip />
         <div className="pg-lfo__rate">
-          <JuceKnob parameterId="lforate" size={28} variant="flat" bare />
-          <span className="pg-lfo__rate-label">Rate</span>
+          <Knob
+            size={28}
+            variant="flat"
+            bare
+            value={rate01}
+            onChange={setRate01}
+            onDragStart={() => {
+              rateSliderState.sliderDragStarted();
+              setRateDragging(true);
+            }}
+            onDragEnd={() => {
+              rateSliderState.sliderDragEnded();
+              setRateDragging(false);
+            }}
+          />
+          <span className="pg-lfo__rate-label">{rateDragging ? rateText : "Rate"}</span>
         </div>
         <Pill label="Sync" pressed={sync} onClick={() => setSync(!sync)} />
         <Dropdown

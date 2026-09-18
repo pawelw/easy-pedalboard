@@ -47,9 +47,18 @@
   cursor: default;
 }
 
-.pg-lfo__midline {
+/* The horizontal midline and the vertical section dividers below are the
+   same rule so they can never drift apart - one selector, one look.
+   pointer-events: none because these are decoration drawn on top of
+   .pg-lfo__bg - without it, a click landing on a 1px line (far likelier
+   than it sounds with 15 vertical ones now dividing the width) hits the
+   line instead of the background rect underneath and silently swallows
+   the "click empty space to add a point" gesture. */
+.pg-lfo__midline,
+.pg-lfo__gridline {
   stroke: #1b2529;
   stroke-width: 1;
+  pointer-events: none;
 }
 
 /* The graph's own y-axis reading, 100 (top) / 50 (mid) / 0 (bottom) - a
@@ -95,19 +104,6 @@
   opacity: 0.85;
 }
 
-/* The graph's own corner readout - the Rate knob's value in whichever unit
-   the Sync toggle currently means (a note division or a millisecond count),
-   the same text LfoEditor's rate knob would show mid-drag if it weren't
-   `bare` - see LfoEditor.jsx's own note on where this comes from. */
-.pg-lfo__rate-readout {
-  font-family: var(--pui-font-label);
-  font-weight: 700;
-  font-size: 10px;
-  letter-spacing: 0.04em;
-  fill: var(--pui-ink-dim);
-  user-select: none;
-}
-
 .pg-lfo__toolbar {
   display: flex;
   align-items: center;
@@ -122,7 +118,12 @@
   gap: 10px;
 }
 
+/* Swaps between "RATE" and the live rate value while the knob beside it is
+   being dragged (LfoEditor.jsx) - a fixed min-width so that swap doesn't
+   reflow the toolbar's own centred row ("4000 ms" is the longest text this
+   ever shows, one synced division label or a free-running ms count). */
 .pg-lfo__rate-label {
+  min-width: 44px;
   font-family: var(--pui-font-label);
   font-weight: 700;
   font-size: 10px;

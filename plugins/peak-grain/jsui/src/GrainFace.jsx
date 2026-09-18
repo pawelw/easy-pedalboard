@@ -46,35 +46,12 @@ const KNOB_LIT = RANDOM;
 // reads on hardware.
 const DRIVE_LIT = "#c60000";
 
-/** The Grain card's single footer switch, now a section-header pill: writes
-    `ssync`, `dsync` and `wsync` on click rather than relying on a native
-    click hook, so a plain RelaySet-bound WebView still gets the "drives
-    Size, Destiny and Window together" behaviour - PluginProcessor's
-    parameterChanged then remaps each knob independently off its own flag
-    (see PluginProcessor.h's note on onSizeSyncToggled/onDensitySyncToggled/
-    onWindowSyncToggled). */
-function GrainSyncPill() {
-  const [sizeSync, setSizeSync] = useJuceToggleValue("ssync");
-  const [, setDensitySync] = useJuceToggleValue("dsync");
-  const [, setWindowSync] = useJuceToggleValue("wsync");
-
-  const toggle = () => {
-    const next = !sizeSync;
-    setSizeSync(next);
-    setDensitySync(next);
-    setWindowSync(next);
-  };
-
-  return <Pill label="SYNC" pressed={sizeSync} onClick={toggle} />;
-}
-
 /** Stereo adds Haas width to the grain cloud - GrainerConfig.h's MONO /
-    STEREO. The plain shared Pill (same one Sync above and every other pill
-    on this face uses) rather than SegmentSwitch's own bigger chrome-button
-    look - it used to be sized and coloured like Live/Freeze in the page
-    header, which read heavier than this section-header spot wants next to
-    Sync's own small pill. `label` switches with the state the way
-    JuceChoicePill's does. */
+    STEREO. The plain shared Pill (the same one every other pill on this face
+    uses) rather than SegmentSwitch's own bigger chrome-button look - it used
+    to be sized and coloured like Live/Freeze in the page header, which read
+    heavier than this section-header spot wants. `label` switches with the
+    state the way JuceChoicePill's does. */
 function WidthPill() {
   const [wide, setWide] = useJuceToggleValue("width");
   return <Pill label={wide ? "Wide" : "Narrow"} pressed={wide} onClick={() => setWide(!wide)} />;
@@ -126,9 +103,6 @@ function GrainSection() {
       <div className="pg-section__knobs">
         <ModdableKnob parameterId="size" caption="Size" variant="flat" size={30} />
         <ModdableKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
-      </div>
-      <div className="pg-grain__foot">
-        <GrainSyncPill />
       </div>
     </section>
   );
