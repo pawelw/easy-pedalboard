@@ -1,0 +1,142 @@
+/* The Mod tab's own accent - a green independent of whichever section's
+   knob is receiving the modulation, and of Grain/Pitch/Random's shared
+   orange (KNOB_LIT). Also feeds --pui-soft-lit below, so the Rate knob's
+   own value arc matches the curve/point colour instead of inheriting
+   whatever ambient --pui-soft-lit this tab happens to sit under. */
+.pg-lfo {
+  --pg-lfo-accent: #06e788;
+  --pui-soft-lit: var(--pg-lfo-accent);
+  /* So PowerToggle's ring lights in the Mod tab's own green when on, the
+     same way a ModulePanel's own accent lights its power switch - .pg-lfo
+     carries no ModulePanel of its own for it to inherit that from. */
+  --pui-accent: var(--pg-lfo-accent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  width: 100%;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+}
+
+.pg-lfo__graph {
+  width: 100%;
+  flex: 1 1 auto;
+  min-height: 90px;
+  box-sizing: border-box;
+  border-radius: 6px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  border: 1px solid var(--pui-module-edge);
+  transition: opacity 140ms ease;
+}
+
+/* The Mod tab's own master switch (LfoEditor.jsx's `lfoOn`, PowerToggle
+   below) - dims the graph, the same 0.42 every other module's off state
+   uses (GrainFace.css), when every assignment has gone silent
+   (PluginProcessor.cpp's modulatedValue(), gated on "lfoon"). The toolbar
+   stays at full opacity: Rate/Sync/the preset picker/the switch itself all
+   stay fully legible and clickable while off, since turning it back on or
+   reshaping the curve while it's off are both still real things to do here. */
+.pg-lfo[data-off] .pg-lfo__graph {
+  opacity: 0.42;
+}
+
+.pg-lfo__bg {
+  fill: transparent;
+  cursor: default;
+}
+
+/* The horizontal midline and the vertical section dividers below are the
+   same rule so they can never drift apart - one selector, one look.
+   pointer-events: none because these are decoration drawn on top of
+   .pg-lfo__bg - without it, a click landing on a 1px line (far likelier
+   than it sounds with 15 vertical ones now dividing the width) hits the
+   line instead of the background rect underneath and silently swallows
+   the "click empty space to add a point" gesture. */
+.pg-lfo__midline,
+.pg-lfo__gridline {
+  stroke: #1b2529;
+  stroke-width: 1;
+  pointer-events: none;
+}
+
+/* The graph's own y-axis reading, 100 (top) / 50 (mid) / 0 (bottom) - a
+   relabel of the same -1..1 range the curve has always used, not a rescale;
+   see LfoEditor.jsx's own note by the text elements. Dim and small so it
+   reads as axis chrome, not another editable value alongside the points. */
+.pg-lfo__axis-label {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 8px;
+  fill: var(--pui-ink-dim);
+  opacity: 0.65;
+  pointer-events: none;
+  user-select: none;
+}
+
+.pg-lfo__curve {
+  fill: none;
+  stroke: var(--pg-lfo-accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.pg-lfo__point {
+  fill: var(--pui-panel, #f3f2ed);
+  stroke: var(--pg-lfo-accent);
+  stroke-width: 2;
+  cursor: grab;
+}
+
+.pg-lfo__point:hover {
+  fill: var(--pg-lfo-accent);
+}
+
+/* The live playhead - the processor's own phase (PeakGrainWebEditor's
+   "lfoPhase" event), not a breakpoint the user placed, so it reads as a
+   moving marker riding the curve rather than another editable point: no
+   accent stroke, no hover state, no pointer events. */
+.pg-lfo__playhead {
+  fill: #ffffff;
+  opacity: 0.85;
+}
+
+.pg-lfo__toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  flex: none;
+}
+
+.pg-lfo__rate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Swaps between "RATE" and the live rate value while the knob beside it is
+   being dragged (LfoEditor.jsx) - a fixed min-width so that swap doesn't
+   reflow the toolbar's own centred row ("4000 ms" is the longest text this
+   ever shows, one synced division label or a free-running ms count). */
+.pg-lfo__rate-label {
+  min-width: 44px;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pui-ink-dim);
+}
+
+/* Pushes the master switch to the toolbar's own right edge while
+   ModSourceChip/Rate/Sync/the preset picker stay centred as a group - see
+   LfoEditor.jsx's own note on this trick. */
+.pg-lfo__power {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}

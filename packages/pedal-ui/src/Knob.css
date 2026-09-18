@@ -45,6 +45,28 @@
   right: -16px;
 }
 
+/* Peak Grain's live modulation marker (see ModTick in Knob.jsx) - a short
+   radial tick riding on the knob's own arc/tick-ring, at the LFO's current
+   modulated position. Always the LFO's own green, drawn fresh every
+   animation frame by ModdableKnob, and never affects the arc/needle's own
+   colour or position - those keep showing the automatable value. */
+.pui-knob__mod-tick {
+  stroke: var(--pg-lfo-accent, #06e788);
+  stroke-width: 6px;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+
+/* A caller-supplied marker (Peak Grain's LFO dot), pinned to the dial box's
+   own top-right corner - same fixed, size-independent offset idea as
+   .pui-knob__corner above, just off the box's actual corner rather than
+   further out past the ticks/labels. */
+.pui-knob__badge {
+  position: absolute;
+  top: -10px;
+  right: -9px;
+}
+
 .pui-knob__body {
   position: relative;
   border-radius: 50%;
@@ -76,6 +98,22 @@
 .pui-knob__body:focus-visible {
   outline: 2px solid var(--pui-knob-sweep-lit);
   outline-offset: 4px;
+}
+
+/* A drag-and-drop drop target, for a caller that wired dropRef/dropActive up
+   to its own drag library (see Knob's own note on those props). Unlike the
+   focus ring above, this is always the same colour whatever variant/theme
+   the knob is drawn in - Peak Grain's Mod tab is the only thing that ever
+   sets `dropActive`, and its meaning is specifically "the LFO can be dropped
+   here," so the ring is always the LFO's own green, not a generic
+   interactive-state colour that would happen to change with the knob's own
+   accent. Rounded to match the round knob it rings rather than the square
+   dial box under it. */
+.pui-knob__dial[data-drop-active] {
+  outline: 2px solid var(--pg-lfo-accent, #06e788);
+  outline-offset: 4px;
+  border-radius: 50%;
+  transition: outline-color 120ms ease;
 }
 
 .pui-knob__collar {

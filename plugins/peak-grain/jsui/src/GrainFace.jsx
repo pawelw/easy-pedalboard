@@ -1,4 +1,5 @@
-import { Logo, JucePresetBar, PowerToggle, Pill, Readout } from "@synthpeak/pedal-ui";
+import { useState } from "react";
+import { Logo, JucePresetBar, PowerToggle, Pill, Readout, VerticalTabs } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceFader,
@@ -10,7 +11,14 @@ import {
   useFormattedText,
 } from "@synthpeak/pedal-ui/juce";
 import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } from "./Displays.jsx";
+import ModTab from "./ModTab.jsx";
+import ModdableKnob from "./ModdableKnob.jsx";
 import "./GrainFace.css";
+
+const FACE_TABS = [
+  { id: "effects", label: "Effects" },
+  { id: "mod", label: "Mod" },
+];
 
 // The five section accents, literal rather than `var(--pui-accent-*)`: these
 // reach an SVG `stroke`/`fill` presentation attribute in Displays.jsx, and
@@ -22,8 +30,10 @@ import "./GrainFace.css";
 const GRAIN = "#b39bd8";
 const PITCH = "#e78fb3";
 const RANDOM = "#dfa878";
-const DELAY = "#a3ce7a";
+// Delay now shares Reverb's own blue rather than its old green - one colour,
+// not two independently-declared literals that could drift apart.
 const REVERB = "#7fd2d8";
+const DELAY = REVERB;
 const MIXER = "#c9cede";
 
 // The knob value arc (--pui-soft-lit) on Grain/Pitch/Random is unified to
@@ -36,26 +46,15 @@ const KNOB_LIT = RANDOM;
 // reads on hardware.
 const DRIVE_LIT = "#c60000";
 
-/** The Grain card's single footer switch, now a section-header pill: writes
-    `ssync`, `dsync` and `wsync` on click rather than relying on a native
-    click hook, so a plain RelaySet-bound WebView still gets the "drives
-    Size, Destiny and Window together" behaviour - PluginProcessor's
-    parameterChanged then remaps each knob independently off its own flag
-    (see PluginProcessor.h's note on onSizeSyncToggled/onDensitySyncToggled/
-    onWindowSyncToggled). */
-function GrainSyncPill() {
-  const [sizeSync, setSizeSync] = useJuceToggleValue("ssync");
-  const [, setDensitySync] = useJuceToggleValue("dsync");
-  const [, setWindowSync] = useJuceToggleValue("wsync");
-
-  const toggle = () => {
-    const next = !sizeSync;
-    setSizeSync(next);
-    setDensitySync(next);
-    setWindowSync(next);
-  };
-
-  return <Pill label="SYNC" pressed={sizeSync} onClick={toggle} />;
+/** Stereo adds Haas width to the grain cloud - GrainerConfig.h's MONO /
+    STEREO. The plain shared Pill (the same one every other pill on this face
+    uses) rather than SegmentSwitch's own bigger chrome-button look - it used
+    to be sized and coloured like Live/Freeze in the page header, which read
+    heavier than this section-header spot wants. `label` switches with the
+    state the way JuceChoicePill's does. */
+function WidthPill() {
+  const [wide, setWide] = useJuceToggleValue("width");
+  return <Pill label={wide ? "Wide" : "Narrow"} pressed={wide} onClick={() => setWide(!wide)} />;
 }
 
 /** A section's power toggle, bound to its own on/off parameter - Delay and
@@ -92,20 +91,18 @@ function GrainSection() {
       <div className="pg-section__head">
         <span className="pg-section__name">Grain</span>
         <span className="pg-section__spacer" />
+        <WidthPill />
       </div>
       <div className="pg-section__display">
         <GrainEnvelope accent={RANDOM} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="density" caption="Destiny" variant="flat" size={30} />
-        <JuceKnob parameterId="window" caption="Window" variant="flat" size={30} />
+        <ModdableKnob parameterId="density" caption="Destiny" variant="flat" size={30} />
+        <ModdableKnob parameterId="window" caption="Window" variant="flat" size={30} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="size" caption="Size" variant="flat" size={30} />
-        <JuceKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
-      </div>
-      <div className="pg-grain__foot">
-        <GrainSyncPill />
+        <ModdableKnob parameterId="size" caption="Size" variant="flat" size={30} />
+        <ModdableKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
       </div>
     </section>
   );
@@ -124,9 +121,9 @@ function PitchSection() {
         <PitchWeights accent={RANDOM} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="plow" caption="Low" variant="flat" size={30} />
-        <JuceKnob parameterId="puni" caption="Unison" variant="flat" size={30} />
-        <JuceKnob parameterId="phigh" caption="High" variant="flat" size={30} />
+        <ModdableKnob parameterId="plow" caption="Low" variant="flat" size={30} />
+        <ModdableKnob parameterId="puni" caption="Unison" variant="flat" size={30} />
+        <ModdableKnob parameterId="phigh" caption="High" variant="flat" size={30} />
       </div>
       <div className="pg-pitch__divider" />
       <div className="pg-pitch__scale-head" data-off={!scaleOn || undefined}>
@@ -146,7 +143,7 @@ function PitchSection() {
             className="pg-pitch__scale-pill"
           />
         </div>
-        <JuceKnob parameterId="pmix" caption="Mix" variant="flat" size={30} />
+        <ModdableKnob parameterId="pmix" caption="Mix" variant="flat" size={30} />
       </div>
     </section>
   );
@@ -163,12 +160,12 @@ function RandomSection() {
         <RandomField accent={RANDOM} />
       </div>
       <div className="pg-section__knobs pg-random__lead-row">
-        <JuceKnob parameterId="stereo" caption="Stereo" variant="flat" size={38} />
-        <JuceKnob parameterId="reverse" caption="Reverse" variant="flat" size={30} />
+        <ModdableKnob parameterId="stereo" caption="Stereo" variant="flat" size={38} />
+        <ModdableKnob parameterId="reverse" caption="Reverse" variant="flat" size={30} />
       </div>
       <div className="pg-section__knobs">
-        <JuceKnob parameterId="scatter" caption="Scatter" variant="flat" size={30} />
-        <JuceKnob parameterId="mod" caption="Mod" variant="flat" size={30} />
+        <ModdableKnob parameterId="scatter" caption="Scatter" variant="flat" size={30} />
+        <ModdableKnob parameterId="mod" caption="Mod" variant="flat" size={30} />
       </div>
     </section>
   );
@@ -189,7 +186,14 @@ function MixerSection() {
         <div className="pg-mixer__link">
           <JucePill parameterId="mlink" icon={<LinkGlyph />} />
         </div>
-        <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={110} resetTo={65} thumbSize={18} />
+        {/* 75, not 100: the parameter's own range is percent-of-travel, not
+            dB, and 75% is where PluginProcessor.cpp's levelGainFor() (built
+            from GrainerConfig.h's kLevelUnityPct) lands on exactly 0 dB -
+            same reference Dry's own resetTo uses just above. It was 65,
+            which reads as -3 dB on double-click; unity matches Dry's own
+            reset and reads as "off", the neutral double-click has everywhere
+            else. */}
+        <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
       </div>
       {/* Tube Drive on the grain cloud alone, same engine and default as Peak
           Artifact's amp.drive - see PluginProcessor.cpp's driveStage. Bit
@@ -198,10 +202,10 @@ function MixerSection() {
           as one pair of grain-cloud "character" controls. */}
       <div className="pg-mixer__drive">
         <div style={{ "--pui-soft-lit": DRIVE_LIT }}>
-          <JuceKnob parameterId="drive" caption="Drive" variant="flat" size={36} />
+          <ModdableKnob parameterId="drive" caption="Drive" variant="flat" size={36} />
         </div>
         <div style={{ "--pui-soft-lit": DRIVE_LIT }}>
-          <JuceKnob parameterId="bit" caption="Bit" variant="flat" size={36} />
+          <ModdableKnob parameterId="bit" caption="Bit" variant="flat" size={36} />
         </div>
       </div>
       <div className="pg-mixer__filter">
@@ -209,7 +213,19 @@ function MixerSection() {
         {/* No value on the knob at all: the scope above it already shows what
             the filter is doing, so swapping the caption for a percentage
             mid-drag would only say the same thing worse. */}
-        <JuceKnob parameterId="filter" caption="Filter" variant="scale" size={52} scaleFrom="max" showValueLabel={false} />
+        {/* badgeStyle: this knob sits at the plate's own right edge, so the
+            shared top-right badge anchor (.pui-knob__badge, Knob.css) needs
+            pushing further right than any other knob's - see Knob.jsx's own
+            note on the prop. */}
+        <ModdableKnob
+          parameterId="filter"
+          caption="Filter"
+          variant="scale"
+          size={52}
+          scaleFrom="max"
+          showValueLabel={false}
+          badgeStyle={{ right: "-24px" }}
+        />
       </div>
     </section>
   );
@@ -274,9 +290,6 @@ function ReverbSection() {
         {powerToggle}
         <span className="pg-section__name">Reverb</span>
         <span className="pg-section__spacer" />
-        <div className="pg-section__head-right">
-          <JuceChoicePill parameterId="rvsrc" labels={["Global", "Grains"]} className="pg-reverb__source-pill" />
-        </div>
       </div>
       <div className="pg-section__display">
         <ReverbTail accent={REVERB} />
@@ -293,32 +306,24 @@ function ReverbSection() {
   );
 }
 
-/** A two-state switch drawn as a joined two-button segment rather than two
-    independent pills - there is one flag and exactly one of the two reads as
-    pressed at any time, which a segmented pair says more plainly than two
-    pills with an `invert` on one of them. */
-function SegmentSwitch({ parameterId, offLabel, onLabel }) {
+/** A two-state toggle, one button whose own label and colour both track the
+    current state - "Live" dark, click it and it reads "Freeze" light, click
+    again and it's back to "Live" dark. Was a joined two-button segment (one
+    button per state, the current one lit); this is the same on/off styling
+    (`.pg-segment__btn[data-on]`, unchanged) collapsed onto a single control
+    now that only one label needs to be visible at a time. */
+function SegmentSwitch({ parameterId, offLabel, onLabel, className }) {
   const [on, setOn] = useJuceToggleValue(parameterId);
 
   return (
-    <div className="pg-segment">
-      <button
-        type="button"
-        className="pg-segment__btn"
-        data-on={!on || undefined}
-        onClick={() => setOn(false)}
-      >
-        {offLabel}
-      </button>
-      <button
-        type="button"
-        className="pg-segment__btn"
-        data-on={on || undefined}
-        onClick={() => setOn(true)}
-      >
-        {onLabel}
-      </button>
-    </div>
+    <button
+      type="button"
+      className={className ? `pg-segment__btn ${className}` : "pg-segment__btn"}
+      data-on={on || undefined}
+      onClick={() => setOn(!on)}
+    >
+      {on ? onLabel : offLabel}
+    </button>
   );
 }
 
@@ -342,8 +347,6 @@ function Header() {
       <div className="pg-header__row">
         <div className="pg-header__live">
           <SegmentSwitch parameterId="freeze" offLabel="Live" onLabel="Freeze" />
-          {/* Stereo adds Haas width to the grain cloud - GrainerConfig.h's MONO / STEREO. */}
-          <SegmentSwitch parameterId="width" offLabel="Mono" onLabel="Stereo" />
         </div>
         <div className="pg-header__presets">
           <JucePresetBar variant="separated" />
@@ -354,6 +357,8 @@ function Header() {
 }
 
 export default function GrainFace() {
+  const [tab, setTab] = useState("effects");
+
   return (
     <>
       <Header />
@@ -367,10 +372,23 @@ export default function GrainFace() {
             <RandomSection />
           </div>
           <div className="pg-hdivider" />
-          <div className="pg-row">
-            <DelaySection />
-            <div className="pg-vdivider" style={{ gridColumn: 4 }} />
-            <ReverbSection />
+          <div className="pg-row2" data-active-tab={tab}>
+            <VerticalTabs tabs={FACE_TABS} value={tab} onChange={setTab} />
+            {/* Both tab bodies stay mounted, toggled with plain CSS rather
+                than conditional JSX - Mod's whole point is a breakpoint shape
+                you build up by hand, and unmounting LfoEditor on every tab
+                switch was throwing that state away and resetting it to the
+                default preset each time you came back. */}
+            <div className="pg-row2__content" hidden={tab !== "effects"}>
+              <div className="pg-row">
+                <DelaySection />
+                <div className="pg-vdivider" style={{ gridColumn: 4 }} />
+                <ReverbSection />
+              </div>
+            </div>
+            <div className="pg-row2__content" hidden={tab !== "mod"}>
+              <ModTab />
+            </div>
           </div>
         </div>
         <div className="pg-vdivider" />

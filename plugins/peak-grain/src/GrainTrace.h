@@ -70,7 +70,7 @@ private:
         for (const char* id : { "size",  "ssync", "density", "dsync",   "time",   "feedback", "stretch", "freeze",
                                 "width", "shape", "scatter", "reverse", "stereo", "scale",    "root",    "plow",
                                 "puni",  "phigh", "pmix",    "dtime",   "dtsync", "dfb",      "dmix",    "decay",
-                                "rmix",  "rvsrc", "dry",     "grains",  "filter", "drive",    "on" })
+                                "rmix",  "dry",   "grains",  "filter",  "drive",  "on" })
             if (auto* parameter = state.getParameter (id))
                 line << " " << id << "=" << parameter->getCurrentValueAsText();
 

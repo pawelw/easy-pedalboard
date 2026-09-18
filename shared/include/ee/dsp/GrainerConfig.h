@@ -514,7 +514,12 @@ constexpr float kCloudLowpassHz = 13000.0f;
 // which walks the cutoff down to here geometrically. The open end is
 // kCloudLowpassHz above and the knob rests there, so a face that never
 // touches this sounds exactly as it did before the knob existed.
-constexpr float kCloudLowpassMinHz = 320.0f;
+//
+// Was 320 Hz - too polite fully closed, it still let most of the cloud's
+// body through. 150 keeps the kCloudHighpassHz corner (110 Hz) well clear
+// but takes noticeably more of the low end with it, so "min" actually reads
+// as a cut rather than a gentle darkening.
+constexpr float kCloudLowpassMinHz = 150.0f;
 
 // Both stages have their own state now, so the cloud can go on decaying for a
 // moment after the engine itself has stopped feeding them anything. The

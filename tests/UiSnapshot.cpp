@@ -601,8 +601,6 @@ public:
                 })));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "rmix", 1 }, "Reverb Mix", percent,
                                                                  cfg::kDefaultReverbMixPct, percentAttributes));
-        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { "rvsrc", 1 }, "Reverb Source",
-                                                                  juce::StringArray { "Global", "Grains" }, 0));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "dry", 1 }, "Dry", percent,
                                                                  cfg::kDefaultDryLevelPct, percentAttributes));
@@ -617,6 +615,16 @@ public:
                                                                  percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "on", 1 }, "On", true));
+
+        // The Mod tab's LFO - lforate/lfosync, mirroring PluginProcessor.cpp's
+        // own layout (kLfoRateMap there; the breakpoint shape itself is not a
+        // parameter, so there is nothing more to mirror here). This snapshot
+        // has no Mod-tab knob/toggle spec entries below - only parameter-
+        // layout parity is required, per CLAUDE.md's note on what this file
+        // needs to track.
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "lforate", 1 }, "Mod Rate", unit,
+                                                                 0.3f));
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "lfosync", 1 }, "Mod Sync", false));
 
         for (const auto* id : { "grainon", "pitchon", "scaleon", "randon", "delon", "revon" })
             layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id, 1 }, id, true));

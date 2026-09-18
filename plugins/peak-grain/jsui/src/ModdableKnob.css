@@ -1,0 +1,50 @@
+/* A plain positioning wrapper for the popover below (position:relative is
+   all it needs now - the badge itself is positioned off the dial box via
+   Knob.jsx's own `badge` slot/.pui-knob__badge, not this wrapper - see
+   ModdableKnob.jsx's own note on why). display:contents would be simpler but
+   breaks that absolute positioning. */
+.pg-moddable-knob {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+
+/* The "click here to edit this knob's modulation" target. Once the arc's own
+   ModTick (Knob.jsx) is doing the live "this is modulated" signaling, a loud
+   solid dot next to it read as a second, redundant light - so this dims to a
+   faint ring at rest and only brightens to the old solid fill on hover/focus,
+   which is also what tells a pointer it is over a clickable thing rather than
+   just the moving line passing near it. Positioned by .pui-knob__badge
+   (Knob.css); only its own look lives here. Click opens the depth popover. */
+.pg-moddable-knob__badge {
+    position: relative;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    padding: 0;
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid color-mix(in srgb, var(--pg-lfo-accent, #06e788) 70%, transparent);
+    background: color-mix(in srgb, var(--pg-lfo-accent, #06e788) 35%, transparent);
+    cursor: pointer;
+    transition: background 120ms ease, border-color 120ms ease, transform 120ms ease;
+}
+
+/* A click target several times the visible dot's own 6px - a box this small
+   with nothing around it was genuinely hard to land a click on. Absolutely
+   positioned pseudo-content sits outside normal flow, so it doesn't grow the
+   wrapper it's pinned in (.pui-knob__badge in Knob.css, which anchors the
+   whole thing to the dial's corner) - only the button's own hit-test region
+   grows, invisibly, around the dot that keeps drawing at its usual size. */
+.pg-moddable-knob__badge::before {
+    content: "";
+    position: absolute;
+    inset: -7px;
+}
+
+.pg-moddable-knob__badge:hover,
+.pg-moddable-knob__badge:focus-visible {
+    background: var(--pg-lfo-accent, #06e788);
+    border-color: var(--pui-panel, #171d20);
+    transform: scale(1.2);
+}

@@ -1,8 +1,11 @@
 #include "PluginProcessor.h"
 
 #include "ee/dsp/GrainerConfig.h"
+#include "ee/dsp/RateMap.h"
 #include "ee/dsp/TubeDriveConfig.h"
 #include "ee/plugin/Bypass.h"
+#include "ee/plugin/LfoBreakpointJson.h"
+#include "ee/plugin/ModRoutingJson.h"
 #include "ee/plugin/ParamText.h"
 #include "PeakGrainWebEditor.h"
 
@@ -45,7 +48,6 @@ constexpr const char* kDelayMixID = "dmix";
 constexpr const char* kDecayID = "decay";
 constexpr const char* kReverbLoCutID = "rlocut";
 constexpr const char* kReverbMixID = "rmix";
-constexpr const char* kReverbSourceID = "rvsrc";
 // The mixer: two independent levels where there used to be one crossfade.
 constexpr const char* kDryLevelID = "dry";
 constexpr const char* kGrainLevelID = "grains";
@@ -54,6 +56,72 @@ constexpr const char* kFilterID = "filter";
 constexpr const char* kDriveID = "drive";
 constexpr const char* kOnID = "on";
 constexpr const char* kLevelID = "level";
+
+constexpr const char* kLfoRateID = "lforate";
+constexpr const char* kLfoSyncID = "lfosync";
+constexpr const char* kLfoOnID = "lfoon";
+
+// The Mod tab's LFO Rate: a plain 0..1 knob, no duration-vs-rate ambiguity
+// like Size/Density/Window have, so it uses the shared ee::dsp::RateMap
+// (period-only) rather than GrainSyncMap - the same map shape Peak Trem&Pan's
+// own Rate knob uses. A free constant rather than a per-instance member: the
+// map carries no state of its own, and createParameterLayout() is static and
+// needs to reach it too (for the parameter's own host-facing text).
+//
+// maxPeriodMs is 8000 (was 4000) so the slowest free-running cycle reaches a
+// full 8 seconds - Grain's LFO is meant for slow, evolving sweeps as much as
+// audible throb, and 4s topped out too soon for that. skewCentreMs moved from
+// 500 to 1000 to match: the knob's physical halfway point is where
+// freePeriodMs lands by construction (NormalisableRange::setSkewForCentre),
+// so leaving it at 500 while the slow end doubled would have pushed the whole
+// 1-8s "slow" half of the range into the top quarter of the knob's travel.
+// 1000ms keeps the middle of the knob feeling like the middle of the sweep.
+constexpr ee::dsp::RateMap kLfoRateMap { 30.0f, 8000.0f, 1000.0f };
+
+// The Mod tab's own synced choices - deliberately its own small table rather
+// than the shared ee::dsp::TempoDivision.h one every other synced control
+// here (Wah, Trem&Pan, the Alpine/Modulation tremolo, Delay's own time map)
+// still reads unchanged: 1/8 fastest to 4 bars slowest, no triplets or
+// dotted values. A hand-drawn breakpoint shape reads differently at an odd
+// multiple than a straight delay repeat does, and the shared table's extra
+// granularity was mostly unused clutter on this one knob - simplifying it
+// here has no reach into anything else that syncs to tempo.
+constexpr ee::dsp::TempoDivision kLfoDivisions[] = {
+    { "1/8", 0.5f }, { "1/4", 1.0f }, { "1/2", 2.0f }, { "1/1", 4.0f }, { "2", 8.0f }, { "4", 16.0f },
+};
+constexpr int kNumLfoDivisions = static_cast<int> (sizeof (kLfoDivisions) / sizeof (kLfoDivisions[0]));
+
+int lfoSyncedDivisionIndex (float rate01) noexcept
+{
+    const int last = kNumLfoDivisions - 1;
+    return juce::jlimit (0, last,
+                         juce::roundToInt ((1.0f - juce::jlimit (0.0f, 1.0f, rate01)) * static_cast<float> (last)));
+}
+
+float lfoSyncedDivisionBeats (float rate01) noexcept
+{
+    return kLfoDivisions[lfoSyncedDivisionIndex (rate01)].beats;
+}
+
+// Mirrors ee::dsp::RateMap::rateToText's own shape, synced branch swapped for
+// kLfoDivisions above; the free-running branch still reads kLfoRateMap
+// directly (RateMap::freePeriodMs and its ms-formatting are unaffected by
+// any of this - only the synced table changed).
+juce::String lfoRateToText (float rate01, bool synced)
+{
+    if (synced)
+        return kLfoDivisions[lfoSyncedDivisionIndex (rate01)].label;
+
+    return kLfoRateMap.rateToText (rate01, false);
+}
+
+float lfoRateToPeriodSeconds (float rate01, bool synced, double bpm) noexcept
+{
+    if (synced)
+        return lfoSyncedDivisionBeats (rate01) * static_cast<float> (60.0 / juce::jmax (1.0, bpm));
+
+    return kLfoRateMap.rateToPeriodSeconds (rate01, false, bpm);
+}
 
 // Per-module enable switches, one per face panel.
 constexpr const char* kGrainOnID = "grainon";
@@ -75,9 +143,54 @@ constexpr const char* kDensitySyncProp = "densitySync01";
 constexpr const char* kWindowFreeProp = "windowFree01";
 constexpr const char* kWindowSyncProp = "windowSync01";
 
+// The Mod tab's breakpoint shape, as JSON (ee/plugin/LfoBreakpointJson.h).
+// Unlike the six properties above, this one is written directly onto the
+// *live* apvts.state whenever the shape changes (see
+// PeakGrainProcessor::setLfoBreakpointsFromJson), not only into a local copy
+// inside getStateInformation - so PresetStore::saveUser's own copyState(),
+// which copies that same live tree, picks it up too. See CLAUDE.md's Presets
+// section on why the older pattern above only survives a DAW session, never
+// a saved preset.
+constexpr const char* kLfoBreakpointsProp = "lfoBreakpoints";
+
+// The Mod tab's drag-and-drop routing, as JSON (ee/plugin/ModRoutingJson.h) -
+// same live-tree treatment as kLfoBreakpointsProp, for the same reason.
+constexpr const char* kLfoRoutingProp = "lfoRouting";
+
+/** What a brand-new instance (or a preset saved before the Mod tab existed)
+    opens with - a plain sine, matching lfoShapes.js's own sineBreakpoints()
+    exactly so the JS editor and the audio engine agree on what "Sine" means. */
+std::vector<ee::dsp::LfoBreakpoint> defaultLfoBreakpoints()
+{
+    return {
+        { 0.0f, 0.0f, -0.5f, false },
+        { 0.25f, 1.0f, 0.5f, false },
+        { 0.5f, 0.0f, -0.5f, false },
+        { 0.75f, -1.0f, 0.5f, false },
+    };
+}
+
 // The reverb network is normalised to ~0.42 RMS gain; this is Peak Reverb's
 // trim, kept so a given Decay lands at the same level on both pedals.
 constexpr float kWetTrim = 1.1f;
+
+// The dry note now stays fully present through the whole Reverb Mix travel
+// (added back in full in processBlock - see the note by dryPartL there)
+// rather than fading to nothing at Mix 100% like it used to. That was a real
+// fix, but it means the same knob position now layers a full-strength note
+// on top of the tank where before the tank had the room to itself, which
+// read as the reverb having gotten too big / doubled. The gap is exactly
+// proportional to (1 - cos(rMix * halfPi)): zero at Mix 0% (nothing there
+// changed) and largest at Mix 100% (the dry note used to vanish entirely).
+// kReverbWetHeadroom gives some of that room back on the tank's own gain -
+// about -3.5 dB of it at Mix 100%, tapering to none at Mix 0%.
+constexpr float kReverbWetHeadroom = 0.35f;
+
+float reverbWetGain (float rMix, float halfPi)
+{
+    const float rd = std::cos (rMix * halfPi);
+    return std::sin (rMix * halfPi) * kWetTrim * (1.0f - kReverbWetHeadroom * (1.0f - rd));
+}
 
 constexpr float kGainRampSeconds = ee::plugin::kRampSeconds;
 
@@ -232,17 +345,16 @@ PeakGrainProcessor::PeakGrainProcessor()
     decayParam = apvts.getRawParameterValue (kDecayID);
     reverbLoCutParam = apvts.getRawParameterValue (kReverbLoCutID);
     reverbMixParam = apvts.getRawParameterValue (kReverbMixID);
-    reverbSourceParam = apvts.getRawParameterValue (kReverbSourceID);
     dryLevelParam = apvts.getRawParameterValue (kDryLevelID);
     grainLevelParam = apvts.getRawParameterValue (kGrainLevelID);
     mixLinkParam = apvts.getRawParameterValue (kMixLinkID);
     filterParam = apvts.getRawParameterValue (kFilterID);
     driveParam = apvts.getRawParameterValue (kDriveID);
     onParam = apvts.getRawParameterValue (kOnID);
-    grainOnParam = apvts.getRawParameterValue (kGrainOnID);
-    pitchOnParam = apvts.getRawParameterValue (kPitchOnID);
+    lfoRateParam = apvts.getRawParameterValue (kLfoRateID);
+    lfoSyncParam = apvts.getRawParameterValue (kLfoSyncID);
+    lfoOnParam = apvts.getRawParameterValue (kLfoOnID);
     scaleOnParam = apvts.getRawParameterValue (kScaleOnID);
-    randomOnParam = apvts.getRawParameterValue (kRandomOnID);
     delayOnParam = apvts.getRawParameterValue (kDelayOnID);
     reverbOnParam = apvts.getRawParameterValue (kReverbOnID);
     levelParam = apvts.getRawParameterValue (kLevelID);
@@ -265,6 +377,8 @@ PeakGrainProcessor::PeakGrainProcessor()
     apvts.addParameterListener (kSizeSyncID, this);
     apvts.addParameterListener (kDensitySyncID, this);
     apvts.addParameterListener (kWindowSyncID, this);
+
+    refreshLfoStateFromApvts();
 
 #if EE_GRAIN_TRACE
     trace = std::make_unique<GrainTrace> (apvts);
@@ -457,8 +571,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     // Decay is straight seconds onto the network; Low Cut is a real knob now
     // (used to be fixed at GrainerTuning::verbLowCutHz); Mix is its own
-    // dry/wet. Source picks what the reverb hears - see kReverbSourceID
-    // below and processBlock's own note on where it taps in.
+    // dry/wet. Reverb always hears the grain cloud alone now - see
+    // processBlock's own note on where that tap sits (there used to be a
+    // "Reverb Source" choice, Global vs Grains; Global is gone, and with only
+    // one choice left the parameter went with it).
     auto decayRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kDecayID, 1 }, "Decay", decayRange, cfg::kDefaultReverbDecaySeconds,
@@ -473,11 +589,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kReverbMixID, 1 }, "Reverb Mix",
                                                              percent, cfg::kDefaultReverbMixPct, percentAttributes));
-
-    // Global first, so a session saved before this parameter existed loads at
-    // index 0 and hears exactly what it always did.
-    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { kReverbSourceID, 1 }, "Reverb Source",
-                                                              juce::StringArray { "Global", "Grains" }, 0));
 
     // Two independent levels rather than one crossfade knob: a crossfade
     // cannot give you full dry and a full cloud at once, which is the whole
@@ -524,7 +635,24 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakGrainProcessor::createPa
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
 
-    // Per-module enables. Default on, so a fresh instance behaves as before.
+    // The Mod tab's LFO. The breakpoint shape itself is not a parameter (see
+    // kLfoBreakpointsProp) - it is not host-automatable, the same way a
+    // preset's saved wave shape on any synth is data, not a knob.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { kLfoRateID, 1 }, "Mod Rate", juce::NormalisableRange<float> (0.0f, 1.0f), 0.3f,
+        juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
+                                                                           { return lfoRateToText (v, true); })));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kLfoSyncID, 1 }, "Mod Sync", false));
+    // The Mod tab's own master switch - off silences every assignment at once
+    // (modulatedValue() below) without having to remove them one by one, the
+    // same "off leaves everything else alone" contract every other module's
+    // own on/off carries. Default on so an instance with assignments already
+    // routed keeps sounding as it did before this switch existed.
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kLfoOnID, 1 }, "Mod On", true));
+
+    // Grain On / Random On kept registered for old presets and host
+    // automation lanes that still reference grainon/randon - nothing reads
+    // them any more (see PluginProcessor.h's own note by scaleOnParam).
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kGrainOnID, 1 }, "Grain On", true));
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kPitchOnID, 1 }, "Pitch On", true));
 
@@ -576,13 +704,13 @@ juce::String PeakGrainProcessor::sizeReadout() const
     // has to happen on the raw ms value before that decision.
     namespace cfg = ee::dsp::config;
     const float ms = juce::jlimit (cfg::kMinGrainMs, cfg::kMaxGrainMs,
-                                   sizeMap.value (sizeParam->load(), sizeSyncParam->load() > 0.5f, currentBpm()));
+                                   sizeMap.value (sizeParam->load(), true, currentBpm()));
     return ms >= 1000.0f ? juce::String (ms * 0.001f, 2) + " s" : juce::String (juce::roundToInt (ms)) + " ms";
 }
 
 juce::String PeakGrainProcessor::densityReadout() const
 {
-    return densityMap.toText (densityParam->load(), densitySyncParam->load() > 0.5f, currentBpm());
+    return densityMap.toText (densityParam->load(), true, currentBpm());
 }
 
 juce::String PeakGrainProcessor::windowReadout() const
@@ -596,7 +724,7 @@ juce::String PeakGrainProcessor::windowReadout() const
     // a division length nothing is sounding.
     namespace cfg = ee::dsp::config;
     const float ms = juce::jlimit (cfg::kMinWindowSeconds * 1000.0f, cfg::kMaxWindowSeconds * 1000.0f,
-                                   windowMap.value (windowParam->load(), windowSyncParam->load() > 0.5f, currentBpm()));
+                                   windowMap.value (windowParam->load(), true, currentBpm()));
     return ms >= 1000.0f ? juce::String (ms * 0.001f, 2) + " s" : juce::String (juce::roundToInt (ms)) + " ms";
 }
 
@@ -608,6 +736,81 @@ juce::String PeakGrainProcessor::leftTimeReadout() const
 juce::String PeakGrainProcessor::rightTimeReadout() const
 {
     return delayMap.toText (rightTimeParam->load(), delaySyncParam->load() > 0.5f, currentBpm());
+}
+
+juce::String PeakGrainProcessor::lfoRateReadout() const
+{
+    return lfoRateToText (lfoRateParam->load(), lfoSyncParam->load() > 0.5f);
+}
+
+juce::String PeakGrainProcessor::lfoBreakpointsAsJson() const
+{
+    return apvts.state.getProperty (kLfoBreakpointsProp, "").toString();
+}
+
+void PeakGrainProcessor::setLfoBreakpointsFromJson (const juce::String& json)
+{
+    auto points = ee::plugin::lfoBreakpointsFromJson (json);
+    if (points.empty())
+        return;
+
+    currentLfoBreakpoints = points;
+    modLfo.setBreakpoints (points);
+
+    // The live tree, not a local copy - see kLfoBreakpointsProp's own note.
+    apvts.state.setProperty (kLfoBreakpointsProp, json, nullptr);
+}
+
+juce::String PeakGrainProcessor::lfoRoutingAsJson() const
+{
+    return apvts.state.getProperty (kLfoRoutingProp, "[]").toString();
+}
+
+void PeakGrainProcessor::setLfoRoutingFromJson (const juce::String& json)
+{
+    modRouter.setAssignments (ee::plugin::modRoutingFromJson (json));
+
+    // The live tree, not a local copy - see kLfoBreakpointsProp's own note.
+    apvts.state.setProperty (kLfoRoutingProp, json, nullptr);
+}
+
+float PeakGrainProcessor::modulatedValue (const char* paramID, float rawValue) const noexcept
+{
+    if (! modRouter.hasAssignments() || lfoOnParam->load() <= 0.5f)
+        return rawValue;
+
+    const float depth = modRouter.depthFor (paramID);
+    if (depth == 0.0f)
+        return rawValue;
+
+    auto* param = apvts.getParameter (paramID);
+    if (param == nullptr)
+        return rawValue;
+
+    const float base01 = param->convertTo0to1 (rawValue);
+    const float mod01 = juce::jlimit (0.0f, 1.0f, base01 + depth * modLfo.currentValue());
+    return param->convertFrom0to1 (mod01);
+}
+
+void PeakGrainProcessor::refreshLfoStateFromApvts()
+{
+    auto json = apvts.state.getProperty (kLfoBreakpointsProp, "").toString();
+    auto points = ee::plugin::lfoBreakpointsFromJson (json);
+
+    if (points.empty())
+    {
+        points = defaultLfoBreakpoints();
+        json = ee::plugin::lfoBreakpointsToJson (points);
+        apvts.state.setProperty (kLfoBreakpointsProp, json, nullptr);
+    }
+
+    currentLfoBreakpoints = points;
+    modLfo.setBreakpoints (points);
+
+    modRouter.setAssignments (
+        ee::plugin::modRoutingFromJson (apvts.state.getProperty (kLfoRoutingProp, "[]").toString()));
+
+    lfoGeneration.fetch_add (1, std::memory_order_relaxed);
 }
 
 void PeakGrainProcessor::syncToggled (const char* paramID,
@@ -691,6 +894,8 @@ void PeakGrainProcessor::installState (const juce::ValueTree& tree)
     installingState = true;
     apvts.replaceState (tree);
     installingState = false;
+
+    refreshLfoStateFromApvts();
 }
 
 void PeakGrainProcessor::parameterChanged (const juce::String& parameterID, float newValue)
@@ -782,6 +987,9 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     delay.setRouting (routing());
     snapDelayNextBlock = true;
 
+    modLfo.prepare (sampleRate);
+    modLfo.reset();
+
     reverb.prepare (sampleRate);
     reverb.reset();
 
@@ -799,6 +1007,7 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     reverb.setShimmer (ee::dsp::config::kVerbShimmer);
 
     grainBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
+    dryBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
     stageBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
     delayInBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
     delayWetBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
@@ -819,8 +1028,7 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
 
     const float hp = juce::MathConstants<float>::halfPi;
     const float dryLevel = juce::jlimit (0.0f, 1.0f, dryLevelParam->load() * 0.01f);
-    const float grainLevel =
-        grainOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, grainLevelParam->load() * 0.01f) : 0.0f;
+    const float grainLevel = juce::jlimit (0.0f, 1.0f, grainLevelParam->load() * 0.01f);
     const float dMix = delayOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, delayMixParam->load() * 0.01f) : 0.0f;
     const float rMix = reverbOnParam->load() > 0.5f ? juce::jlimit (0.0f, 1.0f, reverbMixParam->load() * 0.01f) : 0.0f;
     const bool engaged = onParam->load() > 0.5f;
@@ -830,7 +1038,7 @@ void PeakGrainProcessor::prepareToPlay (double sampleRate, int maximumExpectedSa
     delayDry.setCurrentAndTargetValue (engaged ? std::cos (dMix * hp) : 1.0f);
     delayWet.setCurrentAndTargetValue (std::sin (dMix * hp));
     reverbDry.setCurrentAndTargetValue (engaged ? std::cos (rMix * hp) : 1.0f);
-    reverbWet.setCurrentAndTargetValue (std::sin (rMix * hp) * kWetTrim);
+    reverbWet.setCurrentAndTargetValue (reverbWetGain (rMix, hp));
     engageGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
 
     readPlayHeadBpm(); // seed lastKnownBpm from whatever the host reports before the first block, if anything
@@ -891,9 +1099,15 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 #endif
 
     const double bpm = readPlayHeadBpm();
-    const bool sizeSynced = sizeSyncParam->load() > 0.5f;
-    const bool densitySynced = densitySyncParam->load() > 0.5f;
-    const bool windowSynced = windowSyncParam->load() > 0.5f;
+    // Grain's own Size/Destiny/Window carry no Sync switch on the face any
+    // more - the GRAINS panel is always tempo-locked now, so these three are
+    // hardcoded true rather than read off ssync/dsync/wsync. Those three
+    // parameters are kept registered (see PluginProcessor.h's note by
+    // sizeSyncParam) purely so a preset or automation lane that still
+    // references them resolves to something; nothing here reads them.
+    const bool sizeSynced = true;
+    const bool densitySynced = true;
+    const bool windowSynced = true;
     const bool delaySynced = delaySyncParam->load() > 0.5f;
 
     // Same three transport facts PeakTremPanProcessor reads for its own synced
@@ -936,53 +1150,51 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     grainTransport.barStartPpq = barStartPpq;
     grainTransport.quartersPerBar = quartersPerBar;
 
-    // Each face module has an enable switch. Off leaves the knobs alone but
-    // feeds the engine that section's no-op values: Grain's own Bit crush
-    // off, Random flat, Pitch pure unison, and (below) the grain / delay /
-    // reverb blends fully dry. grainOn is fetched here rather than down by
-    // gMix - Bit lives on the Grain section's face now, so it follows that
-    // section's own enable the same way.
-    const bool grainOn = grainOnParam->load() > 0.5f;
-    const bool randomOn = randomOnParam->load() > 0.5f;
-    const bool pitchOn = pitchOnParam->load() > 0.5f;
+    // The Mod tab's LFO - same three transport facts, reusing
+    // ee::dsp::Tremolo::Transport rather than a parallel struct since this
+    // engine's phase-align code is copied from Tremolo's own. Not routed to
+    // anything yet (Stage 3); this only ticks the phase forward so the live
+    // playhead marker and, later, modulation both read a moving value.
+    const bool lfoSynced = lfoSyncParam->load() > 0.5f;
+    const float lfoRate01 = lfoRateParam->load();
+    modLfo.setPeriodSeconds (lfoRateToPeriodSeconds (lfoRate01, lfoSynced, bpm));
 
-    grainer.setSizeMs (sizeMap.value (sizeParam->load(), sizeSynced, bpm));
-    grainer.setDensityHz (densityMap.value (densityParam->load(), densitySynced, bpm));
-    grainer.setAttackReachSeconds (windowMap.value (windowParam->load(), windowSynced, bpm) * 0.001f);
+    ee::dsp::Tremolo::Transport lfoTransport;
+    lfoTransport.synced = lfoSynced && havePpq && isPlaying;
+    lfoTransport.playing = isPlaying;
+    lfoTransport.ppqStart = ppqStart;
+    lfoTransport.cyclesPerQuarter = 1.0 / juce::jmax (1.0e-4, static_cast<double> (lfoSyncedDivisionBeats (lfoRate01)));
+    lfoTransport.ppqPerSample = bpm / (60.0 * getSampleRate());
+
+    // Advanced per chunk, inside the loop below, alongside the modulatable
+    // Grain/Pitch/Random setters - a single advance(numSamples, ...) here
+    // would leave modLfo.currentValue() fixed for the whole block, stepping
+    // once per host callback instead of moving within it.
+
+    // Grain/Pitch/Random carry no enable switch on the face (see the note by
+    // scaleOnParam in PluginProcessor.h) - grainon/pitchon/randon are dead
+    // parameters, so every knob in those three sections is read unconditionally
+    // below. A preset saved with one at 0 (from before those switches were
+    // pulled off the face) used to silently and permanently mute the whole
+    // section, which is why Pitch's Low/Unison/High could look turned up and
+    // do nothing.
+
+    // Size/Density/Window/Shape/Scatter/Reverse/Stereo/Mod/Pitch Low/Unison/
+    // High/Pitch Mix/Filter/Drive/Bit - every modulation target this pedal
+    // has (Delay/Reverb's own scope cut) - are set per chunk inside the loop
+    // below instead of here, each read through modulatedValue() so a
+    // drag-and-drop LFO assignment actually moves within the block.
+    // Everything else in this section has no modulation target and stays a
+    // once-per-block read, unchanged.
     grainer.setTimeMs (timeParam->load());
     grainer.setFeedback (feedbackParam->load() * 0.01f);
     grainer.setStretch (stretchParam->load() * 0.01f);
-    grainer.setShape (shapeParam->load() * 0.01f);
-    grainer.setBit ((grainOn ? bitParam->load() : 0.0f) * 0.01f);
-    grainer.setScatter ((randomOn ? scatterParam->load() : 0.0f) * 0.01f);
-    grainer.setReverse ((randomOn ? reverseParam->load() : 0.0f) * 0.01f);
-    grainer.setStereo ((randomOn ? stereoParam->load() : 0.0f) * 0.01f);
-    grainer.setMod ((randomOn ? modParam->load() : 0.0f) * 0.01f);
-    // Harmless to set even when Pitch is off: setPitchMix(0,1,0) below means
-    // the Low/High groups these feed are never picked either way.
+    // Harmless to set even when Pitch is off: setPitchMix(0,1,0) inside the
+    // loop below means the Low/High groups these feed are never picked either
+    // way.
     grainer.setScale (juce::roundToInt (scaleParam->load()), juce::roundToInt (rootParam->load()));
-    grainer.setCloudFilter (filterParam->load() * 0.01f);
-    driveStage.setDrive01 (driveParam->load() * 0.01f);
     grainer.setFreeze (freezeParam->load() > 0.5f);
     haas.setWidth (widthParam->load() > 0.5f ? ee::dsp::config::kHaasWidth : 0.0f);
-    if (pitchOn)
-    {
-        // Pitch Mix belongs to the scale alone, and it colours the High
-        // group's interval rather than its weight: closed, every up-grain is a
-        // plain octave; open, they are drawn from the Scale/Root table. The
-        // Scale switch is the same statement as Mix at 0, so it is applied as
-        // one - off simply closes the blend and leaves octaves.
-        // It used to crossfade High's weight back into unison instead, which
-        // meant switching Scale off handed the whole High knob to unison and
-        // left Low's octave down as the only pitch anybody could hear.
-        // Low is plain octaves either way: an octave is consonant against
-        // anything and has nothing to do with the key, so there is nothing for
-        // a scale control to pull it back from.
-        grainer.setScaleBlend (scaleOnParam->load() > 0.5f ? pitchMixParam->load() * 0.01f : 0.0f);
-        grainer.setPitchMix (pitchLowParam->load(), pitchUnisonParam->load(), pitchHighParam->load());
-    }
-    else
-        grainer.setPitchMix (0.0f, 1.0f, 0.0f);
 
     const float leftSecs = delayMap.value (leftTimeParam->load(), delaySynced, bpm) * 0.001f;
     const float rightSecs = delayMap.value (rightTimeParam->load(), delaySynced, bpm) * 0.001f;
@@ -1007,11 +1219,10 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     // jlimit-ing them to 1 would quietly throw the whole boost half away. The
     // safety limiter at the end of the chain is what catches an overcooked mix.
     const float dryLevel = levelGainFor (dryLevelParam->load());
-    const float grainLevel = grainOn ? levelGainFor (grainLevelParam->load()) : 0.0f;
+    const float grainLevel = levelGainFor (grainLevelParam->load());
     const float dMix = delayOn ? juce::jlimit (0.0f, 1.0f, delayMixParam->load() * 0.01f) : 0.0f;
     const float rMix = reverbOn ? juce::jlimit (0.0f, 1.0f, reverbMixParam->load() * 0.01f) : 0.0f;
     const bool engaged = onParam->load() > 0.5f;
-    const bool reverbGrainsOnly = juce::roundToInt (reverbSourceParam->load()) == 1;
 
     // Trails: bypassing opens every stage's dry leg to unity and closes its send
     // to zero, so the grain cloud, the delay repeats and the reverb tail all
@@ -1021,24 +1232,30 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
     delayDry.setTargetValue (engaged ? std::cos (dMix * hp) : 1.0f);
     delayWet.setTargetValue (std::sin (dMix * hp));
     reverbDry.setTargetValue (engaged ? std::cos (rMix * hp) : 1.0f);
-    reverbWet.setTargetValue (std::sin (rMix * hp) * kWetTrim);
+    reverbWet.setTargetValue (reverbWetGain (rMix, hp));
     engageGain.setTargetValue (engaged ? 1.0f : 0.0f);
 
     // Everything below writes into scratch buffers that prepareToPlay sizes. If
     // it has not run - or ran for a smaller block than the host is now handing
     // us - pass the audio through untouched rather than writing past the end.
     const int scratch =
-        juce::jmin (juce::jmin (juce::jmin (grainBuffer.getNumSamples(), stageBuffer.getNumSamples()),
-                                engageBuffer.getNumSamples()),
+        juce::jmin (juce::jmin (juce::jmin (grainBuffer.getNumSamples(), dryBuffer.getNumSamples()),
+                                juce::jmin (stageBuffer.getNumSamples(), engageBuffer.getNumSamples())),
                     juce::jmin (juce::jmin (delayInBuffer.getNumSamples(), delayWetBuffer.getNumSamples()),
                                 juce::jmin (monoBuffer.getNumSamples(), verbBuffer.getNumSamples())));
 
-    if (scratch <= 0 || grainBuffer.getNumChannels() < kMaxChannels || stageBuffer.getNumChannels() < kMaxChannels ||
-        delayInBuffer.getNumChannels() < kMaxChannels || delayWetBuffer.getNumChannels() < kMaxChannels ||
-        verbBuffer.getNumChannels() < kMaxChannels)
+    if (scratch <= 0 || grainBuffer.getNumChannels() < kMaxChannels || dryBuffer.getNumChannels() < kMaxChannels ||
+        stageBuffer.getNumChannels() < kMaxChannels || delayInBuffer.getNumChannels() < kMaxChannels ||
+        delayWetBuffer.getNumChannels() < kMaxChannels || verbBuffer.getNumChannels() < kMaxChannels)
         return;
 
-    const int step = juce::jmin (maxBlock, scratch);
+    // A modulation assignment needs re-evaluating more often than once per
+    // host callback to read as continuous rather than stepped - kModChunk
+    // only shrinks the loop below when something is actually assigned, so an
+    // unmodulated instance keeps today's one-pass-per-block behaviour exactly.
+    constexpr int kModChunk = 64;
+    const int step = modRouter.hasAssignments() ? juce::jmin (juce::jmin (maxBlock, scratch), kModChunk)
+                                                : juce::jmin (maxBlock, scratch);
 
     for (int offset = 0; offset < numSamples; offset += step)
     {
@@ -1063,6 +1280,40 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             grainR[i] = (inR != nullptr ? inR[i] : inL[i]) * g;
         }
 
+        lfoTransport.ppqStart = ppqStart + static_cast<double> (offset) * lfoTransport.ppqPerSample;
+        modLfo.advance (chunk, lfoTransport);
+
+        // Every modulation target this pedal has (Delay/Reverb's own scope
+        // cut) - re-read here, once per chunk, through modulatedValue() so an
+        // assignment moves within the block rather than only between host
+        // callbacks.
+        grainer.setSizeMs (sizeMap.value (modulatedValue (kSizeID, sizeParam->load()), sizeSynced, bpm));
+        grainer.setDensityHz (densityMap.value (modulatedValue (kDensityID, densityParam->load()), densitySynced, bpm));
+        grainer.setAttackReachSeconds (
+            windowMap.value (modulatedValue (kWindowID, windowParam->load()), windowSynced, bpm) * 0.001f);
+        grainer.setShape (modulatedValue (kShapeID, shapeParam->load()) * 0.01f);
+        grainer.setScatter (modulatedValue (kScatterID, scatterParam->load()) * 0.01f);
+        grainer.setReverse (modulatedValue (kReverseID, reverseParam->load()) * 0.01f);
+        grainer.setStereo (modulatedValue (kStereoID, stereoParam->load()) * 0.01f);
+        grainer.setMod (modulatedValue (kModID, modParam->load()) * 0.01f);
+        grainer.setBit (modulatedValue (kBitID, bitParam->load()) * 0.01f);
+        grainer.setCloudFilter (modulatedValue (kFilterID, filterParam->load()) * 0.01f);
+        driveStage.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
+
+        // Pitch Mix belongs to the scale alone, and it colours the High group's
+        // interval rather than its weight: closed, every up-grain is a plain
+        // octave; open, they are drawn from the Scale/Root table. The Scale
+        // switch is the same statement as Mix at 0, so it is applied as one -
+        // off simply closes the blend and leaves octaves. Low is plain octaves
+        // either way: an octave is consonant against anything and has nothing
+        // to do with the key, so there is nothing for a scale control to pull
+        // it back from.
+        grainer.setScaleBlend (scaleOnParam->load() > 0.5f ? modulatedValue (kPitchMixID, pitchMixParam->load()) * 0.01f
+                                                           : 0.0f);
+        grainer.setPitchMix (modulatedValue (kPitchLowID, pitchLowParam->load()),
+                             modulatedValue (kPitchUnisonID, pitchUnisonParam->load()),
+                             modulatedValue (kPitchHighID, pitchHighParam->load()));
+
         grainTransport.ppqStart = ppqStart + static_cast<double> (offset) * grainTransport.ppqPerSample;
         grainer.process (grainL, grainR, grainL, grainR, chunk, grainTransport);
 
@@ -1071,12 +1322,14 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
         driveStage.process (grainL, grainR, chunk);
         haas.process (grainL, grainR, chunk);
 
-        // Grain stage: the equal-power blend of the dry note and the cloud - the
-        // signal an outboard delay would see at the grain pedal's output. The
-        // finite guard here keeps a poisoned grain from latching into the delay
-        // or reverb feedback further down.
-        float* stageL = stageBuffer.getWritePointer (0);
-        float* stageR = stageBuffer.getWritePointer (1);
+        // The dry note's own level and the grain send are computed here and
+        // kept apart from here on: dryBuffer is added back in full only at
+        // the very end (the output stage below), never crossfaded against
+        // Delay or Reverb's own Mix, so turning either all the way up still
+        // leaves the dry note audible - it silences the plain grain cloud in
+        // favour of its own treatment, not the note that triggered it.
+        float* dryPartL = dryBuffer.getWritePointer (0);
+        float* dryPartR = dryBuffer.getWritePointer (1);
         float* sendL = delayInBuffer.getWritePointer (0);
         float* sendR = delayInBuffer.getWritePointer (1);
 
@@ -1087,38 +1340,52 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             const float eg = egBuf[i];
             const float dryR = inR != nullptr ? inR[i] : inL[i];
 
-            float sL = inL[i] * gd + grainL[i] * gw;
-            float sR = dryR * gd + grainR[i] * gw;
+            // The grain cloud at the level it is actually mixed in at - what
+            // both Delay and Reverb hear now, and only what they hear: neither
+            // effect ever touches the dry signal, so a struck note itself is
+            // never echoed or reverbed, only its cloud is. Finite-guarded here,
+            // before anything downstream (the delay line, the reverb tank)
+            // gets a chance to latch a poisoned sample into its own feedback.
+            float wetL = grainL[i] * gw;
+            float wetR = grainR[i] * gw;
 
-            if (! std::isfinite (sL))
-                sL = 0.0f;
-            if (! std::isfinite (sR))
-                sR = 0.0f;
+            if (! std::isfinite (wetL))
+                wetL = 0.0f;
+            if (! std::isfinite (wetR))
+                wetR = 0.0f;
 
-            stageL[i] = sL;
-            stageR[i] = sR;
-            sendL[i] = sL * eg; // gated copy: TapeDelay reads before it writes
-            sendR[i] = sR * eg;
+            float dL = inL[i] * gd;
+            float dR = dryR * gd;
 
-            // Bring the cloud down to the level it is actually being mixed in
-            // at, in place. The "Grains" reverb source below reads this buffer
-            // directly, and read raw it fed the tank a full-scale cloud however
-            // far down the Grains fader was - which is why that mode came out
-            // enormous next to "Global", where the cloud arrives already scaled
-            // inside the stage blend. Nothing else reads grainL/R past this
+            if (! std::isfinite (dL))
+                dL = 0.0f;
+            if (! std::isfinite (dR))
+                dR = 0.0f;
+
+            dryPartL[i] = dL;
+            dryPartR[i] = dR;
+            sendL[i] = wetL * eg; // grain-only, gated: TapeDelay reads before it writes
+            sendR[i] = wetR * eg;
+
+            // In place, so Delay's own crossfade and Reverb's own tap below
+            // both read the same already-scaled, already-guarded wet signal
+            // Delay's send just used. Nothing else reads grainL/R past this
             // point, and the next chunk refills them from the input.
-            grainL[i] *= gw;
-            grainR[i] *= gw;
+            grainL[i] = wetL;
+            grainR[i] = wetR;
         }
 
-        // Delay: the gated grain stage into the delay line, blended equal-power
-        // back against the ungated stage.
+        // Delay: the gated grain-only send into the delay line, blended
+        // equal-power back against the ungated grain send - so Mix at 0 is
+        // the plain (undelayed) cloud and turning it up crossfades in repeats
+        // built from that same cloud. The dry note takes no part in this; it
+        // rejoins at the very end regardless of where Mix sits.
         float* delL = delayWetBuffer.getWritePointer (0);
         float* delR = delayWetBuffer.getWritePointer (1);
         delay.process (sendL, sendR, delL, delR, chunk);
 
         float* mono = monoBuffer.getWritePointer (0);
-        float* postL = stageBuffer.getWritePointer (0); // reuse: post-delay blend
+        float* postL = stageBuffer.getWritePointer (0); // reuse: post-delay grain chain
         float* postR = stageBuffer.getWritePointer (1);
 
         for (int i = 0; i < chunk; ++i)
@@ -1127,22 +1394,14 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             const float dw = delayWet.getNextValue();
             const float eg = egBuf[i];
 
-            const float pL = stageL[i] * dd + delL[i] * dw;
-            const float pR = stageR[i] * dd + delR[i] * dw;
+            postL[i] = grainL[i] * dd + delL[i] * dw;
+            postR[i] = grainR[i] * dd + delR[i] * dw;
 
-            postL[i] = pL;
-            postR[i] = pR;
-
-            // Reverb Source: "Global" sends what the pedal has built up to this
-            // point (dry/grain blend then delay); "Grains" sends the cloud
-            // straight from Grainer::process instead, skipping the dry blend
-            // and the delay stage entirely - a send that only ever hears
-            // grains, whatever Mix and Delay are doing. Both gated by eg, same
-            // as before, so bypass stops feeding the tank rather than cutting
-            // it off mid-ring.
-            const float sourceL = reverbGrainsOnly ? grainL[i] : pL;
-            const float sourceR = reverbGrainsOnly ? grainR[i] : pR;
-            mono[i] = 0.5f * (sourceL + sourceR) * eg;
+            // Reverb's own send: the cloud straight from Grainer::process (via
+            // grainL/R above), never the dry signal and never Delay's repeats
+            // either - gated by eg, same as Delay's own send, so bypass stops
+            // feeding the tank rather than cutting it off mid-ring.
+            mono[i] = 0.5f * (grainL[i] + grainR[i]) * eg;
         }
 
         float* verbL = verbBuffer.getWritePointer (0);
@@ -1157,8 +1416,13 @@ void PeakGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
             const float rd = reverbDry.getNextValue();
             const float rw = reverbWet.getNextValue();
 
-            float l = postL[i] * rd + verbL[i] * rw;
-            float r = postR[i] * rd + verbR[i] * rw;
+            // Reverb's own Mix, crossfading the (already Delay-processed)
+            // grain chain against the reverb tank - the dry note, again,
+            // takes no part; it is added back in full here, the one place
+            // it rejoins the signal, so it is exactly as present at Mix 100%
+            // as it is at Mix 0.
+            float l = dryPartL[i] + (postL[i] * rd + verbL[i] * rw);
+            float r = dryPartR[i] + (postR[i] * rd + verbR[i] * rw);
 
             // Bypass.h makes the point that this guard is not optional even for
             // an engine that cannot produce a NaN itself: a non-finite sample

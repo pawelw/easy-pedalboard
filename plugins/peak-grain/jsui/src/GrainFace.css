@@ -83,13 +83,10 @@
   min-width: 0;
 }
 
-/* Live/Freeze and Mono/Stereo: two buttons sharing one edge, only the outer corners
-   rounded - reads as one segmented object rather than two pills. */
-.pg-segment {
-  display: flex;
-  align-items: center;
-}
-
+/* Live/Freeze and Mono/Stereo: one button each, its own label and colour
+   tracking the current state (dark chrome for Live/Mono, the lit pill look
+   for Freeze/Stereo) - was a joined two-button segment, one button per
+   state; kept the same on/off styling, just on a single control now. */
 .pg-segment__btn {
   appearance: none;
   font-family: var(--pui-font-label);
@@ -100,18 +97,10 @@
   text-transform: uppercase;
   padding: 8px 13px;
   border: 1px solid var(--pui-pill-off-border);
+  border-radius: 8px;
   background: var(--pui-chrome);
   color: var(--pui-pill-off-ink);
   cursor: pointer;
-}
-
-.pg-segment__btn:first-child {
-  border-radius: 8px 0 0 8px;
-}
-
-.pg-segment__btn:last-child {
-  border-radius: 0 8px 8px 0;
-  margin-left: -1px;
 }
 
 .pg-segment__btn[data-on] {
@@ -137,7 +126,7 @@
   overflow: hidden;
 }
 
-/* The plate is now two things side by side: everything that was here before,
+/* The plate is two things side by side: everything that was here before,
    and the mixer as a full-height column down its right edge. The mixer spans
    both rows, so it cannot live in either grid - hence the split. */
 .pg-plate {
@@ -163,6 +152,51 @@
 .pg-row {
   display: grid;
   grid-template-columns: 1fr 1px 1fr 1px 1fr;
+}
+
+/* Row 2's own Effects/Mod split: a narrow vertical tab rail (VerticalTabs)
+   plus whichever tab's content is showing, in the same footprint Delay and
+   Reverb's row alone used to take - Grain/Pitch/Random above and the Mixer
+   column stay outside this tabbing entirely. */
+.pg-row2 {
+  display: flex;
+  align-items: stretch;
+  /* Fixed rather than content-sized: Effects (Delay/Reverb) and Mod need to
+     read as the same slot whichever one is showing, not resize the window
+     on every tab click. */
+  height: 180px;
+}
+
+.pg-row2__content {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+}
+
+/* Explicit rather than relying on the browser's own [hidden] default: this
+   class's own `display: flex` above is author CSS and beats the UA
+   stylesheet's `[hidden] { display: none }` regardless of specificity, so
+   without this the hidden tab body would still render. */
+.pg-row2__content[hidden] {
+  display: none;
+}
+
+.pg-row2__content > * {
+  flex: 1 1 auto;
+}
+
+/* Row 2's own grid otherwise mirrors row 1's (same .pg-row, same five-track
+   template), but this row's own width is 22px narrower than row 1's - the
+   tab rail eats straight into it (see App.jsx's own note on why the card is
+   22px wider than the plate needs). Splitting that deficit three ways as a
+   plain 1fr would leave Reverb (one track) ~7px narrower than Random
+   (row 1's equivalent track), which reads as the two rows' dividers not
+   lining up. Pinning Reverb to Random's own row-1 width - one 1fr share of
+   this row's 548px .pg-plate__main, (548 - 2px of dividers) / 3 - and
+   letting Delay's two tracks absorb the rest keeps the two dividers in one
+   straight line; re-measure this if the card's own width ever changes. */
+.pg-row2__content .pg-row {
+  grid-template-columns: 1fr 1px 1fr 1px 182px;
 }
 
 /* ---------------------------------------------------------------- mixer */
@@ -282,15 +316,6 @@
   margin-top: 10px;
 }
 
-/* SYNC, moved out of the header and centred under both knob rows - Grain
-   carries no other header-right control now that it has moved. Nudged past
-   the base .pg-section gap so it doesn't crowd the Bit/Shape row above it. */
-.pg-grain__foot {
-  display: flex;
-  justify-content: center;
-  margin-top: 6px;
-}
-
 /* Row 1 (Grain/Pitch/Random) sits right under .pg-plate's own top edge, which
    carries this same hairline as part of --pui-module-shadow's inset - row 2
    is past the .pg-hdivider below it and out from under that, so Delay/Reverb
@@ -397,15 +422,15 @@
   align-items: flex-end;
 }
 
-/* space-around spreads 3 knobs to the card's edges much harder than it does
-   2 (more items means less free space left per edge), so Grain's rows sat
-   noticeably wider than Random's (still 2 per row) - centered as a group
-   either way, but not reading as the same width of "centred" next to them.
-   A fixed gap and justify-content:center groups the 3 knobs at roughly
-   Random's own edge margin instead of the leftover-space one. Pitch moved
-   from a 2+2 grid to one row of 3 (Low/Unison/High, once Detune's slot went
-   to the Scale/Root pills in the header) and needs the same fix for the
-   same reason. */
+/* space-around spreads Grain's 2-per-row knobs to the card's edges much
+   harder than Random's own 2-per-row (more room per edge relative to the
+   knobs is exactly the leftover-space case) - centered as a group either
+   way, but not reading as the same width of "centred" next to them. A fixed
+   gap and justify-content:center groups them at roughly Random's own edge
+   margin instead. Pitch is a row of 3 (Low/Unison/High), not 2 - the same
+   fixed gap there ran wider than its own column and spilled past both
+   edges, so it stays on the base space-around rule below instead (same as
+   Reverb's own row of 3, which fits it fine). */
 /* Reverb/Grain-sized (30px) now, not Random's 38px - same caption-size
    drop as .pg-section--reverb/.pg-section--grain above, for the same
    reason: two different sizes reading as one family. */
@@ -422,8 +447,7 @@
   color: #c9cede;
 }
 
-.pg-section--grain .pg-section__knobs,
-.pg-section--pitch .pg-section__knobs {
+.pg-section--grain .pg-section__knobs {
   justify-content: center;
   gap: 13px;
 }
@@ -522,12 +546,6 @@
   width: 94px;
 }
 
-/* Sized to "Global", the wider-reading of the two - Reverb Source cycling
-   between it and "Grains" doesn't visibly resize the pill. */
-.pg-reverb__source-pill {
-  min-width: 60px;
-}
-
 
 /* --------------------------------------------------------------- delay */
 
@@ -559,7 +577,7 @@
 .pg-delay__times {
   display: flex;
   flex-direction: column;
-  gap: 32px;
+  gap: 42px;
 }
 
 .pg-time-row {
@@ -605,7 +623,7 @@
    real equivalent of the same "free-floating" idea. */
 .pg-delay__link {
   position: absolute;
-  right: 107px;
+  right: 100px;
   top: 52%;
   transform: translateY(-50%);
 }
@@ -776,4 +794,29 @@
 
 .pg-scope__label--delay {
   left: calc(47% + 10px);
+}
+
+/* ------------------------------------------------------------------ mod */
+
+/* Same top hairline as .pg-section--delay/--reverb's own copy (below) - row
+   2 sits past .pg-hdivider, out from under .pg-plate's own inset shadow, so
+   whichever tab is showing needs this restated to read as the same kind of
+   panel as row 1's sections. */
+.pg-mod {
+  display: flex;
+  box-shadow: inset 0 1px 0 0 #ffffff14;
+}
+
+/* The tab rail sits in that same row, so it needs the hairline too - but
+   only while Effects (Delay/Reverb) is showing: Delay/Reverb already carry
+   their own copy of this line (below), and without the rail's, the line
+   broke right where the rail sits, at row 2's own left edge. In Mod, .pg-mod
+   above already draws it the full width of the content beside the rail.
+   Targets the Effects tab BUTTON itself (first in FACE_TABS), not the
+   `.pui-vtabs` rail it sits in - that rail is the tabs' shared flex
+   container, and its own top edge is fully covered by this button's own
+   opaque background sitting flush against it, so an inset shadow on the
+   container never painted anywhere visible. */
+.pg-row2[data-active-tab="effects"] .pui-vtabs__tab:first-child {
+  box-shadow: inset 0 1px 0 0 #ffffff14;
 }
