@@ -35,7 +35,7 @@ TapeTunerPanel::TapeTunerPanel (const ee::dsp::TapeTuning& initial, ApplyFn appl
         slider->setTextBoxStyle (juce::Slider::TextBoxRight, false, 68, 18);
         slider->setValue (tuning.*entry.member, juce::dontSendNotification);
 
-        float ee::dsp::TapeTuning::*member = entry.member;
+        float ee::dsp::TapeTuning::* member = entry.member;
         slider->onValueChange = [this, member, raw = slider.get()]
         {
             tuning.*member = static_cast<float> (raw->getValue());

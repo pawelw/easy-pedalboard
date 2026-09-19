@@ -8,6 +8,7 @@
 #include "ee/dsp/PhaserConfig.h"
 #include "ee/dsp/TapeMachineConfig.h"
 #include "ee/plugin/ParamText.h"
+#include "ee/plugin/StateVersion.h"
 
 #include "TapeAssets.h"
 
@@ -345,7 +346,7 @@ juce::AudioProcessorEditor* BitBitModulationProcessor::createEditor()
 
 void BitBitModulationProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    if (auto xml = ee::plugin::copyVersionedState (apvts).createXml())
         copyXmlToBinary (*xml, destData);
 }
 

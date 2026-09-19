@@ -4,6 +4,7 @@
 #include "ee/fx/DelayTimeMap.h"
 #include "ee/plugin/Bypass.h"
 #include "ee/plugin/ParamText.h"
+#include "ee/plugin/StateVersion.h"
 
 namespace
 {
@@ -467,7 +468,7 @@ juce::AudioProcessorEditor* BitBitDelayProcessor::createEditor()
 }
 void BitBitDelayProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    if (auto xml = ee::plugin::copyVersionedState (apvts).createXml())
         copyXmlToBinary (*xml, destData);
 }
 

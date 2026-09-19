@@ -262,9 +262,16 @@ Before hunting bugs, freeze what must never change:
 - **Engine enum order — done** ✅, and for free: an engine selector is an
   `AudioParameterChoice`, so its choices *are* the enum, in order, and they are
   in the golden file. Alpine's 24-way chain order is in there too.
-- **The preset format.** Write a state-version tag into the APVTS tree now, even
-  though nothing reads it — the release where you need to migrate state is much
-  easier if 1.0 already stamped a version. **Still to do.**
+- **The preset format — done** ✅. `ee::plugin::kStateVersion` (currently 1,
+  `shared/include/ee/plugin/StateVersion.h`) is stamped as a `stateVersion`
+  property on the root of the APVTS tree wherever a pedal writes state out:
+  every `getStateInformation` and `PresetStore`'s preset save go through
+  `copyVersionedState (apvts)` rather than `apvts.copyState()`, and the 32
+  factory preset files carry `stateVersion="1"`. Nothing reads it yet; a tree
+  with no stamp is version 0. `ee_preset_tests` fails if a factory file lacks
+  it or a `PluginProcessor.cpp` goes back to a bare `copyState()`. When a release
+  needs a migration, bump the constant and branch on `stateVersionOf (tree)` in
+  `installState`.
 
 Three things the freeze deliberately does not cover, so they are not mistaken
 for gaps:

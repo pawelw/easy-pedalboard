@@ -139,7 +139,8 @@ if(TARGET BitBitDelay)
     target_compile_definitions(ee_preset_tests PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0
-        JUCE_STANDALONE_APPLICATION=1)
+        JUCE_STANDALONE_APPLICATION=1
+        EE_PLUGINS_DIR="${CMAKE_SOURCE_DIR}/plugins")
 
     target_include_directories(ee_preset_tests
         PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-delay/src)

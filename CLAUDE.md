@@ -347,6 +347,15 @@ silently inherits from whichever preset was loaded before it. `ee_preset_tests`
 guards this for every preset in the bank, by loading each one twice from
 opposite ends of every range and checking it lands in the same place both times.
 
+**Every write of a pedal's state is stamped with a format version.**
+`ee::plugin::copyVersionedState (apvts)` (`StateVersion.h`) is `copyState()` plus a
+`stateVersion` property on the root - use it in `getStateInformation` and anywhere
+else a tree is serialised, never a bare `apvts.copyState()`. Factory preset XML
+carries `stateVersion="1"` on its `<PARAMETERS>` root, and `ee_preset_tests`
+checks all of them. Nothing reads the stamp yet: it exists so a later release can
+tell what 1.0 wrote from what it writes itself. Bump `kStateVersion` only for a
+change that needs a migration on load, and do the migration in `installState`.
+
 **A whole tree arriving at once is not a knob being turned.** BitBit Delay links
 its two Time knobs while Sync L/R is on, off an APVTS parameter listener - and
 that listener fired for each of the three parameters a preset load writes while

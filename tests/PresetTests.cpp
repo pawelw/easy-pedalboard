@@ -12,6 +12,7 @@
 
 #include "PluginProcessor.h"
 #include "ee/plugin/PresetStore.h"
+#include "ee/plugin/StateVersion.h"
 
 namespace
 {
@@ -228,6 +229,65 @@ int main()
     check (userBank.saveUser ("a/../../b").wasOk(), "a name with path separators saves");
     check (folder.getChildFile ("a....b.xml").existsAsFile(), "...flattened into the bank's own folder");
     check (! userBank.saveUser ("   ").wasOk(), "a name that is only whitespace is refused");
+
+    // The state-version stamp. Nothing reads it yet; what matters is that every
+    // file 1.0 writes carries it, so a later release can tell them apart from
+    // one written before it existed.
+    std::printf ("\nState version stamp:\n");
+
+    const auto savedXml = juce::XmlDocument::parse (folder.getChildFile ("My Take.xml"));
+    check (savedXml != nullptr && savedXml->getIntAttribute (ee::plugin::kStateVersionProp, -1) == ee::plugin::kStateVersion,
+           "a saved user preset carries the current version");
+    check (ee::plugin::stateVersionOf (ee::plugin::copyVersionedState (processor.apvts)) == ee::plugin::kStateVersion,
+           "...as does the tree a host is handed to store in a project");
+    check (ee::plugin::stateVersionOf (juce::ValueTree ("PARAMETERS")) == 0, "a tree with no stamp reads as version 0");
+
+    juce::ValueTree unstamped = processor.apvts.copyState();
+    unstamped.removeProperty (ee::plugin::kStateVersionProp, nullptr);
+    processor.apvts.replaceState (unstamped);
+    check (userBank.saveUser ("Restamped").wasOk(), "an unstamped state still saves");
+    const auto restamped = juce::XmlDocument::parse (folder.getChildFile ("Restamped.xml"));
+    check (restamped != nullptr && restamped->getIntAttribute (ee::plugin::kStateVersionProp, -1) == ee::plugin::kStateVersion,
+           "...and is stamped on the way out");
+
+    juce::MemoryBlock projectState;
+    processor.getStateInformation (projectState);
+    const auto projectXml = juce::AudioProcessor::getXmlFromBinary (projectState.getData(), static_cast<int> (projectState.getSize()));
+    check (projectXml != nullptr && projectXml->getIntAttribute (ee::plugin::kStateVersionProp, -1) == ee::plugin::kStateVersion,
+           "the real processor's getStateInformation writes it into a project");
+
+    // The other fourteen pedals cannot be instantiated from this binary, so the
+    // guard for them is that none writes its state without the stamp.
+    juce::StringArray bypassing;
+    for (const auto& pluginDir : juce::File (EE_PLUGINS_DIR).findChildFiles (juce::File::findDirectories, false))
+    {
+        const auto source = pluginDir.getChildFile ("src/PluginProcessor.cpp");
+        if (source.existsAsFile() && source.loadFileAsString().contains ("apvts.copyState()"))
+            bypassing.add (pluginDir.getFileName());
+    }
+    check (bypassing.isEmpty(), "no pedal writes its state with a bare copyState()"
+                                    + (bypassing.isEmpty() ? juce::String() : " - " + bypassing.joinIntoString (", ")));
+
+    // Every factory preset in the tree, not just the delay's: they are source
+    // XML that a person edits or that Save to Factory writes, so a hand-made one
+    // is the way an unstamped file gets into a release.
+    int factoryFiles = 0;
+    juce::StringArray unstampedFactory;
+    const juce::File pluginsDir { EE_PLUGINS_DIR };
+    for (const auto& pluginDir : pluginsDir.findChildFiles (juce::File::findDirectories, false))
+    {
+        for (const auto& file : pluginDir.getChildFile ("presets").findChildFiles (juce::File::findFiles, false, "*.xml"))
+        {
+            ++factoryFiles;
+            const auto xml = juce::XmlDocument::parse (file);
+            if (xml == nullptr || xml->getIntAttribute (ee::plugin::kStateVersionProp, -1) != ee::plugin::kStateVersion)
+                unstampedFactory.add (file.getRelativePathFrom (pluginsDir));
+        }
+    }
+
+    check (factoryFiles > 0, "the factory preset sources are found (" + juce::String (factoryFiles) + " files)");
+    check (unstampedFactory.isEmpty(), "every one carries the current version"
+                                           + (unstampedFactory.isEmpty() ? juce::String() : " - missing: " + unstampedFactory.joinIntoString (", ")));
 
     std::printf ("\nStepping walks the factory bank and then the user one:\n");
 

@@ -7,6 +7,7 @@
 #include "ee/plugin/LfoBreakpointJson.h"
 #include "ee/plugin/ModRoutingJson.h"
 #include "ee/plugin/ParamText.h"
+#include "ee/plugin/StateVersion.h"
 #include "BitBitGrainWebEditor.h"
 
 #include <cmath>
@@ -703,8 +704,8 @@ juce::String BitBitGrainProcessor::sizeReadout() const
     // shows seconds) is duplicated here rather than reused, since clamping
     // has to happen on the raw ms value before that decision.
     namespace cfg = ee::dsp::config;
-    const float ms = juce::jlimit (cfg::kMinGrainMs, cfg::kMaxGrainMs,
-                                   sizeMap.value (sizeParam->load(), true, currentBpm()));
+    const float ms =
+        juce::jlimit (cfg::kMinGrainMs, cfg::kMaxGrainMs, sizeMap.value (sizeParam->load(), true, currentBpm()));
     return ms >= 1000.0f ? juce::String (ms * 0.001f, 2) + " s" : juce::String (juce::roundToInt (ms)) + " ms";
 }
 
@@ -814,9 +815,9 @@ void BitBitGrainProcessor::refreshLfoStateFromApvts()
 }
 
 void BitBitGrainProcessor::syncToggled (const char* paramID,
-                                      std::atomic<float>& freeSlot,
-                                      std::atomic<float>& syncSlot,
-                                      const std::atomic<float>* syncFlag)
+                                        std::atomic<float>& freeSlot,
+                                        std::atomic<float>& syncSlot,
+                                        const std::atomic<float>* syncFlag)
 {
     // The bool has already flipped to its new state by the time this click
     // callback runs.
@@ -1481,7 +1482,7 @@ juce::AudioProcessorEditor* BitBitGrainProcessor::createEditor()
 
 void BitBitGrainProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    auto state = apvts.copyState();
+    auto state = ee::plugin::copyVersionedState (apvts);
 
     state.setProperty (kSizeFreeProp, sizeFree01.load(), nullptr);
     state.setProperty (kSizeSyncProp, sizeSync01.load(), nullptr);

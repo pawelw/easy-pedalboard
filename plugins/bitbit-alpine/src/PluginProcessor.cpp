@@ -19,6 +19,7 @@
 #include "ee/plugin/Bypass.h"
 #include "ee/plugin/ParamRange.h"
 #include "ee/plugin/ParamText.h"
+#include "ee/plugin/StateVersion.h"
 
 #include "ee/fx/DelayTimeMap.h"
 #include "ee/fx/ModulationControls.h"
@@ -462,7 +463,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
     const auto timeAttributes =
         Attributes()
             .withStringFromValueFunction (
-                [] (float v, int) { return ee::bitbitdelay::timeMap().toText (v, true, ee::bitbitdelay::kReferenceBpm); })
+                [] (float v, int)
+                { return ee::bitbitdelay::timeMap().toText (v, true, ee::bitbitdelay::kReferenceBpm); })
             .withMeta (true);
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::dlyLeftTime, 1 }, "Left Time",
                                                              juce::NormalisableRange<float> (0.0f, 1.0f),
@@ -996,7 +998,7 @@ juce::AudioProcessorEditor* BitBitAlpineProcessor::createEditor()
 
 void BitBitAlpineProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    if (auto xml = ee::plugin::copyVersionedState (apvts).createXml())
         copyXmlToBinary (*xml, destData);
 }
 

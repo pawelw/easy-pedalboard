@@ -4,6 +4,7 @@
 
 #include "ee/plugin/Bypass.h"
 #include "ee/plugin/ParamText.h"
+#include "ee/plugin/StateVersion.h"
 #include "ee/ui/PedalEditor.h"
 
 namespace
@@ -304,7 +305,7 @@ juce::AudioProcessorEditor* BitBitTremPanProcessor::createEditor()
 
 void BitBitTremPanProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    auto state = apvts.copyState();
+    auto state = ee::plugin::copyVersionedState (apvts);
     state.setProperty (kStoredSyncRateProp, storedSyncRate01.load(), nullptr);
     state.setProperty (kStoredFreeRateProp, storedFreeRate01.load(), nullptr);
     if (auto xml = state.createXml())

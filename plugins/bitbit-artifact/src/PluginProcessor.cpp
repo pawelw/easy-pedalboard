@@ -8,6 +8,7 @@
 #include "ee/dsp/RustConfig.h"
 #include "ee/dsp/TubeDriveConfig.h"
 #include "ee/plugin/ParamText.h"
+#include "ee/plugin/StateVersion.h"
 
 #include <cmath>
 
@@ -302,7 +303,7 @@ juce::AudioProcessorEditor* BitBitArtifactProcessor::createEditor()
 
 void BitBitArtifactProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    if (auto xml = ee::plugin::copyVersionedState (apvts).createXml())
         copyXmlToBinary (*xml, destData);
 }
 

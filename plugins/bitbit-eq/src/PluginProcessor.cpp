@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include "ee/plugin/Bypass.h"
+#include "ee/plugin/StateVersion.h"
 #include "ee/ui/PedalEditor.h"
 
 namespace
@@ -38,11 +39,11 @@ juce::String hiCutToText (float hz, int)
 // Band parameter IDs, low to high, in the same order as
 // BitBitEqProcessor::kBandFrequencies.
 constexpr std::array<const char*, BitBitEqProcessor::kNumBands> kBandIDs { { "b100", "b200", "b400", "b800", "b1k6",
-                                                                           "b3k2", "b6k4" } };
+                                                                             "b3k2", "b6k4" } };
 
 // Captions printed under each fader.
 constexpr std::array<const char*, BitBitEqProcessor::kNumBands> kBandCaptions { { "100", "200", "400", "800", "1.6k",
-                                                                                "3.2k", "6.4k" } };
+                                                                                  "3.2k", "6.4k" } };
 
 // Broad bells that overlap from one band to the next, the way the GE-7's do.
 constexpr float kBandQ = 1.4f;
@@ -317,7 +318,7 @@ juce::AudioProcessorEditor* BitBitEqProcessor::createEditor()
 
 void BitBitEqProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    if (auto xml = apvts.copyState().createXml())
+    if (auto xml = ee::plugin::copyVersionedState (apvts).createXml())
         copyXmlToBinary (*xml, destData);
 }
 

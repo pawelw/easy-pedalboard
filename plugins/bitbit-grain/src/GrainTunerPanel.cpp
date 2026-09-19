@@ -38,7 +38,7 @@ GrainTunerPanel::GrainTunerPanel (const ee::dsp::GrainerTuning& initial, ApplyFn
         slider->setTextBoxStyle (juce::Slider::TextBoxRight, false, 68, 18);
         slider->setValue (tuning.*entry.member, juce::dontSendNotification);
 
-        float ee::dsp::GrainerTuning::*member = entry.member;
+        float ee::dsp::GrainerTuning::* member = entry.member;
         slider->onValueChange = [this, member, raw = slider.get()]
         {
             tuning.*member = static_cast<float> (raw->getValue());

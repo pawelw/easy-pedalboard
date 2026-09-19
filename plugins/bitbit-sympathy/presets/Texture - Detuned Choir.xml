@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<PARAMETERS>
+<PARAMETERS stateVersion="1">
   <PARAM id="on" value="1"/>
   <PARAM id="tune.mode" value="5"/>
   <PARAM id="tune.key" value="9"/>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<PARAMETERS>
+<PARAMETERS stateVersion="1">
   <PARAM id="ltime" value="0.35714286"/>
   <PARAM id="rtime" value="0.35714286"/>
   <PARAM id="sync" value="1"/>

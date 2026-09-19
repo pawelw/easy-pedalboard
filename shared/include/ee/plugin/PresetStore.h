@@ -2,6 +2,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "ee/plugin/StateVersion.h"
+
 namespace ee::plugin
 {
 
@@ -298,7 +300,7 @@ private:
 
     bool write (const juce::File& file) const
     {
-        const auto xml = state.copyState().createXml();
+        const auto xml = copyVersionedState (state).createXml();
         return xml != nullptr && xml->writeTo (file);
     }
 

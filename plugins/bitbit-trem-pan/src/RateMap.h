@@ -10,8 +10,7 @@
 namespace ee::trempan
 {
 
-inline constexpr ee::dsp::RateMap kMap { ee::dsp::tremolo::kRateMinPeriodMs,
-                                         ee::dsp::tremolo::kRateMaxPeriodMs,
+inline constexpr ee::dsp::RateMap kMap { ee::dsp::tremolo::kRateMinPeriodMs, ee::dsp::tremolo::kRateMaxPeriodMs,
                                          ee::dsp::tremolo::kRateSkewCentreMs };
 
 inline juce::NormalisableRange<float> freePeriodMsRange()

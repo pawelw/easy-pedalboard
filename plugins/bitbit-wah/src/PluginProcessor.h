@@ -7,8 +7,7 @@
 
 #include "ee/dsp/AutoWah.h"
 
-class BitBitWahProcessor : public juce::AudioProcessor,
-                         private juce::AudioProcessorValueTreeState::Listener
+class BitBitWahProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener
 {
 public:
     BitBitWahProcessor();

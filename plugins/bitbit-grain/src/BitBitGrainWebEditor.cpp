@@ -106,8 +106,8 @@ BitBitGrainWebEditor::BitBitGrainWebEditor (BitBitGrainProcessor& p)
                                        [this] (const juce::Array<juce::var>& args,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
                                        {
-                                           processorRef.setLfoBreakpointsFromJson (
-                                               args.size() >= 1 ? args[0].toString() : juce::String());
+                                           processorRef.setLfoBreakpointsFromJson (args.size() >= 1 ? args[0].toString()
+                                                                                                    : juce::String());
                                            complete (true);
                                        })
                   // The drag-and-drop modulation routing: same shape as the
@@ -121,8 +121,8 @@ BitBitGrainWebEditor::BitBitGrainWebEditor (BitBitGrainProcessor& p)
                                        [this] (const juce::Array<juce::var>& args,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
                                        {
-                                           processorRef.setLfoRoutingFromJson (
-                                               args.size() >= 1 ? args[0].toString() : juce::String());
+                                           processorRef.setLfoRoutingFromJson (args.size() >= 1 ? args[0].toString()
+                                                                                                : juce::String());
                                            complete (true);
                                        })
                   .withResourceProvider ([this] (const auto& url) { return getResource (url); },
