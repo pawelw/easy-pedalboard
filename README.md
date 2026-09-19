@@ -1,6 +1,4 @@
-# Synth Peak
-
-[synthpeak.com](https://synthpeak.com)
+# BitBit Audio
 
 Guitar pedal-style audio plugins for Ableton Live, built with JUCE. Designed to
 sit after an amp sim like NAM.
@@ -214,7 +212,7 @@ draw, and nothing is drawn.
 The preset bar in the header browses two banks. The **factory** presets are
 compiled into the plugin and are the same on every machine; **User Presets** is
 the cascade at the top of the list, and holds whatever you have saved yourself,
-in `~/Library/Peak/Peak Delay/Presets`. The arrows step
+in `~/Library/BitBit/BitBit Delay/Presets`. The arrows step
 through both as one list, factory first.
 
 The save button opens a box to name the preset. Saving always writes to your own
@@ -1140,7 +1138,7 @@ Then give it a `plugins/peak-drive/CMakeLists.txt`:
 peak_add_plugin(PeakDrive
     CODE       Pdrv
     PRODUCT    "Peak Drive"
-    BUNDLE     com.synthpeak.peakdrive
+    BUNDLE     com.bitbitaudio.drive
     CATEGORIES "Fx Distortion"
 )
 ```

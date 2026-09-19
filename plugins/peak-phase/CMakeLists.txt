@@ -1,6 +1,6 @@
 peak_add_plugin(PeakPhase
-    CODE       Pphs
-    PRODUCT    "Peak Phase"
-    BUNDLE     com.synthpeak.peakphase
+    CODE       Bphs
+    PRODUCT    "BitBit Phase"
+    BUNDLE     com.bitbitaudio.phase
     CATEGORIES "Fx Modulation"
 )

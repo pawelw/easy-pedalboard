@@ -1,6 +1,6 @@
 peak_add_plugin(PeakOverdrive
-    CODE       Povd
-    PRODUCT    "Peak Overdrive"
-    BUNDLE     com.synthpeak.peakoverdrive
+    CODE       Bovd
+    PRODUCT    "BitBit Overdrive"
+    BUNDLE     com.bitbitaudio.overdrive
     CATEGORIES "Fx Distortion"
 )

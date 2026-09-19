@@ -1,7 +1,7 @@
 peak_add_plugin(PeakAlpine
-    CODE       Palp
-    PRODUCT    "Peak Alpine"
-    BUNDLE     com.synthpeak.peakalpine
+    CODE       Balp
+    PRODUCT    "BitBit Alpine"
+    BUNDLE     com.bitbitaudio.alpine
     CATEGORIES "Fx Delay Modulation Reverb"
     SOURCES    src/PeakAlpineWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra juce::juce_audio_formats ee_tape_assets

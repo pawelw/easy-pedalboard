@@ -211,7 +211,7 @@ void PeakSpringProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 juce::AudioProcessorEditor* PeakSpringProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Spring";
+    spec.name = "BitBit Spring";
     spec.tagline = "Dispersive spring tank";
     spec.version = "v" JucePlugin_VersionString;
 

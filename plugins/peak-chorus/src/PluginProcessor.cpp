@@ -176,7 +176,7 @@ void PeakChorusProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::
 juce::AudioProcessorEditor* PeakChorusProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Chorus";
+    spec.name = "BitBit Chorus";
     spec.version = "v" JucePlugin_VersionString;
 
     spec.knobs = {

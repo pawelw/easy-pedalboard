@@ -5,7 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_DIR="$ROOT/build-universal"
 DIST="$ROOT/dist"
-STAGE="$DIST/SynthPeak"
+STAGE="$DIST/BitBit"
 
 cmake -B "$BUILD_DIR" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
@@ -20,9 +20,21 @@ mkdir -p "$STAGE"
 
 # "<artefacts dir>:<product name>" for every pedal in the repo.
 PLUGINS=(
-    "peak-reverb/PeakReverb_artefacts:Peak Reverb"
-    "peak-delay/PeakDelay_artefacts:Peak Delay"
-    "peak-eq/PeakEq_artefacts:Peak EQ"
+    "peak-alpine/PeakAlpine_artefacts:BitBit Alpine"
+    "peak-artifact/PeakArtifact_artefacts:BitBit Artifact"
+    "peak-chorus/PeakChorus_artefacts:BitBit Chorus"
+    "peak-delay/PeakDelay_artefacts:BitBit Delay"
+    "peak-eq/PeakEq_artefacts:BitBit EQ"
+    "peak-grain/PeakGrain_artefacts:BitBit Grains"
+    "peak-modulation/PeakModulation_artefacts:BitBit Modulation"
+    "peak-overdrive/PeakOverdrive_artefacts:BitBit Overdrive"
+    "peak-phase/PeakPhase_artefacts:BitBit Phase"
+    "peak-reverb/PeakReverb_artefacts:BitBit Reverb"
+    "peak-spring/PeakSpring_artefacts:BitBit Spring"
+    "peak-sympathy/PeakSympathy_artefacts:BitBit Sympathy"
+    "peak-tape/PeakTape_artefacts:BitBit Tape"
+    "peak-trem-pan/PeakTremPan_artefacts:BitBit Trem-Pan"
+    "peak-wah/PeakWah_artefacts:BitBit Wah"
 )
 
 for entry in "${PLUGINS[@]}"; do
@@ -44,8 +56,8 @@ while IFS= read -r bundle; do
 done < <(find "$STAGE" -maxdepth 1 -mindepth 1)
 
 cat > "$STAGE/INSTALL.txt" <<'EOF'
-Synth Peak - install on macOS
-=============================
+BitBit Audio - install on macOS
+===============================
 
 1. Copy the bundles into place:
 
@@ -67,9 +79,9 @@ Synth Peak - install on macOS
 Universal binaries: run on both Apple Silicon and Intel.
 EOF
 
-ZIP="$DIST/SynthPeak-macOS.zip"
+ZIP="$DIST/BitBit-macOS.zip"
 rm -f "$ZIP"
-(cd "$DIST" && zip -qr "$(basename "$ZIP")" "SynthPeak")
+(cd "$DIST" && zip -qr "$(basename "$ZIP")" "BitBit")
 
 echo
 echo "Architectures:"

@@ -255,7 +255,7 @@ public:
     juce::File userDirectory() const
     {
         return juce::File::getSpecialLocation (juce::File::userApplicationDataDirectory)
-            .getChildFile ("Peak")
+            .getChildFile ("BitBit")
             .getChildFile (product)
             .getChildFile ("Presets");
     }

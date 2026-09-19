@@ -335,7 +335,7 @@ function Header() {
       <div className="pg-header__row">
         <div className="pg-header__brand">
           <Logo size={32} />
-          <h1 className="pg-header__title">Peak Grain</h1>
+          <h1 className="pg-header__title">BitBit Grains</h1>
         </div>
         <div className="pg-header__right">
           <div className="pg-header__level">

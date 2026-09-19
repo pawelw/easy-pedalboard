@@ -1,7 +1,7 @@
 peak_add_plugin(PeakGrain
-    CODE       Pgrn
-    PRODUCT    "Peak Grain"
-    BUNDLE     com.synthpeak.peakgrain
+    CODE       Bgrn
+    PRODUCT    "BitBit Grains"
+    BUNDLE     com.bitbitaudio.grains
     CATEGORIES "Fx Delay"
     SOURCES    src/PeakGrainWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra

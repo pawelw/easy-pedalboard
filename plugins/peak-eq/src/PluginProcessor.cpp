@@ -276,7 +276,7 @@ void PeakEqProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Midi
 juce::AudioProcessorEditor* PeakEqProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak EQ";
+    spec.name = "BitBit EQ";
     spec.tagline = "Seven-band graphic EQ";
     spec.version = "v" JucePlugin_VersionString;
 

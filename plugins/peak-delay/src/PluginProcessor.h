@@ -50,7 +50,7 @@ public:
         bridge takes a reference to it - see ee/plugin/PresetBridge.h, which is
         the whole of what a face needs to browse and save. Declared after apvts
         so the tree it reads and writes is already built. */
-    ee::plugin::PresetStore presets { apvts, "Peak Delay", EE_FACTORY_PRESETS };
+    ee::plugin::PresetStore presets { apvts, "BitBit Delay", EE_FACTORY_PRESETS };
 
     /** The Filter section's travel, shared with the readouts and with Peak EQ,
         whose Low Cut / High Cut these are the same two filters as. Public

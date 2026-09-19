@@ -1,6 +1,6 @@
 peak_add_plugin(PeakChorus
-    CODE       Pchr
-    PRODUCT    "Peak Chorus"
-    BUNDLE     com.synthpeak.peakchorus
+    CODE       Bchr
+    PRODUCT    "BitBit Chorus"
+    BUNDLE     com.bitbitaudio.chorus
     CATEGORIES "Fx Modulation"
 )

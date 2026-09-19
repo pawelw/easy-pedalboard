@@ -1,7 +1,7 @@
 peak_add_plugin(PeakArtifact
-    CODE       Part
-    PRODUCT    "Peak Artifact"
-    BUNDLE     com.synthpeak.peakartifact
+    CODE       Bart
+    PRODUCT    "BitBit Artifact"
+    BUNDLE     com.bitbitaudio.artifact
     CATEGORIES "Fx Distortion"
     SOURCES    src/PeakArtifactWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra

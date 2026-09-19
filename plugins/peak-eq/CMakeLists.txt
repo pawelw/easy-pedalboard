@@ -1,7 +1,7 @@
 peak_add_plugin(PeakEq
-    CODE       Pqgr
-    PRODUCT    "Peak EQ"
-    BUNDLE     com.synthpeak.peakeq
+    CODE       Bqgr
+    PRODUCT    "BitBit EQ"
+    BUNDLE     com.bitbitaudio.eq
     CATEGORIES "Fx EQ"
     LIBS       juce::juce_dsp
 )

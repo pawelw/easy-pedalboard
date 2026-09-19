@@ -55,7 +55,7 @@ public:
 
     /** Both preset banks. Public because the editor's preset bar takes a
         reference - see ee/plugin/PresetStore.h. */
-    ee::plugin::PresetStore presets { apvts, "Peak Sympathy", EE_FACTORY_PRESETS };
+    ee::plugin::PresetStore presets { apvts, "BitBit Sympathy", EE_FACTORY_PRESETS };
 
     /** The key-name the bank is actually tuned to right now: the Key knob's
         choice normally, or the pitch tracker's estimate while Learn is held.

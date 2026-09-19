@@ -140,7 +140,7 @@ void PeakOverdriveProcessor::processBlock (juce::AudioBuffer<float>& buffer, juc
 juce::AudioProcessorEditor* PeakOverdriveProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Overdrive";
+    spec.name = "BitBit Overdrive";
     spec.version = "v" JucePlugin_VersionString;
 
     // Level and Drive on top, Tone centred in a row of its own below - the small

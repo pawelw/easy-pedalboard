@@ -158,7 +158,7 @@ void PeakPhaseProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::M
 juce::AudioProcessorEditor* PeakPhaseProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Phase";
+    spec.name = "BitBit Phase";
     spec.version = "v" JucePlugin_VersionString;
 
     spec.knobs = {

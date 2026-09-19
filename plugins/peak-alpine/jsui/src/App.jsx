@@ -141,7 +141,7 @@ export default function App() {
   return (
     <div className="page">
       <Card
-        title="Peak Alpine"
+        title="BitBit Alpine"
         subtitle="Artifact / Mod / Delay / Reverb machine"
         subtitlePlacement="below"
         headerCenter={<JucePresetBar variant="separated" />}

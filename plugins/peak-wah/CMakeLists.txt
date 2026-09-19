@@ -1,7 +1,7 @@
 peak_add_plugin(PeakWah
-    CODE       Pwah
-    PRODUCT    "Peak Wah"
-    BUNDLE     com.synthpeak.peakwah
+    CODE       Bwah
+    PRODUCT    "BitBit Wah"
+    BUNDLE     com.bitbitaudio.wah
     CATEGORIES "Fx Filter"
     SOURCES    src/PeakWahWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra

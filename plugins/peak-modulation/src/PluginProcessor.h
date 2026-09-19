@@ -58,7 +58,7 @@ public:
 
     /** Both preset banks. Public because the editor's bridge takes a reference
         to it - see ee/plugin/PresetBridge.h. */
-    ee::plugin::PresetStore presets { apvts, "Peak Modulation", EE_FACTORY_PRESETS };
+    ee::plugin::PresetStore presets { apvts, "BitBit Modulation", EE_FACTORY_PRESETS };
 
     /** The Filter engine's Time knob and the Tremolo's Rate knob as the face
         prints them: the LFO period in ms when free, the note value when synced.

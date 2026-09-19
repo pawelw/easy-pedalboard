@@ -1,6 +1,6 @@
 peak_add_plugin(PeakSpring
-    CODE       Pspr
-    PRODUCT    "Peak Spring"
-    BUNDLE     com.synthpeak.peakspring
+    CODE       Bspr
+    PRODUCT    "BitBit Spring"
+    BUNDLE     com.bitbitaudio.spring
     CATEGORIES "Fx Reverb"
 )

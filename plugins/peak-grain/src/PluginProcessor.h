@@ -58,7 +58,7 @@ public:
     /** Both preset banks. Public because the web editor's bridge takes a
         reference to it - see ee/plugin/PresetBridge.h. Declared after apvts so
         the tree it reads and writes is already built. */
-    ee::plugin::PresetStore presets { apvts, "Peak Grain", EE_FACTORY_PRESETS };
+    ee::plugin::PresetStore presets { apvts, "BitBit Grains", EE_FACTORY_PRESETS };
 
     /** Text under Size/Density/Window/the two Delay time knobs: the division
         label when synced, or the free-running reading otherwise. Public -

@@ -1,4 +1,4 @@
-# Synth Peak — working notes
+# BitBit Audio — working notes
 
 Fifteen JUCE audio plugins ("pedals") sharing one DSP library and one data-driven UI
 framework. `README.md` is the user-facing manual (what each pedal does, how to
@@ -139,7 +139,7 @@ the real processor and drives it the way a host does - `--sr`, `--block`,
 `--reprepare` - and prints the output level per second. `ee_au_host` goes one
 further and loads an *installed* component through JUCE's AU host, which is the
 only way to exercise the AU wrapper itself. Address it by identifier
-(`AudioUnit:Effects/aufx,Pgrn,Peak`) rather than by name: a full AU scan loads
+(`AudioUnit:Effects/aufx,Bgrn,BtBt`) rather than by name: a full AU scan loads
 every third-party component into the process and at least one on this machine
 brings it down with a SIGBUS.
 
@@ -299,7 +299,7 @@ preset store, and it is meant to be adopted by every pedal. Two banks:
   per-pedal to register: drop a file in the folder and the next build ships it
   (the glob is `CONFIGURE_DEPENDS`). Read-only at runtime, by design.
 - **User** - one XML file per preset under
-  `~/Library/Peak/<Product>/Presets` (JUCE's `userApplicationDataDirectory` is `~/Library` on macOS, not Application Support).
+  `~/Library/BitBit/<Product>/Presets` (JUCE's `userApplicationDataDirectory` is `~/Library` on macOS, not Application Support).
 
 **A factory preset's category is the prefix in its filename.** `Modulated -
 Deep Wow.xml` is filed under a "Modulated" column in the picker and shown there

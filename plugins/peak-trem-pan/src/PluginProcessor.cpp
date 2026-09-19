@@ -259,7 +259,7 @@ void PeakTremPanProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 juce::AudioProcessorEditor* PeakTremPanProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Trem & Pan";
+    spec.name = "BitBit Trem & Pan";
     spec.version = "v" JucePlugin_VersionString;
 
     spec.knobs = {

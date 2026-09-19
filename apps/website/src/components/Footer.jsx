@@ -41,7 +41,7 @@ export default function Footer() {
       <div className="bb-footer__bottom">
         <span>© 2026 BitBit Audio</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <Logo width={24} height={18} stroke="#6c8288" strokeWidth={1.4} />
+          <Logo size={28} color="#6c8288" />
           BitBit Audio
         </span>
       </div>

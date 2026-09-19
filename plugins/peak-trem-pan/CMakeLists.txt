@@ -1,6 +1,6 @@
 peak_add_plugin(PeakTremPan
-    CODE       Ptpn
-    PRODUCT    "Peak Trem-Pan"
-    BUNDLE     com.synthpeak.peaktrempan
+    CODE       Btpn
+    PRODUCT    "BitBit Trem-Pan"
+    BUNDLE     com.bitbitaudio.trempan
     CATEGORIES "Fx Modulation"
 )

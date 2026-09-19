@@ -83,7 +83,7 @@ public:
     /** Both preset banks. Public because the editor's bridge takes a reference
         to it - see ee/plugin/PresetBridge.h. Declared after apvts so the tree it
         reads and writes is already built. */
-    ee::plugin::PresetStore presets { apvts, "Peak Alpine", EE_FACTORY_PRESETS };
+    ee::plugin::PresetStore presets { apvts, "BitBit Alpine", EE_FACTORY_PRESETS };
 
     /** The Delay module's TapScope feed - the same two numbers Peak Delay's
         face reads, from a second instance of the same meter. */

@@ -49,8 +49,8 @@ endfunction()
 
 # peak_add_plugin(<Target>
 #     CODE        <four-letter plugin code>
-#     PRODUCT     <"Peak Something">
-#     BUNDLE      <com.synthpeak.something>
+#     PRODUCT     <"BitBit Something">
+#     BUNDLE      <com.bitbitaudio.something>
 #     CATEGORIES  <VST3 category words>
 #     [SOURCES    <extra .cpp beyond src/PluginProcessor.cpp>]
 #     [LIBS       <extra link targets beyond ee_shared>]
@@ -85,9 +85,9 @@ function(peak_add_plugin TARGET)
     separate_arguments(categories UNIX_COMMAND "${ARG_CATEGORIES}")
 
     juce_add_plugin(${TARGET}
-        COMPANY_NAME            "Synth Peak"
+        COMPANY_NAME            "BitBit Audio"
         BUNDLE_ID               ${ARG_BUNDLE}
-        PLUGIN_MANUFACTURER_CODE Peak
+        PLUGIN_MANUFACTURER_CODE BtBt
         PLUGIN_CODE             ${ARG_CODE}
         FORMATS                 ${formats}
         PRODUCT_NAME            ${ARG_PRODUCT}

@@ -1,7 +1,7 @@
 peak_add_plugin(PeakDelay
-    CODE       Pdly
-    PRODUCT    "Peak Delay"
-    BUNDLE     com.synthpeak.peakdelay
+    CODE       Bdly
+    PRODUCT    "BitBit Delay"
+    BUNDLE     com.bitbitaudio.delay
     CATEGORIES "Fx Delay"
     SOURCES    src/PeakDelayWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra

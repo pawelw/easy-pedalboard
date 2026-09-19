@@ -11,7 +11,7 @@ export default function App() {
 
   return (
     <div className="page">
-      <Card title="Peak Wah" subtitle="Envelope Filter" width={566} headerRight={<PresetBar />} showLogo={false}>
+      <Card title="BitBit Wah" subtitle="Envelope Filter" width={566} headerRight={<PresetBar />} showLogo={false}>
         <div className="pw-board">
           <div className="pw-grid8">
             <JuceKnob parameterId="mix" caption="Mix" size={92} />

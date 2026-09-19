@@ -388,7 +388,7 @@ void PeakSympathyProcessor::parameterChanged (const juce::String& id, float newV
 juce::AudioProcessorEditor* PeakSympathyProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Sympathy";
+    spec.name = "BitBit Sympathy";
     spec.tagline = "Sixteen tuned strings ring behind the player";
     spec.version = "v" JucePlugin_VersionString;
 

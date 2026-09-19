@@ -5,7 +5,7 @@ export default function Nav() {
   return (
     <nav className="bb-nav">
       <Link to="/" className="bb-nav__brand">
-        <Logo />
+        <Logo size={46} />
         <span>BitBit Audio</span>
       </Link>
       <div className="bb-nav__links">

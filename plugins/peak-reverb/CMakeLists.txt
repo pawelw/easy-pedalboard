@@ -1,7 +1,7 @@
 peak_add_plugin(PeakReverb
-    CODE       Prvb
-    PRODUCT    "Peak Reverb"
-    BUNDLE     com.synthpeak.peakreverb
+    CODE       Brvb
+    PRODUCT    "BitBit Reverb"
+    BUNDLE     com.bitbitaudio.reverb
     CATEGORIES "Fx Reverb"
     SOURCES    src/PeakReverbWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra

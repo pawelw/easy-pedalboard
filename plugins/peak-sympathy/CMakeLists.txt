@@ -1,6 +1,6 @@
 peak_add_plugin(PeakSympathy
-    CODE       Psym
-    PRODUCT    "Peak Sympathy"
-    BUNDLE     com.synthpeak.peaksympathy
+    CODE       Bsym
+    PRODUCT    "BitBit Sympathy"
+    BUNDLE     com.bitbitaudio.sympathy
     CATEGORIES "Fx Reverb"
 )

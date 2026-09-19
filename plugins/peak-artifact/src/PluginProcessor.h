@@ -52,7 +52,7 @@ public:
 
     /** Both preset banks. Public because the editor's bridge takes a reference
         to it - see ee/plugin/PresetBridge.h. */
-    ee::plugin::PresetStore presets { apvts, "Peak Artifact", EE_FACTORY_PRESETS };
+    ee::plugin::PresetStore presets { apvts, "BitBit Artifact", EE_FACTORY_PRESETS };
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();

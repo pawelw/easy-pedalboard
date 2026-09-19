@@ -35,7 +35,7 @@ export default function App() {
           tokens.css's [data-pui-theme="onyx"] block). */}
       {/* 568 + the link bracket's own column - see --pd-link-col. */}
       <Card
-        title="Peak Delay"
+        title="BitBit Delay"
         headerCenter={<JucePresetBar variant="separated" />}
         headerRight={<HeaderLevels />}
         className="pd-card"

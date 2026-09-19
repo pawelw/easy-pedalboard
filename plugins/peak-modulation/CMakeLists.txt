@@ -1,7 +1,7 @@
 peak_add_plugin(PeakModulation
-    CODE       Pmod
-    PRODUCT    "Peak Modulation"
-    BUNDLE     com.synthpeak.peakmodulation
+    CODE       Bmod
+    PRODUCT    "BitBit Modulation"
+    BUNDLE     com.bitbitaudio.modulation
     CATEGORIES "Fx Modulation"
     SOURCES    src/PeakModulationWebEditor.cpp
     LIBS       juce::juce_dsp juce::juce_gui_extra juce::juce_audio_formats ee_tape_assets

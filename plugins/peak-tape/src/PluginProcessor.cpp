@@ -223,7 +223,7 @@ void PeakTapeProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce::Mi
 juce::AudioProcessorEditor* PeakTapeProcessor::createEditor()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Tape";
+    spec.name = "BitBit Tape";
     spec.tagline = "Analogue warmth, wobble and wear";
     spec.version = "v" JucePlugin_VersionString;
 
