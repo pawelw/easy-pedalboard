@@ -71,7 +71,7 @@ export default function ModuleDetail({ module: mod, flip = false }) {
             Buy {mod.name}
           </a>
           <span className="bb-detail__buy-note">
-            Standalone plugin · the exact DSP that ships inside Alpine
+            Sold on its own · the exact DSP that ships inside Alpine
           </span>
         </div>
       </div>

@@ -57,8 +57,7 @@ public:
 
     /** `productName` is the folder the user bank lives in, so it should be the
         pedal's product name ("Peak Delay") rather than its target name. */
-    PresetStore (juce::AudioProcessorValueTreeState& stateToUse, juce::String productName,
-                 FactoryBank factoryBank = {})
+    PresetStore (juce::AudioProcessorValueTreeState& stateToUse, juce::String productName, FactoryBank factoryBank = {})
         : state (stateToUse), product (std::move (productName)), factory (factoryBank)
     {
         userDirectory().createDirectory();
@@ -125,14 +124,14 @@ public:
         // number, and against an unsigned count that converts to something
         // enormous and lands the arrows on an arbitrary preset instead of the
         // last one.
-        const int count = (int) all.size();
+        const int count = (int)all.size();
         const int from = indexOfCurrent (all);
 
         // Nothing selected yet: `next` lands on the first entry and `prev` on
         // the last, rather than both landing on the same arbitrary one.
         const int next = from < 0 ? (delta >= 0 ? 0 : count - 1) : ((from + delta) % count + count) % count;
 
-        load (all[(size_t) next].kind, all[(size_t) next].name);
+        load (all[(size_t)next].kind, all[(size_t)next].name);
     }
 
     /** The dice button: every knob to a random position, and nothing else.
@@ -264,7 +263,8 @@ public:
         instance of the same plugin may have saved something since. */
     void rescan()
     {
-        auto files = userDirectory().findChildFiles (juce::File::findFiles, false, "*" + juce::String (presetExtension));
+        auto files =
+            userDirectory().findChildFiles (juce::File::findFiles, false, "*" + juce::String (presetExtension));
 
         struct NameOrder
         {
@@ -294,10 +294,7 @@ private:
     /** Names are typed by a person and then used as a filename, so they are
         stripped of anything that would make one mean a different place on disk
         rather than a different preset. */
-    static juce::String sanitise (const juce::String& name)
-    {
-        return name.removeCharacters ("/\\:*?\"<>|").trim();
-    }
+    static juce::String sanitise (const juce::String& name) { return name.removeCharacters ("/\\:*?\"<>|").trim(); }
 
     bool write (const juce::File& file) const
     {
@@ -343,7 +340,7 @@ private:
     std::vector<Entry> flattened() const
     {
         std::vector<Entry> all;
-        all.reserve ((size_t) (factoryList.size() + userList.size()));
+        all.reserve ((size_t)(factoryList.size() + userList.size()));
 
         for (const auto& n : factoryList)
             all.push_back ({ Kind::factory, n });
@@ -361,7 +358,7 @@ private:
 
         for (size_t i = 0; i < all.size(); ++i)
             if (all[i].kind == selectedKind && all[i].name == selectedName)
-                return (int) i;
+                return (int)i;
 
         return -1;
     }
@@ -394,9 +391,10 @@ private:
 #define EE_FACTORY_PRESETS                                                                                             \
     ee::plugin::FactoryBank                                                                                            \
     {                                                                                                                  \
-        FactoryPresets::originalFilenames, FactoryPresets::namedResourceListSize, FactoryPresets::getNamedResource,     \
+        FactoryPresets::originalFilenames, FactoryPresets::namedResourceListSize, FactoryPresets::getNamedResource,    \
             FactoryPresets::namedResourceList                                                                          \
     }
 #else
-#define EE_FACTORY_PRESETS ee::plugin::FactoryBank {}
+#define EE_FACTORY_PRESETS                                                                                             \
+    ee::plugin::FactoryBank {}
 #endif

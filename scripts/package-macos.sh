@@ -44,9 +44,10 @@ for entry in "${PLUGINS[@]}"; do
     ARTEFACTS="$BUILD_DIR/plugins/${entry%%:*}/Release"
     NAME="${entry#*:}"
 
+    # Plugins only - the Standalone app builds (it is the dev loop) but is not
+    # sold, so it is deliberately not staged here. See docs/release-plan.md, D3.
     for item in "$ARTEFACTS/VST3/$NAME.vst3" \
-                "$ARTEFACTS/AU/$NAME.component" \
-                "$ARTEFACTS/Standalone/$NAME.app"; do
+                "$ARTEFACTS/AU/$NAME.component"; do
         [[ -e "$item" ]] && cp -R "$item" "$STAGE/"
     done
 done
@@ -66,7 +67,6 @@ BitBit Audio - install on macOS
 
      *.vst3       ->  ~/Library/Audio/Plug-Ins/VST3/
      *.component  ->  ~/Library/Audio/Plug-Ins/Components/
-     *.app        ->  anywhere (optional, for testing without a DAW)
 
 2. These builds are ad-hoc signed, not notarised, so macOS will refuse to load
    them until the quarantine flag is cleared. In Terminal:

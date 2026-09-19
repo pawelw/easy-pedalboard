@@ -202,10 +202,10 @@ export const GRAINS_PRESETS = [
 ];
 
 export const SPECS = [
-  ['Formats', 'VST3 · AU · AAX'],
+  ['Formats', 'VST3 · AU (macOS) · VST3 (Windows)'],
   ['macOS', '11+, Universal, Apple Silicon native'],
   ['Windows', '10+, 64-bit'],
-  ['Latency', '~6 ms, reported and compensated'],
+  ['Latency', 'Reported and compensated — 0–6 ms by product'],
   ['Refund window', '14 days'],
   ['Updates', 'Free'],
 ];
@@ -213,7 +213,6 @@ export const SPECS = [
 export const SPEC_CHIPS = [
   'VST3',
   'AU',
-  'AAX',
   'macOS 11+ Universal',
   'Windows 10+ 64-bit',
   '14-day refund',

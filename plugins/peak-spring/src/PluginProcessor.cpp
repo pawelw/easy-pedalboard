@@ -41,8 +41,8 @@ float shapedMix (float percent) noexcept
     the wet one. */
 float wetGainFor (float mix) noexcept
 {
-    const float makeup = juce::jmin (1.0f + (ee::dsp::spring::kMixMakeupAtFullWet - 1.0f) * mix,
-                                     ee::dsp::spring::kMixMakeupMax);
+    const float makeup =
+        juce::jmin (1.0f + (ee::dsp::spring::kMixMakeupAtFullWet - 1.0f) * mix, ee::dsp::spring::kMixMakeupMax);
     return std::sin (mix * juce::MathConstants<float>::halfPi) * makeup;
 }
 } // namespace
@@ -81,8 +81,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakSpringProcessor::createP
 
     // A real tank is a mono device. Stereo runs a second tank whose springs are
     // a few per cent different; mono runs one and feeds both outputs from it.
-    layout.add (
-        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kStereoID, 1 }, "Stereo", true));
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kStereoID, 1 }, "Stereo", true));
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kOnID, 1 }, "On", true));
 
