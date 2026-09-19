@@ -98,11 +98,57 @@ approval queue, and none of it can be compressed by working harder. G1 does not
 depend on G0, so run them side by side — but G2 (distribution) cannot begin
 until G0 is done, and AAX cannot even be *compiled* until the SDK lands.
 
+**The legal entity is the root of the tree.** Per 0.1 the Apple account is an
+Organization one, which needs a registered business and a D-U-N-S number — and
+the Windows certificate authority (0.4), Avid (0.2) and PACE (0.3) all verify an
+organisation too. Do that work once, under exactly the name that should appear
+in a Gatekeeper sheet and a SmartScreen publisher field, and every other item in
+G0 inherits it. Do it piecemeal and you end up with accounts under three
+slightly different names, which is a problem you cannot tidy up afterwards.
+
 ### 0.1 Apple
 
-- **Apple Developer Program** membership.
-- **Developer ID Application** and **Developer ID Installer** certificates.
-- An app-specific password or an API key for `notarytool`.
+**Decided: an Organization account, not an Individual one.** The name in the
+"verified developer" sheet macOS shows on first launch comes from the signing
+identity, and an Individual account signs under your own legal name. An
+Organization account signs as **BitBit Audio**, which is the whole point of the
+rebrand reaching the one screen every customer sees.
+
+That choice puts a **D-U-N-S number** on the critical path. It is free, it is
+issued by Dun & Bradstreet rather than by Apple, and it is an application with
+its own queue — so it is the single longest-lead item in G0 and should be
+started before anything else in this document. Apple's enrolment then verifies
+the legal entity against it, which means the business needs to exist, under the
+name you want shown, with matching details.
+
+This is also not a decision to revisit later: identity is what Gatekeeper
+reputation accrues against, and moving from an individual identity to an
+organisation one after launch means re-signing and re-notarising everything and
+starting that reputation over.
+
+Then, once enrolled:
+
+- **One Developer ID Application certificate.** It identifies the team, not a
+  product — every `.vst3`, `.component`, `.aaxplugin` and `.app` across all six
+  products is signed with the same one. There is no per-product certificate, and
+  Apple caps how many a team may hold anyway.
+- **One Developer ID Installer certificate**, for the `.pkg`. Different type,
+  same "one for everything" rule.
+- Bundle identifiers stay per-product (`com.bitbitaudio.alpine`, …) and do **not**
+  need registering as App IDs in the portal — that is an App Store and
+  entitlements concern, not a Developer ID one.
+- An **App Store Connect API key** for `notarytool`, in preference to an
+  app-specific password: it survives an Apple ID password change and is what CI
+  should hold.
+- Notarisation is per *submission*, not per product. One signed `.pkg` with
+  everything in it is one round trip and one ticket to staple.
+- **Kill `--timestamp=none`.** `scripts/package-macos.sh` passes it today. A
+  secure timestamp is what keeps already-sold binaries validating after the
+  certificate expires (they run on a five-year clock); without one, everything
+  shipped stops working on expiry day.
+- **Back up the private key** (`.p12`, in a secret store, plus a copy you
+  control). Notarised software survives certificate expiry. It does not survive
+  losing the key and having to become a new identity.
 
 ### 0.2 Avid / AAX
 
@@ -132,9 +178,10 @@ until G0 is done, and AAX cannot even be *compiled* until the SDK lands.
 
 ### 0.4 Windows
 
-- A **code-signing identity**. Since mid-2023 an OV certificate's private key has
-  to live in hardware or an HSM, so the realistic options are **Azure Trusted
-  Signing** (cheapest, but requires identity/organisation verification) or an
+- A **code-signing identity**, issued to the same legal entity as 0.1. Since
+  mid-2023 an OV certificate's private key has to live in hardware or an HSM, so
+  the realistic options are **Azure Trusted Signing** (cheapest, but requires
+  identity/organisation verification) or an
   EV token from DigiCert/Sectigo/SSL.com. Start this early: the verification
   step is the slow part.
 - A **Windows x64 build machine** — a physical box, a VM, or a
@@ -767,9 +814,10 @@ Make them generated, not hand-captured, so they never drift from the product:
 ```
 D1 ✅ BitBit     D2 ✅ six products     D3 ✅ macOS + Windows, VST3/AU/AAX/Standalone
 
-G0  paperwork  ──────────────┐   Apple · Avid + AAX SDK · PACE/iLok · Pro Tools ·
-    (start today, runs in    │   Windows cert · Windows runner · JUCE and VST3
-     parallel with G1)       │   licence audit · third-party notices
+G0  paperwork  ──────────────┐   legal entity + D-U-N-S → Apple Organization ·
+    (start today, runs in    │   Avid + AAX SDK · PACE/iLok · Pro Tools ·
+     parallel with G1)       │   Windows cert · Windows runner · JUCE and VST3
+                             │   licence audit · third-party notices
                              │
 G1  correctness              │   golden param file · CI on both platforms ·
     (needs nothing from G0)  │   pluginval 10 · auval strict · ASan/UBSan/TSan ·
