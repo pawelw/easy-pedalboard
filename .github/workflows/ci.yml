@@ -1,0 +1,108 @@
+# Two jobs, because they want different builds. `tests` uses the fast preset
+# (Standalone only, nothing installed) and is the quick signal. `validate` needs
+# the real VST3 and AU bundles installed, so it pays for the full build.
+#
+# Scope is the six shipping products (docs/release-plan.md, D2). The nine
+# single-engine pedals still compile through the tests job.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PRODUCTS: peak-alpine;peak-grain;peak-artifact;peak-modulation;peak-delay;peak-reverb
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+
+jobs:
+  tests:
+    name: DSP and preset suites
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - run: brew install ninja ccache
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-tests-${{ runner.os }}-${{ github.sha }}
+          restore-keys: ccache-tests-${{ runner.os }}-
+
+      # dev-check.sh already filters the two documented baseline failures, so
+      # its exit code means "something this commit did".
+      - name: scripts/dev-check.sh
+        run: scripts/dev-check.sh
+
+  validate:
+    name: pluginval and auval
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      # The WebView faces read their page out of jsui/dist at runtime, and dist
+      # is not committed - without this the editor opens on a notice and the GUI
+      # tests validate nothing.
+      - name: Build the WebView faces
+        run: |
+          npm ci
+          for p in peak-wah peak-delay peak-alpine peak-artifact peak-modulation peak-reverb peak-grain; do
+            npm run build --prefix "plugins/$p/jsui"
+          done
+
+      - run: brew install ninja ccache
+
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.CCACHE_DIR }}
+          key: ccache-validate-${{ runner.os }}-${{ github.sha }}
+          restore-keys: ccache-validate-${{ runner.os }}-
+
+      - name: Build VST3 + AU for the six products
+        run: |
+          cmake --preset dev -DEE_PLUGINS="$PRODUCTS" -DEE_BUILD_TESTS=OFF
+          cmake --build build
+
+      - name: Fetch pluginval
+        run: |
+          curl -sSL -o pluginval.zip \
+            https://github.com/Tracktion/pluginval/releases/latest/download/pluginval_macOS.zip
+          unzip -q pluginval.zip
+
+      # Strictness 10 is the whole point; anything less and the interesting
+      # classes of bug are simply not exercised.
+      - name: pluginval, strictness 10
+        run: |
+          status=0
+          for name in "BitBit Alpine" "BitBit Grains" "BitBit Artifact" \
+                      "BitBit Modulation" "BitBit Delay" "BitBit Reverb"; do
+            for spec in "VST3:vst3" "Components:component"; do
+              dir="${spec%%:*}"; ext="${spec##*:}"
+              path="$HOME/Library/Audio/Plug-Ins/$dir/$name.$ext"
+              echo "==> $name ($ext)"
+              ./pluginval.app/Contents/MacOS/pluginval \
+                --strictness-level 10 --timeout-ms 900000 --validate "$path" \
+                || status=1
+            done
+          done
+          exit $status
+
+      # arm64 only: GitHub's Apple Silicon runners have no Rosetta, so the
+      # x86_64 half of the universal-binary check stays a local/release step.
+      - name: auval, strict
+        run: |
+          status=0
+          for code in Balp Bgrn Bart Bmod Bdly Brvb; do
+            auval -strict -v aufx "$code" BtBt || status=1
+          done
+          exit $status

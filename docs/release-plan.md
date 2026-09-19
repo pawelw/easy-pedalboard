@@ -258,24 +258,42 @@ Before hunting bugs, freeze what must never change:
   though nothing reads it — the release where you need to migrate state is much
   easier if 1.0 already stamped a version.
 
-### 1.2 pluginval, in CI, at strictness 10
+### 1.2 pluginval, in CI, at strictness 10 — **macOS is green** ✅
 
-This is the highest-value single item in the whole plan and the tree has none of
-it. `pluginval` is what every host developer's bug report will otherwise tell you.
+Run 2026-09-19, pluginval 1.0.4, against the installed bundles:
 
-- Run it over **each of the six products** × every format at `--strictness-level 10`
-  `--validate-in-process` and `--repeat 5`, **on macOS and on Windows**.
-- `auval -strict -v aufx <CODE> <MFR>` for every AU, in **both architectures**
-  (`arch -arm64` and `arch -x86_64`) — the universal-binary trap in `CLAUDE.md`
-  means "it loads here" proves nothing.
+| | Result |
+| --- | --- |
+| **pluginval `--strictness-level 10`**, six products × VST3 + AU | **12/12 pass, 0 failures** |
+| **`auval -strict`**, six AUs × arm64 **and** x86_64 | **12/12 pass** |
+
+So the DSP and the JUCE wiring are in better shape than this gate assumed, and
+G1 is a much shorter gate than it looked. Two things came out of it, neither
+serious:
+
+- **`auval` warns on Decay** in Alpine and Reverb: *"Parameter did not retain
+  default value when set"*, printing the same number on both sides
+  (`0.443043`). That is the skewed `NormalisableRange` not round-tripping its
+  1.8 s default exactly. It is a warning, `auval` still passes, and the fix if
+  you want one is a default that lands on a representable point.
+- **Every plugin reports latency 0** in its default state — correct, because the
+  tape stage is off by default, but it also means *pluginval never exercised a
+  latency change*. That is exactly the gap G5.3 describes: latency has to be
+  re-reported when an engine changes, and nothing automated covers it yet.
+
+Still to do here:
+
+- **Windows**, once that build exists. Same sweep, same strictness.
+- `--repeat 5` and `--validate-in-process` passes, which catch state that leaks
+  between instantiations.
+- CI: `.github/workflows/ci.yml` now runs `scripts/dev-check.sh` in one job and
+  the build + pluginval + `auval` sweep in another, on every push. Note the
+  runner is Apple Silicon with no Rosetta, so the **x86_64 half of `auval` stays
+  a local or release-time step**.
 - **AAX has no offline validator** — `pluginval` does not cover it and Avid ships
   no equivalent, so the only test is Pro Tools itself. That asymmetry is part of
   why AAX is deferred, and it is the reason to add it as a separate small
   release once the same DSP has been beaten up through VST3 and AU.
-- Wire it all into GitHub Actions on **a macOS runner and a Windows runner**,
-  alongside `ee_dsp_tests`, `ee_preset_tests` and the `*_regress` checksums
-  (per-platform baselines — see G2.2). **There is no CI at all right now**, which
-  means the two known failures are the only ones anyone notices.
 
 ### 1.3 Sanitizers, because you already know there is a race
 
