@@ -271,11 +271,15 @@ So the DSP and the JUCE wiring are in better shape than this gate assumed, and
 G1 is a much shorter gate than it looked. Two things came out of it, neither
 serious:
 
-- **`auval` warns on Decay** in Alpine and Reverb: *"Parameter did not retain
-  default value when set"*, printing the same number on both sides
-  (`0.443043`). That is the skewed `NormalisableRange` not round-tripping its
-  1.8 s default exactly. It is a warning, `auval` still passes, and the fix if
-  you want one is a default that lands on a representable point.
+- **`auval`'s Decay warning is fixed.** It warned on Alpine and Reverb —
+  *"Parameter did not retain default value when set"*, printing the same number
+  on both sides (`0.443043`) — because Spring's 1.8 s default does not survive a
+  round trip through its skewed `NormalisableRange`. `ee::plugin::snapToRange`
+  (`shared/include/ee/plugin/ParamRange.h`) nudges the default onto a fixed
+  point. It **iterates**: the round trip walks towards a fixed point rather than
+  landing on one, and 1.8 s needs three passes, so converting once — the obvious
+  fix — would not have worked. `ee_spring_regress` is byte-identical across the
+  change, and `auval` is now warning-free in both architectures.
 - **Every plugin reports latency 0** in its default state — correct, because the
   tape stage is off by default, but it also means *pluginval never exercised a
   latency change*. That is exactly the gap G5.3 describes: latency has to be

@@ -17,6 +17,7 @@
 #include "ee/dsp/TremoloConfig.h"
 #include "ee/dsp/TubeDriveConfig.h"
 #include "ee/plugin/Bypass.h"
+#include "ee/plugin/ParamRange.h"
 #include "ee/plugin/ParamText.h"
 
 #include "ee/fx/DelayTimeMap.h"
@@ -525,8 +526,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakAlpineProcessor::createP
         juce::NormalisableRange<float> (ee::dsp::spring::kMinDecaySeconds, ee::dsp::spring::kMaxDecaySeconds);
     springDecay.setSkewForCentre (ee::dsp::spring::kDecaySkewCentre);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { id::revSpringDecay, 1 }, "Spring Decay", springDecay, ee::dsp::spring::kDefaultDecaySeconds,
-        withText (secondsToText)));
+        juce::ParameterID { id::revSpringDecay, 1 }, "Spring Decay", springDecay,
+        ee::plugin::snapToRange (springDecay, ee::dsp::spring::kDefaultDecaySeconds), withText (secondsToText)));
     addPercent (layout, id::revSpringTension, "Spring Tension", ee::dsp::spring::kDefaultTension01 * 100.0f);
 
     // The same travel Space's Low Cut has, deliberately - see SpringConfig.h.

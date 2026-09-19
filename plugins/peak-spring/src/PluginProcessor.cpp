@@ -1,6 +1,7 @@
 #include "PluginProcessor.h"
 
 #include "ee/dsp/SpringConfig.h"
+#include "ee/plugin/ParamRange.h"
 #include "ee/plugin/ParamText.h"
 #include "ee/ui/PedalEditor.h"
 
@@ -71,7 +72,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakSpringProcessor::createP
     decayRange.setSkewForCentre (ee::dsp::spring::kDecaySkewCentre);
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kDecayID, 1 }, "Decay", decayRange, ee::dsp::spring::kDefaultDecaySeconds,
+        juce::ParameterID { kDecayID, 1 }, "Decay", decayRange,
+        ee::plugin::snapToRange (decayRange, ee::dsp::spring::kDefaultDecaySeconds),
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (secondsToText)));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (

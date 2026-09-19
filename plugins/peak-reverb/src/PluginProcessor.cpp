@@ -5,6 +5,7 @@
 
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/SpringConfig.h"
+#include "ee/plugin/ParamRange.h"
 #include "ee/plugin/ParamText.h"
 
 namespace
@@ -86,9 +87,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout PeakReverbProcessor::createP
     auto springDecay =
         juce::NormalisableRange<float> (ee::dsp::spring::kMinDecaySeconds, ee::dsp::spring::kMaxDecaySeconds);
     springDecay.setSkewForCentre (ee::dsp::spring::kDecaySkewCentre);
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::springDecay, 1 }, "Spring Decay",
-                                                             springDecay, ee::dsp::spring::kDefaultDecaySeconds,
-                                                             withText (secondsToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::springDecay, 1 }, "Spring Decay", springDecay,
+        ee::plugin::snapToRange (springDecay, ee::dsp::spring::kDefaultDecaySeconds), withText (secondsToText)));
     addPercent (layout, id::springTension, "Spring Tension", ee::dsp::spring::kDefaultTension01 * 100.0f);
 
     // The same travel Space's Low Cut has, deliberately - see SpringConfig.h.
