@@ -9,47 +9,61 @@ because the rework is what kills a release schedule.
 
 ---
 
-## Three decisions that get more expensive every day
+## Decisions
 
-Settle these before any other work. Each one is cheap now and very expensive
-after the first sale.
+### D1. The name — **SETTLED: BitBit Audio.** ✅
 
-### D1. The name. `Peak` or `BitBit`?
+Done and pushed (`84ea8a9`, `2d2f102`). Manufacturer code `BtBt`, plugin codes
+`B???`, bundles `com.bitbitaudio.*`, products `BitBit X`, user presets under
+`~/Library/BitBit/<Product>/Presets`, `peak-grain` ships as **BitBit Grains**.
 
-The plugins are **Peak Alpine**, **Peak Grain**, manufacturer code `Peak`, plugin
-codes `Palp` / `Pgrn` / …, presets in `~/Library/Peak/<Product>/Presets`. The
-website says **BitBit Audio**, **BitBit Alpine**, **BitBit Grains**.
+What this now costs to change again: everything. The AU/VST3 ids are what a host
+looks a plugin up by, so from the first sale onward the codes in
+`plugins/*/CMakeLists.txt` and the manufacturer code in
+`cmake/AddPeakPlugin.cmake` are frozen. Put them in the golden file in G1.1.
 
-A rename touches the AU type/subtype/manufacturer codes, the VST3 UID (derived
-from them), the bundle identifier, the product name, the preset directory and the
-binary-data preset headers. **After release, changing any of those makes every
-saved session lose its plugin** — the host looks up a plugin by ID, not by name,
-and a missing ID is a silent hole in the user's project.
+Two loose ends, neither blocking:
 
-Pick one, do the rename in a single commit, and include a preset-directory
-migration if `~/Library/Peak` already has user presets on your own machine.
+- The **in-plugin mark** is still `packages/pedal-ui/src/peak-logo.png`. The
+  website has the pixel waveform; the faces do not. The new mark is ≈2.7:1
+  against the old art's ≈1.3:1, so swapping it widens every Card header by
+  ~35 px and needs a pass over all faces in the gallery.
+- Internal names are deliberately still `peak-*` (folders, CMake targets, the
+  `ee::` namespace, the `@synthpeak` npm scope). Nothing user-visible; leave them.
 
-### D2. What is actually for sale?
+### D2. What is for sale — **SETTLED: six products.** ✅
 
-Fifteen plugins exist in `plugins/`. The website sells two products plus four
-`$19` modules:
+| Product | Tree | Price |
+| --- | --- | --- |
+| BitBit Alpine | `peak-alpine` | `$99` |
+| BitBit Grains | `peak-grain` | `$49` |
+| BitBit Artifact | `peak-artifact` | `$19` |
+| BitBit Modulation | `peak-modulation` | `$19` |
+| BitBit Delay | `peak-delay` | `$19` |
+| BitBit Reverb | `peak-reverb` | `$19` |
 
-| On the website | In the tree |
-| --- | --- |
-| Alpine `$99` | `peak-alpine` |
-| Grains `$49` | `peak-grain` |
-| Artifact / Modulation / Delay / Reverb `$19` each | `peak-artifact`, `peak-modulation`, `peak-delay`, `peak-reverb` |
-| — | `peak-chorus`, `peak-eq`, `peak-overdrive`, `peak-phase`, `peak-spring`, `peak-sympathy`, `peak-tape`, `peak-trem-pan`, `peak-wah` |
+**Single engines are not products.** The nine one-engine pedals in the tree —
+`peak-chorus`, `peak-eq`, `peak-overdrive`, `peak-phase`, `peak-spring`,
+`peak-sympathy`, `peak-tape`, `peak-trem-pan`, `peak-wah` — are **out of scope
+for 1.0**. One of them may later become a free giveaway; that is a decision for
+after launch, not a reason to carry them now.
 
-Nine pedals are in the repo with no place in the story. Decide per pedal: ship at
-launch, hold for a later release, or fold into a module. Every one you ship
-multiplies the QA matrix, the preset work, the screenshots and the support load —
-this is the single biggest lever on how long the release takes.
+This is the decision that shrinks everything downstream, so hold the line on it:
 
-Recommendation: launch with the six on the website, hold the other nine. They lose
-nothing by waiting and they are the obvious "1.1 is here" story.
+- **QA is six plugins × three formats**, not fifteen. Same for pluginval, the
+  soak harness, the host matrix and the notarised installer.
+- **Presets are needed for six banks**, not fifteen.
+- **Screenshots and demo audio are needed for six faces.**
+- The nine stay in the repo and keep building — they share `ee_dsp`, several are
+  the engines inside the four modules, and `ee_dsp_tests` covers them. They are
+  simply not packaged, not tested in hosts, not given presets and not on the site.
+- `scripts/package-macos.sh` ships the six. The other nine are listed there
+  commented out, so turning one into the free giveaway later is one line.
+- **If the free plugin happens**, it needs everything a paid one needs except the
+  licence check: notarisation, a preset bank, a face that says BitBit, host
+  testing. Budget it as a small release of its own, never as "we already have it".
 
-### D3. The platform promise
+### D3. The platform promise — **still open.** ⚠️
 
 The site currently claims **VST3 · AU · AAX**, **macOS 11+**, **Windows 10+ 64-bit**.
 The tree builds **VST3, AU and Standalone, macOS only**:
@@ -63,6 +77,9 @@ The tree builds **VST3, AU and Standalone, macOS only**:
 Fix the claim, not the code, for 1.0: **macOS, VST3 + AU + Standalone**. Put a
 Windows waitlist form on the site instead — it also tells you whether Windows is
 worth building.
+
+This is the last thing on the site that is not true, and it is the one that
+generates refunds rather than complaints. Close it before G7.
 
 ---
 
@@ -91,7 +108,7 @@ Before hunting bugs, freeze what must never change:
 This is the highest-value single item in the whole plan and the tree has none of
 it. `pluginval` is what every host developer's bug report will otherwise tell you.
 
-- Run it over every plugin × every format at `--strictness-level 10`
+- Run it over **each of the six products** × every format at `--strictness-level 10`
   `--validate-in-process` and `--repeat 5`.
 - `auval -strict -v aufx <CODE> <MFR>` for every AU, in **both architectures**
   (`arch -arm64` and `arch -x86_64`) — the universal-binary trap in `CLAUDE.md`
@@ -156,7 +173,8 @@ every block:
 - 32+ instances in one process — the only reliable way to surface shared statics
   like the DaisySP one
 
-Run it overnight per plugin. A clean 8-hour soak per product is a reasonable bar
+Run it overnight per product — six of them, per D2. A clean 8-hour soak per
+product is a reasonable bar
 for G1.
 
 ### 1.6 Input fuzzing where user data enters
@@ -173,7 +191,7 @@ bad preset file takes the host down with it.
   realtime and anything that reads a wall clock will break.
 - Mono→stereo, stereo→stereo and any mono→mono configuration the hosts will try.
 - Leak check across 100 editor open/close cycles.
-- CPU ceiling per plugin at 96 kHz with everything on, and Alpine with all four
+- CPU ceiling per product at 96 kHz with everything on, and Alpine with all four
   modules active. Publish the numbers; set expectations before a reviewer does.
 
 ### 1.8 Then, and only then, humans
@@ -308,23 +326,25 @@ the only evidence that nothing else moved.
 
 ### 5.1 Presets (your item 4)
 
-Where it stands:
+Where it stands, for the six that ship:
 
-| Plugin | Factory presets |
+| Product | Factory presets |
 | --- | --- |
-| `peak-delay` | 22 |
-| `peak-sympathy` | 7 |
-| `peak-artifact` | 1 (Init) |
-| `peak-reverb` | 1 (Init) |
-| `peak-modulation` | 1 (Init) |
-| `peak-grain` | 0 — its own flat, user-only store |
-| `peak-alpine` | — |
+| BitBit Delay | 22 |
+| BitBit Artifact | 1 (Init) |
+| BitBit Reverb | 1 (Init) |
+| BitBit Modulation | 1 (Init) |
+| BitBit Grains | 1 (Init) |
+| BitBit Alpine | 0 |
+
+(`peak-sympathy` has 7 and is out of scope; the rest have none.)
 
 For products you are charging for, this is the largest content gap in the plan.
 The website already promises "global presets across the whole chain".
 
 - Set a target per product. 30–40 for Alpine, 25+ for Grains, 15–20 per module is
-  a defensible floor.
+  a defensible floor. That is six banks, not fifteen — D2 is what makes this
+  achievable at all.
 - Author with `-DEE_PRESET_AUTHOR=ON` (writes straight into the pedal's `presets/`
   folder for committing).
 - Use the `Category - Name.xml` filename convention — the prefix *is* the category
@@ -334,9 +354,10 @@ The website already promises "global presets across the whole chain".
   whatever was loaded before it.
 - Alpine's presets should exist to show off the thing the product is sold on:
   make several of them reorder the chain.
-- **Migrate `peak-grain` to `ee::plugin::PresetStore`**, with a one-time copy of
-  any existing `~/Library/…` user presets into the new location. Doing this after
-  launch means migrating real customers' saved work.
+- `peak-grain` is already on `ee::plugin::PresetStore` — the note in `CLAUDE.md`
+  about it having its own flat, user-only store is stale. Its user presets did
+  move with the rebrand, though: anything under `~/Library/Peak/Peak Grain` needs
+  copying to `~/Library/BitBit/BitBit Grains` on your own machine.
 - Get a second pair of ears. Presets are the demo most buyers judge you on, and
   the author is the worst judge of their own.
 
@@ -511,11 +532,13 @@ Make them generated, not hand-captured, so they never drift from the product:
 
 ## What else you need, that is not on your list
 
-1. **The name decision (D1).** Top of this document for a reason.
+1. **The platform claim (D3).** The last untrue thing on the site, and the only
+   open decision left.
 2. **EULA, privacy policy, terms.** Required by Netlify-adjacent reality, by
    Apple's notarisation paperwork, and by the first customer who asks.
 3. **A manual.** `README.md` is already an excellent one — publish it as a docs
-   site or a PDF in the installer rather than writing a second one.
+   site or a PDF in the installer rather than writing a second one. Trim it to
+   the six products, or mark the other nine clearly as not-for-sale.
 4. **A support pipeline.** An inbox, canned answers for the ten questions you will
    be asked ten times, and a bug-report template.
 5. **An uninstaller.**
@@ -544,11 +567,11 @@ Make them generated, not hand-captured, so they never drift from the product:
 ## Gate summary
 
 ```
-D1 D2 D3   decisions: name, catalogue, platform promise
+D1 ✅ BitBit    D2 ✅ six products    D3 ⚠️ platform claim still open
    ↓
 G1  correctness   golden param file · CI · pluginval 10 · auval strict ·
                   ASan/UBSan/TSan · both known failures closed · soak harness ·
-                  preset-loader fuzzing
+                  preset-loader fuzzing                     — six products
    ↓
 G5a DSP content   plate engine · latency work        ← before checksums freeze
    ↓
@@ -562,15 +585,16 @@ G3  commerce      LemonSqueezy SKUs · licence keys · activation UI · free cod
    ↓
 G4  updates       updates.json + in-face notice · versioning · changelog · archive
    ↓
-G5b content       presets to target · Grain store migration · preset browser
+G5b content       six preset banks to target · preset browser
    ↓
 G6  hosts         the host matrix, native and Rosetta
    ↓
-G7  website       screenshots · audio · video · analytics · legal · domain · live
+G7  website       D3 claim corrected · screenshots · audio · video · analytics ·
+                  legal · domain · live
    ↓
 beta → soft launch → launch
 ```
 
-Two things are worth repeating because they are the ones most likely to be
-skipped: **pluginval in CI before anything else**, and **the name decision before
-the first sale**.
+With D1 and D2 closed, the two things most likely to be skipped are
+**pluginval in CI before anything else**, and **correcting the AAX/Windows claim
+on the site (D3)** — the first catches the bugs, the second prevents the refunds.

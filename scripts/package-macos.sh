@@ -18,23 +18,26 @@ cmake --build "$BUILD_DIR"
 rm -rf "$STAGE"
 mkdir -p "$STAGE"
 
-# "<artefacts dir>:<product name>" for every pedal in the repo.
+# "<artefacts dir>:<product name>" for the pedals that are for sale. The nine
+# single-engine pedals build but are not products (docs/release-plan.md, D2);
+# they are listed below commented out, for the day one becomes the giveaway.
 PLUGINS=(
     "peak-alpine/PeakAlpine_artefacts:BitBit Alpine"
-    "peak-artifact/PeakArtifact_artefacts:BitBit Artifact"
-    "peak-chorus/PeakChorus_artefacts:BitBit Chorus"
-    "peak-delay/PeakDelay_artefacts:BitBit Delay"
-    "peak-eq/PeakEq_artefacts:BitBit EQ"
     "peak-grain/PeakGrain_artefacts:BitBit Grains"
+    "peak-artifact/PeakArtifact_artefacts:BitBit Artifact"
     "peak-modulation/PeakModulation_artefacts:BitBit Modulation"
-    "peak-overdrive/PeakOverdrive_artefacts:BitBit Overdrive"
-    "peak-phase/PeakPhase_artefacts:BitBit Phase"
+    "peak-delay/PeakDelay_artefacts:BitBit Delay"
     "peak-reverb/PeakReverb_artefacts:BitBit Reverb"
-    "peak-spring/PeakSpring_artefacts:BitBit Spring"
-    "peak-sympathy/PeakSympathy_artefacts:BitBit Sympathy"
-    "peak-tape/PeakTape_artefacts:BitBit Tape"
-    "peak-trem-pan/PeakTremPan_artefacts:BitBit Trem-Pan"
-    "peak-wah/PeakWah_artefacts:BitBit Wah"
+
+    # "peak-chorus/PeakChorus_artefacts:BitBit Chorus"
+    # "peak-eq/PeakEq_artefacts:BitBit EQ"
+    # "peak-overdrive/PeakOverdrive_artefacts:BitBit Overdrive"
+    # "peak-phase/PeakPhase_artefacts:BitBit Phase"
+    # "peak-spring/PeakSpring_artefacts:BitBit Spring"
+    # "peak-sympathy/PeakSympathy_artefacts:BitBit Sympathy"
+    # "peak-tape/PeakTape_artefacts:BitBit Tape"
+    # "peak-trem-pan/PeakTremPan_artefacts:BitBit Trem-Pan"
+    # "peak-wah/PeakWah_artefacts:BitBit Wah"
 )
 
 for entry in "${PLUGINS[@]}"; do
