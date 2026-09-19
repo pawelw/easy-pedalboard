@@ -98,40 +98,47 @@ approval queue, and none of it can be compressed by working harder. G1 does not
 depend on G0, so run them side by side — but G2 (distribution) cannot begin
 until G0 is done, and AAX cannot even be *compiled* until the SDK lands.
 
-**The legal entity is the root of the tree.** Per 0.1 the Apple account is an
-Organization one, which needs a registered business and a D-U-N-S number — and
-the Windows certificate authority (0.4), Avid (0.2) and PACE (0.3) all verify an
-organisation too. Do that work once, under exactly the name that should appear
-in a Gatekeeper sheet and a SmartScreen publisher field, and every other item in
-G0 inherits it. Do it piecemeal and you end up with accounts under three
-slightly different names, which is a problem you cannot tidy up afterwards.
+**One signing identity, and it already exists.** Everything signed on both
+platforms goes out under the existing Polish sole proprietorship, **Paweł
+Witkowski** — which is also the entity that owns `bitbitaudio.com`. No new
+company is being formed for this release. Register the Avid (0.2), PACE (0.3)
+and Windows (0.4) accounts under that same identity so the four of them agree;
+accounts opened piecemeal under slightly different names is a mess that cannot
+be tidied afterwards.
 
 ### 0.1 Apple
 
-**Decided: an Organization account, not an Individual one.** The name in the
-"verified developer" sheet macOS shows on first launch comes from the signing
-identity, and an Individual account signs under your own legal name. An
-Organization account signs as **BitBit Audio**, which is the whole point of the
-rebrand reaching the one screen every customer sees.
+**Decided: Individual enrolment, under the existing JDG (Paweł Witkowski).**
+An Organization account would need a `sp. z o.o.` — a sole proprietorship is not
+a legal entity and Apple does not accept DBAs or trade names — and forming one
+purely to change a name in a dialog is the wrong trade. **A D-U-N-S number is
+therefore not needed and is off the critical path**, which removes the longest
+lead item this gate had.
 
-That choice puts a **D-U-N-S number** on the critical path. It is free, it is
-issued by Dun & Bradstreet rather than by Apple, and it is an application with
-its own queue — so it is the single longest-lead item in G0 and should be
-started before anything else in this document. Apple's enrolment then verifies
-the legal entity against it, which means the business needs to exist, under the
-name you want shown, with matching details.
+The cost is exact and small: **the OS trust dialogs say "Paweł Witkowski"**, not
+BitBit Audio. That is two moments per customer — the macOS first-launch /
+installer sheet and the Windows SmartScreen publisher field. Everywhere the
+customer actually spends time says BitBit Audio: the website, the LemonSqueezy
+checkout, the plugin faces, and the manufacturer string in the DAW's plugin
+browser (`COMPANY_NAME` in `cmake/AddPeakPlugin.cmake`).
 
-This is also not a decision to revisit later: identity is what Gatekeeper
-reputation accrues against, and moving from an individual identity to an
-organisation one after launch means re-signing and re-notarising everything and
-starting that reputation over.
+Two consequences to carry forward:
+
+- **Put it in the FAQ and the installer.** "Why does macOS say Paweł Witkowski?"
+  — one line saying BitBit Audio is the trading name of a registered Polish sole
+  proprietorship. Answering it before it is asked converts a moment of doubt at
+  the install screen into a signal that a real person is behind the software.
+- **Identity is sticky.** If a `sp. z o.o.` ever happens, moving to it means
+  re-signing and re-notarising everything and starting SmartScreen reputation
+  from zero. That is an argument for doing it *before* launch if it is likely
+  within the year, and for not thinking about it again if it is not.
 
 Then, once enrolled:
 
-- **One Developer ID Application certificate.** It identifies the team, not a
+- **One Developer ID Application certificate.** It identifies the account, not a
   product — every `.vst3`, `.component`, `.aaxplugin` and `.app` across all six
   products is signed with the same one. There is no per-product certificate, and
-  Apple caps how many a team may hold anyway.
+  Apple caps how many may be held anyway.
 - **One Developer ID Installer certificate**, for the `.pkg`. Different type,
   same "one for everything" rule.
 - Bundle identifiers stay per-product (`com.bitbitaudio.alpine`, …) and do **not**
@@ -178,12 +185,15 @@ Then, once enrolled:
 
 ### 0.4 Windows
 
-- A **code-signing identity**, issued to the same legal entity as 0.1. Since
-  mid-2023 an OV certificate's private key has to live in hardware or an HSM, so
-  the realistic options are **Azure Trusted Signing** (cheapest, but requires
-  identity/organisation verification) or an
-  EV token from DigiCert/Sectigo/SSL.com. Start this early: the verification
-  step is the slow part.
+- A **code-signing identity** for the same sole proprietorship as 0.1. Since
+  mid-2023 the private key has to live in hardware or an HSM, so this is not a
+  file you download. An **individual-validation** certificate is what fits here,
+  not OV — **Certum** issues them and is Polish, which makes the identity check
+  straightforward; SSL.com is the other option. Check current eligibility for
+  **Azure Trusted Signing** rather than assuming, since its individual tier and
+  its trading-history requirements have both moved. Start this early: the
+  verification step is the slow part, and the publisher name it establishes is
+  what SmartScreen reputation accrues against.
 - A **Windows x64 build machine** — a physical box, a VM, or a
   `windows-latest` CI runner. A Windows-on-ARM VM under Parallels is fine for
   *running* Pro Tools/Live but is the wrong shape for producing x64 release
@@ -201,6 +211,14 @@ Then, once enrolled:
 
 Do this once, write down the answers, and keep the receipts:
 
+- **A trademark search on "BitBit", and do it first.** EUIPO for the EU, UPRP
+  for Poland, plus a plain search for existing audio software using the name.
+  This is not a formality: the brand is already frozen into the plugin codes,
+  the bundle ids and the preset directory, and those cannot change after the
+  first sale without every saved session losing its plugins. An afternoon of
+  searching now against the most expensive class of problem this project has.
+  Registering the mark is optional; *knowing whether someone else holds it* is
+  not.
 - **JUCE.** Dual-licensed. Confirm which tier covers a closed-source commercial
   release at your revenue, and whether that tier still requires the JUCE splash
   screen. This is not optional and it is easy to get wrong by assuming.
@@ -755,6 +773,10 @@ Make them generated, not hand-captured, so they never drift from the product:
 - **EULA, privacy policy, terms, refund policy.** Linked in the footer, and the
   EULA shown in the installer. The privacy policy must mention the update check
   and the licence activation call.
+- **Trader details in the footer.** EU consumer law wants the trader
+  identifiable: the registered name (Paweł Witkowski), address, NIP and a contact
+  address. BitBit Audio is the trading name over the top of that, and the FAQ
+  entry from G0.1 explaining the signature name belongs alongside it.
 
 ### Launch
 
@@ -814,10 +836,10 @@ Make them generated, not hand-captured, so they never drift from the product:
 ```
 D1 ✅ BitBit     D2 ✅ six products     D3 ✅ macOS + Windows, VST3/AU/AAX/Standalone
 
-G0  paperwork  ──────────────┐   legal entity + D-U-N-S → Apple Organization ·
-    (start today, runs in    │   Avid + AAX SDK · PACE/iLok · Pro Tools ·
-     parallel with G1)       │   Windows cert · Windows runner · JUCE and VST3
-                             │   licence audit · third-party notices
+G0  paperwork  ──────────────┐   Apple Individual (existing JDG) · Avid + AAX
+    (start today, runs in    │   SDK · PACE/iLok · Pro Tools · Windows IV cert ·
+     parallel with G1)       │   Windows runner · trademark check · JUCE and
+                             │   VST3 licence audit · third-party notices
                              │
 G1  correctness              │   golden param file · CI on both platforms ·
     (needs nothing from G0)  │   pluginval 10 · auval strict · ASan/UBSan/TSan ·
