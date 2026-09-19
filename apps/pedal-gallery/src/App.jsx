@@ -29,7 +29,7 @@ function Home() {
   return (
     <div className="gallery">
       <header className="gallery__header">
-        <h1>Synth Peak — Pedal Gallery</h1>
+        <h1>BitBit Audio — Pedal Gallery</h1>
         <p>Dev-only browser preview of each pedal's WebView face. Not the real plugin - no audio, no host.</p>
       </header>
 

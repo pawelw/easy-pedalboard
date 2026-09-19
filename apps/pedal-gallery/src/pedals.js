@@ -22,20 +22,20 @@ import PeakGrainFace from "peak-grain-jsui/src/App.jsx";
 // pedal's main.jsx passes to PedalUIProvider, so what the gallery shows is
 // what the plugin ships.
 export const groups = [
-  { id: "alpine", title: "Peak Alpine and its modules" },
+  { id: "alpine", title: "BitBit Alpine and its modules" },
   { id: "standalone", title: "Standalone pedals" },
 ];
 
 export const pedals = [
   // The multi-effect host - listed first because it is the one that contains
   // the four after it rather than sitting beside them.
-  { slug: "peak-alpine", name: "Peak Alpine", group: "alpine", face: PeakAlpineFace, theme: "onyx" },
-  { slug: "peak-reverb", name: "Peak Reverb", group: "alpine", face: PeakReverbFace, theme: "onyx" },
-  { slug: "peak-delay", name: "Peak Delay", group: "alpine", face: PeakDelayFace, theme: "onyx" },
-  { slug: "peak-modulation", name: "Peak Modulation", group: "alpine", face: PeakModulationFace, theme: "onyx" },
-  { slug: "peak-artifact", name: "Peak Artifact", group: "alpine", face: PeakArtifactFace, theme: "onyx" },
+  { slug: "peak-alpine", name: "BitBit Alpine", group: "alpine", face: PeakAlpineFace, theme: "onyx" },
+  { slug: "peak-reverb", name: "BitBit Reverb", group: "alpine", face: PeakReverbFace, theme: "onyx" },
+  { slug: "peak-delay", name: "BitBit Delay", group: "alpine", face: PeakDelayFace, theme: "onyx" },
+  { slug: "peak-modulation", name: "BitBit Modulation", group: "alpine", face: PeakModulationFace, theme: "onyx" },
+  { slug: "peak-artifact", name: "BitBit Artifact", group: "alpine", face: PeakArtifactFace, theme: "onyx" },
 
-  { slug: "peak-wah", name: "Peak Wah", group: "standalone", face: PeakWahFace },
-  { slug: "peak-grain", name: "Peak Grain", group: "standalone", face: PeakGrainFace, theme: "onyx" },
-  { slug: "peak-eq", name: "Peak EQ", group: "standalone", face: null },
+  { slug: "peak-wah", name: "BitBit Wah", group: "standalone", face: PeakWahFace },
+  { slug: "peak-grain", name: "BitBit Grains", group: "standalone", face: PeakGrainFace, theme: "onyx" },
+  { slug: "peak-eq", name: "BitBit EQ", group: "standalone", face: null },
 ];

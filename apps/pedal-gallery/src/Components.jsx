@@ -372,7 +372,7 @@ function Showcase() {
             cannot be shown without one. */}
         <SectionLabel>Card — subtitlePlacement="below"</SectionLabel>
         <Card
-          title="Peak Alpine"
+          title="BitBit Alpine"
           subtitle="Modulation / Delay / Reverb machine"
           subtitlePlacement="below"
           width={420}
