@@ -50,8 +50,10 @@ after launch, not a reason to carry them now.
 
 This is the decision that shrinks everything downstream, so hold the line on it:
 
-- **QA is six plugins × three formats**, not fifteen. Same for pluginval, the
-  soak harness, the host matrix and the notarised installer.
+- **QA is six products**, not fifteen — which, once D3 multiplies it by four
+  formats and two platforms, is already 24 bundles a release. Six is what makes
+  that survivable. Same for pluginval, the soak harness, the host matrix and the
+  installers.
 - **Presets are needed for six banks**, not fifteen.
 - **Screenshots and demo audio are needed for six faces.**
 - The nine stay in the repo and keep building — they share `ee_dsp`, several are
@@ -63,23 +65,116 @@ This is the decision that shrinks everything downstream, so hold the line on it:
   licence check: notarisation, a preset bank, a face that says BitBit, host
   testing. Budget it as a small release of its own, never as "we already have it".
 
-### D3. The platform promise — **still open.** ⚠️
+### D3. The platform promise — **SETTLED: everything the site already claims.** ✅
 
-The site currently claims **VST3 · AU · AAX**, **macOS 11+**, **Windows 10+ 64-bit**.
-The tree builds **VST3, AU and Standalone, macOS only**:
+**macOS and Windows. VST3, AU (macOS), AAX, and a Standalone app on both.**
 
-- No Windows build exists. Not a switch — the six WebView faces need WebView2, the
-  build needs MSVC, the preset paths change, and signing needs a separate
-  certificate and installer toolchain.
-- No AAX. AAX needs an Avid developer agreement and PACE signing; Pro Tools is not
-  reachable without it.
+That makes the site's existing claim true rather than aspirational — but only
+once the builds exist. **Nothing on the site changes until then**, because the
+claim is only honest when the binary is in the installer.
 
-Fix the claim, not the code, for 1.0: **macOS, VST3 + AU + Standalone**. Put a
-Windows waitlist form on the site instead — it also tells you whether Windows is
-worth building.
+This is by some distance the largest decision of the three, and it is the one
+with third-party gatekeepers in it. The tree today builds VST3, AU and Standalone
+on macOS only; none of the AAX or Windows work has been started. It has its own
+gate below (**G0**) because most of it is waiting on someone else to approve an
+account, and that waiting can happen in parallel with everything in G1.
 
-This is the last thing on the site that is not true, and it is the one that
-generates refunds rather than complaints. Close it before G7.
+Order of difficulty, hardest first:
+
+1. **AAX.** Not a CMake flag. An Avid developer agreement, the AAX SDK, a PACE
+   signing account, and a Pro Tools licence to test in.
+2. **Windows.** A second toolchain, a second signing identity, a second
+   installer, a second CI runner and a second pass through the host matrix.
+3. **Standalone.** Already builds on macOS; on Windows it is nearly free once the
+   Windows build exists. The work is icons, audio-device defaults and installer
+   entries, plus the ASIO question below.
+
+---
+
+## G0 — Accounts, licences and SDKs
+
+**Start this first and start it today.** Everything in G0 is someone else's
+approval queue, and none of it can be compressed by working harder. G1 does not
+depend on G0, so run them side by side — but G2 (distribution) cannot begin
+until G0 is done, and AAX cannot even be *compiled* until the SDK lands.
+
+### 0.1 Apple
+
+- **Apple Developer Program** membership.
+- **Developer ID Application** and **Developer ID Installer** certificates.
+- An app-specific password or an API key for `notarytool`.
+
+### 0.2 Avid / AAX
+
+- **Avid developer registration**, and acceptance of their developer agreement,
+  to get the **AAX SDK**. The SDK is not redistributable — it sits outside the
+  repo and is pointed at by `juce_set_aax_sdk_path()`, with its location as a
+  cache variable (`EE_AAX_SDK_PATH`) so a machine without it still configures.
+- **A Pro Tools licence** for testing. There is no substitute; there is no
+  offline AAX validator, and `pluginval` does not cover AAX.
+- Ask Avid for the **developer build of Pro Tools** that loads unsigned AAX.
+  Without it you cannot test a single build until PACE signing works, which turns
+  two independent problems into one serial one.
+- Decide whether you want Avid's **plugin certification** (needed to be listed in
+  their marketplace) or only technical compatibility. Certification is a review
+  process with its own queue; not required to sell from your own site.
+
+### 0.3 PACE / iLok
+
+- An **iLok account**, and a **PACE developer account** with the **Eden /
+  wraptool** signing tools. A shipping Pro Tools refuses to load an AAX plugin
+  that is not PACE-signed, whether or not you use any copy protection.
+- Confirm the fee structure before you budget the release — this is a recurring
+  cost, not a one-off.
+- Note the overlap with G3: if you are already paying PACE, their licensing is an
+  alternative to rolling your own LemonSqueezy activation. Decide once, for all
+  three formats, rather than ending up with two licensing systems.
+
+### 0.4 Windows
+
+- A **code-signing identity**. Since mid-2023 an OV certificate's private key has
+  to live in hardware or an HSM, so the realistic options are **Azure Trusted
+  Signing** (cheapest, but requires identity/organisation verification) or an
+  EV token from DigiCert/Sectigo/SSL.com. Start this early: the verification
+  step is the slow part.
+- A **Windows x64 build machine** — a physical box, a VM, or a
+  `windows-latest` CI runner. A Windows-on-ARM VM under Parallels is fine for
+  *running* Pro Tools/Live but is the wrong shape for producing x64 release
+  builds; keep the release artefact coming from one known x64 machine or runner.
+- **WebView2**: the six WebView faces need it. It is evergreen and present on
+  Windows 11 and most Windows 10 installs, but the installer must detect it and
+  run Microsoft's bootstrapper when it is missing, or those six plugins open on
+  a blank window.
+- **ASIO** (optional, Standalone only): the SDK comes from Steinberg under an
+  agreement and cannot be redistributed. Without it the Standalone uses WASAPI,
+  which is fine for auditioning and poor for playing guitar through. Decide
+  whether the Windows Standalone is a demo tool or an instrument.
+
+### 0.5 The licence audit nobody remembers until later
+
+Do this once, write down the answers, and keep the receipts:
+
+- **JUCE.** Dual-licensed. Confirm which tier covers a closed-source commercial
+  release at your revenue, and whether that tier still requires the JUCE splash
+  screen. This is not optional and it is easy to get wrong by assuming.
+- **Steinberg VST3 SDK.** Also dual-licensed — GPLv3, or Steinberg's proprietary
+  agreement. Shipping a closed-source VST3 means signing their licensing
+  agreement and registering the product. Very commonly missed.
+- **AAX SDK** terms (from 0.2) and **ASIO SDK** terms (from 0.4).
+- **DaisySP**, which the shimmer's `PitchShifter` comes from, and every other
+  vendored dependency in `vendor/` and `_deps/` — check each licence and collect
+  the attributions.
+- **Fonts.** Space Grotesk and anything else embedded in the faces or the site.
+- The result is one **third-party notices** file that ships in the installer and
+  is linked from the site. Write it once now; assembling it under launch pressure
+  is how the wrong thing gets shipped.
+
+### 0.6 Exit criteria
+
+G0 is done when you can, on a clean machine, produce a signed and notarised
+macOS installer and a signed Windows installer containing VST3, AU (macOS), AAX
+and Standalone for all six products — even if the plugins in them are still
+buggy. Prove the *pipeline* before you polish the *product*.
 
 ---
 
@@ -109,13 +204,18 @@ This is the highest-value single item in the whole plan and the tree has none of
 it. `pluginval` is what every host developer's bug report will otherwise tell you.
 
 - Run it over **each of the six products** × every format at `--strictness-level 10`
-  `--validate-in-process` and `--repeat 5`.
+  `--validate-in-process` and `--repeat 5`, **on macOS and on Windows**.
 - `auval -strict -v aufx <CODE> <MFR>` for every AU, in **both architectures**
   (`arch -arm64` and `arch -x86_64`) — the universal-binary trap in `CLAUDE.md`
   means "it loads here" proves nothing.
-- Wire both into GitHub Actions on a macOS runner alongside `ee_dsp_tests`,
-  `ee_preset_tests` and the `*_regress` checksums. **There is no CI at all right
-  now**, which means the two known failures are the only ones anyone notices.
+- **AAX has no offline validator.** `pluginval` does not cover it and Avid ships
+  no equivalent, so the only test is Pro Tools itself (G0.2). That asymmetry is a
+  reason to make the AAX build the *last* format you add, once the same DSP has
+  already been beaten up through VST3 and AU.
+- Wire it all into GitHub Actions on **a macOS runner and a Windows runner**,
+  alongside `ee_dsp_tests`, `ee_preset_tests` and the `*_regress` checksums
+  (per-platform baselines — see G2.2). **There is no CI at all right now**, which
+  means the two known failures are the only ones anyone notices.
 
 ### 1.3 Sanitizers, because you already know there is a race
 
@@ -197,38 +297,114 @@ bad preset file takes the host down with it.
 ### 1.8 Then, and only then, humans
 
 A closed beta of 10–20 people, on real projects, with a bug-report template that
-asks for host + host version + macOS version + architecture + plugin version +
-steps. Most of what they find will be usability, not crashes, which is exactly
-what you cannot test for yourself.
+asks for host + host version + OS + architecture + plugin format + plugin version
++ steps. Recruit for the matrix you actually ship: you need Windows testers and
+at least two Pro Tools users, and they are the hardest to find late.
+
+Most of what they report will be usability rather than crashes, which is exactly
+the category you cannot test for yourself.
 
 ---
 
-## G2 — It installs, and macOS trusts it
+## G2 — The two new builds, and installers both platforms trust
+
+Four formats on two platforms, six products: **24 bundles per release.** That
+number is the argument for doing every step below in CI rather than by hand.
+
+### 2.1 The AAX build
+
+- `juce_set_aax_sdk_path("${EE_AAX_SDK_PATH}")` at the top level, guarded so a
+  machine without the SDK still configures and just builds the other formats.
+  Nobody should need Avid's SDK to work on a knob.
+- `AAX` joins the `FORMATS` list in `cmake/AddPeakPlugin.cmake`, next to the
+  existing `EE_DEV_FORMATS` switch — AAX has no place in the fast iteration loop.
+- Each pedal needs an **`AAX_CATEGORY`** to match the `VST3_CATEGORIES` it
+  already declares, so Pro Tools files it under the right menu.
+- **Page tables** (the XML that maps parameters onto a control surface) are
+  optional and are what separates a plugin that feels native on an S-series
+  console from one that does not. Fine to defer; do not forget it exists.
+- Pro Tools is the strictest host you will ship into. Two of its rules are worth
+  reading as hard requirements rather than advice: **no allocation and no locks
+  on the audio thread**, and **latency reported accurately and early**. The soak
+  harness in G1.5 already asserts the first; make sure it runs before the AAX
+  build rather than after.
+- macOS AAX must be universal — Pro Tools runs native on Apple Silicon.
+
+### 2.2 The Windows build
+
+The good news first: the macOS-specific CMake is already behind `if(APPLE)`, and
+`ccache` is a `find_program` that simply does not fire elsewhere, so the tree
+should configure on Windows without a fight. What will need doing:
+
+- MSVC toolchain, Ninja, and a decision on `sccache` to replace ccache.
+- **WebView2** for the six WebView faces. `NEEDS_WEBVIEW2` and
+  `JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1` are already set in
+  `AddPeakPlugin.cmake` — verify the package actually resolves on the build
+  machine, because a face that silently falls back is a blank plugin window.
+- **Paths.** `PresetStore::userDirectory()` uses
+  `juce::File::userApplicationDataDirectory`, which lands in `%APPDATA%` on
+  Windows — correct as written, but the comment in that file and in `CLAUDE.md`
+  says `~/Library` as though it were the only case. Fix the comment and verify
+  the folder is created on a fresh profile.
+- VST3 to `C:\Program Files\Common Files\VST3`, AAX to
+  `C:\Program Files\Common Files\Avid\Audio\Plug-Ins`.
+- Compile the whole tree once with warnings turned up: MSVC will find narrowing
+  conversions and unused-parameter cases that Clang waves through.
+- Run `ee_dsp_tests` and the `*_regress` batteries on Windows. **Expect the
+  checksums to differ from macOS** — different compiler, different FMA and
+  library maths. The batteries are per-platform baselines, not one shared
+  number; decide that now rather than debugging a "failure" later.
+- Denormal handling: confirm `ScopedNoDenormals` behaves the same under MSVC.
+
+### 2.3 Signing and installing — macOS
 
 Today `scripts/package-macos.sh` does `codesign --force --sign -` — **ad-hoc**.
 That is fine for your own machine and unusable for customers: Gatekeeper blocks
 it, and the `INSTALL.txt` instruction to run `xattr -dr com.apple.quarantine` is
 the moment a normal buyer asks for a refund.
 
-What is needed:
-
-1. **Apple Developer Program** membership.
-2. **Developer ID Application** certificate — sign every `.vst3`, `.component`
-   and `.app` with `--options runtime` (hardened runtime) and a secure timestamp.
-   Check whether any host needs
+1. **Developer ID Application** certificate — sign every `.vst3`, `.component`,
+   `.aaxplugin` and `.app` with `--options runtime` (hardened runtime) and a
+   secure timestamp. Check whether any host needs
    `com.apple.security.cs.disable-library-validation`.
-3. **Notarisation** — `xcrun notarytool submit --wait`, then `xcrun stapler
+2. **Notarisation** — `xcrun notarytool submit --wait`, then `xcrun stapler
    staple` every bundle **and** the installer.
-4. **A real installer.** `pkgbuild` per component + `productbuild` with a
+3. **A real installer.** `pkgbuild` per component + `productbuild` with a
    distribution XML, signed with a **Developer ID Installer** certificate. Users
    do not drag plugins into `~/Library`. The installer should let them choose
-   formats, show the EULA, and install to the system folders.
-5. **An uninstaller** — a script or a documented list of paths. Ship it.
-6. **Verify on a machine that has never seen the plugin**, freshly downloaded via
-   a browser so the quarantine bit is actually set. A VM snapshot is the only
-   honest test here.
-7. Keep `package-macos.sh` as the one entry point and make CI produce the signed,
-   notarised artefact so releases are never hand-built.
+   formats, show the EULA and the third-party notices, and install to the system
+   folders.
+
+### 2.4 Signing and installing — Windows
+
+1. Sign every `.vst3`, `.aaxplugin` and `.exe` with the identity from G0.4,
+   timestamped. An unsigned installer gets a SmartScreen wall, and SmartScreen
+   reputation only accrues once you are consistently signing with one identity —
+   which is a reason to get the certificate early even if you ship late.
+2. An installer — **Inno Setup** or **WiX** — with per-format checkboxes, the
+   EULA, the WebView2 bootstrapper check from G0.4, and an entry in Add/Remove
+   Programs.
+3. Test on a **clean Windows VM** with no Visual C++ runtime, no WebView2 and no
+   DAW preinstalled. This is where a missing redistributable shows up.
+
+### 2.5 AAX signing
+
+Separate from both of the above: **wraptool** signs the `.aaxplugin` on each
+platform using the PACE account from G0.3. It runs *after* the platform
+code-signing step on macOS, and it is the last thing to touch the bundle. Get one
+plugin through this end to end before building the other five — the first one
+costs a day of account plumbing and the rest cost minutes.
+
+### 2.6 Both platforms
+
+- **Uninstallers.** macOS: a script or a documented path list. Windows:
+  Add/Remove Programs, which the installer gives you for free if you use it.
+- **Verify on machines that have never seen the plugin**, with the installer
+  downloaded through a browser so the quarantine bit and SmartScreen are real.
+  VM snapshots are the only honest test.
+- **One entry point per platform**, `package-macos.sh` and its Windows
+  counterpart, both driven from CI so a release is never hand-built. With 24
+  bundles to sign, notarise and wrap, manual is not a strategy.
 
 ---
 
@@ -446,23 +622,41 @@ read back, save and reload the session, change the sample rate with the plugin
 loaded, offline bounce, editor resize, several instances, CPU under load, and
 close/reopen the editor twenty times.
 
+**macOS**
+
 | Host | Formats | Why it is on the list |
 | --- | --- | --- |
 | Ableton Live 11 + 12 | AU, VST3 | Your primary target. Test **native and under Rosetta** — Live ships universal and the architecture trap in `CLAUDE.md` bites here |
 | Logic Pro | AU only | Strictest AU validation; sandboxed; will reject things `auval` lets through |
+| Pro Tools | AAX | Per D3. The strictest host you ship into, and the only way to test AAX at all |
 | Reaper | VST3, AU | Best bug-finder: exotic block sizes, channel counts, offline render modes |
 | Cubase / Nuendo | VST3 | Strictest VST3 bus and parameter rules |
 | Studio One | VST3, AU | Large user base, aggressive plugin scanning |
 | Bitwig | VST3 | Sandboxed per plugin; surfaces crashes cleanly |
-| FL Studio (macOS) | VST3, AU | Unusual parameter/automation model |
+| FL Studio | VST3, AU | Unusual parameter/automation model |
 | GarageBand | AU | Free, sandboxed, and where your least technical users are |
-| Pro Tools | AAX | Only if D3 says AAX. Otherwise out of scope |
 
-**Windows is a project, not a test pass.** If D3 says yes, it needs: MSVC/CMake
-build, WebView2 runtime for the six WebView faces, VST3 + Standalone only (no AU),
-a different user-data path than `~/Library`, a code-signing certificate (OV/EV, or
-Azure Trusted Signing), an installer (Inno Setup or WiX), its own CI runner and
-its own pass through the host matrix. Treat it as a separate release.
+**Windows** — a second full pass, not a spot check. The formats differ (no AU),
+the paths differ, the WebView differs, and the compiler differs, so a macOS pass
+proves nothing here.
+
+| Host | Formats | Why it is on the list |
+| --- | --- | --- |
+| Ableton Live 11 + 12 | VST3 | Same primary target, different plugin host |
+| Pro Tools | AAX | The other half of the AAX surface |
+| Cubase / Nuendo | VST3 | Steinberg's own host on Steinberg's own format |
+| Reaper | VST3 | Cheap licence, ruthless edge cases |
+| FL Studio | VST3 | Far bigger on Windows than on macOS |
+| Studio One / Bitwig | VST3 | Round out the scan-and-crash coverage |
+
+Plus, on both: the **Standalone** app, which has no host to blame — audio device
+selection, device changes while running, sample-rate changes, and (Windows) ASIO
+vs WASAPI per G0.4.
+
+**Two release artefacts, two CI runners.** With Windows in scope, every gate
+above doubles at the point where it touches a binary: `pluginval` runs on both,
+the soak harness runs on both, the `*_regress` checksums have a baseline per
+platform, and the installer is built and smoke-tested on both.
 
 ---
 
@@ -525,17 +719,21 @@ Make them generated, not hand-captured, so they never drift from the product:
 - `og:image` and Twitter card per page, favicon, sitemap, `robots.txt`.
 - Lighthouse pass, real mobile devices, Safari **and** Firefox — `backdrop-filter`
   and `aspect-ratio` are both used in the styles.
-- Then: replace every `href="#"` Buy button with its LemonSqueezy checkout, and
-  make the spec table match what you actually ship (see D3).
+- Then: replace every `href="#"` Buy button with its LemonSqueezy checkout. The
+  spec table's **VST3 · AU · AAX / macOS 11+ / Windows 10+** is right per D3 —
+  but it only becomes *true* when G0 and G2 have shipped the binaries. Do not
+  publish the page before then, and add the per-format install paths and the
+  WebView2 note somewhere a Windows buyer will find them.
 
 ---
 
 ## What else you need, that is not on your list
 
-1. **The platform claim (D3).** The last untrue thing on the site, and the only
-   open decision left.
-2. **EULA, privacy policy, terms.** Required by Netlify-adjacent reality, by
-   Apple's notarisation paperwork, and by the first customer who asks.
+1. **Every account and licence in G0.** All three decisions are made, so the only
+   thing that can still stall the release is someone else's approval queue —
+   Avid, PACE, Apple, the Windows certificate authority. Start them today.
+2. **EULA, privacy policy, terms**, and the third-party notices file from G0.5.
+   Required by Apple's paperwork, by Avid's, and by the first customer who asks.
 3. **A manual.** `README.md` is already an excellent one — publish it as a docs
    site or a PDF in the installer rather than writing a second one. Trim it to
    the six products, or mark the other nine clearly as not-for-sale.
@@ -567,34 +765,44 @@ Make them generated, not hand-captured, so they never drift from the product:
 ## Gate summary
 
 ```
-D1 ✅ BitBit    D2 ✅ six products    D3 ⚠️ platform claim still open
+D1 ✅ BitBit     D2 ✅ six products     D3 ✅ macOS + Windows, VST3/AU/AAX/Standalone
+
+G0  paperwork  ──────────────┐   Apple · Avid + AAX SDK · PACE/iLok · Pro Tools ·
+    (start today, runs in    │   Windows cert · Windows runner · JUCE and VST3
+     parallel with G1)       │   licence audit · third-party notices
+                             │
+G1  correctness              │   golden param file · CI on both platforms ·
+    (needs nothing from G0)  │   pluginval 10 · auval strict · ASan/UBSan/TSan ·
+                             │   both known failures closed · soak harness ·
+                             │   preset-loader fuzzing          — six products
+   ↓                         │
+G5a DSP content              │   plate engine · latency work
+    ← before checksums freeze│
+   ↓                         │
+G1b re-baseline              │   *_regress checksums frozen, per platform
+   ↓                         │
+   └─────────────────────────┴──→  both must be green before:
    ↓
-G1  correctness   golden param file · CI · pluginval 10 · auval strict ·
-                  ASan/UBSan/TSan · both known failures closed · soak harness ·
-                  preset-loader fuzzing                     — six products
-   ↓
-G5a DSP content   plate engine · latency work        ← before checksums freeze
-   ↓
-G1b re-baseline   *_regress checksums frozen for the release
-   ↓
-G2  distribution  Developer ID · hardened runtime · notarised · signed .pkg ·
-                  uninstaller · clean-machine install test
+G2  builds +      AAX build · Windows build · Developer ID + notarised .pkg ·
+    distribution  signed Windows installer · wraptool AAX signing ·
+                  uninstallers · clean-machine install test on both
    ↓
 G3  commerce      LemonSqueezy SKUs · licence keys · activation UI · free codes ·
-                  trial decision
+                  trial decision   (decide PACE vs LemonSqueezy licensing once)
    ↓
 G4  updates       updates.json + in-face notice · versioning · changelog · archive
    ↓
 G5b content       six preset banks to target · preset browser
    ↓
-G6  hosts         the host matrix, native and Rosetta
+G6  hosts         the macOS matrix + the Windows matrix + Pro Tools + Standalone
    ↓
-G7  website       D3 claim corrected · screenshots · audio · video · analytics ·
-                  legal · domain · live
+G7  website       screenshots · audio · video · analytics · legal · domain · live
    ↓
-beta → soft launch → launch
+beta (incl. Windows and Pro Tools testers) → soft launch → launch
 ```
 
-With D1 and D2 closed, the two things most likely to be skipped are
-**pluginval in CI before anything else**, and **correcting the AAX/Windows claim
-on the site (D3)** — the first catches the bugs, the second prevents the refunds.
+All three decisions are closed, so the plan no longer has an unknown in it — only
+work and queues. The two things most likely to sink the schedule now are
+**G0 started late**, because Avid, PACE and a Windows certificate authority all
+move at their own speed, and **pluginval skipped**, because it is the cheapest
+bug-finding in the whole document.
