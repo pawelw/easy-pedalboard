@@ -26,13 +26,13 @@ target_link_libraries(ee_ui_snapshot
 
 if(EE_TAPE_TUNER)
     target_sources(ee_ui_snapshot PRIVATE
-        ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src/TapeTunerPanel.cpp)
+        ${CMAKE_SOURCE_DIR}/plugins/bitbit-delay/src/TapeTunerPanel.cpp)
     target_include_directories(ee_ui_snapshot
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-delay/src)
     target_compile_definitions(ee_ui_snapshot PUBLIC EE_TAPE_TUNER=1)
 endif()
 
-if(TARGET PeakReverb)
+if(TARGET BitBitReverb)
     # Renders a dry file through the real processor so its output can be scored
     # against a reference recording.
     juce_add_console_app(ee_reverb_match PRODUCT_NAME "ee_reverb_match")
@@ -45,10 +45,10 @@ if(TARGET PeakReverb)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_reverb_match
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-reverb/src)
 
     target_link_libraries(ee_reverb_match
-        PRIVATE PeakReverb ee_shared juce::juce_audio_formats
+        PRIVATE BitBitReverb ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
@@ -67,7 +67,7 @@ target_link_libraries(ee_tape_match
     PRIVATE ee_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
-if(TARGET PeakEq)
+if(TARGET BitBitEq)
     # Renders audio through the whole EQ processor, band filters and bypass mix.
     juce_add_console_app(ee_eq_match PRODUCT_NAME "ee_eq_match")
 
@@ -79,14 +79,14 @@ if(TARGET PeakEq)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_eq_match
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-eq/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-eq/src)
 
     target_link_libraries(ee_eq_match
-        PRIVATE PeakEq ee_shared juce::juce_audio_formats
+        PRIVATE BitBitEq ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakDelay)
+if(TARGET BitBitDelay)
     # Renders a file through the whole delay processor, chain and all.
     juce_add_console_app(ee_delay_match PRODUCT_NAME "ee_delay_match")
 
@@ -98,15 +98,15 @@ if(TARGET PeakDelay)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_delay_match
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-delay/src)
 
     target_link_libraries(ee_delay_match
-        PRIVATE PeakDelay ee_shared juce::juce_audio_formats
+        PRIVATE BitBitDelay ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakDelay)
-    # The A/B for a change to Peak Delay that is meant to change nothing: a
+if(TARGET BitBitDelay)
+    # The A/B for a change to BitBit Delay that is meant to change nothing: a
     # battery of settings through the whole processor, one checksum per pass.
     # ee_delay_match above is the other thing - a voicing renderer for a real
     # file. See RegressHarness.h.
@@ -120,16 +120,16 @@ if(TARGET PeakDelay)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_delay_regress
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-delay/src)
 
     target_link_libraries(ee_delay_regress
-        PRIVATE PeakDelay ee_shared juce::juce_audio_formats
+        PRIVATE BitBitDelay ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakDelay)
+if(TARGET BitBitDelay)
     # ee::plugin::PresetStore against a real pedal - the factory bank compiled
-    # in from plugins/peak-delay/presets, and a user bank in a folder of its
+    # in from plugins/bitbit-delay/presets, and a user bank in a folder of its
     # own. Shared machinery every pedal is meant to adopt, so it is worth a
     # suite rather than a manual click through one face.
     juce_add_console_app(ee_preset_tests PRODUCT_NAME "ee_preset_tests")
@@ -142,14 +142,14 @@ if(TARGET PeakDelay)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_preset_tests
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-delay/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-delay/src)
 
     target_link_libraries(ee_preset_tests
-        PRIVATE PeakDelay ee_shared
+        PRIVATE BitBitDelay ee_shared
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakTremPan)
+if(TARGET BitBitTremPan)
     # Sweeps the Trem & Pan processor over every parameter combo and adverse input,
     # watching for a non-finite or runaway output.
     juce_add_console_app(ee_trempan_stress PRODUCT_NAME "ee_trempan_stress")
@@ -162,14 +162,14 @@ if(TARGET PeakTremPan)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_trempan_stress
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-trem-pan/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-trem-pan/src)
 
     target_link_libraries(ee_trempan_stress
-        PRIVATE PeakTremPan ee_shared
+        PRIVATE BitBitTremPan ee_shared
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakTremPan)
+if(TARGET BitBitTremPan)
     # Renders a fixed battery of settings through the whole Trem & Pan processor
     # and prints a checksum per pass. Not a pass/fail suite: it is the A/B for a
     # change that is meant to change nothing, so its output is compared against
@@ -185,10 +185,10 @@ if(TARGET PeakTremPan)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_trempan_regress
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-trem-pan/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-trem-pan/src)
 
     target_link_libraries(ee_trempan_regress
-        PRIVATE PeakTremPan ee_shared juce::juce_audio_formats
+        PRIVATE BitBitTremPan ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
@@ -237,7 +237,7 @@ target_link_libraries(ee_tape_render
     PRIVATE ee_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
-# Renders a dry file through Peak Sympathy's resonator engine directly (no
+# Renders a dry file through BitBit Sympathy's resonator engine directly (no
 # processor), for A/B-ing the voicing itself by ear. The *_match family (see
 # RegressHarness.h): "is this the sound we want", not "is this the same sound
 # as before". See ee_sympathy_plugin_match below for the same thing through the
@@ -272,8 +272,8 @@ target_link_libraries(ee_sympathy_stress
     PRIVATE ee_dsp
     PUBLIC juce::juce_recommended_config_flags)
 
-if(TARGET PeakSympathy)
-    # The A/B for a change to Peak Sympathy that is meant to change nothing: a
+if(TARGET BitBitSympathy)
+    # The A/B for a change to BitBit Sympathy that is meant to change nothing: a
     # battery of settings through the whole processor, one checksum per pass.
     # New code, so nothing to diff yet - it is the baseline. See RegressHarness.h.
     juce_add_console_app(ee_sympathy_regress PRODUCT_NAME "ee_sympathy_regress")
@@ -286,13 +286,13 @@ if(TARGET PeakSympathy)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_sympathy_regress
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-sympathy/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-sympathy/src)
 
     target_link_libraries(ee_sympathy_regress
-        PRIVATE PeakSympathy ee_shared juce::juce_audio_formats
+        PRIVATE BitBitSympathy ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 
-    # Renders a dry file through the *whole* Peak Sympathy processor - Mix, the
+    # Renders a dry file through the *whole* BitBit Sympathy processor - Mix, the
     # dry duck, the bypass crossfade, the plugin's own parameter defaults - all
     # included. ee_sympathy_match above drives ee::dsp::ResonatorBank directly
     # and skips every bit of that; the two exist so a discrepancy between "the
@@ -308,14 +308,14 @@ if(TARGET PeakSympathy)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_sympathy_plugin_match
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-sympathy/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-sympathy/src)
 
     target_link_libraries(ee_sympathy_plugin_match
-        PRIVATE PeakSympathy ee_shared juce::juce_audio_formats
+        PRIVATE BitBitSympathy ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakSpring)
+if(TARGET BitBitSpring)
     # Renders a dry file through the whole spring processor, for voicing it
     # against a reference recording.
     juce_add_console_app(ee_spring_match PRODUCT_NAME "ee_spring_match")
@@ -328,10 +328,10 @@ if(TARGET PeakSpring)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_spring_match
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-spring/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-spring/src)
 
     target_link_libraries(ee_spring_match
-        PRIVATE PeakSpring ee_shared juce::juce_audio_formats
+        PRIVATE BitBitSpring ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
@@ -367,7 +367,7 @@ target_link_libraries(ee_grain_stress
     PRIVATE ee_dsp
     PUBLIC juce::juce_recommended_config_flags)
 
-if(TARGET PeakGrain)
+if(TARGET BitBitGrain)
     # Drives the real processor the way a host does, so the wiring around the
     # engine is under test and not just the engine.
     juce_add_console_app(ee_grain_host PRODUCT_NAME "ee_grain_host")
@@ -380,10 +380,10 @@ if(TARGET PeakGrain)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_grain_host
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-grain/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-grain/src)
 
     target_link_libraries(ee_grain_host
-        PRIVATE PeakGrain ee_shared juce::juce_graphics juce::juce_audio_formats
+        PRIVATE BitBitGrain ee_shared juce::juce_graphics juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
@@ -408,8 +408,8 @@ target_link_libraries(ee_au_host
     PRIVATE juce::juce_audio_processors juce::juce_audio_utils
     PUBLIC juce::juce_recommended_config_flags)
 
-if(TARGET PeakSpring)
-    # The A/B for a change to the spring tank that is meant to leave Peak Spring
+if(TARGET BitBitSpring)
+    # The A/B for a change to the spring tank that is meant to leave BitBit Spring
     # exactly as it is - Tension and Low Cut are additive, and this is what says
     # so. See RegressHarness.h.
     juce_add_console_app(ee_spring_regress PRODUCT_NAME "ee_spring_regress")
@@ -422,14 +422,14 @@ if(TARGET PeakSpring)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_spring_regress
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-spring/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-spring/src)
 
     target_link_libraries(ee_spring_regress
-        PRIVATE PeakSpring ee_shared juce::juce_audio_formats
+        PRIVATE BitBitSpring ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakArtifact)
+if(TARGET BitBitArtifact)
     # Baseline for the Bit Crush engine, which was a pass-through placeholder
     # until it was voiced. New code, so nothing to diff yet - it is the A/B for
     # the next change that means to leave the crusher alone, and it also asserts
@@ -444,15 +444,15 @@ if(TARGET PeakArtifact)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_bitcrush_regress
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-artifact/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-artifact/src)
 
     target_link_libraries(ee_bitcrush_regress
-        PRIVATE PeakArtifact ee_shared juce::juce_audio_formats
+        PRIVATE BitBitArtifact ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakModulation)
-    # Drives the real Peak Modulation processor like a host: every engine makes
+if(TARGET BitBitModulation)
+    # Drives the real BitBit Modulation processor like a host: every engine makes
     # sound and stays finite, the power toggle reaches the audio, the dry path
     # lands where the reported latency says, and the Init preset names every
     # parameter. A checksum per case, so it is also the A/B for the next change
@@ -467,15 +467,15 @@ if(TARGET PeakModulation)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_modulation_host
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-modulation/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-modulation/src)
 
     target_link_libraries(ee_modulation_host
-        PRIVATE PeakModulation ee_shared juce::juce_audio_formats
+        PRIVATE BitBitModulation ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-if(TARGET PeakReverb)
-    # The same for Peak Reverb: both engines, the power toggle, bypass, and the
+if(TARGET BitBitReverb)
+    # The same for BitBit Reverb: both engines, the power toggle, bypass, and the
     # Init preset. A checksum per case - Shimmer stays at 0 so it reproduces.
     juce_add_console_app(ee_reverb_host PRODUCT_NAME "ee_reverb_host")
 
@@ -487,14 +487,14 @@ if(TARGET PeakReverb)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_reverb_host
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-reverb/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-reverb/src)
 
     target_link_libraries(ee_reverb_host
-        PRIVATE PeakReverb ee_shared juce::juce_audio_formats
+        PRIVATE BitBitReverb ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
-# Peak Alpine's switchable modules (Modulation, Reverb, Artifact). Not a
+# BitBit Alpine's switchable modules (Modulation, Reverb, Artifact). Not a
 # *_regress tool - this is new code, so there is nothing to diff against; it
 # asserts the contract MultiEngineModule promises, and hunts the thing a module
 # built out of other people's engines is most likely to get wrong: a click on
@@ -512,7 +512,7 @@ target_link_libraries(ee_module_stress
     PRIVATE ee_dsp juce::juce_audio_processors juce::juce_dsp
     PUBLIC juce::juce_recommended_config_flags)
 
-# Checks two specific claims about Peak Artifact's Bit engine (see BitCheck.cpp):
+# Checks two specific claims about BitBit Artifact's Bit engine (see BitCheck.cpp):
 # its Crush/Rate knobs at 100 % are bit-identical to Bit Crush's own engine at
 # 50 %, and its Drive knob leaves the level where it was on real audio.
 juce_add_console_app(ee_bit_check PRODUCT_NAME "ee_bit_check")
@@ -528,8 +528,8 @@ target_link_libraries(ee_bit_check
     PRIVATE ee_dsp juce::juce_audio_processors juce::juce_dsp juce::juce_audio_formats
     PUBLIC juce::juce_recommended_config_flags)
 
-if(TARGET PeakAlpine)
-    # Drives the real Peak Alpine processor like a host: does it make sound, do
+if(TARGET BitBitAlpine)
+    # Drives the real BitBit Alpine processor like a host: does it make sound, do
     # the three power toggles reach the audio, is a bypassed plugin unity, and
     # is every engine pair finite. Prints a checksum per case, so it is also the
     # baseline for the next refactor of it.
@@ -543,10 +543,10 @@ if(TARGET PeakAlpine)
         JUCE_STANDALONE_APPLICATION=1)
 
     target_include_directories(ee_alpine_host
-        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/peak-alpine/src)
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-alpine/src)
 
     target_link_libraries(ee_alpine_host
-        PRIVATE PeakAlpine ee_shared juce::juce_audio_formats
+        PRIVATE BitBitAlpine ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
@@ -556,7 +556,7 @@ endif()
 # One binary each rather than one that knows about them all: every pedal's
 # PluginProcessor.cpp defines createPluginFilter(), so two of them in one link
 # is a duplicate symbol, and the object that defines it is the same one that
-# defines the processor. Generated from the list peak_add_plugin keeps, so a
+# defines the processor. Generated from the list bitbit_add_plugin keeps, so a
 # new product is frozen the day it is added instead of the day someone
 # remembers.
 get_property(eeReleaseTargets GLOBAL PROPERTY EE_RELEASE_PLUGIN_TARGETS)
@@ -575,7 +575,7 @@ foreach(pluginTarget IN LISTS eeReleaseTargets)
     target_sources(${goldenApp} PRIVATE ParamGolden.cpp)
 
     # The processor class name is the target name plus "Processor" in every
-    # pedal; peak_add_plugin is what makes that true.
+    # pedal; bitbit_add_plugin is what makes that true.
     target_compile_definitions(${goldenApp} PUBLIC
         JUCE_WEB_BROWSER=0
         JUCE_USE_CURL=0

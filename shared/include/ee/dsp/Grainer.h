@@ -307,7 +307,7 @@ public:
     }
 
     /** Crush: each active grain sample-and-holds independently, at the rate
-        config::bitHoldNFor maps the knob to - the same reduction Peak
+        config::bitHoldNFor maps the knob to - the same reduction BitBit
         Artifact's Amp engine applies to its own Bit knob. 0 is exactly
         bypassed (every grain reads unheld). */
     void setBit (float amount01) noexcept
@@ -357,7 +357,7 @@ public:
         double ppqPerSample = 0.0;
 
         // Grid (see GrainerConfig.h's GRID). The caller sets grid only when it
-        // has a finite ppq and the transport is rolling - Peak Grain always
+        // has a finite ppq and the transport is rolling - BitBit Grain always
         // does then; there is no switch. barStartPpq is the
         // ppq of any bar line, quartersPerBar the bar's length.
         bool grid = false;
@@ -701,7 +701,7 @@ private:
     static constexpr float kEnvelopeReferenceRms = 0.6124f;
 
     // Envelope follower feeding the attack detector, and the detector's own
-    // voicing. The same numbers Peak Wah's retrigger uses - a pluck is a pluck.
+    // voicing. The same numbers BitBit Wah's retrigger uses - a pluck is a pluck.
     static constexpr float kFollowerSeconds = 0.010f;
     static constexpr float kOnsetEnvDecayMs = 120.0f;
     static constexpr float kOnsetAttackWidthMs = 15.0f;

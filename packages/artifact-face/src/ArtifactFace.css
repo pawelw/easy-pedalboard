@@ -1,14 +1,14 @@
 /* The Artifact face's own module body. Everything here was
-   `plugins/peak-artifact/jsui/src/index.css` and moved with the component; what
+   `plugins/bitbit-artifact/jsui/src/index.css` and moved with the component; what
    stayed behind is the pedal's enclosure - its `.page` padding and the Card
    overrides for its title and header - because that is the part the two hosts
    differ on.
 
-   The classes are `af-` rather than `pa-`: Peak Alpine's host stylesheet
+   The classes are `af-` rather than `pa-`: BitBit Alpine's host stylesheet
    already owns `.pa-knobs` / `.pa-knob-row` / `.pa-display` for its own side
    modules, at different values, and this face now renders inside it. */
 
-/* "CRASHER" is a letter wider than any engine name Peak Alpine's steppers
+/* "CRASHER" is a letter wider than any engine name BitBit Alpine's steppers
    carry, and truncates in a 168px module at the shared letter-spacing and
    icon gap. Pull both in just enough that the three engine names and the three
    wave names all fit whole - scoped to this module so the host's own steppers
@@ -32,7 +32,7 @@
   margin-top: 20px;
 }
 
-/* The Easy tab's single macro knob (Peak Alpine only - `easyTab`), centred.
+/* The Easy tab's single macro knob (BitBit Alpine only - `easyTab`), centred.
    A touch more air above it than the Adv grid's 22px: one knob wants the room,
    and there is no display above it in this face's Easy view. */
 .af-easy {

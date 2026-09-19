@@ -13,7 +13,7 @@ namespace ee::dsp
 /** Tremolo and auto-pan: one shaped LFO driving either a ducking gain law or an
     equal-power pan, with an optional bias-tube colour on the tremolo side.
 
-    Peak Trem & Pan is this engine and its parameter layout; Peak Alpine's
+    BitBit Trem & Pan is this engine and its parameter layout; BitBit Alpine's
     Modulation module runs a second instance. Neither owns the maths.
 
     The LFO always free-runs on its own phase accumulator, so a rate or division

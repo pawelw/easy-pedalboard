@@ -6,7 +6,7 @@ import "./ModuleTabs.css";
  * top border and carries the panel's own fill, so it reads as one surface with
  * the content above it; the other tab stays a recessed slab.
  *
- * Peak Alpine's three narrow modules (Artifact, Modulation, Reverb) each carry
+ * BitBit Alpine's three narrow modules (Artifact, Modulation, Reverb) each carry
  * one - "Easy" shows a single macro knob that makes the musical move for the
  * whole engine, "Adv" the full parameter set. The wide Delay module has no
  * such split and no strip.

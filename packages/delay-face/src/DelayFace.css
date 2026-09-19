@@ -1,4 +1,4 @@
-/* The Delay face's own layout. Everything here was `plugins/peak-delay/jsui/
+/* The Delay face's own layout. Everything here was `plugins/bitbit-delay/jsui/
    src/index.css` and moved with the component; what stayed behind is the
    pedal's enclosure - its `.page` padding and the Card overrides for its
    title, header and padding - because that is the part the two hosts differ

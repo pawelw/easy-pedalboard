@@ -5,7 +5,7 @@
 // AU wrapper's own buffer handling - none of which a test that instantiates the
 // processor class directly exercises.
 //
-//   ee_au_host "AudioUnit:Effects/aufx,Pgrn,Peak" [--sr 48000] [--block 512] [--level -20] [--seconds 30]
+//   ee_au_host "AudioUnit:Effects/aufx,Bgrn,BtBt" [--sr 48000] [--block 512] [--level -20] [--seconds 30]
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
@@ -17,7 +17,7 @@ int main (int argc, char* argv[])
 {
     juce::ScopedJuceInitialiser_GUI juceInit;
 
-    juce::String wanted = argc > 1 ? juce::String (argv[1]) : juce::String ("AudioUnit:Effects/aufx,Pgrn,Peak");
+    juce::String wanted = argc > 1 ? juce::String (argv[1]) : juce::String ("AudioUnit:Effects/aufx,Bgrn,BtBt");
     double sampleRate = 48000.0;
     int block = 512;
     float inputDb = -20.0f;

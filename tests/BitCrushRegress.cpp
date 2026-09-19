@@ -1,4 +1,4 @@
-// Renders a fixed battery of settings through the whole Peak Artifact processor
+// Renders a fixed battery of settings through the whole BitBit Artifact processor
 // with the Bit Crush engine selected, and drives ee::dsp::BitCrusher directly,
 // printing a checksum per pass.
 //
@@ -57,7 +57,7 @@ const Pass kPasses[] = {
 
 bool runPass (const Pass& pass, const juce::AudioBuffer<float>& input, juce::AudioBuffer<float>& output)
 {
-    PeakArtifactProcessor processor;
+    BitBitArtifactProcessor processor;
 
     setChoice (processor.apvts, "engine", 1); // Ring Mod / Bit Crush / Rust / Amp
     setPercent (processor.apvts, "crush.bits", pass.bits);
@@ -187,7 +187,7 @@ int main (int argc, char* argv[])
     juce::WavAudioFormat wav;
     bool ok = true;
 
-    std::printf ("Peak Artifact / Bit Crush - %d passes at %.0f Hz, %d s each\n\n",
+    std::printf ("BitBit Artifact / Bit Crush - %d passes at %.0f Hz, %d s each\n\n",
                  static_cast<int> (sizeof (kPasses) / sizeof (kPasses[0])), kSampleRate, kSeconds);
 
     for (const auto& pass : kPasses)

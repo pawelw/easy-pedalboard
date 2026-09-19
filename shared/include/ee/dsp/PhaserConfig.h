@@ -3,7 +3,7 @@
 /**
  * Voicing for ee::dsp::Phaser.
  *
- * Peak Phase is a two-knob pedal - Rate and Depth - so everything that gives it
+ * BitBit Phase is a two-knob pedal - Rate and Depth - so everything that gives it
  * its character (stage count, sweep range, feedback, stereo spread, wet/dry
  * balance) is fixed here. The two knobs only ever scale what this file sets up.
  *
@@ -35,7 +35,7 @@ constexpr int kStages    = 6;
 // RATE
 // ============================================================================
 // LFO frequency range of the Rate knob, in Hz, skewed so the slow, musical end
-// gets most of the knob travel. Matches Peak Chorus so the two pedals feel the
+// gets most of the knob travel. Matches BitBit Chorus so the two pedals feel the
 // same under the hand.
 constexpr float kRateMinHz        = 0.03f;
 constexpr float kRateMaxHz        = 8.0f;

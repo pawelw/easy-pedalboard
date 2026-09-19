@@ -1,4 +1,4 @@
-// Renders a dry file through Peak Sympathy's resonator engine so a voicing can
+// Renders a dry file through BitBit Sympathy's resonator engine so a voicing can
 // be A/B'd by ear against the dry take. Drives ee::dsp::ResonatorBank directly
 // (no plugin), every control on the command line.
 //

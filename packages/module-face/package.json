@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Peak Alpine's Modulation and Reverb modules, minus any enclosure - the faces Peak Modulation and Peak Reverb render on their own and Peak Alpine renders in its module row. See src/SideModule.jsx.",
+  "description": "BitBit Alpine's Modulation and Reverb modules, minus any enclosure - the faces BitBit Modulation and BitBit Reverb render on their own and BitBit Alpine renders in its module row. See src/SideModule.jsx.",
   "main": "src/index.js",
   "dependencies": {
     "@synthpeak/pedal-ui": "*"

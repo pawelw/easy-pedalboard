@@ -56,7 +56,7 @@ namespace
     constexpr int kSwitchStripHeight = 30;
     constexpr int kSwitchStripGap = 10;
 
-    // A slide switch parked at the very bottom instead of the top (Peak Wah's
+    // A slide switch parked at the very bottom instead of the top (BitBit Wah's
     // Mono/Stereo), left-aligned in its own thin strip.
     constexpr int kBottomStripHeight = 26;
 
@@ -113,7 +113,7 @@ namespace
     juce::Image brandLogo()
     {
         static const juce::Image logo =
-            juce::ImageCache::getFromMemory (BinaryData::peaklogo_png, BinaryData::peaklogo_pngSize);
+            juce::ImageCache::getFromMemory (BinaryData::bitbitlogo_png, BinaryData::bitbitlogo_pngSize);
         return logo;
     }
 
@@ -1891,7 +1891,7 @@ void PedalEditor::Face::resized()
         // both - which would push its cap well above the middle if the whole
         // component were centred. Sit the cap on the centre instead and let the
         // label hang below it. Compact centre knobs keep the original placement,
-        // so Peak Reverb's RESO does not move.
+        // so BitBit Reverb's RESO does not move.
         if (! spec.centreKnob->compact)
             bounds.setY (caps.getCentreY() - diameter / 2);
 

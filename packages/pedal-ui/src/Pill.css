@@ -1,8 +1,8 @@
 /* Scoped onto .pui-button's own selectors (two classes, or a class plus the
    [data-pressed] attribute) rather than .pui-pill alone, so these always
    outrank Button.css's base rules regardless of which stylesheet loads
-   first - the same reasoning as Peak Wah's own .pw-presets .pui-button
-   override (see peak-wah/jsui/src/index.css), just via a component class
+   first - the same reasoning as BitBit Wah's own .pw-presets .pui-button
+   override (see bitbit-wah/jsui/src/index.css), just via a component class
    instead of a layout-local one. */
 .pui-button.pui-pill {
   padding: 6px 10px;

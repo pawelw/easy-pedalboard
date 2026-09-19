@@ -21,7 +21,7 @@ import "./Dropdown.css";
  *
  * `tone`: "panel" (default) is this component's own look - the plain rack
  * input, full radius, `--pui-panel` ground. "chrome" is the closed-box
- * treatment `PresetBar`'s `variant="separated"` name field uses (Peak
+ * treatment `PresetBar`'s `variant="separated"` name field uses (BitBit
  * Alpine's host header, and every separated `JucePresetBar`) - the
  * `--pui-chrome` family, 28px tall, for a dropdown that wants to read as one
  * of that header's rounded chrome objects rather than a panel-toned input.

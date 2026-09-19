@@ -4,7 +4,7 @@
 #include <cmath>
 
 /**
- * Voicing for ee::dsp::Grainer, the granular delay behind Peak Grain.
+ * Voicing for ee::dsp::Grainer, the granular delay behind BitBit Grain.
  *
  * This file holds the structural side: the knob ranges, the buffer the engine
  * records into, and how many grains may sound at once. Changing one of these
@@ -39,7 +39,7 @@ constexpr float kMinGrainSeconds = 0.020f;
 
 // Raised from 0.5 s: synced, the Size knob can select a tempo division far
 // longer than this, and every position past the cap produced the same grain -
-// a dead band at the top of the travel (see PeakGrainProcessor::sizeReadout,
+// a dead band at the top of the travel (see BitBitGrainProcessor::sizeReadout,
 // which clamps its readout to exactly this for the same reason). 1.0 rather
 // than longer because of the read-ahead above: a grain reads its own length
 // times its playback rate of source, and pickRate() tops out near 3.2, so a
@@ -344,7 +344,7 @@ constexpr float kDefaultPitchHighPct = 0.0f;
 // How much of the scale reaches the grain cloud: 0 sends the High group back
 // to the original pitch, 100 lets it land on whatever notes Root and Scale
 // pick out. Low's octaves are not affected - an octave is consonant whatever
-// the key is - see PeakGrainProcessor::processBlock's own blend.
+// the key is - see BitBitGrainProcessor::processBlock's own blend.
 constexpr float kDefaultPitchMixPct = 100.0f;
 
 // ============================================================================
@@ -371,7 +371,7 @@ constexpr bool kDefaultDelaySync = true;
 // ============================================================================
 // REVERB
 // ============================================================================
-// Peak Grain runs ee::dsp::FdnReverb plain: the two knobs are its decay (in
+// BitBit Grain runs ee::dsp::FdnReverb plain: the two knobs are its decay (in
 // seconds, straight onto the network) and its mix, and everything else is pinned
 // here. No shimmer - the header states 0 means the pitch shifters never run, so
 // it costs nothing. The reverb now hears the whole post-delay blend rather than
@@ -435,7 +435,7 @@ constexpr float kDefaultModPct = 0.0f;
 // ============================================================================
 // BIT  (per-grain crush)
 // ============================================================================
-// Peak Artifact's Amp engine's own Bit knob (ee::fx::ArtifactModule::
+// BitBit Artifact's Amp engine's own Bit knob (ee::fx::ArtifactModule::
 // ampRateHzFor) - a sample-and-hold rate reducer only, no bit-depth
 // quantisation and no anti-alias filter (that class's own note: the reference
 // unit it was measured against holds full amplitude resolution). Restated
@@ -538,9 +538,9 @@ constexpr float kCloudFilterSettleSeconds = 0.4f;
 // A grain landing back on top of the transient that spawned it - a doubled
 // kick, say - can sum past what the dry signal alone ever reached, and the
 // grain/delay/reverb sends can push the same way. Not something the Level
-// knob can see coming, so ee::dsp::PeakLimiter runs always-on at the very end
+// knob can see coming, so ee::dsp::BitBitLimiter runs always-on at the very end
 // of the chain as a safety net, not a face control. The attack is sub-sample
-// fast on purpose - PeakLimiter has no lookahead, so anything slower lets the
+// fast on purpose - BitBitLimiter has no lookahead, so anything slower lets the
 // leading edge of exactly the transient this exists for through mostly
 // unchecked (verified empirically: 1 ms let a stacked kick through 4 dB over
 // ceiling; 0.02 ms holds it within a few hundredths of a dB). The 60 ms

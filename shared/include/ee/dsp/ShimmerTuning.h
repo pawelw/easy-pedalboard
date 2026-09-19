@@ -3,7 +3,7 @@
 namespace ee::dsp
 {
 
-/** Every number that shapes Peak Reverb's shimmer path, in one place.
+/** Every number that shapes BitBit Reverb's shimmer path, in one place.
 
     A pitch-shifted tap of the wet tail is folded back into the network, so each
     pass round the loop stacks another octave on top; the Shimmer knob is the
@@ -13,7 +13,7 @@ namespace ee::dsp
     Kept as a struct rather than constants so a tuning panel can drive them
     live, and so the whole voicing can be read at a glance. The defaults below
     are a tuned setting. The panel that drove them (ShimmerTunerPanel) went when
-    Peak Reverb became a WebView module; it is in git history if a retune wants
+    BitBit Reverb became a WebView module; it is in git history if a retune wants
     it back.
 */
 struct ShimmerTuning

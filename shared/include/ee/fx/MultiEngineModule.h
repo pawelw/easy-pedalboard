@@ -72,7 +72,7 @@ private:
 
 /** The chrome a switchable effect module has, without the effects.
  *
- * Peak Alpine's Modulation and Reverb modules are the same object at two
+ * BitBit Alpine's Modulation and Reverb modules are the same object at two
  * settings: a list of engines with one selected, a dry/wet Mix, an output
  * Level, and a power toggle. Only the engine list differs, so only the engine
  * list is written twice - everything below is written once, and in particular
@@ -85,7 +85,7 @@ private:
  * audio thread; one that merely stopped feeding it would swap in a cold engine,
  * and an engine with a delay line in it comes back cold as silence followed by
  * an abrupt arrival - a step in the middle of the crossfade, which no crossfade
- * can smooth because it happens inside the signal being faded. Peak Alpine's
+ * can smooth because it happens inside the signal being faded. BitBit Alpine's
  * chorus does exactly that. So the engines are kept warm and a switch is a
  * crossfade between two signals that are both already real.
  *
@@ -93,7 +93,7 @@ private:
  * do not need it - see ReverbModule.
  *
  * **Engines are latency-aligned.** A module mixes its wet side against its own
- * dry, so an engine that delays the signal combs against it: Peak Alpine's Tape
+ * dry, so an engine that delays the signal combs against it: BitBit Alpine's Tape
  * engine reads off a transport line 9.7 ms long, and at anything short of full
  * wet that arrived as a fixed comb sweeping with the wow - a chorus, on a knob
  * called Flutter. A subclass declares each engine's latency through

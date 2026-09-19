@@ -2,35 +2,35 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "peak-delay-jsui",
+      "name": "bitbit-delay-jsui",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",
         "dev",
         "--prefix",
-        "plugins/peak-delay/jsui"
+        "plugins/bitbit-delay/jsui"
       ],
       "port": 3001
     },
     {
-      "name": "peak-grain-jsui",
+      "name": "bitbit-grain-jsui",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",
         "dev",
         "--prefix",
-        "plugins/peak-grain/jsui"
+        "plugins/bitbit-grain/jsui"
       ],
       "port": 3006
     },
     {
-      "name": "peak-alpine-jsui",
+      "name": "bitbit-alpine-jsui",
       "runtimeExecutable": "npm",
       "runtimeArgs": [
         "run",
         "dev",
         "--prefix",
-        "plugins/peak-alpine/jsui"
+        "plugins/bitbit-alpine/jsui"
       ],
       "port": 3002
     },

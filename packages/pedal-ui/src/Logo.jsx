@@ -1,4 +1,4 @@
-import peakLogo from "./peak-logo.png";
+import bitbitLogo from "./bitbit-logo.png";
 import "./Logo.css";
 
 // Delicate yellow at a light touch, warming to the panel's own lit-orange
@@ -14,7 +14,7 @@ function glowRgb(level) {
 }
 
 /**
- * The Peak brand mark - one asset, recoloured via a CSS filter (the source
+ * The BitBit brand mark - one asset, recoloured via a CSS filter (the source
  * art isn't pure black itself) rather than shipping a tinted copy per theme.
  * `--pui-logo-filter` is what does the recolouring (`brightness(0)` for a
  * dark mark on a light panel, a hue-rotated `invert()` for a light mark on
@@ -35,7 +35,7 @@ export default function Logo({ size = 26, className = "", level }) {
   return (
     <img
       className={`pui-logo ${className}`}
-      src={peakLogo}
+      src={bitbitLogo}
       alt=""
       style={{ height: size, filter: `var(--pui-logo-filter)${glow}` }}
     />

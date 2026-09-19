@@ -202,7 +202,7 @@ function Lane({ items, spacing, dryHeight, flashMs, bottom }) {
  * tap re-spaced all of them and feedback read as a *time* change.
  *
  * Nothing on it moves on its own. `strikes` is a monotonic count of note
- * onsets from the processor (PeakDelayProcessor::strikeCountUi); each new one
+ * onsets from the processor (BitBitDelayProcessor::strikeCountUi); each new one
  * sends a playhead down the time axis, lighting the dry line as the note
  * sounds and then each repeat as it comes back, as brightly as `level` said
  * that note was loud. With no signal there are no strikes and the scope is

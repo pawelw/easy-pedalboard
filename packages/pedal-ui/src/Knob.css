@@ -45,7 +45,7 @@
   right: -16px;
 }
 
-/* Peak Grain's live modulation marker (see ModTick in Knob.jsx) - a short
+/* BitBit Grain's live modulation marker (see ModTick in Knob.jsx) - a short
    radial tick riding on the knob's own arc/tick-ring, at the LFO's current
    modulated position. Always the LFO's own green, drawn fresh every
    animation frame by ModdableKnob, and never affects the arc/needle's own
@@ -57,7 +57,7 @@
   pointer-events: none;
 }
 
-/* A caller-supplied marker (Peak Grain's LFO dot), pinned to the dial box's
+/* A caller-supplied marker (BitBit Grain's LFO dot), pinned to the dial box's
    own top-right corner - same fixed, size-independent offset idea as
    .pui-knob__corner above, just off the box's actual corner rather than
    further out past the ticks/labels. */
@@ -103,7 +103,7 @@
 /* A drag-and-drop drop target, for a caller that wired dropRef/dropActive up
    to its own drag library (see Knob's own note on those props). Unlike the
    focus ring above, this is always the same colour whatever variant/theme
-   the knob is drawn in - Peak Grain's Mod tab is the only thing that ever
+   the knob is drawn in - BitBit Grain's Mod tab is the only thing that ever
    sets `dropActive`, and its meaning is specifically "the LFO can be dropped
    here," so the ring is always the LFO's own green, not a generic
    interactive-state colour that would happen to change with the knob's own

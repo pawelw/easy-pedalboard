@@ -15,7 +15,7 @@ namespace ee::fx::modulation
 {
 
 /** What the Modulation module's knobs mean, for every plugin that carries one -
- * Peak Alpine's Mod module and Peak Modulation.
+ * BitBit Alpine's Mod module and BitBit Modulation.
  *
  * ModulationModule takes real units: a period in seconds, a 0..1 wave morph, a
  * transport. How a knob position becomes one of those is the owner's business,
@@ -26,7 +26,7 @@ namespace ee::fx::modulation
 
 // -------------------------------------------------------------------- tremolo
 
-/** The Tremolo Rate knob's map, shared with Peak Trem & Pan through the
+/** The Tremolo Rate knob's map, shared with BitBit Trem & Pan through the
     tremolo's own voicing header so the same knob position means the same rate
     on all three. */
 inline constexpr ee::dsp::RateMap kTremRateMap { ee::dsp::tremolo::kRateMinPeriodMs,
@@ -36,8 +36,8 @@ inline constexpr ee::dsp::RateMap kTremRateMap { ee::dsp::tremolo::kRateMinPerio
 // --------------------------------------------------------------------- filter
 
 /** The Filter Time knob: one LFO cycle from 30 ms (knob down) to 3 s (knob up)
-    - a filter wobble, the same travel Peak Wah's Time knob has, its
-    {30, 3000, 450} kept in step by hand with Peak Wah's own copy. Knob down is
+    - a filter wobble, the same travel BitBit Wah's Time knob has, its
+    {30, 3000, 450} kept in step by hand with BitBit Wah's own copy. Knob down is
     the shortest period, so every entry below flips the position before handing
     it to the shared map. */
 inline constexpr ee::dsp::RateMap kFilterRateMap { 30.0f, 3000.0f, 450.0f };
@@ -88,8 +88,8 @@ inline float filterWaveShape01 (int waveIndex) noexcept
  *
  * Both free-run. When a Sync switch is on and the transport is rolling, the
  * Filter LFO gets a hard snap onto the grid on the first playing block or after
- * a jump, and a gentle per-block pull otherwise - the same shape Peak Wah uses.
- * The Tremolo is handed a Transport and does its own alignment, exactly as Peak
+ * a jump, and a gentle per-block pull otherwise - the same shape BitBit Wah uses.
+ * The Tremolo is handed a Transport and does its own alignment, exactly as BitBit
  * Trem & Pan drives it.
  *
  * Call `process` once per block, before the module processes it, and only from

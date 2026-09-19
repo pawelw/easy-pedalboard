@@ -24,22 +24,22 @@ mkdir -p "$STAGE"
 # Keep in step with EE_RELEASE_PLUGINS in the top-level CMakeLists.txt, which is
 # what decides whose parameter contract is frozen in tests/golden.
 PLUGINS=(
-    "peak-alpine/PeakAlpine_artefacts:BitBit Alpine"
-    "peak-grain/PeakGrain_artefacts:BitBit Grains"
-    "peak-artifact/PeakArtifact_artefacts:BitBit Artifact"
-    "peak-modulation/PeakModulation_artefacts:BitBit Modulation"
-    "peak-delay/PeakDelay_artefacts:BitBit Delay"
-    "peak-reverb/PeakReverb_artefacts:BitBit Reverb"
+    "bitbit-alpine/BitBitAlpine_artefacts:BitBit Alpine"
+    "bitbit-grain/BitBitGrain_artefacts:BitBit Grains"
+    "bitbit-artifact/BitBitArtifact_artefacts:BitBit Artifact"
+    "bitbit-modulation/BitBitModulation_artefacts:BitBit Modulation"
+    "bitbit-delay/BitBitDelay_artefacts:BitBit Delay"
+    "bitbit-reverb/BitBitReverb_artefacts:BitBit Reverb"
 
-    # "peak-chorus/PeakChorus_artefacts:BitBit Chorus"
-    # "peak-eq/PeakEq_artefacts:BitBit EQ"
-    # "peak-overdrive/PeakOverdrive_artefacts:BitBit Overdrive"
-    # "peak-phase/PeakPhase_artefacts:BitBit Phase"
-    # "peak-spring/PeakSpring_artefacts:BitBit Spring"
-    # "peak-sympathy/PeakSympathy_artefacts:BitBit Sympathy"
-    # "peak-tape/PeakTape_artefacts:BitBit Tape"
-    # "peak-trem-pan/PeakTremPan_artefacts:BitBit Trem-Pan"
-    # "peak-wah/PeakWah_artefacts:BitBit Wah"
+    # "bitbit-chorus/BitBitChorus_artefacts:BitBit Chorus"
+    # "bitbit-eq/BitBitEq_artefacts:BitBit EQ"
+    # "bitbit-overdrive/BitBitOverdrive_artefacts:BitBit Overdrive"
+    # "bitbit-phase/BitBitPhase_artefacts:BitBit Phase"
+    # "bitbit-spring/BitBitSpring_artefacts:BitBit Spring"
+    # "bitbit-sympathy/BitBitSympathy_artefacts:BitBit Sympathy"
+    # "bitbit-tape/BitBitTape_artefacts:BitBit Tape"
+    # "bitbit-trem-pan/BitBitTremPan_artefacts:BitBit Trem-Pan"
+    # "bitbit-wah/BitBitWah_artefacts:BitBit Wah"
 )
 
 for entry in "${PLUGINS[@]}"; do

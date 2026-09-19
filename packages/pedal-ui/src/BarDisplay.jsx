@@ -2,8 +2,8 @@ import "./BarDisplay.css";
 
 /**
  * A recessed well with a row of bars in it: the small non-interactive display
- * a module puts above its knobs to show what its engine is doing. Peak
- * Machine has two, and they are the same object at two settings - the
+ * a module puts above its knobs to show what its engine is doing. BitBit
+ * Alpine has two, and they are the same object at two settings - the
  * Modulation module's tremolo envelope and the Reverb module's decay.
  *
  * `heights` is a list of pixel heights, and it is the whole of the data. What

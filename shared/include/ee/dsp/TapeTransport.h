@@ -15,17 +15,17 @@ namespace ee::dsp
 /** A tape transport: the whole signal read off a delay line whose length
     wanders, which is what a real capstan does to pitch.
 
-    This is Peak Tape's Flutter stage, lifted out of TapeMachine so Peak Delay's
+    This is BitBit Tape's Flutter stage, lifted out of TapeMachine so BitBit Delay's
     Flutter knob drives the very same code rather than a second model of it -
-    the same reason Peak Tape's Wear is TapeCharacter and not a copy of it. The
+    the same reason BitBit Tape's Wear is TapeCharacter and not a copy of it. The
     voicing is ee/dsp/TapeMachineConfig.h's TRANSPORT and STEREO blocks, so
     retuning either moves both pedals together.
 
     Both channels share one wow oscillator - a capstan wobbles the whole
     machine, and giving each side its own turns the effect into a chorus. That
     is exactly what `setStereo01` opts into, which is why it is a separate
-    control rather than part of Flutter. Peak Delay leaves it at 0 and gets one
-    transport under both sides; Peak Tape puts it on its Stereo switch.
+    control rather than part of Flutter. BitBit Delay leaves it at 0 and gets one
+    transport under both sides; BitBit Tape puts it on its Stereo switch.
 
     At Flutter and Stereo 0 the read lands on a whole sample, so the stage is
     bit-exact pass-through with a fixed latency rather than an almost-clean one.

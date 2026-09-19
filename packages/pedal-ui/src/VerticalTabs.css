@@ -1,6 +1,6 @@
 /* Same recessed-slab per tab as ModuleTabs, stacked instead of side by side.
    No radius/edge treatment here - a caller sitting this rail next to its own
-   panel (Peak Grain's plate) is responsible for rounding the outer corners to
+   panel (BitBit Grain's plate) is responsible for rounding the outer corners to
    match, the way ModuleTabs leaves its own panel-fitting to its caller too. */
 .pui-vtabs {
   display: flex;

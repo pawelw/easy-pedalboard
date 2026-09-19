@@ -12,7 +12,7 @@ namespace ee::dsp
 
     The anti-imaging / anti-aliasing leg of a 2x oversampled nonlinearity: one
     instance on the way up, a second on the way down, both set up at the
-    oversampled rate. Shared by Peak Overdrive's diode clipper and Peak Tape's
+    oversampled rate. Shared by BitBit Overdrive's diode clipper and BitBit Tape's
     record-head saturation - a soft-clipper folds its own harmonics back over
     the top octave without it, which is the one thing that reads as digital.
 */

@@ -3,7 +3,7 @@
 namespace ee::dsp
 {
 
-/** Every number that shapes Peak Grain's character but is not on the face.
+/** Every number that shapes BitBit Grain's character but is not on the face.
 
     The face knobs say how long the grains are, how many, how far back they are
     tapped from (Time), how much comes back round (Feedback), how the read head
@@ -71,10 +71,10 @@ struct GrainerTuning
     // the dry signal.
     float outputTrim = 1.4f;
 
-    // The reverb behind the cloud. Peak Grain runs FdnReverb plain, with only
+    // The reverb behind the cloud. BitBit Grain runs FdnReverb plain, with only
     // its mix and decay on the face; these two are the rest of its voicing.
     // Low resonance is the smeared, plate-like end, which suits a dense cloud;
-    // the low cut is harder than Peak Reverb idles at because grains stack up
+    // the low cut is harder than BitBit Reverb idles at because grains stack up
     // and a flat reverb under them turns to mud fast.
     float verbResonance = 0.35f;
     float verbLowCutHz = 120.0f;

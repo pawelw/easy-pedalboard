@@ -5,7 +5,7 @@
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/TempoDivision.h"
 
-/** The Left/Right Time knobs of Peak Delay - and of Peak Alpine's Delay
+/** The Left/Right Time knobs of BitBit Delay - and of BitBit Alpine's Delay
     module, which is the same chain, so the same knob position has to mean the
     same time on both: one normalised 0..1 parameter whose
     meaning the Sync pill decides - a note division when synced, a continuous
@@ -16,7 +16,7 @@
     Both knobs used to be an AudioParameterChoice over the division table, which
     made the free reading quantised too: the pill swapped the *text* from "1/1."
     to "3000 ms" but the knob still had only fifteen stops, so a drag stepped
-    3000 -> 2000 -> 1500 rather than gliding. Peak Trem & Pan never had that
+    3000 -> 2000 -> 1500 rather than gliding. BitBit Trem & Pan never had that
     because its Rate knob has always been a normalised float behind a map.
 
     The free sweep is deliberately the span the divisions themselves cover at
@@ -27,10 +27,10 @@
     triplets and dots bunch up), and turning Sync off reads as un-quantising
     the time and cutting it loose from the host rather than as jumping it
     somewhere else. That is also why there is no remembered per-mode knob
-    position here of the kind Peak Grain and Peak Trem & Pan carry: those two
+    position here of the kind BitBit Grain and BitBit Trem & Pan carry: those two
     map their free and synced sweeps to quite different spans, so they have
     something to remember and this does not. */
-namespace ee::peakdelay
+namespace ee::bitbitdelay
 {
 
 /** The tempo a free-running time is measured against. Free time is supposed to
@@ -76,4 +76,4 @@ inline float timeSeconds (float time01, bool synced, double bpm) noexcept
     return timeMap().value (time01, synced, bpm) * 0.001f;
 }
 
-} // namespace ee::peakdelay
+} // namespace ee::bitbitdelay

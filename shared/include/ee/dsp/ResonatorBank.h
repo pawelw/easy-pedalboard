@@ -13,7 +13,7 @@
 namespace ee::dsp
 {
 
-/** Peak Sympathy's sympathetic-resonance engine.
+/** BitBit Sympathy's sympathetic-resonance engine.
 
     The player's signal barely passes through; instead it excites a bank of
     tuned string loops that ring, bloom and beat against each other. Reference

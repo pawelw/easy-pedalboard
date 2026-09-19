@@ -1,4 +1,4 @@
-// Drives the real Peak Alpine processor the way a host does, and asserts the
+// Drives the real BitBit Alpine processor the way a host does, and asserts the
 // things that would make it broken rather than merely different: that it makes
 // sound at all, that every module's power toggle reaches the audio, that a
 // bypassed plugin is unity, and that nothing anywhere goes non-finite.
@@ -37,7 +37,7 @@ void check (bool condition, const char* what)
 template <typename Fn>
 void render (juce::AudioBuffer<float>& out, Fn&& configure)
 {
-    PeakAlpineProcessor processor;
+    BitBitAlpineProcessor processor;
     configure (processor.apvts);
 
     FakePlayHead playHead { 120.0, kSampleRate };
@@ -165,12 +165,12 @@ void everything (juce::AudioProcessorValueTreeState& s)
     caller's untouched buffer rather than to a copy delayed to match. So a host
     compensating the reported figure pulls the signal 6 ms early the moment that
     module is bypassed. It is a known gap, not an accident - see
-    docs/peak-alpine-plan.md §7. */
+    docs/bitbit-alpine-plan.md §7. */
 void checkLatencyLedger()
 {
     auto arrival = [] (auto&& configure)
     {
-        PeakAlpineProcessor p;
+        BitBitAlpineProcessor p;
 
         configure (p.apvts);
 
@@ -207,7 +207,7 @@ void checkLatencyLedger()
 
     int reported = 0;
     {
-        PeakAlpineProcessor p;
+        BitBitAlpineProcessor p;
         p.setPlayConfigDetails (2, 2, kSampleRate, 1024);
         p.prepareToPlay (kSampleRate, 1024);
         reported = p.getLatencySamples();
@@ -304,7 +304,7 @@ int main (int argc, char* argv[])
     juce::AudioBuffer<float> input (2, kLength);
     fillTestSignal (input, kSampleRate);
 
-    std::printf ("=== Peak Alpine host ===\n\n");
+    std::printf ("=== BitBit Alpine host ===\n\n");
 
     checkLatencyLedger();
     std::printf ("\n");
@@ -319,7 +319,7 @@ int main (int argc, char* argv[])
     std::printf ("Reported latency:\n");
     for (const double rate : { 44100.0, 48000.0, 88200.0, 96000.0, 192000.0 })
     {
-        PeakAlpineProcessor probe;
+        BitBitAlpineProcessor probe;
         probe.setPlayConfigDetails (2, 2, rate, 512);
         probe.prepareToPlay (rate, 512);
 
@@ -455,6 +455,6 @@ int main (int argc, char* argv[])
         check (out.getMagnitude (0, kLength) < 4.0f, "...and nothing ran away");
     }
 
-    std::printf ("\n%s\n", failures == 0 ? "OK - Peak Alpine works" : "PEAK ALPINE CHECKS FAILED");
+    std::printf ("\n%s\n", failures == 0 ? "OK - BitBit Alpine works" : "PEAK ALPINE CHECKS FAILED");
     return failures == 0 ? 0 : 1;
 }

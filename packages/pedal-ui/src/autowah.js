@@ -8,7 +8,7 @@ export const FREQ_KNOB_SKEW = 0.8;
 export const SWEEP_RATIO_MAX = 5.0;
 
 /** The Freq knob's 0..1 position to the Hz it actually sets - matches
-    freqHzFor() in plugins/peak-wah/src/PluginProcessor.cpp. */
+    freqHzFor() in plugins/bitbit-wah/src/PluginProcessor.cpp. */
 export function freqHzFor01(freq01) {
   const t = Math.pow(Math.max(0, Math.min(1, freq01)), FREQ_KNOB_SKEW);
   return FREQ_MIN_HZ * Math.pow(FREQ_MAX_HZ / FREQ_MIN_HZ, t);

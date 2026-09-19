@@ -3,11 +3,11 @@
   flex-direction: column;
   flex: none;
   border-radius: 8px;
-  /* One shared floor, not a per-host guess: Peak Alpine's row already stretches
+  /* One shared floor, not a per-host guess: BitBit Alpine's row already stretches
      every module to its own tallest (`.pa-modules { align-items: stretch }`,
      currently the Delay module's own content, 504px) - this is that same
      number, so a module reads the same size wherever it is dropped, including
-     standalone (Peak Artifact), where there is no row to stretch it. */
+     standalone (BitBit Artifact), where there is no row to stretch it. */
   min-height: 504px;
   /* The header strip's own divider runs edge to edge, and the module's corners
      are rounded - so the strip has to be clipped back to them. */

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "./Slider.css";
 
-// The full-size fader: the tick ladder and moulded thumb Peak EQ's bands are
+// The full-size fader: the tick ladder and moulded thumb BitBit EQ's bands are
 // built from.
 const TICK_COUNT = 9;
 const THUMB_LONG = 22; // along the travel
@@ -27,7 +27,7 @@ const PIXELS_PER_FULL_SWEEP = 200;
  * A fader: controlled (0..1), drag or arrow keys to move, double-click to
  * centre.
  *
- * `orientation`: "vertical" (default, 1 = top) is Peak EQ's band fader.
+ * `orientation`: "vertical" (default, 1 = top) is BitBit EQ's band fader.
  * "horizontal" (1 = right) is the same control on its side.
  *
  * `compact`: the header variant - a circular grip on a rail that fills up to

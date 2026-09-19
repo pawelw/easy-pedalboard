@@ -1,5 +1,5 @@
 // ee::fx::ModulationModule, ee::fx::ReverbModule and ee::fx::ArtifactModule: the
-// switchable modules Peak Alpine's row runs.
+// switchable modules BitBit Alpine's row runs.
 //
 // Not a *_regress tool - there is no "before" to diff against, because this is
 // new code rather than moved code. What it checks instead is the contract the
@@ -143,7 +143,7 @@ template <typename Module> void checkMixZeroIsDry (Module& module, const char* n
     output rides a transport delay line and wanders with the wow, so a fixed dry
     summed alongside it at any partial Mix is a comb whose notch sweeps at the
     wow rate - heard as tremolo, which is the state the Flutter knob shipped in.
-    So Tape runs fully wet and ignores Mix, the same as Peak Tape, which has no
+    So Tape runs fully wet and ignores Mix, the same as BitBit Tape, which has no
     mix control at all.
 
     The property that gives: Tape at rest is a bit-exact pass-through at *every*
@@ -359,7 +359,7 @@ void sweepReverb()
     check (worstPeak < 8.0f, "nothing ran away");
 }
 
-/** ee::fx::ArtifactModule - Peak Alpine's first module and Peak Artifact's
+/** ee::fx::ArtifactModule - BitBit Alpine's first module and BitBit Artifact's
     whole processor. All four engines are voiced; the interesting cases are
     each engine's own parameter space and that stepping between them does not
     step the signal. */
@@ -509,7 +509,7 @@ void sweepArtifact()
 
 int main()
 {
-    std::printf ("=== Peak Alpine module stress ===\n\n");
+    std::printf ("=== BitBit Alpine module stress ===\n\n");
 
     {
         ee::fx::ModulationModule module;

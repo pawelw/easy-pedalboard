@@ -1,5 +1,5 @@
 /**
- * The phase-smear sine that marks Peak Delay's post-stage (COMPONENTS.md #8b):
+ * The phase-smear sine that marks BitBit Delay's post-stage (COMPONENTS.md #8b):
  * one cycle drawn three times at rising x offsets and falling opacity, so it
  * reads as a waveform being dragged rather than as a static curve.
  *

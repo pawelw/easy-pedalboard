@@ -3,7 +3,7 @@
 /**
  * Voicing for ee::dsp::AutoWah.
  *
- * Peak Wah is an LFO-driven modulated filter: a wave sweeps a series-RLC tank's
+ * BitBit Wah is an LFO-driven modulated filter: a wave sweeps a series-RLC tank's
  * cutoff around the Freq setting, tapped anywhere on a continuous low- / band- /
  * high-pass morph. A fast envelope opens the modulation on a note and the
  * Decay knob is how quickly it flattens once you stop - turned fully up it
@@ -61,7 +61,7 @@ constexpr float kOneShotReleaseMs = 18.0f;
 // kStereoOffset of a cycle (½ = anti-phase).
 constexpr float kStereoOffset = 0.5f;
 
-// The LFO free-run period range and default live in plugins/peak-wah/src/RateMap.h.
+// The LFO free-run period range and default live in plugins/bitbit-wah/src/RateMap.h.
 
 // ============================================================================
 // PLAYABLE DYNAMICS
@@ -166,7 +166,7 @@ constexpr float kOutputLowpassHz = 8000.0f;
 // parks the resonant peak in the sub-bass, where it booms and "swipes" with the
 // sweep - the same unpleasantness the output low-pass clears at the top. It sits
 // inside post(), which runs on the wet side of the Mix only, so the dry path is
-// untouched and Mix 0 stays bit-exact. Shared by Peak Wah and Peak Artifact.
+// untouched and Mix 0 stays bit-exact. Shared by BitBit Wah and BitBit Artifact.
 constexpr float kOutputHighpassHz = 90.0f;
 
 // ============================================================================

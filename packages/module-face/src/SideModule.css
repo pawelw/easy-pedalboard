@@ -1,5 +1,5 @@
-/* The Modulation and Reverb modules' own body. Everything here was Peak
-   Alpine's host stylesheet (`plugins/peak-alpine/jsui/src/index.css`) and moved
+/* The Modulation and Reverb modules' own body. Everything here was BitBit
+   Alpine's host stylesheet (`plugins/bitbit-alpine/jsui/src/index.css`) and moved
    with SideModule; what stayed behind is Alpine's module row.
 
    The classes are `sm-` rather than Alpine's `pa-` for the reason ArtifactFace's
@@ -9,7 +9,7 @@
 /* A footer holds its height whether or not there is a Mix knob in it - Tape
    has none (it runs fully wet), and without this its footer would collapse to
    its padding and stepping onto Tape would resize the module. 87px is the
-   height a 38px knob with its caption takes. Peak Alpine's row sets the same
+   height a 38px knob with its caption takes. BitBit Alpine's row sets the same
    floor on every one of its modules; this is the copy that travels with the
    face to the standalone pedals, where there is no row. */
 .sm-module .pui-module__footer {
@@ -67,7 +67,7 @@
 /* The Filter engine's response scope. FilterScope reads the --pui-scope-*
    group, which onyx leaves on the light-theme values, so the well is pointed
    at the same recess the bar displays sit in and the curves at the module's
-   accent - it reads as one of this module's displays, not as Peak Wah's. */
+   accent - it reads as one of this module's displays, not as BitBit Wah's. */
 .sm-display--filter {
   position: relative;
   --pui-scope-bg: var(--pui-recess);

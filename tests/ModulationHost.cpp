@@ -1,4 +1,4 @@
-// Drives the real Peak Modulation processor the way a host does, and asserts
+// Drives the real BitBit Modulation processor the way a host does, and asserts
 // the things that would make it broken rather than merely different: that every
 // engine makes sound and stays finite, that the power toggle reaches the audio,
 // that the dry path arrives exactly where the reported latency says it will, and
@@ -39,7 +39,7 @@ void check (bool condition, const char* what)
 template <typename Fn>
 void render (juce::AudioBuffer<float>& out, Fn&& configure)
 {
-    PeakModulationProcessor processor;
+    BitBitModulationProcessor processor;
     configure (processor.apvts);
 
     FakePlayHead playHead { 120.0, kSampleRate };
@@ -92,7 +92,7 @@ void checkInitPreset()
 {
     std::printf ("Init preset:\n");
 
-    PeakModulationProcessor p;
+    BitBitModulationProcessor p;
     for (auto* param : p.getParameters())
         param->setValueNotifyingHost (param->getDefaultValue() < 0.5f ? 1.0f : 0.0f);
 
@@ -122,7 +122,7 @@ void checkLatency()
 
     const auto arrival = [] (int engine)
     {
-        PeakModulationProcessor p;
+        BitBitModulationProcessor p;
         setChoice (p.apvts, id::engine, engine);
         setPercent (p.apvts, id::mix, 0.0f);
 
@@ -163,7 +163,7 @@ int main()
     juce::AudioBuffer<float> input (2, kLength);
     fillTestSignal (input, kSampleRate);
 
-    std::printf ("=== Peak Modulation host ===\n\n");
+    std::printf ("=== BitBit Modulation host ===\n\n");
 
     checkInitPreset();
     std::printf ("\n");
@@ -187,7 +187,7 @@ int main()
         out.makeCopyOf (input);
         render (out, [] (juce::AudioProcessorValueTreeState& s) { setFlag (s, id::on, false); });
 
-        PeakModulationProcessor probe;
+        BitBitModulationProcessor probe;
         probe.setPlayConfigDetails (2, 2, kSampleRate, 1024);
         probe.prepareToPlay (kSampleRate, 1024);
         const int latency = probe.getLatencySamples();
@@ -240,6 +240,6 @@ int main()
         printCase (name, out, allFinite (out) && out.getMagnitude (0, kLength) > 0.01f);
     }
 
-    std::printf ("\n%s\n", failures == 0 ? "OK - Peak Modulation works" : "PEAK MODULATION CHECKS FAILED");
+    std::printf ("\n%s\n", failures == 0 ? "OK - BitBit Modulation works" : "PEAK MODULATION CHECKS FAILED");
     return failures == 0 ? 0 : 1;
 }

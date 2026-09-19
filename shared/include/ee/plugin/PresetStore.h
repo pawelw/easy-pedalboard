@@ -25,13 +25,13 @@ struct FactoryBank
 
     A preset is the APVTS tree and nothing else (`state.copyState()`), so
     anything a processor keeps outside the tree is not carried in one and
-    reseeds from the parameters on load. That is the same contract Peak Grain's
+    reseeds from the parameters on load. That is the same contract BitBit Grain's
     own store has always had - this is that store generalised, with a factory
     bank added and the name chosen by the caller rather than auto-numbered.
 
     **Factory presets** are files in the pedal's own `presets/` folder,
-    committed to the repo and compiled into the plugin by `peak_add_plugin`
-    (see cmake/AddPeakPlugin.cmake). They ship with the binary, so they are
+    committed to the repo and compiled into the plugin by `bitbit_add_plugin`
+    (see cmake/AddBitBitPlugin.cmake). They ship with the binary, so they are
     there in a DAW on a machine that has never run this build. Nothing at
     runtime can add to them: a new one is a file in the source tree and a
     rebuild, which is what makes "the presets that came with the plugin" a
@@ -56,7 +56,7 @@ public:
     };
 
     /** `productName` is the folder the user bank lives in, so it should be the
-        pedal's product name ("Peak Delay") rather than its target name. */
+        pedal's product name ("BitBit Delay") rather than its target name. */
     PresetStore (juce::AudioProcessorValueTreeState& stateToUse, juce::String productName, FactoryBank factoryBank = {})
         : state (stateToUse), product (std::move (productName)), factory (factoryBank)
     {
@@ -70,7 +70,7 @@ public:
 
         It is a hook because "the tree arrived all at once" is a thing a
         processor may need to know, and only the processor can know what to do
-        about it: Peak Delay holds its Sync L/R mirror off for the length of
+        about it: BitBit Delay holds its Sync L/R mirror off for the length of
         the install, or a preset whose two Time knobs are deliberately apart is
         collapsed onto one of them on the way in. Set it once, before anything
         is loaded; message thread only, like the rest of this. */
@@ -142,7 +142,7 @@ public:
         setting of this one. The level faders are floats but are not part of
         the sound, and a roll that lands the output at +12 dB is a surprise
         rather than an idea, so an id ending in `ingain`, `outgain` or `level`
-        (Peak Alpine's per-module trims) is left alone too.
+        (BitBit Alpine's per-module trims) is left alone too.
 
         Positions are drawn in normalised units, so a skewed range - a cutoff,
         a decay time - lands where a hand on the knob would put it, and capped
@@ -377,14 +377,14 @@ private:
 } // namespace ee::plugin
 
 /** Packs a pedal's generated binary-data namespace into a FactoryBank.
-    `peak_add_plugin` defines EE_FACTORY_PRESETS_HEADER and the namespace name
+    `bitbit_add_plugin` defines EE_FACTORY_PRESETS_HEADER and the namespace name
     when the pedal has a `presets/` folder, so the pedal's own processor writes:
 
         #if EE_HAS_FACTORY_PRESETS
         #include EE_FACTORY_PRESETS_HEADER
         #endif
         ...
-        ee::plugin::PresetStore presets { apvts, "Peak Delay", EE_FACTORY_PRESETS };
+        ee::plugin::PresetStore presets { apvts, "BitBit Delay", EE_FACTORY_PRESETS };
 
     and compiles either way. */
 #if EE_HAS_FACTORY_PRESETS

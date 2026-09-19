@@ -1,0 +1,90 @@
+/* BitBit Modulation's enclosure. Everything within the module is `ModulationFace`
+   (@synthpeak/module-face) and carries its own stylesheet; what is here is
+   only the card frame this pedal wraps it in.
+
+   html/body's own margin/overflow/background live in index.html - see
+   plugins/bitbit-wah/jsui/index.html for why. */
+
+.page {
+  display: flex;
+  justify-content: center;
+  /* The plugin window is sized to the panel plus exactly this much on every
+     side (installAutoResize's `padding`) - change one, change the other. */
+  padding: 4px;
+}
+
+/* A one-module face spends far less width than a pedal's control board, so the
+   card frame is pulled in to match. Scoped here the way `.pd-card` scopes BitBit
+   Delay's, rather than adding a variant to Card itself - and its own prefix,
+   not BitBit Artifact's `.af-card` or BitBit Alpine's `.pa-card`, since every
+   pedal's App.jsx shares the gallery bundle and identical class names there
+   collide. */
+.pm-card.pui-card {
+  padding: 14px;
+  overflow: hidden;
+}
+
+/* No title, no logo, no headerRight - header-left is always empty now, and
+   Card still renders the row around it (its own condition only checks
+   headerCenter). Collapsing it outright, rather than zeroing its padding,
+   is what keeps the top gap equal to the card's own 14px frame instead of
+   adding a second, empty box above it. */
+.pm-card .pui-card__header {
+  display: none;
+}
+
+/* Flush with the module below, which has no side padding of its own
+   (`.pui-card__body` override further down) - Card's own 10px left inset
+   would otherwise leave the preset bar's left edge short of it. Bottom padding
+   matched to the card's own 14px frame too, rather than Card's default 24px -
+   the gap above the module should read the same as the gap either side of it. */
+.pm-card .pui-card__header-center--below {
+  padding-left: 0;
+  padding-right: 0;
+  padding-bottom: 14px;
+}
+
+.pm-card .pui-card__title {
+  font-size: 19px;
+}
+
+.pm-card .pui-card__logo {
+  height: 30px;
+}
+
+/* The body is the module and nothing else. */
+.pm-card .pui-card__body {
+  padding: 0;
+}
+
+/* The module's header carries only the power toggle and its name here - no
+   headerRight (that slot is BitBit Alpine's Level trim, absent on the
+   standalone pedal). A grid rather than the flex row ModulePanel.css sets up:
+   the toggle sits in its own column at the left edge, the name in the column
+   next to it centred on the header as a whole, and an empty third column the
+   same width as the first balances it. The spacer that would otherwise fill
+   the flex row is dropped - the grid's own columns do that job. */
+.pm-card .pui-module__header {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+}
+
+.pm-card .pui-module__header .pui-power {
+  justify-self: start;
+}
+
+.pm-card .pui-module__name {
+  justify-self: center;
+}
+
+.pm-card .pui-module__spacer {
+  display: none;
+}
+
+/* Steppers hidden (JucePresetBar showSteppers={false}) and joined to Save and
+   the dice (no gap, shared 1px borders) - the name field is sized so the three
+   together still land on the module's own 168px width below: 168 - 28 (Save)
+   - 28 (dice) + 2 (the two shared borders) = 114. */
+.pm-card .pui-presetbar--separated .pui-dropdown__input {
+  width: 114px;
+}

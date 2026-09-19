@@ -1,9 +1,9 @@
-// ee::plugin::PresetStore against a real pedal. Peak Delay is the one wired to
+// ee::plugin::PresetStore against a real pedal. BitBit Delay is the one wired to
 // it, and the store is shared machinery every other pedal is meant to adopt -
 // so what is checked here is the store's contract, not the delay's.
 //
 // The user bank is redirected nowhere: PresetStore names its own folder off the
-// product name, so this writes into the real "Peak Preset Tests" folder under
+// product name, so this writes into the real "BitBit Preset Tests" folder under
 // the user's application-data directory and cleans it up afterwards. Nothing it
 // touches belongs to an installed pedal.
 #include <map>
@@ -42,10 +42,10 @@ int main()
 {
     juce::ScopedJuceInitialiser_GUI juceInit;
 
-    PeakDelayProcessor processor;
+    BitBitDelayProcessor processor;
     auto& presets = processor.presets;
 
-    std::printf ("Factory bank, compiled in from plugins/peak-delay/presets:\n");
+    std::printf ("Factory bank, compiled in from plugins/bitbit-delay/presets:\n");
 
     const auto factory = presets.factoryNames();
     std::printf ("  %d preset(s): %s\n", factory.size(), factory.joinIntoString (", ").toRawUTF8());
@@ -122,7 +122,7 @@ int main()
         check (differing == 0, "\"" + name + "\" lands in the same place either way");
     }
 
-    // The mirror the sweep above walked into. Peak Delay links its two Time
+    // The mirror the sweep above walked into. BitBit Delay links its two Time
     // knobs while Sync L/R is on, and that listener has to tell a person
     // turning a knob apart from a whole tree arriving at once - otherwise a
     // preset that wants its two sides apart is flattened on the way in, which
@@ -195,7 +195,7 @@ int main()
     // no installed pedal uses, so the folder this creates is this test's own.
     std::printf ("\nUser bank round trip:\n");
 
-    ee::plugin::PresetStore userBank { processor.apvts, "Peak Preset Tests" };
+    ee::plugin::PresetStore userBank { processor.apvts, "BitBit Preset Tests" };
     const auto folder = userBank.userDirectory();
     folder.deleteRecursively();
     folder.createDirectory();
@@ -231,7 +231,7 @@ int main()
 
     std::printf ("\nStepping walks the factory bank and then the user one:\n");
 
-    ee::plugin::PresetStore stepper { processor.apvts, "Peak Preset Tests", EE_FACTORY_PRESETS };
+    ee::plugin::PresetStore stepper { processor.apvts, "BitBit Preset Tests", EE_FACTORY_PRESETS };
     stepper.load (ee::plugin::PresetStore::Kind::factory, stepper.factoryNames()[0]);
 
     juce::StringArray walked { stepper.currentName() };

@@ -1,4 +1,4 @@
-// Hammers the Peak Trem & Pan processor across every parameter combination and
+// Hammers the BitBit Trem & Pan processor across every parameter combination and
 // a batch of adverse inputs, watching for a non-finite or runaway output - the
 // "exploding noise" class of bug.
 #include "PluginProcessor.h"
@@ -22,7 +22,7 @@ namespace
                     bool panning, bool sync, bool on,
                     int inputKind, int blocks)
     {
-        PeakTremPanProcessor proc;
+        BitBitTremPanProcessor proc;
         proc.setPlayConfigDetails (2, 2, sampleRate, blockSize);
         proc.prepareToPlay (sampleRate, blockSize);
 
@@ -104,7 +104,7 @@ int main()
 {
     juce::ScopedJuceInitialiser_GUI juceInit;
 
-    std::printf ("=== Peak Trem & Pan stress ===\n");
+    std::printf ("=== BitBit Trem & Pan stress ===\n");
 
     int cases = 0, bad = 0;
     float worstPeak = 0.0f;
@@ -113,7 +113,7 @@ int main()
     // the audio thread (the old free-run wrap spun forever on the resulting inf
     // phase increment). If this returns at all, there is no hang.
     {
-        PeakTremPanProcessor proc;
+        BitBitTremPanProcessor proc;
         proc.setPlayConfigDetails (2, 2, 0.0, 0);
         proc.prepareToPlay (0.0, 0);
         setParam (proc.apvts, "bias", 1.0f);

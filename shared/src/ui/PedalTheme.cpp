@@ -184,7 +184,7 @@ PedalTheme PedalTheme::teal()
 
 PedalTheme PedalTheme::gold()
 {
-    // Peak Delay's silver face restruck in light ocean blue.
+    // BitBit Delay's silver face restruck in light ocean blue.
     PedalTheme t = silver();
 
     t.panel           = juce::Colour (0xffa4caa8);
@@ -383,7 +383,7 @@ PedalTheme PedalTheme::green()
 {
     PedalTheme t;
 
-    // Peak Tape's face, struck in the deep green of Peak Delay's Tape cap - the
+    // BitBit Tape's face, struck in the deep green of BitBit Delay's Tape cap - the
     // one knob on the board that is already a tape machine. The only dark-panel
     // face in the range, which is the point: it reads as the machine rather than
     // as another pedal.
@@ -569,14 +569,14 @@ PedalTheme PedalTheme::moss()
 {
     PedalTheme t;
 
-    // The soft-UI face struck in Peak Delay's green rather than in off-white:
+    // The soft-UI face struck in BitBit Delay's green rather than in off-white:
     // the same flat card, the same light from the top-left, but every value
     // shifted onto the green the pedal already had. The caps are a pale green
     // too - light enough against the card to read as raised, never white.
     t.controlStyle = ControlStyle::digital;
 
     t.background      = juce::Colour (0xff97b39b);   // the page behind the card
-    t.panel           = juce::Colour (0xffb2cfb5);   // the card - Peak Delay's own green
+    t.panel           = juce::Colour (0xffb2cfb5);   // the card - BitBit Delay's own green
     t.outline         = juce::Colour (0xff8aa88d);
     t.bezel           = juce::Colour (0xffcfe4d1);
 

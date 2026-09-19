@@ -15,37 +15,38 @@ because the rework is what kills a release schedule.
 
 Done and pushed (`84ea8a9`, `2d2f102`). Manufacturer code `BtBt`, plugin codes
 `B???`, bundles `com.bitbitaudio.*`, products `BitBit X`, user presets under
-`~/Library/BitBit/<Product>/Presets`, `peak-grain` ships as **BitBit Grains**.
+`~/Library/BitBit/<Product>/Presets`, `bitbit-grain` ships as **BitBit Grains**.
 
 What this now costs to change again: everything. The AU/VST3 ids are what a host
 looks a plugin up by, so from the first sale onward the codes in
 `plugins/*/CMakeLists.txt` and the manufacturer code in
-`cmake/AddPeakPlugin.cmake` are frozen — and now literally so: they are in the
+`cmake/AddBitBitPlugin.cmake` are frozen — and now literally so: they are in the
 golden files from G1.1.
 
 Two loose ends, neither blocking:
 
-- The **in-plugin mark** is still `packages/pedal-ui/src/peak-logo.png`. The
+- The **in-plugin mark** is still `packages/pedal-ui/src/bitbit-logo.png`. The
   website has the pixel waveform; the faces do not. The new mark is ≈2.7:1
   against the old art's ≈1.3:1, so swapping it widens every Card header by
   ~35 px and needs a pass over all faces in the gallery.
-- Internal names are deliberately still `peak-*` (folders, CMake targets, the
-  `ee::` namespace, the `@synthpeak` npm scope). Nothing user-visible; leave them.
+- Internal names now follow the brand too: `bitbit-*` folders and CMake targets,
+  `BitBit*` classes, the `ee::bitbit*` namespaces. Only the `@synthpeak` npm scope
+  is left as it was.
 
 ### D2. What is for sale — **SETTLED: six products.** ✅
 
 | Product | Tree | Price |
 | --- | --- | --- |
-| BitBit Alpine | `peak-alpine` | `$99` |
-| BitBit Grains | `peak-grain` | `$49` |
-| BitBit Artifact | `peak-artifact` | `$19` |
-| BitBit Modulation | `peak-modulation` | `$19` |
-| BitBit Delay | `peak-delay` | `$19` |
-| BitBit Reverb | `peak-reverb` | `$19` |
+| BitBit Alpine | `bitbit-alpine` | `$99` |
+| BitBit Grains | `bitbit-grain` | `$49` |
+| BitBit Artifact | `bitbit-artifact` | `$19` |
+| BitBit Modulation | `bitbit-modulation` | `$19` |
+| BitBit Delay | `bitbit-delay` | `$19` |
+| BitBit Reverb | `bitbit-reverb` | `$19` |
 
 **Single engines are not products.** The nine one-engine pedals in the tree —
-`peak-chorus`, `peak-eq`, `peak-overdrive`, `peak-phase`, `peak-spring`,
-`peak-sympathy`, `peak-tape`, `peak-trem-pan`, `peak-wah` — are **out of scope
+`bitbit-chorus`, `bitbit-eq`, `bitbit-overdrive`, `bitbit-phase`, `bitbit-spring`,
+`bitbit-sympathy`, `bitbit-tape`, `bitbit-trem-pan`, `bitbit-wah` — are **out of scope
 for 1.0**. One of them may later become a free giveaway; that is a decision for
 after launch, not a reason to carry them now.
 
@@ -85,7 +86,7 @@ and both are cut in favour of selling sooner. What that buys is not marginal:
 
 **The Standalone still builds — it just is not sold.** It is the dev loop the
 `fast` preset exists for ("a real app you can launch and hear"), so nothing
-comes out of `AddPeakPlugin.cmake`; it is simply left out of the installers.
+comes out of `AddBitBitPlugin.cmake`; it is simply left out of the installers.
 Do not "tidy up" by removing the format.
 
 That leaves **18 shipping bundles**: six products × VST3 + AU on macOS, six ×
@@ -131,7 +132,7 @@ BitBit Audio. That is two moments per customer — the macOS first-launch /
 installer sheet and the Windows SmartScreen publisher field. Everywhere the
 customer actually spends time says BitBit Audio: the website, the LemonSqueezy
 checkout, the plugin faces, and the manufacturer string in the DAW's plugin
-browser (`COMPANY_NAME` in `cmake/AddPeakPlugin.cmake`).
+browser (`COMPANY_NAME` in `cmake/AddBitBitPlugin.cmake`).
 
 Two consequences to carry forward:
 
@@ -255,7 +256,7 @@ Before hunting bugs, freeze what must never change:
   layout function — so the defaults in it are post-`snapToRange`, which is where
   `auval` reads them. Per parameter: id, name, label, normalised default,
   version hint, step count, discrete/boolean/automatable/meta flags, the
-  `NormalisableRange`, and the choice list. Plus the identity `peak_add_plugin`
+  `NormalisableRange`, and the choice list. Plus the identity `bitbit_add_plugin`
   was called with: plugin code, manufacturer code, bundle id, VST3 categories.
   In `scripts/dev-check.sh`, so it is in CI.
 - **Engine enum order — done** ✅, and for free: an engine selector is an
@@ -369,7 +370,7 @@ every block:
 - transport: rolling, stopped, looping, and **relocating** — the tempo-locked
   engines only reach their alignment code with a playhead
 - preset loads *during* processing. This is the exact shape of the
-  `PeakDelayProcessor::installState` bug ("a whole tree arriving at once is not a
+  `BitBitDelayProcessor::installState` bug ("a whole tree arriving at once is not a
   knob being turned"); assume there are more of them.
 - editor open / close cycles, and instance create / destroy
 - 32+ instances in one process — the only reliable way to surface shared statics
@@ -424,7 +425,7 @@ should configure on Windows without a fight. What will need doing:
 - MSVC toolchain, Ninja, and a decision on `sccache` to replace ccache.
 - **WebView2** for the six WebView faces. `NEEDS_WEBVIEW2` and
   `JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1` are already set in
-  `AddPeakPlugin.cmake` — verify the package actually resolves on the build
+  `AddBitBitPlugin.cmake` — verify the package actually resolves on the build
   machine, because a face that silently falls back is a blank plugin window.
 - **Paths.** `PresetStore::userDirectory()` uses
   `juce::File::userApplicationDataDirectory`, which lands in `%APPDATA%` on
@@ -588,7 +589,7 @@ Where it stands, for the six that ship:
 | BitBit Grains | 1 (Init) |
 | BitBit Alpine | 0 |
 
-(`peak-sympathy` has 7 and is out of scope; the rest have none.)
+(`bitbit-sympathy` has 7 and is out of scope; the rest have none.)
 
 For products you are charging for, this is the largest content gap in the plan.
 The website already promises "global presets across the whole chain".
@@ -605,7 +606,7 @@ The website already promises "global presets across the whole chain".
   whatever was loaded before it.
 - Alpine's presets should exist to show off the thing the product is sold on:
   make several of them reorder the chain.
-- `peak-grain` is already on `ee::plugin::PresetStore` — the note in `CLAUDE.md`
+- `bitbit-grain` is already on `ee::plugin::PresetStore` — the note in `CLAUDE.md`
   about it having its own flat, user-only store is stale. Its user presets did
   move with the rebrand, though: anything under `~/Library/Peak/Peak Grain` needs
   copying to `~/Library/BitBit/BitBit Grains` on your own machine.
@@ -615,7 +616,7 @@ The website already promises "global presets across the whole chain".
 ### 5.2 Plate reverb engine (your item 6)
 
 Note first: **`ee::dsp::FdnReverb` is already plate-voiced** — its own header
-describes it as a plate-voiced 16-line FDN, and it is what Peak Reverb's Space
+describes it as a plate-voiced 16-line FDN, and it is what BitBit Reverb's Space
 engine runs. So "add a Plate engine" is one of two quite different jobs:
 
 - **Cheap and credible:** a third engine in `ee::fx::ReverbModule` that runs
@@ -627,7 +628,7 @@ engine runs. So "add a Plate engine" is one of two quite different jobs:
 
 Either way, the checklist is the one in `CLAUDE.md` for adding an Artifact engine,
 transposed: **engine enum appended LAST**, `ReverbModule` prepare/render/reset,
-`peak-reverb` params + `Init.xml`, `peak-alpine` `rev.` bindings, the
+`bitbit-reverb` params + `Init.xml`, `bitbit-alpine` `rev.` bindings, the
 `module-face` engine list, `tests/UiSnapshot.cpp` mirrored (nothing catches drift
 there), `ee_reverb_host` coverage, a `*_regress` section asserting the new
 controls at their defaults are **bit-identical** to before, and the README.
@@ -638,11 +639,11 @@ Where it stands:
 
 | Product | Reported latency | Comes from |
 | --- | --- | --- |
-| Peak Tape | ~264 samples (~6 ms @ 44.1 k) | `TapeTransport` 198 + `TapeCharacter` 66 |
-| Peak Delay | tape input latency | `DelayModule::tapeIn`, pre-section only |
-| Peak Modulation | tape engine only | other engines report 0 |
-| Peak Reverb | 0 | both engines latency-free |
-| Peak Alpine | sum of Artifact + Modulation + Delay | per-module |
+| BitBit Tape | ~264 samples (~6 ms @ 44.1 k) | `TapeTransport` 198 + `TapeCharacter` 66 |
+| BitBit Delay | tape input latency | `DelayModule::tapeIn`, pre-section only |
+| BitBit Modulation | tape engine only | other engines report 0 |
+| BitBit Reverb | 0 | both engines latency-free |
+| BitBit Alpine | sum of Artifact + Modulation + Delay | per-module |
 | Everything else | 0 | no `setLatencySamples` |
 
 So the site's "~6 ms, reported and compensated" is true of the tape path and
@@ -681,7 +682,7 @@ A full-face browser is a different component, not a size change:
   load, and the current preset highlighted on open.
 - Keep `PresetBar`'s prev/next steppers and the Save box exactly as they are —
   they are the fast path and the browser is the browse path.
-- Both variants (`joined`, `separated`) must keep working; Peak Artifact runs with
+- Both variants (`joined`, `separated`) must keep working; BitBit Artifact runs with
   `showSteppers={false}`.
 - Watch the gallery CSS-collision rule in `CLAUDE.md`: scoping classes must be
   unique across *all* WebView pedals, not just within one.

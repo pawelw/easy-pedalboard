@@ -2,7 +2,7 @@
 # Configure, build and verify in one command, with one exit code.
 #
 #   scripts/dev-check.sh                 # all eleven pedals, Standalone only
-#   scripts/dev-check.sh peak-wah        # just one pedal - much quicker
+#   scripts/dev-check.sh bitbit-wah        # just one pedal - much quicker
 #
 # Uses the "fast" preset: no VST3/AU, no LTO, nothing installed into ~/Library.
 # For a build you actually want to load in a host, use `cmake --preset dev`.
@@ -73,10 +73,10 @@ run ee_reverb_host
 # moving, which breaks every saved session and preset keyed on it. If the change
 # is deliberate, regenerate and say so in the commit:
 #
-#   for t in PeakAlpine PeakGrain PeakArtifact PeakModulation PeakDelay PeakReverb; do
+#   for t in BitBitAlpine BitBitGrain BitBitArtifact BitBitModulation BitBitDelay BitBitReverb; do
 #       "$BUILD/tests/ee_param_golden_${t}_artefacts/Release/ee_param_golden_$t" --update
 #   done
-for product in PeakAlpine PeakGrain PeakArtifact PeakModulation PeakDelay PeakReverb; do
+for product in BitBitAlpine BitBitGrain BitBitArtifact BitBitModulation BitBitDelay BitBitReverb; do
     run "ee_param_golden_$product"
 done
 

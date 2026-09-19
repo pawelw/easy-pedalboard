@@ -1,4 +1,4 @@
-// Hunts for a discontinuity in Peak Wah's output at a note onset.
+// Hunts for a discontinuity in BitBit Wah's output at a note onset.
 //
 // The pedal retriggers on every pluck: the transient detector snaps the LFO
 // phase to 0 and, at low Decay, slams the one-shot gate open. Both move the

@@ -14,8 +14,8 @@ namespace ee::plugin
  * A JUCE web face binds each parameter by hand: a relay member, a
  * `.withOptionsFrom (relay)` in the browser's Options, and an attachment member
  * in the constructor's initialiser list. Three places, in the right order, per
- * parameter. Peak Delay has seventeen of them and that is already thirty-four
- * declarations; Peak Alpine has forty-six, and hand-writing those would be a
+ * parameter. BitBit Delay has seventeen of them and that is already thirty-four
+ * declarations; BitBit Alpine has forty-six, and hand-writing those would be a
  * list that has to be kept in step with the parameter layout by eye - the same
  * silent drift `tests/UiSnapshot.cpp` is warned about in CLAUDE.md.
  *

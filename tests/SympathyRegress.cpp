@@ -1,4 +1,4 @@
-// Renders a fixed battery of settings through the whole Peak Sympathy processor
+// Renders a fixed battery of settings through the whole BitBit Sympathy processor
 // and prints an FNV-1a checksum per pass. New code, so nothing to diff against
 // yet - this is the A/B for the next change that means to leave the pedal
 // alone. See RegressHarness.h for why *_regress and *_match are two families.
@@ -61,7 +61,7 @@ const Pass kPasses[] = {
 
 bool runPass (const Pass& pass, const juce::AudioBuffer<float>& input, juce::AudioBuffer<float>& output)
 {
-    PeakSympathyProcessor processor;
+    BitBitSympathyProcessor processor;
 
     setChoice (processor.apvts, "tune.mode", pass.mode);
     setChoice (processor.apvts, "tune.key", 9); // A
@@ -122,7 +122,7 @@ int main (int argc, char* argv[])
     juce::WavAudioFormat wav;
     bool ok = true;
 
-    std::printf ("Peak Sympathy - %d passes at %.0f Hz, %d s each (%d s input, then tail)\n\n",
+    std::printf ("BitBit Sympathy - %d passes at %.0f Hz, %d s each (%d s input, then tail)\n\n",
                  static_cast<int> (sizeof (kPasses) / sizeof (kPasses[0])), kSampleRate, kSeconds, kInputSeconds);
 
     for (const auto& pass : kPasses)

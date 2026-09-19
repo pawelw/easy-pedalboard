@@ -72,7 +72,7 @@ void WaveDisplay::paint (juce::Graphics& g)
     if (bounds.isEmpty())
         return;
 
-    // Recessed panel, matching the faint framing Peak EQ uses for its grid.
+    // Recessed panel, matching the faint framing BitBit EQ uses for its grid.
     g.setColour (juce::Colours::black.withAlpha (0.18f));
     g.fillRoundedRectangle (bounds, kCornerRadius);
     g.setColour (theme.outline.withAlpha (0.35f));

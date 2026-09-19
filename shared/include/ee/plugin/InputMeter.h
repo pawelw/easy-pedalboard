@@ -15,7 +15,7 @@ namespace ee::plugin
  * is being played is a fact about the playing, not about what the pedal is
  * doing with it or how far the Input fader is turned down.
  *
- * Peak Delay drives its TapScope from this; Peak Alpine drives the same scope
+ * BitBit Delay drives its TapScope from this; BitBit Alpine drives the same scope
  * inside its Delay module from a second instance. Written from the audio
  * thread, read from the editor's timer, which is what the two atomics are for.
  *
@@ -29,7 +29,7 @@ class InputMeter
 public:
     // ------------------------------------------------------------- the follower
     // Fast attack, slow release, so the level reads as a note's shape rather
-    // than as its waveform. The same shape Peak Wah's signal glow uses.
+    // than as its waveform. The same shape BitBit Wah's signal glow uses.
     static constexpr double kAttackSeconds = 0.005;
     static constexpr double kReleaseSeconds = 0.30;
 

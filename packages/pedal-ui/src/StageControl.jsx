@@ -20,8 +20,8 @@ import "./StageControl.css";
  * `scaleFrom` passes straight through to Knob - "max" for a cut that rests
  * open at the top of its range.
  *
- * `size` is the dial, 38px as Peak Delay's footer has always drawn it. A host
- * whose other knobs are a different size hands its own in - Peak Alpine's are
+ * `size` is the dial, 38px as BitBit Delay's footer has always drawn it. A host
+ * whose other knobs are a different size hands its own in - BitBit Alpine's are
  * 36px throughout.
  */
 export default function StageControl({

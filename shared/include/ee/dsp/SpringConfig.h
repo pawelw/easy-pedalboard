@@ -3,7 +3,7 @@
 /**
  * Voicing for ee::dsp::SpringReverb.
  *
- * Peak Spring is a two-knob pedal - Decay and Mix - so everything that gives it
+ * BitBit Spring is a two-knob pedal - Decay and Mix - so everything that gives it
  * its character (how many springs, how long they are, how hard they chirp, how
  * the tank is filtered) is fixed here. The two knobs only ever scale what this
  * file sets up.
@@ -157,7 +157,7 @@ constexpr float kOutputHighCutHz = 6000.0f;
 // pickup's own high-pass, so it thins the tail without touching how fast it
 // dies - the one thing a filter inside the loop could not do.
 //
-// The same range FdnReverb's own low cut has, deliberately: Peak Alpine puts a
+// The same range FdnReverb's own low cut has, deliberately: BitBit Alpine puts a
 // Low Cut knob on both of its reverb engines, and a knob that means one thing
 // on Space and another on Spring is two knobs wearing one label.
 //

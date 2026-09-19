@@ -1,4 +1,4 @@
-// Renders a fixed battery of settings through the whole Peak Delay processor
+// Renders a fixed battery of settings through the whole BitBit Delay processor
 // and prints a checksum per pass, so the pedal's output can be compared byte
 // for byte across a change that is supposed to change nothing.
 //
@@ -74,7 +74,7 @@ const Pass kPasses[] = {
 
 bool runPass (const Pass& pass, const juce::AudioBuffer<float>& input, juce::AudioBuffer<float>& output)
 {
-    PeakDelayProcessor processor;
+    BitBitDelayProcessor processor;
 
     setPercent (processor.apvts, "mix", pass.mix);
     setPercent (processor.apvts, "fb", pass.feedback);
@@ -135,7 +135,7 @@ int main (int argc, char* argv[])
     juce::WavAudioFormat wav;
     bool ok = true;
 
-    std::printf ("Peak Delay - %d passes at %.0f Hz, %d s each, ragged blocks\n\n",
+    std::printf ("BitBit Delay - %d passes at %.0f Hz, %d s each, ragged blocks\n\n",
                  static_cast<int> (sizeof (kPasses) / sizeof (kPasses[0])), kSampleRate, kSeconds);
 
     for (const auto& pass : kPasses)

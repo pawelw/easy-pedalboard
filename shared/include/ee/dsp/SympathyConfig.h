@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * Voicing for ee::dsp::ResonatorBank - Peak Sympathy's sympathetic-resonance
+ * Voicing for ee::dsp::ResonatorBank - BitBit Sympathy's sympathetic-resonance
  * engine.
  *
  * The pedal is ~20 % resonator bank and ~80 % exciter, ducking and tuning: a

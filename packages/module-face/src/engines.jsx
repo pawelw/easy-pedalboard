@@ -15,14 +15,14 @@ import {
  *
  * `prefix` is the engine's own parameter namespace, as a leaf - `trem.`, not
  * `mod.trem.`. The face resolves it through the ParamScope its host declares,
- * so the same table binds `trem.rate` in Peak Modulation and `mod.trem.rate`
- * in Peak Alpine. Values are per-engine on purpose - switching Chorus to Phaser
+ * so the same table binds `trem.rate` in BitBit Modulation and `mod.trem.rate`
+ * in BitBit Alpine. Values are per-engine on purpose - switching Chorus to Phaser
  * and back restores the Chorus settings - and that falls out of every engine
  * owning its own parameters rather than sharing a pool. There is no state to
  * keep here; the APVTS is the store.
  *
  * `knobs` is a flat list, laid out two per row. Two rows is the norm; Tape is
- * the one engine that runs to three, because it is the whole of Peak Tape and
+ * the one engine that runs to three, because it is the whole of BitBit Tape and
  * that pedal has five knobs plus a switch. `centre` is a single knob on a row
  * of its own under the pairs (Tape's bipolar Tone); `toggle` is a Mono/Stereo
  * switch pinned to the bottom of the body, just above the footer. Both are
@@ -37,7 +37,7 @@ import {
  * the set of this engine's own knobs the one macro knob rides, each with the
  * normalised `min`/`max` it spans as the macro goes 0..1. The macro has no
  * parameter of its own yet (see `JuceMacroKnob`) - it just drives these. Only
- * read when the host turns `easyTab` on (Peak Alpine does).
+ * read when the host turns `easyTab` on (BitBit Alpine does).
  */
 
 // Chorus is ModIcon, not a glyph of its own - the mark the design draws for it
@@ -59,7 +59,7 @@ export const MOD_ENGINES = [
     toggle: ["stereo", "Mono", "Stereo"],
     // No Mix: the tape transport's wow makes the wet path wander, so any
     // partial blend against the dry combs and is heard as tremolo. It runs
-    // fully wet, like Peak Tape - the module's power toggle is its dry/wet.
+    // fully wet, like BitBit Tape - the module's power toggle is its dry/wet.
     // The footer strip stays (its height is fixed in CSS); only the knob goes.
     hideMix: true,
     // The Easy tab's macro: one knob that opens saturation, flutter and wear
@@ -89,7 +89,7 @@ export const MOD_ENGINES = [
       ["tube", "Tube"],
     ],
     // Flips the Rate knob between a free period in ms and a tempo-locked note
-    // division - the same control the Delay module and Peak Trem & Pan carry.
+    // division - the same control the Delay module and BitBit Trem & Pan carry.
     sync: "trem.sync",
     // Rate is left out on purpose - the tempo feel is the player's to set.
     easy: {
@@ -136,8 +136,8 @@ export const MOD_ENGINES = [
     },
   },
   {
-    // Peak Wah's engine as an LFO-swept low-pass, Decay pinned fully up. It was
-    // Peak Artifact's third engine until it moved here - appended, so a saved
+    // BitBit Wah's engine as an LFO-swept low-pass, Decay pinned fully up. It was
+    // BitBit Artifact's third engine until it moved here - appended, so a saved
     // engine index keeps its meaning.
     name: "Filter",
     icon: <FilterIcon size={22} />,

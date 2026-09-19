@@ -32,7 +32,7 @@ function angleFor(value01) {
 }
 
 /** A short radial tick riding on top of an arc/tick-ring the knob already
-    draws, at `value01`'s own angle - Peak Grain's live "this is where the
+    draws, at `value01`'s own angle - BitBit Grain's live "this is where the
     LFO has the value pushed to right now" marker (see ModdableKnob.jsx),
     separate from the knob's own value pointer so the two can move
     independently: the knob's own arc/needle stays at the automatable
@@ -127,7 +127,7 @@ function Sweep({
   trackColor = "var(--pui-knob-sweep)",
   litColor = "var(--pui-knob-sweep-lit)",
   from = "min",
-  // Peak Grain's live modulation marker (see ModTick above) - 0..1 or
+  // BitBit Grain's live modulation marker (see ModTick above) - 0..1 or
   // undefined/null to draw nothing. Spans exactly the arc's own stroke
   // width so it reads as a mark riding the existing ring rather than a
   // second, separate arc.
@@ -436,7 +436,7 @@ function EndMarker({ label, radius, lit }) {
  * shallow dish (a light counterpart in :root, the handoff's own dark numbers
  * moved into onyx's block) and a continuous accent arc hugging the rim, the
  * simpler of the two treatments tried here ("2c"'s segmented ring was the
- * first pass) - what every small knob in Peak Alpine/Peak Artifact was
+ * first pass) - what every small knob in BitBit Alpine/BitBit Artifact was
  * carrying under the name "flat" before it moved to this one.
  * "spoke" is "4a" of design_handoff_knob_4a: no cap and no body at all - a
  * thin static outline circle, the same continuous arc "concave" draws, and a
@@ -455,7 +455,7 @@ function EndMarker({ label, radius, lit }) {
  * `scaleFrom`: where the value reading starts from - "min" (default), "max"
  * for a knob that rests at the top of its range and counts downwards, or
  * "centre" for a trim that rests at twelve o'clock and departs from it either
- * way. Peak EQ draws the "max" distinction as an inverted arc on its High Cut;
+ * way. BitBit EQ draws the "max" distinction as an inverted arc on its High Cut;
  * this is that idea generalised, and it drives both the soft variant's arc and
  * the scale variant's tick ring, so the prop means one thing whichever a
  * caller picks. A "centre" knob wants `centreValue` left at its 0.5 default:
@@ -494,7 +494,7 @@ export default function Knob({
   // detection of its own.
   dropRef,
   dropActive = false,
-  // A small marker in the dial box's own top-right corner (Peak Grain's
+  // A small marker in the dial box's own top-right corner (BitBit Grain's
   // "modulated by the LFO" dot) - rendered inside .pui-knob__dial via
   // .pui-knob__badge below, not positioned by the caller against the outer
   // .pui-knob box, so it lands in the same spot relative to the dial
@@ -503,12 +503,12 @@ export default function Knob({
   badge,
   // A style override for the badge's own wrapper (.pui-knob__badge below,
   // which carries the shared top/right anchor every badge starts from) -
-  // Peak Grain's Filter knob is close enough to the plate's own edge that
+  // BitBit Grain's Filter knob is close enough to the plate's own edge that
   // the shared anchor reads ambiguous there, so it passes badgeStyle to move
   // just its own badge (ModdableKnob.jsx). Undefined for every other caller,
   // so nothing here changes for a knob that doesn't ask.
   badgeStyle,
-  // Peak Grain's live "the LFO has this knob pushed to here right now"
+  // BitBit Grain's live "the LFO has this knob pushed to here right now"
   // marker - 0..1 or undefined/null to draw nothing. Deliberately separate
   // from `value`: the knob's own arc/needle keeps showing the automatable
   // parameter's own value and never moves for this, only the extra tick

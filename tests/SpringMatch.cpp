@@ -5,9 +5,9 @@
 
 #include "PluginProcessor.h"
 
-/** Offline renderer used to A/B Peak Spring against a reference recording.
+/** Offline renderer used to A/B BitBit Spring against a reference recording.
 
-    Runs a dry file through the real PeakSpringProcessor, so the mix law, the
+    Runs a dry file through the real BitBitSpringProcessor, so the mix law, the
     wet trim and the parameter smoothing are all exercised rather than
     reimplemented in the harness.
 
@@ -50,7 +50,7 @@ int main (int argc, char** argv)
     buffer.clear();
     reader->read (&buffer, 0, numSamples, 0, true, true);
 
-    PeakSpringProcessor processor;
+    BitBitSpringProcessor processor;
     processor.setPlayConfigDetails (2, 2, sampleRate, blockSize);
     processor.prepareToPlay (sampleRate, blockSize);
 

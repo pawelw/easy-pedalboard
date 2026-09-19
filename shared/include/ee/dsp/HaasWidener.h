@@ -18,7 +18,7 @@ namespace ee::dsp
     plain delay on one channel only shifts it. The echo cancels exactly in the
     mono sum (L' + R' = L + R), so a widened signal folds down to mono unchanged.
 
-    This is the structure measured on the reference grainer Peak Grain's
+    This is the structure measured on the reference grainer BitBit Grain's
     Mono/Stereo switch was modelled on: 6.83 ms, side gain ~0.9 - see
     config::kHaasDelayMs.
 

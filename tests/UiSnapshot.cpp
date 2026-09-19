@@ -60,7 +60,7 @@ public:
     juce::AudioProcessorValueTreeState apvts;
 };
 
-/** Minimal host-free processor carrying the same parameters as Peak Delay. */
+/** Minimal host-free processor carrying the same parameters as BitBit Delay. */
 class DelaySnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -70,7 +70,7 @@ public:
     {
         juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-        // Mirrors plugins/peak-delay/src/TimeMap.h: one normalised knob per
+        // Mirrors plugins/bitbit-delay/src/TimeMap.h: one normalised knob per
         // side, the Sync pill deciding whether it reads as a division or as a
         // continuous millisecond time.
         const auto time01 = juce::NormalisableRange<float> (0.0f, 1.0f);
@@ -95,7 +95,7 @@ public:
     }
 };
 
-/** Mirrors drawLinkIcon in plugins/peak-delay. */
+/** Mirrors drawLinkIcon in plugins/bitbit-delay. */
 void drawDelayLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
 {
     const float side = juce::jmin (area.getWidth(), area.getHeight());
@@ -124,7 +124,7 @@ void drawDelayLinkIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Co
     }
 }
 
-/** Mirrors drawMsIcon in plugins/peak-delay and plugins/peak-trem-pan (both
+/** Mirrors drawMsIcon in plugins/bitbit-delay and plugins/bitbit-trem-pan (both
     carry the same "ms" wordmark on their tempo/unit toggle). */
 void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
 {
@@ -134,7 +134,7 @@ void drawMsIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour co
     g.drawText ("ms", box, juce::Justification::centred, false);
 }
 
-/** Mirrors drawPowerIcon in plugins/peak-grain - the IEC power glyph on each
+/** Mirrors drawPowerIcon in plugins/bitbit-grain - the IEC power glyph on each
     module's enable button. */
 void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
 {
@@ -153,7 +153,7 @@ void drawPowerIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour
 }
 
 /** Mirrors kIconInk / drawImageIcon / drawRandomIcon / drawGrainIcon /
-    drawTapeIcon / drawReverbIcon / drawPitchIcon in plugins/peak-grain.
+    drawTapeIcon / drawReverbIcon / drawPitchIcon in plugins/bitbit-grain.
 
     The icon set's own ink colour - sampled from the fully-opaque pixels of
     all five files, which agree to within a couple of RGB steps (~68,68,70).
@@ -211,7 +211,7 @@ void drawPitchIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour
 ee::ui::PedalSpec makeDelaySpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Delay";
+    spec.name = "BitBit Delay";
     spec.tagline = "Tempo-synced stereo delay";
     spec.version = "v0.10.0";
     const juce::Colour tapeCap { 0xff375916 };
@@ -263,7 +263,7 @@ juce::String hiCutToText (float hz, int)
     return hz >= 19999.5f ? juce::String (juce::CharPointer_UTF8 ("\xe2\x88\x9e")) : freqToText (hz);
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak EQ. */
+/** Minimal host-free processor carrying the same parameters as BitBit EQ. */
 class EqSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -301,7 +301,7 @@ public:
 ee::ui::PedalSpec makeEqSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak EQ";
+    spec.name = "BitBit EQ";
     spec.tagline = "Seven-band graphic EQ";
     spec.version = "v0.10.0";
     spec.sliders = {
@@ -328,7 +328,7 @@ ee::ui::PedalSpec makeEqSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Trem & Pan. */
+/** Minimal host-free processor carrying the same parameters as BitBit Trem & Pan. */
 class TremPanSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -364,7 +364,7 @@ public:
 ee::ui::PedalSpec makeTremPanSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Trem & Pan";
+    spec.name = "BitBit Trem & Pan";
     spec.version = "v0.10.0";
     spec.knobs = { { "amount", "Amount" }, { "rate", "Rate" }, { "shape", "Shape" }, { "bias", "Tube" } };
 
@@ -386,7 +386,7 @@ ee::ui::PedalSpec makeTremPanSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Chorus. */
+/** Minimal host-free processor carrying the same parameters as BitBit Chorus. */
 class ChorusSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -424,7 +424,7 @@ public:
 ee::ui::PedalSpec makeChorusSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Chorus";
+    spec.name = "BitBit Chorus";
     spec.tagline = "Wide stereo chorus";
     spec.version = "v0.10.0";
     spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" }, { "phase", "Phase" }, { "mix", "Mix" } };
@@ -433,7 +433,7 @@ ee::ui::PedalSpec makeChorusSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Grain. */
+/** Minimal host-free processor carrying the same parameters as BitBit Grain. */
 class GrainSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -450,7 +450,7 @@ public:
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (percentToText);
         const auto unit = juce::NormalisableRange<float> (0.0f, 1.0f);
 
-        // Size and Density mirror PeakGrainProcessor: one normalised knob each,
+        // Size and Density mirror BitBitGrainProcessor: one normalised knob each,
         // reinterpreted by a Sync switch. The snapshot renders the free reading.
         const auto durationMap = [] (float lo, float hi, float centre)
         {
@@ -641,7 +641,7 @@ public:
 ee::ui::PedalSpec makeGrainSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Grain";
+    spec.name = "BitBit Grain";
     spec.tagline = "Granular delay into delay into plate";
     spec.version = "v0.11.0";
 
@@ -654,7 +654,7 @@ ee::ui::PedalSpec makeGrainSpec()
     const juce::Colour kReverbCol { 0xff50938a };
 
     // The grain envelope on the Shape cap - see drawGrainShapeIcon in
-    // plugins/peak-grain. Static here at the default 55 % lean.
+    // plugins/bitbit-grain. Static here at the default 55 % lean.
     auto shapeIcon = [] (juce::Graphics& g, juce::Rectangle<float> r, juce::Colour c)
     {
         r = r.reduced (r.getWidth() * 0.12f, r.getHeight() * 0.26f);
@@ -814,7 +814,7 @@ ee::ui::PedalSpec makeGrainSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Phase. */
+/** Minimal host-free processor carrying the same parameters as BitBit Phase. */
 class PhaseSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -845,7 +845,7 @@ public:
 ee::ui::PedalSpec makePhaseSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Phase";
+    spec.name = "BitBit Phase";
     spec.tagline = "Analog-style stereo phaser";
     spec.version = "v0.10.0";
     spec.knobs = { { "rate", "Rate" }, { "depth", "Depth" } };
@@ -854,7 +854,7 @@ ee::ui::PedalSpec makePhaseSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Spring. */
+/** Minimal host-free processor carrying the same parameters as BitBit Spring. */
 class SpringSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -883,7 +883,7 @@ public:
 ee::ui::PedalSpec makeSpringSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Spring";
+    spec.name = "BitBit Spring";
     spec.tagline = "Dispersive spring tank";
     spec.version = "v0.10.0";
     spec.knobs = { { .parameterID = "mix", .caption = "Mix", .captionUntilTouched = true },
@@ -900,7 +900,7 @@ ee::ui::PedalSpec makeSpringSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Overdrive. */
+/** Minimal host-free processor carrying the same parameters as BitBit Overdrive. */
 class OverdriveSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -933,7 +933,7 @@ public:
 ee::ui::PedalSpec makeOverdriveSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Overdrive";
+    spec.name = "BitBit Overdrive";
     spec.tagline = "Soft-clipping overdrive";
     spec.version = "v0.10.0";
     spec.knobs = { { "level", "Level" }, { "drive", "Drive" }, { "tone", "Tone" } };
@@ -942,7 +942,7 @@ ee::ui::PedalSpec makeOverdriveSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Wah. */
+/** Minimal host-free processor carrying the same parameters as BitBit Wah. */
 class WahSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -975,7 +975,7 @@ public:
 ee::ui::PedalSpec makeWahSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Wah";
+    spec.name = "BitBit Wah";
     spec.tagline = "LFO-driven modulated filter";
     spec.knobsPerRow = 4;
     spec.knobDividerAfterColumn = 2;
@@ -995,7 +995,7 @@ ee::ui::PedalSpec makeWahSpec()
         {
             const float t = (float)i / 48.0f;
             // Mirrored, so the glyph opens upward - see drawLfoShapeIcon in
-            // plugins/peak-wah.
+            // plugins/bitbit-wah.
             const float y = r.getCentreY() + ee::dsp::lfoValue (t, 0.45f) * r.getHeight() * 0.5f;
             i == 0 ? p.startNewSubPath (r.getX() + t * r.getWidth(), y) : p.lineTo (r.getX() + t * r.getWidth(), y);
         }
@@ -1064,7 +1064,7 @@ ee::ui::PedalSpec makeWahSpec()
     return spec;
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Tape. */
+/** Minimal host-free processor carrying the same parameters as BitBit Tape. */
 class TapeSnapshotProcessor : public SnapshotProcessor
 {
 public:
@@ -1100,12 +1100,12 @@ public:
 ee::ui::PedalSpec makeTapeSpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Tape";
+    spec.name = "BitBit Tape";
     spec.tagline = "Analogue warmth, wobble and wear";
     spec.version = "v0.10.0";
     spec.knobs = { { "sat", "Saturation" }, { "flutter", "Flutter" }, { "wear", "Wear" }, { "noise", "Noise" } };
 
-    // Tone gets Peak Reverb's RESO treatment: a small vector cap between the
+    // Tone gets BitBit Reverb's RESO treatment: a small vector cap between the
     // rows with its caption alone under it, plus the bipolar arc and detent.
     spec.centreKnob = ee::ui::KnobSpec { .parameterID = "tone",
                                          .caption = "Tone",
@@ -1223,8 +1223,8 @@ void renderGrain (const juce::File& outputFile)
     writePng (editor, outputFile);
 }
 
-/** Minimal host-free processor carrying the same parameters as Peak Sympathy.
-    Mirrors PeakSympathyProcessor::createParameterLayout - keep the two in step,
+/** Minimal host-free processor carrying the same parameters as BitBit Sympathy.
+    Mirrors BitBitSympathyProcessor::createParameterLayout - keep the two in step,
     nothing checks it. */
 class SympathySnapshotProcessor : public SnapshotProcessor
 {
@@ -1270,7 +1270,7 @@ public:
 };
 
 /** A chain-link glyph for the Learn button - copied from
-    PeakSympathyProcessor's own drawLearnIcon so the snapshot matches. */
+    BitBitSympathyProcessor's own drawLearnIcon so the snapshot matches. */
 void drawSympathyLearnIcon (juce::Graphics& g, juce::Rectangle<float> area, juce::Colour colour)
 {
     const auto box = area.reduced (area.getWidth() * 0.12f);
@@ -1285,7 +1285,7 @@ void drawSympathyLearnIcon (juce::Graphics& g, juce::Rectangle<float> area, juce
 ee::ui::PedalSpec makeSympathySpec()
 {
     ee::ui::PedalSpec spec;
-    spec.name = "Peak Sympathy";
+    spec.name = "BitBit Sympathy";
     spec.tagline = "Sixteen tuned strings ring behind the player";
     spec.version = "v0.10.0";
 
@@ -1330,7 +1330,7 @@ void renderSympathy (const juce::File& outputFile)
 void renderTape (const juce::File& outputFile)
 {
     TapeSnapshotProcessor processor;
-    // Mirror PeakTapeProcessor::createEditor: green palette, silver-bezel caps
+    // Mirror BitBitTapeProcessor::createEditor: green palette, silver-bezel caps
     // for contrast against the dark face.
     auto theme = ee::ui::PedalTheme::green();
     theme.controlStyle = ee::ui::ControlStyle::analogSilver;

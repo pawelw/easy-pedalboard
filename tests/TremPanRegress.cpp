@@ -1,4 +1,4 @@
-// Renders a fixed battery of settings through the whole Peak Trem & Pan
+// Renders a fixed battery of settings through the whole BitBit Trem & Pan
 // processor and prints a checksum per pass, so the pedal's output can be
 // compared byte for byte across a change that is supposed to change nothing.
 //
@@ -52,7 +52,7 @@ const Pass kPasses[] = {
 
 bool runPass (const Pass& pass, const juce::AudioBuffer<float>& input, juce::AudioBuffer<float>& output)
 {
-    PeakTremPanProcessor processor;
+    BitBitTremPanProcessor processor;
 
     setPercent (processor.apvts, "amount", pass.amount);
     setNormalised (processor.apvts, "rate", pass.rate01);
@@ -112,7 +112,7 @@ int main (int argc, char* argv[])
     juce::WavAudioFormat wav;
     bool ok = true;
 
-    std::printf ("Peak Trem & Pan - %d passes at %.0f Hz, %d s each, ragged blocks\n\n",
+    std::printf ("BitBit Trem & Pan - %d passes at %.0f Hz, %d s each, ragged blocks\n\n",
                  static_cast<int> (sizeof (kPasses) / sizeof (kPasses[0])), kSampleRate, kSeconds);
 
     for (const auto& pass : kPasses)

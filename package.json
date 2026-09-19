@@ -1,7 +1,7 @@
 {
   "name": "synth-peak-web",
   "private": true,
-  "description": "npm workspace root for the WebView pedal UIs (see plugins/peak-wah/jsui/README.md) - unrelated to the CMake/JUCE build.",
+  "description": "npm workspace root for the WebView pedal UIs (see plugins/bitbit-wah/jsui/README.md) - unrelated to the CMake/JUCE build.",
   "workspaces": [
     "packages/*",
     "apps/*",

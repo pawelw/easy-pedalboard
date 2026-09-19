@@ -3,13 +3,13 @@
 /**
  * Voicing for ee::dsp::TapeMachine.
  *
- * Peak Tape has six knobs - Saturation, Wear, Flutter, Tone, Stereo, Noise -
+ * BitBit Tape has six knobs - Saturation, Wear, Flutter, Tone, Stereo, Noise -
  * and each one only ever scales what this file sets up. Everything that makes
  * the machine the machine (how fast and how deep the capstan wanders, where the
  * record EQ pivots, how loud the tape floor is) lives here, so the whole
  * voicing can be read at a glance and retuned without touching the engine.
  *
- * Wear is the exception: it drives ee::dsp::TapeCharacter, the same stage Peak
+ * Wear is the exception: it drives ee::dsp::TapeCharacter, the same stage BitBit
  * Delay's Tape knob drives, so its voicing lives in ee/dsp/TapeTuning.h and the
  * two pedals stay in step by construction.
  *
@@ -76,7 +76,7 @@ constexpr float kWobbleLimit = 0.9f;
 // kStereoPhaseSpanCycles stays clear of 0.5 on purpose. At exactly antiphase
 // the right channel is a mirror of the left, and the image collapses to mono
 // every time the LFO crosses zero; ~0.33 cycles is the widest offset that stays
-// decorrelated right through the cycle. (Peak Chorus's Phase knob is capped for
+// decorrelated right through the cycle. (BitBit Chorus's Phase knob is capped for
 // the same reason.)
 constexpr float kStereoRateHz = 0.33f;
 constexpr float kStereoDepthMs = 1.5f; // per channel, at Stereo 100 %

@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PRODUCTS: peak-alpine;peak-grain;peak-artifact;peak-modulation;peak-delay;peak-reverb
+  PRODUCTS: bitbit-alpine;bitbit-grain;bitbit-artifact;bitbit-modulation;bitbit-delay;bitbit-reverb
   CCACHE_DIR: ${{ github.workspace }}/.ccache
 
 jobs:
@@ -56,7 +56,7 @@ jobs:
       - name: Build the WebView faces
         run: |
           npm ci
-          for p in peak-wah peak-delay peak-alpine peak-artifact peak-modulation peak-reverb peak-grain; do
+          for p in bitbit-wah bitbit-delay bitbit-alpine bitbit-artifact bitbit-modulation bitbit-reverb bitbit-grain; do
             npm run build --prefix "plugins/$p/jsui"
           done
 

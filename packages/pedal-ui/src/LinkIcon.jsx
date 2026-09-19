@@ -1,7 +1,7 @@
 /**
  * Two rounded capsules on a 45° axis, overlapping in the middle - a link
  * rather than a word, for controls too small to print "Sync"/"Linked"
- * legibly. Port of `drawLinkIcon` (`plugins/peak-delay/src/PluginProcessor.cpp`),
+ * legibly. Port of `drawLinkIcon` (`plugins/bitbit-delay/src/PluginProcessor.cpp`),
  * geometry measured off the onyx prototype rather than recomputed from the
  * original's trig, so the two stay visually identical without sharing code
  * (one draws into a juce::Graphics context, the other is markup).

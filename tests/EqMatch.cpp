@@ -1,4 +1,4 @@
-// Renders audio through the whole Peak EQ processor so the band filters and the
+// Renders audio through the whole BitBit EQ processor so the band filters and the
 // bypass crossfade can be checked end to end.
 //
 //   ee_eq_match synth out.wav <b100dB> <b200dB> ... <b6k4dB> [levelDB]
@@ -14,7 +14,7 @@
 
 namespace
 {
-    const char* kBandIDs[PeakEqProcessor::kNumBands] = {
+    const char* kBandIDs[BitBitEqProcessor::kNumBands] = {
         "b100", "b200", "b400", "b800", "b1k6", "b3k2", "b6k4"
     };
 
@@ -84,16 +84,16 @@ int main (int argc, char* argv[])
 
     const double inputRms = rms (buffer);
 
-    PeakEqProcessor processor;
+    BitBitEqProcessor processor;
 
-    for (int b = 0; b < PeakEqProcessor::kNumBands; ++b)
+    for (int b = 0; b < BitBitEqProcessor::kNumBands; ++b)
     {
         const int argIndex = 3 + b;
         const float db = argc > argIndex ? juce::String (argv[argIndex]).getFloatValue() : 0.0f;
         setDb (processor.apvts, kBandIDs[b], db);
     }
 
-    const int levelIndex = 3 + PeakEqProcessor::kNumBands;
+    const int levelIndex = 3 + BitBitEqProcessor::kNumBands;
     if (argc > levelIndex)
         setDb (processor.apvts, "level", juce::String (argv[levelIndex]).getFloatValue());
 

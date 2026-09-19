@@ -14,7 +14,7 @@
 namespace ee::fx
 {
 
-/** Peak Artifact's module: four engines, one at a time.
+/** BitBit Artifact's module: four engines, one at a time.
  *
  * All four are voiced. Each takes the footer Mix as its dry/wet. Rust's warble
  * has a wet path that wanders in time, but only under wear and gently - it is
@@ -32,7 +32,7 @@ namespace ee::fx
  * depth is wear * Grind. Two voicings: Oxide (a decaying magnetic coating) and
  * Contact (a failing jack). Its dry/wet is the footer Mix.
  *
- * There was a fifth, Filter (Peak Wah's swept filter), until it moved to
+ * There was a fifth, Filter (BitBit Wah's swept filter), until it moved to
  * ModulationModule - an LFO sweep is modulation, not an artefact.
  *
  * Bit Crush is `ee::dsp::BitCrusher` - sample-and-hold downsampling, bit-depth
@@ -43,7 +43,7 @@ namespace ee::fx
  * Amp is a driven, degraded voice built from `ee::dsp::TubeDrive` (an
  * emphasis distortion - pre-emphasis, a logarithmic curve, de-emphasis -
  * fitted to a real reference unit at full drive, see TubeDriveConfig.h, and
- * deliberately not Peak Overdrive's diode clipper) into a second
+ * deliberately not BitBit Overdrive's diode clipper) into a second
  * `ee::dsp::BitCrusher` instance repurposed for one thing only: sample-rate
  * reduction. Its Bit knob's calibration (kAmpCrushRateHz and the blend) comes
  * from measuring a real reference unit against a dry recording of the same
@@ -57,8 +57,8 @@ namespace ee::fx
  * digital silence once the signal falls below one step, and its noise floor
  * is fixed rather than following the playing.
  *
- * After the crush, a peaking Mids boost (the same centre frequency and Q Peak
- * EQ's own Mid band uses) and a bipolar Tone tilt (Peak Tape's, resting flat
+ * After the crush, a peaking Mids boost (the same centre frequency and Q BitBit
+ * EQ's own Mid band uses) and a bipolar Tone tilt (BitBit Tape's, resting flat
  * and bypassed dead centre) shape the result, and a fixed short delay on the
  * right channel (kAmpHaasDelayMs) widens it when Stereo is on - a Haas trick,
  * not a real stereo signal. Its dry/wet is the footer Mix, like Bit Crush.
@@ -110,8 +110,8 @@ public:
     static constexpr float kAmpCrushImageHz = 14000.0f;
 
     /** Amp's Mids knob (0..1) -> 0..kAmpMidsMaxDb of peaking boost at
-        kAmpMidsFreqHz / kAmpMidsQ - Peak EQ's own centre band and Q for its
-        "MID" group (`PeakEqProcessor::kBandFrequencies[4]`, `kBandQ`), so the
+        kAmpMidsFreqHz / kAmpMidsQ - BitBit EQ's own centre band and Q for its
+        "MID" group (`BitBitEqProcessor::kBandFrequencies[4]`, `kBandQ`), so the
         lift reads as the same boost rather than a face of its own. */
     static constexpr float kAmpMidsFreqHz = 1600.0f;
     static constexpr float kAmpMidsQ = 1.4f;
@@ -119,7 +119,7 @@ public:
 
     /** Amp's Tone is a tilt around kAmpTonePivotHz on a knob that rests dead
         centre: -1 leans into the lows, 0 is flat and the stage is bypassed
-        exactly, +1 leans into the highs. Peak Tape's numbers
+        exactly, +1 leans into the highs. BitBit Tape's numbers
         (`ee::dsp::tape::kTone*`), restated rather than included so this
         engine's voicing is in one place - a bipolar tone knob should read the
         same wherever the user meets one. */

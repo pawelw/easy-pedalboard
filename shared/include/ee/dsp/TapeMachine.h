@@ -21,11 +21,11 @@ namespace ee::dsp
 
       1. the whole signal is read off a delay line whose length wanders - a
          ~2 Hz sine, and the slower one the Stereo switch opens (Flutter);
-         TapeTransport, the same stage Peak Delay's Flutter knob drives;
+         TapeTransport, the same stage BitBit Delay's Flutter knob drives;
       2. record head: drive into an asymmetric tanh, 2x oversampled, wrapped in
          a record-EQ shelf and its exact inverse so the treble hits the head
          hotter than the bass and distorts first (Saturation);
-      3. the tape itself: TapeCharacter, the same stage Peak Delay's Tape knob
+      3. the tape itself: TapeCharacter, the same stage BitBit Delay's Tape knob
          drives, voiced against a reference machine (Wear);
       4. the tape floor: a recording of one, played in a constant loop (Noise);
       5. tilt tone control around a fixed pivot, on a centre-detented knob (Tone);
@@ -126,7 +126,7 @@ public:
     }
 
     /** How tired the tape is. Drives TapeCharacter - the same stage, and the
-        same voicing, as Peak Delay's Tape knob. */
+        same voicing, as BitBit Delay's Tape knob. */
     void setWear01 (float v) noexcept       { wearTarget = juce::jlimit (0.0f, 1.0f, v); }
 
     /** Depth of the wow riding the transport. */

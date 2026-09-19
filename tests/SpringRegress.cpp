@@ -1,8 +1,8 @@
-// Renders a fixed battery of settings through the whole Peak Spring processor
+// Renders a fixed battery of settings through the whole BitBit Spring processor
 // and prints a checksum per pass.
 //
 // Written for adding Tension and Low Cut to ee::dsp::SpringReverb. Those are
-// additive - Peak Spring never sets either, so the tank must come back
+// additive - BitBit Spring never sets either, so the tank must come back
 // bit-identical with them in place. See RegressHarness.h for the family.
 //
 // A reverb needs a different signal from a delay or a tremolo: what matters is
@@ -51,7 +51,7 @@ const Pass kPasses[] = {
 
 bool runPass (const Pass& pass, const juce::AudioBuffer<float>& input, juce::AudioBuffer<float>& output)
 {
-    PeakSpringProcessor processor;
+    BitBitSpringProcessor processor;
 
     setPercent (processor.apvts, "decay", pass.decay);
     setPercent (processor.apvts, "mix", pass.mix);
@@ -78,13 +78,13 @@ bool runPass (const Pass& pass, const juce::AudioBuffer<float>& input, juce::Aud
 
     return allFinite (output);
 }
-/** The two controls Peak Spring does not have, driven on the engine directly.
+/** The two controls BitBit Spring does not have, driven on the engine directly.
     Three things are being asked here, and the pedal battery above can answer
     none of them because that pedal never touches either control:
 
       1. that the defaults really are inert - an engine told
          setTension01(kDefaultTension01) and setLowCut(kOutputLowCutHz) must
-         checksum identically to one told nothing at all, or "Peak Spring is
+         checksum identically to one told nothing at all, or "BitBit Spring is
          untouched" is only true by accident of it not calling them;
       2. that they actually do something - every other row must differ;
       3. that nothing at either extreme rings away or goes non-finite.
@@ -125,7 +125,7 @@ bool engineSweep()
     juce::String untouched, defaultsSet;
     bool ok = true;
 
-    std::printf ("\nengine sweep - the two controls Peak Spring does not have\n\n");
+    std::printf ("\nengine sweep - the two controls BitBit Spring does not have\n\n");
 
     for (const auto& row : rows)
     {
@@ -202,7 +202,7 @@ int main (int argc, char* argv[])
     juce::WavAudioFormat wav;
     bool ok = true;
 
-    std::printf ("Peak Spring - %d passes at %.0f Hz, %d s each (%d s of input, then tail)\n\n",
+    std::printf ("BitBit Spring - %d passes at %.0f Hz, %d s each (%d s of input, then tail)\n\n",
                  static_cast<int> (sizeof (kPasses) / sizeof (kPasses[0])), kSampleRate, kSeconds, kInputSeconds);
 
     for (const auto& pass : kPasses)

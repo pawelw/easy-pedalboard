@@ -3,7 +3,7 @@ import { SWEEP_RATIO_MAX } from "./autowah.js";
 import "./FilterScope.css";
 
 // Ported from the digital paint path of shared/src/ui/FilterScope.cpp
-// (Peak Wah is a "digital"-themed pedal - see CLAUDE.md's control-styles
+// (BitBit Wah is a "digital"-themed pedal - see CLAUDE.md's control-styles
 // section - so that path, not the analog one, is the real precedent). Same
 // Gaussian-in-log-frequency bump, same axis range, same constants; modL/modR
 // arrive live from the processor instead of being approximated.
@@ -69,7 +69,7 @@ function Grid({ plot }) {
  * The pedal's response scope: the resting filter curve (peak height and
  * width from resonance, position from freq), a shaded band showing how far
  * Range lets it sweep, and - when a live modL/modR feed is wired up (see
- * PeakWahWebEditor's Timer) - the two channels' actual live position riding
+ * BitBitWahWebEditor's Timer) - the two channels' actual live position riding
  * inside that band. Without a live feed modL/modR default to 0 (centre).
  */
 export default function FilterScope({

@@ -1,5 +1,5 @@
 /**
- * The reel-to-reel deck that marks Peak Delay's pre-stage (COMPONENTS.md #8b):
+ * The reel-to-reel deck that marks BitBit Delay's pre-stage (COMPONENTS.md #8b):
  * a deck body with feet and a head cover, two reels sitting proud of it, each
  * with three spokes and a hub ring.
  *
@@ -11,7 +11,7 @@
  * Its default is the one place in the set that has to ask where it is. The
  * icon used to sit on the Tape section's green band and filled from that
  * token; with the band gone it sits on whatever panel is behind it, which is
- * the card on Peak Delay's face and the module on Peak Alpine's. So the
+ * the card on BitBit Delay's face and the module on BitBit Alpine's. So the
  * default reads `--pui-stage-ground` - which `ModulePanel` sets and a plain
  * card does not - and falls back to the panel.
  *

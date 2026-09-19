@@ -1,4 +1,4 @@
-// Drives the real PeakGrainProcessor the way a host does - prepareToPlay, then
+// Drives the real BitBitGrainProcessor the way a host does - prepareToPlay, then
 // processBlock over and over - and reports the output level second by second.
 //
 // The engine-level stress app (ee_grain_stress) drives the DSP directly and so
@@ -76,7 +76,7 @@ Input inputFromName (const juce::String& name)
 
 /** A transport that plays at a fixed tempo from bar 1, never relocated - see
     tests/RegressHarness.h's own FakePlayHead for the fuller version with a
-    jump(). Without a playhead PeakGrainProcessor::processBlock never sees a
+    jump(). Without a playhead BitBitGrainProcessor::processBlock never sees a
     finite ppq, so densitySynced/windowSynced/sizeSynced/delaySynced never
     actually engage - this is the only thing standing between ee_grain_host
     and exercising Sync at all. */
@@ -297,7 +297,7 @@ int main (int argc, char* argv[])
     std::vector<float> renderedL, renderedR;
     const int channels = mono ? 1 : 2;
 
-    PeakGrainProcessor processor;
+    BitBitGrainProcessor processor;
 
     for (const auto& [id, value] : knobs)
     {
@@ -361,7 +361,7 @@ int main (int argc, char* argv[])
         if (auto* withId = dynamic_cast<juce::AudioProcessorParameterWithID*> (parameter))
             std::printf ("  %-10s %s\n", withId->paramID.toRawUTF8(), parameter->getCurrentValueAsText().toRawUTF8());
 
-    std::printf ("Peak Grain defaults: %.0f Hz, block %d%s, %d ch, %g dBFS %s, %.0f s\n\n", sampleRate, block,
+    std::printf ("BitBit Grain defaults: %.0f Hz, block %d%s, %d ch, %g dBFS %s, %.0f s\n\n", sampleRate, block,
                  ragged ? " (ragged)" : "", channels, inputDb,
                  input == Input::dc        ? "DC"
                  : input == Input::burst   ? "bursts"

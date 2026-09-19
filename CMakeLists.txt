@@ -78,7 +78,7 @@ FetchContent_Declare(JUCE
     GIT_PROGRESS TRUE)
 FetchContent_MakeAvailable(JUCE)
 
-# DaisySP supplies the time-domain pitch shifter that feeds Peak Reverb's
+# DaisySP supplies the time-domain pitch shifter that feeds BitBit Reverb's
 # shimmer path. Pinned like JUCE; only the `DaisySP` static library target is
 # defined by its CMake, so nothing else leaks into the build.
 FetchContent_Declare(DaisySP
@@ -93,7 +93,7 @@ FetchContent_MakeAvailable(DaisySP)
 # but pin it explicitly so a compiler default can't change it underneath us.
 set_target_properties(DaisySP PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 
-# chowdsp_wdf is the header-only Wave Digital Filter library behind Peak
+# chowdsp_wdf is the header-only Wave Digital Filter library behind BitBit
 # Overdrive's diode-clipper stage. It is pure headers, so we only fetch the
 # sources and wrap them in our own INTERFACE target - its bundled CMake declares
 # `cmake_minimum_required(VERSION 3.1)`, which current CMake rejects, and it is
@@ -127,7 +127,7 @@ FetchContent_MakeAvailable(melatonin_blur)
 juce_add_binary_data(ee_assets SOURCES
     assets/fonts/Birthstone-Regular.ttf
     assets/fonts/Lato-Light.ttf
-    assets/images/peak-logo.png
+    assets/images/bitbit-logo.png
     assets/images/knob.png
     assets/images/plate.png
     assets/images/silver-knob.png
@@ -141,7 +141,7 @@ juce_add_binary_data(ee_assets SOURCES
     assets/images/spoon.png)
 set_target_properties(ee_assets PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 
-# Peak Tape's own assets: the noise floor it loops (several megabytes of
+# BitBit Tape's own assets: the noise floor it loops (several megabytes of
 # recording) and the emblem on its face. Their own binary-data target, linked by
 # that pedal alone instead of riding along in every plugin, and their own
 # namespace and header, or they would collide with ee_assets' BinaryData.
@@ -161,8 +161,8 @@ add_subdirectory(shared)
 # for iteration. See CLAUDE.md.
 # ---------------------------------------------------------------------------
 set(EE_ALL_PLUGINS
-    peak-reverb peak-spring peak-delay peak-eq peak-trem-pan peak-chorus peak-alpine
-    peak-artifact peak-modulation peak-phase peak-overdrive peak-wah peak-tape peak-grain peak-sympathy)
+    bitbit-reverb bitbit-spring bitbit-delay bitbit-eq bitbit-trem-pan bitbit-chorus bitbit-alpine
+    bitbit-artifact bitbit-modulation bitbit-phase bitbit-overdrive bitbit-wah bitbit-tape bitbit-grain bitbit-sympathy)
 
 # The six that are actually sold (docs/release-plan.md, D2). The other nine
 # build, are covered by ee_dsp_tests and are several of the engines inside the
@@ -170,23 +170,23 @@ set(EE_ALL_PLUGINS
 # a parameter contract for these six only. scripts/package-macos.sh ships the
 # same list.
 set(EE_RELEASE_PLUGINS
-    peak-alpine peak-grain peak-artifact peak-modulation peak-delay peak-reverb)
+    bitbit-alpine bitbit-grain bitbit-artifact bitbit-modulation bitbit-delay bitbit-reverb)
 
 set(EE_PLUGINS "all" CACHE STRING
-    "Semicolon-separated pedals to build, or \"all\". e.g. -DEE_PLUGINS=peak-wah;peak-tape")
+    "Semicolon-separated pedals to build, or \"all\". e.g. -DEE_PLUGINS=bitbit-wah;bitbit-tape")
 option(EE_INSTALL_PLUGINS "Copy built plugins into ~/Library/Audio/Plug-Ins" ON)
 option(EE_DEV_FORMATS "Build Standalone only, skipping VST3 and AU" OFF)
 option(EE_LTO "Link with link-time optimisation (slow; for release builds)" ON)
 
 # Bolt a live tuning panel onto a pedal. Never turn these on for a build you hand
 # to anyone.
-option(EE_TAPE_TUNER "Add the tape tuning panel to Peak Delay (development only)" OFF)
+option(EE_TAPE_TUNER "Add the tape tuning panel to BitBit Delay (development only)" OFF)
 option(EE_JSUI_DEV_SERVER "Point the WebView faces at their Vite dev server instead of jsui/dist (development only)" OFF)
 option(EE_PRESET_AUTHOR "Add the face's \"save into the shipped bank\" button, which writes to a pedal's presets/ source folder (development only)" OFF)
-option(EE_GRAIN_TUNER "Add the grain tuning panel to Peak Grain (development only)" OFF)
-option(EE_GRAIN_TRACE "Log Peak Grain's in/out levels when its output runs away (development only)" OFF)
+option(EE_GRAIN_TUNER "Add the grain tuning panel to BitBit Grain (development only)" OFF)
+option(EE_GRAIN_TRACE "Log BitBit Grain's in/out levels when its output runs away (development only)" OFF)
 
-include(cmake/AddPeakPlugin.cmake)
+include(cmake/AddBitBitPlugin.cmake)
 
 if(EE_PLUGINS STREQUAL "all")
     set(EE_PLUGINS_TO_BUILD ${EE_ALL_PLUGINS})

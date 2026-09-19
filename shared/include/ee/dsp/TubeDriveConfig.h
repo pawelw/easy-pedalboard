@@ -5,7 +5,7 @@
 #include <cmath>
 
 /**
- * Voicing for ee::dsp::TubeDrive - Peak Artifact / Peak Alpine's Amp Drive.
+ * Voicing for ee::dsp::TubeDrive - BitBit Artifact / BitBit Alpine's Amp Drive.
  *
  * MATCHED, NOT DESIGNED. Every value at the 100 % end of this file was fitted
  * against a recording of a real reference unit with its drive fully up, over

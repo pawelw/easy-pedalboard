@@ -150,14 +150,14 @@
   --pui-concave-track: #c5bfad;
   --pui-concave-pointer: #2a2a26;
 
-  /* Peak Alpine's host chrome (design_handoff_peak_alpine/README.md's token
+  /* BitBit Alpine's host chrome (design_handoff_peak_alpine/README.md's token
      table). Two things the pedal faces never needed: a panel *inside* a panel
      (the module shell), and a small square button that is neither a Pill nor a
      Knob (the host header's chevrons, name field and save).
 
      The defaults here derive from the panel tokens rather than restating a
      palette, so the gallery's light and grey columns render something coherent
-     without anyone having designed a light Peak Alpine. Onyx carries the
+     without anyone having designed a light BitBit Alpine. Onyx carries the
      handoff's own numbers, which is the face that ships.
 
      One group, not two. An earlier draft gave the wide (Delay) module a darker
@@ -258,7 +258,7 @@
   --pui-concave-track: #1c2427;
   --pui-concave-pointer: #e6f0f4;
 
-  /* Peak Alpine's host chrome, onyx - the handoff's own numbers. */
+  /* BitBit Alpine's host chrome, onyx - the handoff's own numbers. */
   --pui-module: #20292d;
   --pui-module-edge: #161c1e;
   --pui-module-divider: #0a0b0c;
@@ -270,7 +270,7 @@
   --pui-chrome-ink-hover: #d6e8ec;
   --pui-chrome-field-ink: #cfe2e6;
 
-  /* Peak Alpine's three module accents, restored to their original brighter
+  /* BitBit Alpine's three module accents, restored to their original brighter
      numbers - :root darkened these for the light/grey themes, which onyx's
      near-black panel never needed. */
   --pui-accent-mod: #e0b23c;
@@ -396,7 +396,7 @@
    in the Delay footer and in the Modulation stepper, where every other engine
    glyph wears the module's accent.
    Mod is --pui-accent-mod's yellow rather than a hue of its own: the stage is
-   modulation, and inside Peak Alpine it sits a module away from the panel
+   modulation, and inside BitBit Alpine it sits a module away from the panel
    that already means that. */
 :root {
   --pui-stage-tape: #309a10;
@@ -404,7 +404,7 @@
   --pui-stage-filter: #e08fc0;
 }
 
-/* Peak Alpine's three module accents, outside the theme blocks for exactly
+/* BitBit Alpine's three module accents, outside the theme blocks for exactly
    the reason the tape band is: an accent whose job is to say "this is the
    Modulation module" has to say it on every ground, so there is no light
    variant to switch to.
@@ -425,7 +425,7 @@
   --pui-accent-reverb: #348088;
 }
 
-/* Peak Grain's three non-Alpine section accents (Grain, Pitch, Random) -
+/* BitBit Grain's three non-Alpine section accents (Grain, Pitch, Random) -
    outside the theme blocks for the same reason as the three above, but with
    no onyx override: Grain only ships on the onyx face, so there is no other
    ground for these to need to read against. The old native face's pastel

@@ -82,26 +82,26 @@ function decayBars(decay01) {
  * engine list differs, so they are one component rather than two files that
  * would drift. `ModulationFace` and `ReverbFace` are this with their list.
  *
- * One component, two hosts per module, the way `ArtifactFace` is: Peak
- * Modulation and Peak Reverb each wrap theirs in a Card of their own, and Peak
+ * One component, two hosts per module, the way `ArtifactFace` is: BitBit
+ * Modulation and BitBit Reverb each wrap theirs in a Card of their own, and BitBit
  * Alpine drops both into its module row. The Alpine modules are not re-draws
  * of those pedals' faces, they *are* those faces - so a fix lands in both.
  *
  * `prefix` is the parameter-id prefix every control binds through: "" for the
  * standalone pedals, whose ids are plain (`mix`, `trem.rate`), and "mod." or
- * "rev." for Peak Alpine, whose are namespaced by module. Nothing below takes
+ * "rev." for BitBit Alpine, whose are namespaced by module. Nothing below takes
  * an id map; the ParamScope does the whole job, and the leaf names are
  * identical in both plugins on purpose.
  *
  * `headerRight` is whatever the host wants in the header's right-hand slot -
- * Peak Alpine puts its Level trim there, the same one each of its modules
+ * BitBit Alpine puts its Level trim there, the same one each of its modules
  * carries; the standalone pedals pass nothing. It is the host's to supply
  * because that Level is the host's chrome, not one of the pedal's parameters.
  *
- * `easyTab` lets the Easy / Adv strip read each engine's `easy` macro (Peak
+ * `easyTab` lets the Easy / Adv strip read each engine's `easy` macro (BitBit
  * Alpine turns it on; the standalone pedals do not). `knobVariant` is Knob's
  * own `variant`, forwarded to every knob this face draws - "concave" on its
- * own, as Peak Artifact's is; Peak Alpine passes "flat".
+ * own, as BitBit Artifact's is; BitBit Alpine passes "flat".
  *
  * The Delay module is not one of these and does not try to be: it is
  * `<DelayFace>` in a wide `ModulePanel`, and sharing a shell with these two
@@ -297,7 +297,7 @@ function DecayDisplay({ parameterId }) {
 /**
  * The Filter engine's live cutoff-sweep exponent for both channels, pushed from
  * the processor as the one "filterMod" event (the editor's Timer) - the same
- * feed Peak Wah's scope rides on. Outside a real host there is no backend to
+ * feed BitBit Wah's scope rides on. Outside a real host there is no backend to
  * send it, so it stays at 0 and the two swept curves rest on the base curve.
  */
 function useFilterMod() {
@@ -314,7 +314,7 @@ function useFilterMod() {
   return mod;
 }
 
-/* Peak Wah's response scope in the module's own ink: a resting curve whose peak
+/* BitBit Wah's response scope in the module's own ink: a resting curve whose peak
    rises and narrows with Q and slides with Freq, a band showing how far Range
    lets it sweep, and two curves riding the live L/R sweep inside it. The
    infinity mark stands in for the Decay knob this engine does not have - it is

@@ -7,13 +7,13 @@ Builds as **VST3**, **AU** and a **Standalone** app.
 
 ## Plugins
 
-### Peak Reverb
+### BitBit Reverb
 
-Peak Alpine's **Reverb** module as a pedal of its own, drawn the way Peak
+BitBit Alpine's **Reverb** module as a pedal of its own, drawn the way BitBit
 Artifact is: one narrow compartment, a `<>` stepper between two engines -
 **Space** and **Spring** - and a **Mix** knob in the footer. Mono in (a stereo
 input is summed before the send - a room has no left and right input), stereo
-out. It is the same `ee::fx::ReverbModule` Peak Alpine runs, behind the same
+out. It is the same `ee::fx::ReverbModule` BitBit Alpine runs, behind the same
 face (`ReverbFace`, `packages/module-face`), so the pedal and the Alpine module
 cannot drift apart. The face uses the onyx theme with the reverb module's cyan
 accent, and a bar display above the knobs draws the tail falling away as Decay
@@ -29,13 +29,13 @@ pedal used to be:
 | **Low Cut** | 20 - 800 Hz | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
 | **Reso**    | 0 - 100 %   | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
 
-**Spring** is Peak Spring's dispersive tank with its stereo pair always on, plus
+**Spring** is BitBit Spring's dispersive tank with its stereo pair always on, plus
 the two controls that pedal leaves off its own face:
 
 | Knob        | Range       | What it does                                                                 |
 | ----------- | ----------- | ---------------------------------------------------------------------------- |
 | **Decay**   | 0.4 - 8 s   | How long the springs ring on after the note stops                            |
-| **Tension** | 0 - 100 %   | A slack spring disperses gently and boings low and soft; a taut one chirps hard and sweeps. 50 % is Peak Spring's own voicing |
+| **Tension** | 0 - 100 %   | A slack spring disperses gently and boings low and soft; a taut one chirps hard and sweeps. 50 % is BitBit Spring's own voicing |
 | **Low Cut** | 20 - 800 Hz | Highpass on the finished tank output, resting at 60 Hz                        |
 
 **Mix** (0 - 100 %, equal power) is shared by both engines. Each engine keeps
@@ -60,7 +60,7 @@ defaults there are a tuned setting.
 High and low frequency decay rates are fixed internally (lows ring slightly
 longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
 
-**It replaced the native Peak Reverb** - the silver-knob face on a sky
+**It replaced the native BitBit Reverb** - the silver-knob face on a sky
 background - on 2026-09-14. The plugin code is still `Prvb`, so a host loads
 the new pedal where the old one was, but the parameter ids moved under their
 engine (`decay` is now `space.decay`): a session saved with the old pedal brings
@@ -70,7 +70,7 @@ than the old curved one, and the `on` parameter crossfades to the dry signal
 like every other module - there are no **trails** any more, so the tail stops
 with it.
 
-### Peak Spring
+### BitBit Spring
 
 A dispersive spring tank. Mono in, stereo out, two knobs and a switch:
 
@@ -88,7 +88,7 @@ what to use if the mix has to fold down. **Stereo** runs a second tank whose
 springs differ by about three per cent and crosses the two into each other, which
 opens the tail out without either side sounding detuned or hollow in mono.
 
-Where Peak Reverb's Space engine models a plate, this models the steel box bolted into the
+Where BitBit Reverb's Space engine models a plate, this models the steel box bolted into the
 bottom of an amp. Three springs run in parallel, each a short delay loop with a
 cascade of stretched all-pass sections *inside* the feedback path. Those
 sections are flat in magnitude but not in group delay, so the top of the
@@ -132,7 +132,7 @@ The pedal has no on/off switch of its own, and the `on` parameter has
 **trails**: bypassing stops driving the tank but leaves the wet
 path open, so whatever is still ringing rings out.
 
-### Peak Delay
+### BitBit Delay
 
 A tempo-synced stereo delay with independent left and right times, and two
 effect sections either side of it:
@@ -223,7 +223,7 @@ Saving a name you already have overwrites that one.
 
 A development build configured with `-DEE_PRESET_AUTHOR=ON` grows a third button
 in that box, **Save to Factory**, which writes the preset into the pedal's own
-`plugins/peak-delay/presets/` folder in the source tree so it can be committed
+`plugins/bitbit-delay/presets/` folder in the source tree so it can be committed
 and shipped with the next release. It does not appear in a normal build, and the
 plugin refuses the request even if something asks for it anyway. The new preset
 shows up in the list once it has actually been built in, because that is the
@@ -253,12 +253,12 @@ it moved, and the six milliseconds of the previous one still inside its delay
 line came out as a click on every flip.
 
 **Filter** is fixed on the repeats: **Low Cut** is a high pass and **High Cut**
-a low pass, the same pair of cuts Peak EQ carries in its top corner, and they
+a low pass, the same pair of cuts BitBit EQ carries in its top corner, and they
 keep that pedal's names for them - on the same ranges and built from the same coefficients so a given position means the same
 frequency on either pedal. Both rest wide open - 0 Hz and ∞ - and are bypassed
 outright there, so a Filter section nobody has touched is not in the path at
 all. High Cut counts *down* from its resting position and its scale fills from
-that end, the same way Peak EQ's own High Cut draws an inverted arc.
+that end, the same way BitBit EQ's own High Cut draws an inverted arc.
 
 It shapes the repeats once, on the delay's output, rather than sitting inside
 the feedback loop - because the compounding version of this control already
@@ -279,8 +279,8 @@ alone rather than on the finished mix, for the same reason Tape's **Post** is:
 a stage on the mix is audible on a dry signal that never went near the delay, at
 any Mix setting and even at zero.
 
-Nothing here is its own model of anything. **Wear** is Peak Tape's Wear,
-**Flutter** is Peak Tape's transport and **Phaser** is Peak Phase, each on its
+Nothing here is its own model of anything. **Wear** is BitBit Tape's Wear,
+**Flutter** is BitBit Tape's transport and **Phaser** is BitBit Phase, each on its
 own pedal's default voicing with one knob here - so retuning any of them moves
 both pedals together rather than letting the two drift apart. The Tape section
 is the green band, because it is not really part of the same effect as the rest
@@ -288,8 +288,8 @@ of the face.
 
 Wear is the one that does not reach as far here as it does on its own pedal: a
 fully-turned Wear on this face drives the machine half as hard as a fully-turned
-Wear on Peak Tape. The stage is the same and Peak Tape still reaches all of it -
-what is shorter is this knob's own travel, because on Peak Tape the machine is
+Wear on BitBit Tape. The stage is the same and BitBit Tape still reaches all of it -
+what is shorter is this knob's own travel, because on BitBit Tape the machine is
 the effect and its top end is the point, while here it is a colour on a delay
 and that top end swamped the repeats long before the knob ran out. The knob
 still reads 0 - 100 %: what it is a percentage of is how worn this pedal goes.
@@ -328,7 +328,7 @@ Like the reverb it has no on/off switch of its own, and the `on` parameter has
 trails: bypassing fades the tape off the dry path and closes the delay input,
 letting the repeats run out.
 
-### Peak EQ
+### BitBit EQ
 
 A seven-band graphic EQ modelled on the Boss GE-7, driven by vertical faders
 instead of knobs. Mono or stereo, in and out. Eight faders:
@@ -367,10 +367,10 @@ Like the other pedals it carries no on/off switch of its own — use the host's
 device on/off. The `on` parameter crossfades to the clean dry signal so
 toggling it never clicks.
 
-The face reuses Peak Delay's `silver()` theme, and is the same width and height
+The face reuses BitBit Delay's `silver()` theme, and is the same width and height
 as the other two-column analog faces, so the pedals line up on a rack.
 
-### Peak Trem & Pan
+### BitBit Trem & Pan
 
 One LFO that either chops the level (tremolo) or sweeps the stereo position
 (auto-pan), modelled on Ableton's Auto Pan. Mono or stereo in, stereo out.
@@ -393,7 +393,7 @@ Two switches sit above the knobs:
 
 - A **Tremolo / Panning** slider, top-left: a light knob on a dark track (about
   two circles wide), left for tremolo (default), right for panning.
-- A **Sync** button centred above the **Rate** knob - Peak Delay's `MiniToggle`,
+- A **Sync** button centred above the **Rate** knob - BitBit Delay's `MiniToggle`,
   with the same amber lit colour. Lit locks **Rate** to the host tempo (note
   divisions); off runs it free, where the knob reads one LFO cycle in
   milliseconds (10 ms - 2 s). Turning the knob up speeds the LFO up either way.
@@ -422,7 +422,7 @@ crossfades to the dry signal so the host's device on/off never clicks. The face
 uses a new `teal()` theme: a `#2d8a8e` panel with `#fee1b8` legend and a darker
 teal value arc on black caps.
 
-### Peak Chorus
+### BitBit Chorus
 
 A wide stereo chorus. Mono or stereo in, stereo out. Four knobs:
 
@@ -455,7 +455,7 @@ The full voicing - voice count, per-voice base delays, depth range, wet filter
 corners, knob defaults - lives in `shared/include/ee/dsp/ChorusConfig.h`; retune
 it there and rebuild.
 
-### Peak Overdrive
+### BitBit Overdrive
 
 A diode-clipper overdrive with a Boss-OD voicing. Mono or stereo, in and out -
 each channel is driven independently. Three knobs, on the small two-column
@@ -499,7 +499,7 @@ high-pass, oversampling, tilt pivot and band gains, post low-pass, make-up, knob
 defaults - lives in `shared/include/ee/dsp/OverdriveConfig.h`; retune it there
 and rebuild.
 
-### Peak Wah
+### BitBit Wah
 
 An LFO-driven modulated filter that plays with your picking - the auto-wah's
 tank, swept by a wave that speeds up when you dig in and restarts from its peak
@@ -547,14 +547,14 @@ the per-channel sweep amount to it each block.
 The filter is a real wah's **LC tank** - a series RLC solved sample-accurately
 as a **Wave Digital Filter** with
 [`chowdsp_wdf`](https://github.com/Chowdhury-DSP/chowdsp_wdf), the same library
-behind Peak Overdrive. One solve gives all three responses: the voltage across
+behind BitBit Overdrive. One solve gives all three responses: the voltage across
 the capacitor is a low-pass, across the resistor a band-pass, across the
 inductor a high-pass. A fixed 0.5 H inductor plus a swept capacitor set the
 centre frequency and the resistor sets Q; `C` and `R` are re-solved per channel
 every 16 samples from `C = 1 / ((2πf₀)²L)`, `R = (1/Q)·√(L/C)`.
 
 The LFO free-runs on a phase accumulator (aligned to the host grid when Sync is
-on, the same snap/pull as Peak Delay). A gate scales the modulation depth: a
+on, the same snap/pull as BitBit Delay). A gate scales the modulation depth: a
 fast follower on the high-passed, rectified, noise-floored input, whose release
 is set by Decay - with a floor under it that the top of the knob ramps to 1, and
 a one-shot the bottom of the knob crossfades in that holds for one LFO cycle
@@ -582,12 +582,12 @@ follower and rate depth, the retrigger thresholds, stereo offset, the param-ramp
 time, frequency range and sweep ratio, inductor value, Q range, control-block
 size, per-type make-up, grit, output filtering, knob defaults - lives in
 `shared/include/ee/dsp/AutoWahConfig.h` (and the LFO rate range in
-`plugins/peak-wah/src/RateMap.h`); retune there and rebuild.
+`plugins/bitbit-wah/src/RateMap.h`); retune there and rebuild.
 
-### Peak Artifact
+### BitBit Artifact
 
 A switchable module - **Ring Mod**, **Bit Crush**, **Rust**, **Amp** - as a
-pedal of its own, drawn as one narrow compartment in the style of Peak Alpine's
+pedal of its own, drawn as one narrow compartment in the style of BitBit Alpine's
 Modulation side-module but in red. A `<>` stepper picks the engine.
 
 All four engines are voiced. The module keeps every engine warm, so switching
@@ -597,8 +597,8 @@ Like the other pedals it has no on/off switch of its own - the `on` parameter
 crossfades to the dry signal so the host's device on/off never clicks. The face
 uses the onyx theme with a `#c00001` module accent.
 
-The swept **Filter** that used to be its third engine now lives in **Peak
-Modulation** (and Peak Alpine's Modulation module), since an LFO sweep is
+The swept **Filter** that used to be its third engine now lives in **BitBit
+Modulation** (and BitBit Alpine's Modulation module), since an LFO sweep is
 modulation rather than an artefact.
 
 **Rust** - `ee::dsp::Rust` - is degradation with a memory. A per-channel *wear*
@@ -624,11 +624,11 @@ The voicing lives in `shared/include/ee/dsp/RustConfig.h`. The only RNG is the
 warble's slow random walk, fixed-seeded in `reset()`, so a render repeats bit
 for bit and can be checksummed.
 
-### Peak Modulation
+### BitBit Modulation
 
-Peak Alpine's **Modulation** module as a pedal of its own, drawn the way Peak
+BitBit Alpine's **Modulation** module as a pedal of its own, drawn the way BitBit
 Artifact is: one narrow compartment, a `<>` stepper through five engines, and a
-**Mix** knob in the footer. It is the same `ee::fx::ModulationModule` Peak Alpine
+**Mix** knob in the footer. It is the same `ee::fx::ModulationModule` BitBit Alpine
 runs, behind the same face (`ModulationFace`, `packages/module-face`) and the
 same knob maps and host sync (`shared/include/ee/fx/ModulationControls.h`), so a
 knob position sounds the same in both. The face uses the onyx theme with the
@@ -636,11 +636,11 @@ modulation module's amber accent.
 
 | Engine     | What it is                        | Controls                                                          |
 | ---------- | --------------------------------- | ----------------------------------------------------------------- |
-| **Tape**   | Peak Tape's whole machine         | Saturation, Flutter, Wear, Noise, a bipolar Tone, Mono / Stereo    |
-| **Trem**   | Peak Trem & Pan's tremolo         | Amount, Rate, Shape, Tube, and a **Sync** pill that locks Rate to the host tempo |
-| **Chorus** | Peak Chorus's engine              | Rate, Depth, Phase                                                |
-| **Phaser** | Peak Phase's engine               | Rate, Depth                                                       |
-| **Filter** | Peak Wah's engine as an LFO sweep | Freq, Q, Range, Time with **Sync**, a Wave picker, Mono / Stereo - below |
+| **Tape**   | BitBit Tape's whole machine         | Saturation, Flutter, Wear, Noise, a bipolar Tone, Mono / Stereo    |
+| **Trem**   | BitBit Trem & Pan's tremolo         | Amount, Rate, Shape, Tube, and a **Sync** pill that locks Rate to the host tempo |
+| **Chorus** | BitBit Chorus's engine              | Rate, Depth, Phase                                                |
+| **Phaser** | BitBit Phase's engine               | Rate, Depth                                                       |
+| **Filter** | BitBit Wah's engine as an LFO sweep | Freq, Q, Range, Time with **Sync**, a Wave picker, Mono / Stereo - below |
 
 Every engine keeps running while another is selected, so switching between them
 never clicks, and each keeps its own settings, so stepping away and back
@@ -648,15 +648,15 @@ restores them. Tape reads off a transport delay line; the module pads every othe
 engine and its own dry path out to match and reports that one figure to the host
 (6 ms), whichever engine is selected. **Tape has no Mix**: its wow makes the wet
 path wander in time, and any partial blend against a still dry signal combs and
-is heard as tremolo - so it runs fully wet, as Peak Tape does, and the power
+is heard as tremolo - so it runs fully wet, as BitBit Tape does, and the power
 toggle is its dry/wet.
 
 Like the other pedals it has no on/off switch of its own - the `on` parameter
 crossfades to the dry signal, delayed by that same reported latency, so toggling
 it never clicks and never moves the timing.
 
-**Filter** was Peak Artifact's third engine until an LFO sweep was judged
-modulation rather than an artefact. It is Peak Wah's engine - `ee::dsp::AutoWah` - with its
+**Filter** was BitBit Artifact's third engine until an LFO sweep was judged
+modulation rather than an artefact. It is BitBit Wah's engine - `ee::dsp::AutoWah` - with its
 per-note envelope taken out: **Decay is pinned fully up** (the infinity mark in
 the display says so), so the LFO just runs, and the tap is fixed at
 **low-pass**. It inherits the engine's fixed output low-cut (90 Hz), which keeps
@@ -675,7 +675,7 @@ A **Wave** `<>` picker (Triangle / Ramp / Square) sets the LFO shape and a
 voicing lives in `shared/include/ee/dsp/AutoWahConfig.h`; the LFO rate range is
 `kFilterRateMap` in `shared/include/ee/fx/ModulationControls.h`.
 
-### Peak Grain
+### BitBit Grain
 
 A granular delay into a plain plate. Mono or stereo in, stereo out. Fifteen
 knobs in four captioned sections, **Live / Freeze** and **Mono / Stereo** switches across the top, and
@@ -708,7 +708,7 @@ nothing else:
 | **High**     | How often it jumps into the octave above. A plain octave up on its own; the Scale block below is what turns some of those grains into other notes from up there |
 | **Scale**    | Major, Minor, Pentatonic Major, Pentatonic Minor or Chromatic. Which notes the High group can land on, with its own on/off switch. Low ignores it - an octave is an octave |
 | **Mix**      | How much of that scale High takes. `0`, or the Scale switch off, is a plain octave for every up-grain; `100` draws each one from the scale. It colours High's interval and never its weight, so High stays exactly as loud as it was dialled either way |
-| **Root**     | The key the source material is in (C through B). Peak Grain has no idea what note you are actually playing - there is no pitch tracking - so Root is a best-effort assumption, not a detected one: it tells the engine which note to treat as the scale's tonic, dialled in by ear until the cloud sits in tune with what you are playing |
+| **Root**     | The key the source material is in (C through B). BitBit Grain has no idea what note you are actually playing - there is no pitch tracking - so Root is a best-effort assumption, not a detected one: it tells the engine which note to treat as the scale's tonic, dialled in by ear until the cloud sits in tune with what you are playing |
 
 Any two of Low/Unison/High at once is a chord rather than a transposition, which
 is the whole reason they are separate knobs. All three at zero is treated as
@@ -795,7 +795,7 @@ that first hit the random pick carries on. With Low at 0 nothing changes.
 
 Live, most grains are the **attack**. A plucked string is mostly its first fifty
 milliseconds, and a cloud built from the sustain alone loses whatever made the
-note identifiable. An onset detector (`ee::dsp::OnsetGate`, the same one Peak Wah
+note identifiable. An onset detector (`ee::dsp::OnsetGate`, the same one BitBit Wah
 retriggers from) marks where each attack landed, and 70 % of grains are drawn
 from there rather than from the Time window - until `kAttackReachSeconds` after
 the note, when it has rung out and the cloud moves on. Reads are cubic-Hermite,
@@ -823,7 +823,7 @@ onto the engine, the interval tables, the output trim - lives in
 a side panel that drives all of it live. `GrainerConfig.h` keeps the structural
 side: the knob ranges, the recording buffer and the voice count.
 
-Behind the cloud is `ee::dsp::FdnReverb`, the same sixteen-line network as Peak
+Behind the cloud is `ee::dsp::FdnReverb`, the same sixteen-line network as BitBit
 Reverb, run plain: no shimmer, and its resonance and low cut pinned in the
 tuning header rather than put on the face. It is fed the grains and nothing
 else. Bypass leaves the wet path open, so the cloud and its tail ring out
@@ -832,22 +832,22 @@ instead of being chopped off.
 The face is `PedalTheme::onyx()` - the soft-UI style at night, a near-black card
 with black caps, and one pale blue-grey carrying every reading on it.
 
-### Peak Tape
+### BitBit Tape
 
 A tape machine as a pedal. Mono or stereo, in and out. Five knobs and a switch
-on the Peak Delay footprint:
+on the BitBit Delay footprint:
 
 | Control        | Range        | What it does                                                                                     |
 | -------------- | ------------ | ------------------------------------------------------------------------------------------------ |
 | **Saturation** | 0 - 100 %    | How hard the record head is driven. Level-matched, so the knob adds harmonics and squash rather than volume |
 | **Tone**       | -100 - 100 % | Tilt around a fixed 700 Hz pivot, on a smaller centre-detented cap between the two big ones: left is dark, right is bright, `0 %` is flat and the stage is bypassed exactly |
 | **Flutter**    | 0 - 100 %    | Depth of the wobble riding the transport — a pure ~2 Hz sine, voiced off a reference recording: 1.6 ms of excursion at 100 %, ~35 cents of pitch |
-| **Wear**       | 0 - 100 %    | How tired the tape is. This *is* Peak Delay's **Tape** knob — the same stage, the same voicing, on a knob of its own |
+| **Wear**       | 0 - 100 %    | How tired the tape is. This *is* BitBit Delay's **Tape** knob — the same stage, the same voicing, on a knob of its own |
 | **Noise**      | 0 - 100 %    | The tape floor: a recording of a real one, looped. 100 % is that recording at the level it was made |
 | **Mono / Stereo** | switch    | Mono, both channels read one transport and a mono source stays exactly mono. Stereo, they read a slow modulation a third of a cycle apart and the image opens out, chorus-like. Stereo by default |
 
-Peak Delay already has a **Tape** knob — one macro voiced against a reference
-machine, a colour you dial in behind a delay. Peak Tape is the machine around
+BitBit Delay already has a **Tape** knob — one macro voiced against a reference
+machine, a colour you dial in behind a delay. BitBit Tape is the machine around
 it: the transport in front, the record head, the floor and the tone control
 after, each on its own control, with that same stage carrying Wear. It is not a
 second model of it — `TapeMachine` drives `TapeCharacter` directly, so the two
@@ -889,13 +889,13 @@ bit-exact pass-through. Its latency (the transport line plus the tape stage's
 own, 6 ms at 48 kHz) is constant whatever the controls do, and reported to the
 host so it is compensated.
 
-The face uses a new `green()` theme, struck in the deep green of Peak Delay's
+The face uses a new `green()` theme, struck in the deep green of BitBit Delay's
 Tape cap — the only dark-panel face in the range, which is the point. Tone's
 value arc grows out of 12 o'clock in whichever direction it is turned, with a
 tick marking the detent (`KnobSpec::bipolarArc`), and it takes a smaller cap
 than its neighbours (`KnobSpec::diameter`) because it is the trim among them.
 The middle of the bottom row is a spacer entry in the knob grid (a `KnobSpec`
-with no parameter ID), and the Mono/Stereo switch is the same `SlideToggle` Peak
+with no parameter ID), and the Mono/Stereo switch is the same `SlideToggle` BitBit
 Trem & Pan uses for its mode, in the strip above the knobs.
 
 The voicing — transport rate and depth, the width modulation, drive range, bias,
@@ -914,7 +914,7 @@ Flutter was voiced that way: render the dry take with Flutter at 100 and
 everything else at 0, track the result against the dry file, and the 2 Hz line
 lands on the reference recording's (70.1 samples against 70.3).
 
-### Peak Sympathy
+### BitBit Sympathy
 
 A sympathetic-resonance effect. Your signal barely passes through; instead it
 excites a bank of sixteen tuned string resonators that ring, bloom and beat
@@ -925,7 +925,7 @@ shimmering chord swells up behind you.
 The pedal is about one part resonator bank to four parts exciter, tuning and
 limiting. A bank of tuned comb filters is trivial and sounds like flanged mush;
 what makes this a string being *sympathetically excited* is the exciter — it
-watches for attacks (`ee::dsp::OnsetGate`, the same detector Peak Wah uses),
+watches for attacks (`ee::dsp::OnsetGate`, the same detector BitBit Wah uses),
 fires a short shaped noise burst into the bank on each one, and lets only a
 very weak continuous bleed through the rest of the time.
 
@@ -964,8 +964,8 @@ the preset bar and the Live / Freeze switch sharing the top strip.
 
 ## Setting up on another Mac
 
-The repo vendors no dependencies — JUCE, DaisySP (the pitch shifter behind Peak
-Reverb's shimmer) and chowdsp_wdf (the Wave Digital Filter behind Peak
+The repo vendors no dependencies — JUCE, DaisySP (the pitch shifter behind BitBit
+Reverb's shimmer) and chowdsp_wdf (the Wave Digital Filter behind BitBit
 Overdrive's diode clipper) are all fetched by CMake at configure time against
 pinned tags, so the first configure needs an internet connection.
 
@@ -992,7 +992,7 @@ While working on one pedal, the `fast` preset is about five times quicker — it
 builds Standalone only, without LTO, and installs nothing:
 
 ```bash
-cmake --preset fast -DEE_PLUGINS="peak-wah"
+cmake --preset fast -DEE_PLUGINS="bitbit-wah"
 cmake --build build-fast
 ```
 
@@ -1022,8 +1022,8 @@ notarised. macOS flags anything transferred by AirDrop, download or iCloud with
 free of malware"*. Clear it on the receiving machine:
 
 ```bash
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"Peak Reverb.vst3"
-xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"Peak Reverb.component"
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/VST3/"BitBit Reverb.vst3"
+xattr -dr com.apple.quarantine ~/Library/Audio/Plug-Ins/Components/"BitBit Reverb.component"
 ```
 
 Cloning the source and building there avoids the whole problem.
@@ -1033,15 +1033,15 @@ Cloning the source and building there avoids the whole problem.
 ```bash
 ./build/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests   # DSP: decay accuracy, stability, levels
 ./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp   # renders the UI to PNG
-auval -v aufx Prvb Peak                                     # Apple's AU validation
-auval -v aufx Ptpn Peak                                     # Peak Trem & Pan
-auval -v aufx Pchr Peak                                     # Peak Chorus
-auval -v aufx Povd Peak                                     # Peak Overdrive
-auval -v aufx Pwah Peak                                     # Peak Wah
-auval -v aufx Ptap Peak                                     # Peak Tape
-auval -v aufx Part Peak                                     # Peak Artifact
-auval -v aufx Pmod Peak                                     # Peak Modulation
-auval -v aufx Psym Peak                                     # Peak Sympathy
+auval -v aufx Brvb BtBt                                     # Apple's AU validation
+auval -v aufx Btpn BtBt                                     # BitBit Trem & Pan
+auval -v aufx Bchr BtBt                                     # BitBit Chorus
+auval -v aufx Bovd BtBt                                     # BitBit Overdrive
+auval -v aufx Bwah BtBt                                     # BitBit Wah
+auval -v aufx Btap BtBt                                     # BitBit Tape
+auval -v aufx Bart BtBt                                     # BitBit Artifact
+auval -v aufx Bmod BtBt                                     # BitBit Modulation
+auval -v aufx Bsym BtBt                                     # BitBit Sympathy
 ```
 
 The tape machine also has its own sweep, which walks every knob combination and
@@ -1051,7 +1051,7 @@ a handful of adverse inputs looking for a non-finite or runaway output:
 ./build/tests/ee_tape_stress_artefacts/Release/ee_tape_stress
 ```
 
-Peak Sympathy is a bank of near-unity feedback loops, so it carries both a
+BitBit Sympathy is a bank of near-unity feedback loops, so it carries both a
 checksum battery and a runaway sweep, plus a by-ear voicing renderer:
 
 ```bash
@@ -1065,7 +1065,7 @@ checksum battery and a runaway sweep, plus a by-ear voicing renderer:
 ```bash
 /Applications/pluginval.app/Contents/MacOS/pluginval \
   --strictness-level 10 --validate-in-process \
-  --validate ~/Library/Audio/Plug-Ins/VST3/"Peak Reverb.vst3"
+  --validate ~/Library/Audio/Plug-Ins/VST3/"BitBit Reverb.vst3"
 ```
 
 ## Layout
@@ -1075,13 +1075,13 @@ shared/
   include/ee/dsp/    reusable DSP primitives + the reverb engine
   include/ee/ui/     the pedal UI framework
 plugins/
-  peak-reverb/       processor + parameter definitions
-  peak-delay/        processor + tape colour stage
-  peak-eq/           processor + juce::dsp IIR band filters
-  peak-trem-pan/     processor + phase-accumulator LFO, hand-written trem/pan
-  peak-overdrive/    processor + WDF diode-clipper drive stage (chowdsp_wdf)
-  peak-wah/          processor + LFO-swept WDF LC-tank filter, LP/BP/HP (chowdsp_wdf)
-  peak-tape/         processor + the full tape machine: transport, record head, floor
+  bitbit-reverb/       processor + parameter definitions
+  bitbit-delay/        processor + tape colour stage
+  bitbit-eq/           processor + juce::dsp IIR band filters
+  bitbit-trem-pan/     processor + phase-accumulator LFO, hand-written trem/pan
+  bitbit-overdrive/    processor + WDF diode-clipper drive stage (chowdsp_wdf)
+  bitbit-wah/          processor + LFO-swept WDF LC-tank filter, LP/BP/HP (chowdsp_wdf)
+  bitbit-tape/         processor + the full tape machine: transport, record head, floor
 tests/               offline DSP tests and the UI snapshot renderer
 ```
 
@@ -1096,7 +1096,7 @@ The UI is data-driven, so a new pedal needs no editor code. Describe the face:
 
 ```cpp
 ee::ui::PedalSpec spec;
-spec.name = "Peak Drive";
+spec.name = "BitBit Drive";
 spec.tagline = "...";
 spec.knobs = { { "gain", "Gain" }, { "tone", "Tone" }, { "level", "Level" } };
 
@@ -1105,21 +1105,21 @@ return new ee::ui::PedalEditor (*this, apvts, spec, ee::ui::PedalTheme::dark());
 
 For a pedal with vertical faders instead of knobs (a graphic EQ), fill
 `spec.sliders` instead of `spec.knobs` — same `{ parameterID, caption }` pairs.
-They lay out in one row across the face. `plugins/peak-eq` is the worked
+They lay out in one row across the face. `plugins/bitbit-eq` is the worked
 example.
 
 `spec.centreKnob` drops one small cap into the middle of the knob block for a
-secondary trim (`plugins/peak-tape` puts Tone there). Give it
+secondary trim (`plugins/bitbit-tape` puts Tone there). Give it
 `compact = true` for the small size and `compactCaption = true` to print the
 caption on its one text line instead of the value.
 
 A `KnobSpec` with no parameter ID is a **spacer**: it holds its column in the
-grid and draws nothing, so a face can leave a hole in its block (`peak-tape`
+grid and draws nothing, so a face can leave a hole in its block (`bitbit-tape`
 leaves the middle of its bottom row open). Point a toggle's `afterKnobIndex` at
 a spacer and the button is centred in that empty cell.
 
 Three more `KnobSpec` fields suit a control that rests at its centre, all of
-which `peak-tape` uses on Tone: `bipolarArc` grows the value arc out of 12
+which `bitbit-tape` uses on Tone: `bipolarArc` grows the value arc out of 12
 o'clock either way with a tick on the detent, `centreDetent` makes the knob snap
 onto the middle while dragging (mouse only — automation and typed values pass
 through), and `diameter` gives that one knob a smaller cap without moving it off
@@ -1128,22 +1128,22 @@ the grid or dropping its caption the way `compact` would.
 `spec.knobGroups` sorts the main knobs into captioned boxes — one centred row
 per group, each wrapped in the rounded outline with its name let into the top
 edge. List `{ caption, count }` entries; they consume `spec.knobs` in order and
-any left over form a trailing bare row. `plugins/peak-grain` uses four (Delay,
+any left over form a trailing bare row. `plugins/bitbit-grain` uses four (Delay,
 Grain, Pitch, Random) with Reverb and Mix bare underneath. Leave it empty for
 the plain `knobsPerRow` grid.
 
-Then give it a `plugins/peak-drive/CMakeLists.txt`:
+Then give it a `plugins/bitbit-drive/CMakeLists.txt`:
 
 ```cmake
-peak_add_plugin(PeakDrive
+bitbit_add_plugin(BitBitDrive
     CODE       Pdrv
-    PRODUCT    "Peak Drive"
+    PRODUCT    "BitBit Drive"
     BUNDLE     com.bitbitaudio.drive
     CATEGORIES "Fx Distortion"
 )
 ```
 
-`peak_add_plugin` (in `cmake/AddPeakPlugin.cmake`) carries the rest of the
+`bitbit_add_plugin` (in `cmake/AddBitBitPlugin.cmake`) carries the rest of the
 `juce_add_plugin` boilerplate. Pass `LIBS` for extra link targets and `SOURCES`
 for extra `.cpp` files. Add the directory name to `EE_ALL_PLUGINS` in the
 top-level `CMakeLists.txt`, and mirror the parameter layout into

@@ -56,7 +56,7 @@ function usePresetBridge() {
  *
  * on its Card, and nothing else - no props, no per-pedal list, no callbacks.
  * The pedal's own factory bank is whatever XML sits in its `presets/` folder,
- * which cmake compiles in on its own (see cmake/AddPeakPlugin.cmake).
+ * which cmake compiles in on its own (see cmake/AddBitBitPlugin.cmake).
  *
  * Loading a preset says nothing to the knobs. It replaces the whole APVTS
  * tree, and every WebSliderRelay attachment on the face is already listening

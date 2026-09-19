@@ -11,7 +11,7 @@ namespace ee::dsp
 /** A knob whose meaning a Sync switch flips: a free value in the knob's own
     unit, or a tempo-locked note division. One normalised 0..1 parameter backs
     both readings, so the switch only reinterprets it - the same trick RateMap
-    plays for an LFO, generalised to the two flavours Peak Grain needs:
+    plays for an LFO, generalised to the two flavours BitBit Grain needs:
 
       - a duration  (grain Size, delay Time): knob up = longer, free unit is
         milliseconds, the synced value is the division's length
@@ -95,7 +95,7 @@ struct GrainSyncMap
 
     /** The duration reading, always in real time - never the division label
         toText() shows once synced. For a caller whose knob should stay legible
-        in milliseconds no matter what Sync is doing (Peak Grain's Size: the
+        in milliseconds no matter what Sync is doing (BitBit Grain's Size: the
         grain length a listener hears is a duration, not a rhythmic position).
         Duration maps only - meaningless for a rate map. */
     juce::String toMsText (float v01, bool synced, double bpm) const

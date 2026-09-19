@@ -22,7 +22,7 @@ namespace ee::dsp
     point's `x`, then jump - what gives Square and Random their staircase
     look on the same evaluator the smooth shapes use.
 
-    This is the audio-side twin of plugins/peak-grain/jsui/src/lfoShapes.js's
+    This is the audio-side twin of plugins/bitbit-grain/jsui/src/lfoShapes.js's
     breakpoint model and its evalBreakpoints() - kept numerically in step by
     hand, the same relationship packages/pedal-ui/src/lfo.js has with this
     header's own Lfo.h. */
@@ -34,7 +34,7 @@ struct LfoBreakpoint
     bool hold = false;
 };
 
-/** A breakpoint-shaped LFO for Peak Grain's Mod tab: a sparse, user-editable
+/** A breakpoint-shaped LFO for BitBit Grain's Mod tab: a sparse, user-editable
     point list evaluated per sample, with the same phase-accumulation and
     tempo-sync alignment ee::dsp::Tremolo uses (copied from it rather than
     shared, since Tremolo's own phase machinery is private to its ducking/pan
@@ -116,7 +116,7 @@ public:
 
     /** The current phase, for a UI playhead marker. Safe from any thread -
         backed by an atomic snapshot written once per advance(), the same
-        pattern PeakGrainProcessor::lastKnownBpm uses for its own
+        pattern BitBitGrainProcessor::lastKnownBpm uses for its own
         audio-thread-written, message-thread-read value. */
     float phase01() const noexcept { return uiPhase.load (std::memory_order_relaxed); }
 

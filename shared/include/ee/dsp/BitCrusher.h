@@ -108,7 +108,7 @@ public:
 
     /** Whether the tracking anti-alias low-pass runs ahead of the hold. On by
         default, which is what makes the Bit Crush engine read as lost bandwidth
-        rather than hash. Peak Artifact's Amp turns it off: the reference that
+        rather than hash. BitBit Artifact's Amp turns it off: the reference that
         engine is measured against holds the raw signal, images and all, and a
         pre-filter there moves the result off the target by more than it tidies
         up. */

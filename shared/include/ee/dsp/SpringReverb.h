@@ -138,7 +138,7 @@ public:
 
         Rests at spring::kDefaultTension01, which maps exactly onto the voicing's
         own kChirpCoefficient - so a tank nobody has set this on is bit-identical
-        to one from before the control existed. Peak Spring never calls it. */
+        to one from before the control existed. BitBit Spring never calls it. */
     void setTension01 (float tension01) noexcept;
 
     /** The pickup's high-pass, on the wet output only. Outside every feedback

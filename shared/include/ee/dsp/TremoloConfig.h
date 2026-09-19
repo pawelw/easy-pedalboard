@@ -52,8 +52,8 @@ constexpr float kDcHz     = 20.0f; // DC-blocker corner: below the lowest note, 
 // The Rate knob's free-running sweep: one LFO cycle from 2 s with the knob
 // down to 10 ms with it up, with the middle of the travel at 300 ms.
 //
-// Here rather than in a pedal because two faces carry this knob now - Peak
-// Trem & Pan's and Peak Alpine's Modulation module - and the same knob position
+// Here rather than in a pedal because two faces carry this knob now - BitBit
+// Trem & Pan's and BitBit Alpine's Modulation module - and the same knob position
 // has to mean the same rate on both. Only the free sweep is per-effect; the
 // synced side is the shared tempo-division table (ee::dsp::RateMap).
 constexpr float kRateMinPeriodMs  = 10.0f;
@@ -71,7 +71,7 @@ constexpr float kModSlewSeconds = 0.0025f;
 // How long the three control smoothers take to reach a new value. Equal to
 // ee::plugin::kRampSeconds, and restated here rather than included: nothing
 // else under ee/dsp reaches up into ee/plugin, and an engine that did would
-// stop being usable without the plugin layer. PeakTremPanProcessor sees both
+// stop being usable without the plugin layer. BitBitTremPanProcessor sees both
 // and static_asserts they are the same, so the two cannot drift in silence.
 constexpr float kSmoothingSeconds = 0.02f;
 

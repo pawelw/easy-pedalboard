@@ -3,7 +3,7 @@ import { BitIcon, CrushIcon, ModIcon, RustIcon } from "@synthpeak/pedal-ui";
 /**
  * The four engines the module steps through, each with its own body. The order
  * is the order of the processor's `engine` choice parameter. Filter used to sit
- * third, before it moved to Peak Alpine's Modulation module.
+ * third, before it moved to BitBit Alpine's Modulation module.
  */
 export const ENGINES = [
   { name: "Ring", icon: <ModIcon size={22} />, body: "ring" },

@@ -14,7 +14,7 @@ namespace ee::ui
 
 //==============================================================================
 // Shared face metrics, so every pedal spaces its knob columns identically
-// whatever the row count. These match Peak Reverb's original layout.
+// whatever the row count. These match BitBit Reverb's original layout.
 
 /** Frame inset + content padding: the margin every control keeps from the edge. */
 inline constexpr int kFaceContentMargin = 21;
@@ -87,7 +87,7 @@ struct KnobSpec
 
     /** Draw this one cap in the other style, against the theme's own. For a
         control that is not really part of the same machine as the rest of the
-        row - Peak Delay's Tape knob is a tape machine in front of the delay,
+        row - BitBit Delay's Tape knob is a tape machine in front of the delay,
         and keeps its photographic cap on a face of digital ones.
 
         Unset follows `PedalTheme::controlStyle`, which is what every other
@@ -249,7 +249,7 @@ struct FilterScopeSpec
     std::optional<juce::Colour> baseColour;    // the static curve at Freq
     std::optional<juce::Colour> sweepColour;   // both moving curves
 
-    /** The largest |mod| the modulator can reach - the Range knob on Peak Wah.
+    /** The largest |mod| the modulator can reach - the Range knob on BitBit Wah.
         When set, the whole band the peak can sweep over is shaded behind the
         curves, so a face shows its range at rest rather than only while
         something is playing through it. Unset leaves the band undrawn.

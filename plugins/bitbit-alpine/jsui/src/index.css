@@ -1,0 +1,175 @@
+/* BitBit Alpine's enclosure and its module row. Everything inside a module is
+   the module's own component; what is here is the host.
+
+   html/body's own margin/overflow/background live in index.html, not here -
+   see plugins/bitbit-wah/jsui/src/index.css for why. */
+
+.page {
+  display: flex;
+  justify-content: center;
+  /* The plugin window is sized to the panel plus exactly this much on every
+     side (see installAutoResize's `padding`, which defaults to it) - change
+     one, change the other. */
+  padding: 4px;
+}
+
+/* Card's own padding and type are the pedals' (18/22/22, a 22px title beside
+   its subtitle). A host panel spends its width on four modules rather than on
+   one pedal's controls, so it re-spends those here - an even 14px frame, wider
+   than the 8px between the modules so the row reads as one object inside the
+   card rather than as three sitting on its edges. Scoped here the same way
+   `.pd-card` scopes BitBit Delay's, rather than adding another variant to Card
+   itself. */
+.pa-card.pui-card {
+  padding: 14px 14px 14px;
+  /* The module row's own panels are `overflow: hidden` and rounded; this does
+     the same for the host, so nothing can escape its 20px corners. */
+  overflow: hidden;
+}
+
+.pa-card .pui-card__header {
+  padding: 0 2px 18px;
+  gap: 14px;
+}
+
+.pa-card .pui-card__title {
+  font-size: 19px;
+}
+
+.pa-card .pui-card__subtitle {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--pui-ink-dim);
+}
+
+.pa-card .pui-card__logo {
+  height: 32px;
+}
+
+/* The mark is a two-line block's neighbour here, not a word's - 11px reads as
+   the same gap beside 32px of logo that Card's 10px does beside 26px. */
+.pa-card .pui-card__header-left--stacked {
+  gap: 11px;
+}
+
+/* The body is the module row and nothing else, so Card's own 10px of side
+   padding would just inset the row inside the padding the card already has. */
+.pa-card .pui-card__body {
+  padding: 0;
+}
+
+.pa-host-controls {
+  display: flex;
+  align-items: center;
+  /* Deliberate, and not to be collapsed into the row's own rhythm: see
+     HostControls' note on what the two sides of it do. */
+  gap: 32px;
+}
+
+.pa-levels {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* `align-items: stretch` is what makes the two short modules take the Delay
+   module's height, so their footers line up with its own bottom edge rather
+   than each ending where its content does. */
+.pa-modules {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  transition: opacity 140ms ease;
+}
+
+/* Bypassed: the row dims as one object. Not `display: none` and not per-module
+   - every control stays exactly where it was and stays readable, because
+   bypass is a thing you switch back off. */
+.pa-modules--bypassed {
+  opacity: 0.42;
+}
+
+/* ChainSlot's wrapper. It holds one module and nothing else - the drag handle
+   is that module's own header (see ChainSlot) - so it is a plain column whose
+   child takes all of it, and the row's heights come out exactly as they did
+   before reordering existed (`align-items: stretch` on .pa-modules). */
+.pa-chain-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.pa-chain-slot > .pui-module {
+  flex: 1;
+  min-height: 0;
+}
+
+/* The header is the handle. `touch-action: none` is dnd-kit's own requirement
+   for PointerSensor to see a drag rather than the browser claiming it as a
+   scroll/pan - and the Level knob in this strip wants the same, so it is set
+   on the whole header rather than carved around the controls in it.
+
+   The power toggle and that knob set their own cursors, which beats this
+   inherited one, so both keep saying they are controls rather than handles. */
+.pa-chain-slot .pui-module__header {
+  cursor: grab;
+  touch-action: none;
+}
+
+.pa-chain-slot .pui-module__header:active {
+  cursor: grabbing;
+}
+
+.pa-chain-slot--dragging {
+  opacity: 0.42;
+}
+
+/* How far DelayFace's footer has to travel to reach the Delay module's edges.
+   One padding to clear rather than the Card's two, and none at the bottom -
+   ModulePanel's body already ends flush there. */
+.pa-delay {
+  --pd-bleed-x: 18px;
+  --pd-bleed-bottom: 0px;
+}
+
+/* The face's own two spacings, re-spent for a 490px module rather than BitBit
+   Delay's 528px card. Scoped here rather than changed in the package, because
+   that package is the pedal's face as much as it is this module's. */
+.pa-delay .pd-row {
+  gap: 20px;
+}
+
+/* space-between, not the face's space-evenly: at this width the even thirds
+   left each pair huddled in the middle of its section with the dividers far
+   off to either side. */
+.pa-delay .pui-stage-group__knobs {
+  justify-content: space-between;
+}
+
+/* Every module's footer holds the same height whether or not there is a Mix
+   knob in it - Modulation's Tape has none (it runs fully wet), and without this
+   its footer would collapse to its padding and pull the module out of step with
+   the others. 87px is the height a soft 38px knob with its caption takes. The
+   Modulation and Reverb faces carry their own copy of this floor for their
+   standalone pedals (packages/module-face/src/SideModule.css). */
+.pa-modules .pui-module__footer {
+  box-sizing: border-box;
+  min-height: 87px;
+}
+
+/* The native build stamp (App.jsx's BuildStamp) - fixed outside the card so
+   it never enters installAutoResize's size measurement, low-contrast so it
+   reads as debug chrome rather than part of the pedal's own face. */
+.pa-build-stamp {
+  position: fixed;
+  right: 6px;
+  bottom: 4px;
+  font-family: var(--pui-font-label, monospace);
+  font-size: 9px;
+  letter-spacing: 0.03em;
+  color: var(--pui-ink-dim, rgba(255, 255, 255, 0.4));
+  opacity: 0.45;
+  pointer-events: none;
+  user-select: none;
+  z-index: 9999;
+}

@@ -3,7 +3,7 @@ import "./SliderRow.css";
 
 /**
  * A horizontal slider - Delay's Tape/Mod stage strip. A different shape
- * from the vertical `Slider` (which Peak EQ/Wah's faces are built around),
+ * from the vertical `Slider` (which BitBit EQ/Wah's faces are built around),
  * not a mode of it - do not change Slider's own rendering for this. Drag
  * anywhere along the track (not just the thumb), arrow keys nudge, same
  * controlled 0..1 API as every other control here.

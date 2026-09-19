@@ -7,9 +7,9 @@
 namespace ee::fx
 {
 
-/** Peak Alpine's Reverb module: two engines, one at a time.
+/** BitBit Alpine's Reverb module: two engines, one at a time.
  *
- * Space is Peak Reverb's FDN, Spring is Peak Spring's tank - the same two
+ * Space is BitBit Reverb's FDN, Spring is BitBit Spring's tank - the same two
  * engines those pedals run, so neither can drift from its own pedal.
  *
  * Both are mono in, stereo out, which is what a reverb is: a room does not have
@@ -69,7 +69,7 @@ protected:
         monoBuffer.assign (static_cast<size_t> (juce::jmax (1, maxBlockSize)), 0.0f);
 
         // The tank's own stereo conceit stays on: it is two tanks a few per
-        // cent apart, which is what opens the tail up. Peak Spring exposes a
+        // cent apart, which is what opens the tail up. BitBit Spring exposes a
         // switch for it; this face does not, so it keeps the better default.
         spring.setStereo (true);
     }

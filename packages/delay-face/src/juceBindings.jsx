@@ -3,23 +3,23 @@ import * as Juce from "juce-framework-frontend";
 import { useFormattedText, useParamId } from "@synthpeak/pedal-ui/juce";
 
 /**
- * The parts of Peak Delay's JUCE wiring that are Peak Delay's: a native
+ * The parts of BitBit Delay's JUCE wiring that are BitBit Delay's: a native
  * function only its processor answers, and three hooks over the meter feed
  * only its editor emits. Everything generic - JuceKnob, JucePill, the three
  * live-value hooks, the fader - lives in `@synthpeak/pedal-ui/juce` and is
  * shared with every other face.
  *
  * All of it resolves parameter ids through the enclosing `ParamScope`, so the
- * same hooks serve Peak Delay's bare `ltime` and Peak Alpine's `dly.ltime`.
+ * same hooks serve BitBit Delay's bare `ltime` and BitBit Alpine's `dly.ltime`.
  */
 
 // [leftMs, rightMs] as numbers - the TapScope's time axis. See the native
-// function's own comment in PeakDelayWebEditor.cpp for why the formatted
+// function's own comment in BitBitDelayWebEditor.cpp for why the formatted
 // readouts can't stand in for it.
 const getDelayTimesMs = Juce.getNativeFunction("getDelayTimesMs");
 
 /** The Time knobs' pair of readout texts: the toggle-aware main value
-    (division normally, ms when the "ms" pill is on - PeakDelayProcessor's
+    (division normally, ms when the "ms" pill is on - BitBitDelayProcessor's
     timeReadout() already does the swapping) and the always-ms figure next
     to it. The "ms" toggle doesn't touch ltime/rtime's own value, so both
     texts need their own listener on it as well as on the knob's value -

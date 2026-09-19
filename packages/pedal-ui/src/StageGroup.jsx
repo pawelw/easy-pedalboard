@@ -1,7 +1,7 @@
 import "./StageGroup.css";
 
 /**
- * One half of Peak Delay's footer: a `StageRouter` header over a row of
+ * One half of BitBit Delay's footer: a `StageRouter` header over a row of
  * `StageControl` knobs (COMPONENTS.md #5). Both halves hold two knobs - WEAR +
  * FLUTTER on the tape side, CHORUS + PHASER on the mod side - and the 50/50
  * balance of the footer depends on keeping them paired.

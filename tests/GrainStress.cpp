@@ -1,4 +1,4 @@
-// Drives the whole Peak Grain chain - the grain cloud into the post delay into
+// Drives the whole BitBit Grain chain - the grain cloud into the post delay into
 // the reverb - over its knob range against adverse input, hunting for a
 // non-finite or a runaway output.
 //
@@ -190,7 +190,7 @@ int main()
     // and the middle of each is left to ee_dsp_tests - which sweeps the engine
     // far more finely and does it without a reverb attached, so it costs a
     // fraction of the time. A stress app nobody waits for gets run by nobody.
-    std::printf ("Peak Grain stress: grain cloud into the post delay into the reverb\n\n");
+    std::printf ("BitBit Grain stress: grain cloud into the post delay into the reverb\n\n");
 
     const float sizes[] = { cfg::kMinGrainMs, 120.0f, cfg::kMaxGrainMs };
     const float densities[] = { cfg::kMinDensityHz, cfg::kMaxDensityHz };

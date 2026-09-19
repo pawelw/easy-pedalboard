@@ -14,7 +14,7 @@
 namespace ee::dsp
 {
 
-/** LFO-driven modulated filter (Peak Wah).
+/** LFO-driven modulated filter (BitBit Wah).
 
     A wave sweeps a series-RLC tank's cutoff around the Freq setting, tapped
     anywhere on a continuous low- .. band- .. high-pass morph. A fast envelope opens the modulation on a note; the
@@ -26,7 +26,7 @@ namespace ee::dsp
       * fully up it latches on and the filter just runs.
 
     The tank is the same Wave Digital Filter as the original auto-wah
-    (chowdsp_wdf, the library behind Peak Overdrive). The three element voltages
+    (chowdsp_wdf, the library behind BitBit Overdrive). The three element voltages
     give the three responses off one solve:
       V_C = low-pass    V_R = band-pass    V_L = high-pass
 

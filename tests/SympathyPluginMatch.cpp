@@ -1,4 +1,4 @@
-// Renders a file through the whole Peak Sympathy processor - parameters, the
+// Renders a file through the whole BitBit Sympathy processor - parameters, the
 // Mix/duck stage and the bypass crossfade included - so it can be checked
 // against ee_sympathy_match's engine-only render and against the plugin's own
 // defaults. See RegressHarness.h's note on *_match vs *_regress: this answers
@@ -84,7 +84,7 @@ int main (int argc, char* argv[])
     if (reader->numChannels == 1)
         buffer.copyFrom (1, 0, buffer, 0, 0, numSamples);
 
-    PeakSympathyProcessor processor;
+    BitBitSympathyProcessor processor;
 
     setChoice (processor.apvts, "tune.mode", mode);
     setChoice (processor.apvts, "tune.key", key);

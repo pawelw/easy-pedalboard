@@ -12,7 +12,7 @@ namespace ee::ui
 
     Draws a static "base" resonant bump at the Freq setting plus two moving
     bumps whose peak frequency slides with a per-channel modulator (the LFO in
-    Peak Wah), all fed from the closures in a `FilterScopeSpec`. Peak height and
+    BitBit Wah), all fed from the closures in a `FilterScopeSpec`. Peak height and
     width track resonance, and a dot marks the base bump's apex. Repaints on its
     own 45 fps clock so the moving curves animate without a parameter listener.
 */

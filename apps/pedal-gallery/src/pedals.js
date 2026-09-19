@@ -1,12 +1,12 @@
-import PeakDelayFace from "peak-delay-jsui/src/App.jsx";
-import PeakAlpineFace from "peak-alpine-jsui/src/App.jsx";
-import PeakArtifactFace from "peak-artifact-jsui/src/App.jsx";
-import PeakModulationFace from "peak-modulation-jsui/src/App.jsx";
-import PeakReverbFace from "peak-reverb-jsui/src/App.jsx";
-import PeakWahFace from "peak-wah-jsui/src/App.jsx";
-import PeakGrainFace from "peak-grain-jsui/src/App.jsx";
+import BitBitDelayFace from "bitbit-delay-jsui/src/App.jsx";
+import BitBitAlpineFace from "bitbit-alpine-jsui/src/App.jsx";
+import BitBitArtifactFace from "bitbit-artifact-jsui/src/App.jsx";
+import BitBitModulationFace from "bitbit-modulation-jsui/src/App.jsx";
+import BitBitReverbFace from "bitbit-reverb-jsui/src/App.jsx";
+import BitBitWahFace from "bitbit-wah-jsui/src/App.jsx";
+import BitBitGrainFace from "bitbit-grain-jsui/src/App.jsx";
 
-// The shipping plan, not a mirror of plugins/: Peak Alpine, each of its four
+// The shipping plan, not a mirror of plugins/: BitBit Alpine, each of its four
 // modules as its own product, and two pedals that ship on their own. A pedal
 // that is not on that list is not on this page, whether or not it has a face.
 //
@@ -29,13 +29,13 @@ export const groups = [
 export const pedals = [
   // The multi-effect host - listed first because it is the one that contains
   // the four after it rather than sitting beside them.
-  { slug: "peak-alpine", name: "BitBit Alpine", group: "alpine", face: PeakAlpineFace, theme: "onyx" },
-  { slug: "peak-reverb", name: "BitBit Reverb", group: "alpine", face: PeakReverbFace, theme: "onyx" },
-  { slug: "peak-delay", name: "BitBit Delay", group: "alpine", face: PeakDelayFace, theme: "onyx" },
-  { slug: "peak-modulation", name: "BitBit Modulation", group: "alpine", face: PeakModulationFace, theme: "onyx" },
-  { slug: "peak-artifact", name: "BitBit Artifact", group: "alpine", face: PeakArtifactFace, theme: "onyx" },
+  { slug: "bitbit-alpine", name: "BitBit Alpine", group: "alpine", face: BitBitAlpineFace, theme: "onyx" },
+  { slug: "bitbit-reverb", name: "BitBit Reverb", group: "alpine", face: BitBitReverbFace, theme: "onyx" },
+  { slug: "bitbit-delay", name: "BitBit Delay", group: "alpine", face: BitBitDelayFace, theme: "onyx" },
+  { slug: "bitbit-modulation", name: "BitBit Modulation", group: "alpine", face: BitBitModulationFace, theme: "onyx" },
+  { slug: "bitbit-artifact", name: "BitBit Artifact", group: "alpine", face: BitBitArtifactFace, theme: "onyx" },
 
-  { slug: "peak-wah", name: "BitBit Wah", group: "standalone", face: PeakWahFace },
-  { slug: "peak-grain", name: "BitBit Grains", group: "standalone", face: PeakGrainFace, theme: "onyx" },
-  { slug: "peak-eq", name: "BitBit EQ", group: "standalone", face: null },
+  { slug: "bitbit-wah", name: "BitBit Wah", group: "standalone", face: BitBitWahFace },
+  { slug: "bitbit-grain", name: "BitBit Grains", group: "standalone", face: BitBitGrainFace, theme: "onyx" },
+  { slug: "bitbit-eq", name: "BitBit EQ", group: "standalone", face: null },
 ];

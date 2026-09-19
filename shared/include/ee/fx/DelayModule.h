@@ -16,13 +16,13 @@
 namespace ee::fx
 {
 
-/** Peak Delay's whole chain, as one object.
+/** BitBit Delay's whole chain, as one object.
  *
  * `ee::dsp::TapeDelay` is only the delay line. What makes the pedal is
  * everything around it - a tape machine that can sit either side of the line, a
  * filter pair on the repeats, a phaser after them, the routing, the dry/wet law
- * and the trims - and all of that used to live in PeakDelayProcessor. It is
- * here so Peak Alpine's Delay module can be a second instance rather than a
+ * and the trims - and all of that used to live in BitBitDelayProcessor. It is
+ * here so BitBit Alpine's Delay module can be a second instance rather than a
  * second copy.
  *
  * Above ee::dsp rather than in it: this is a composition of engines with an
@@ -54,7 +54,7 @@ public:
         delay.prepare (sampleRate);
 
         // One channel per filter object, so each keeps its own state - the same
-        // shape Peak EQ prepares its cuts in.
+        // shape BitBit EQ prepares its cuts in.
         const juce::dsp::ProcessSpec filterSpec { sampleRate, static_cast<juce::uint32> (maxBlock), 1 };
 
         for (int ch = 0; ch < kMaxChannels; ++ch)
@@ -67,7 +67,7 @@ public:
 
         updateFilters (true);
 
-        // The phaser runs on Peak Phase's own default voicing - one knob here,
+        // The phaser runs on BitBit Phase's own default voicing - one knob here,
         // so everything but the amount is fixed once and never touched again.
         phaser.setRateHz (ee::dsp::phaser::kDefaultRateHz);
         phaser.setDepth01 (ee::dsp::phaser::kDefaultDepthPct * 0.01f);
@@ -382,7 +382,7 @@ public:
 private:
     /** One tape machine in one place in the chain: the transport's wobble
         (Flutter), then the tape itself (Wear), in the order a machine has them.
-        Both are the stages Peak Tape's knobs of the same name drive - shared
+        Both are the stages BitBit Tape's knobs of the same name drive - shared
         engines, not second models of them, so the two pedals cannot drift
         apart. */
     struct TapeSection
@@ -429,7 +429,7 @@ private:
         dBFS, well clear of any legitimate wet-plus-level peak. */
     static constexpr float kRunawayCeiling = 64.0f;
 
-    /** The module's own containment. Every other module in Peak Alpine's chain
+    /** The module's own containment. Every other module in BitBit Alpine's chain
         has one (MultiEngineModule applies it to Artifact, Modulation and
         Reverb alike); without it this one handed whatever its wet path had
         gone to straight on to the next module, which is not a stage that can
@@ -498,7 +498,7 @@ private:
     }
 
     /** The Filter section, in place on the repeats. Two cuts either end of the
-        band, the same pair Peak EQ carries in its top corner and built from the
+        band, the same pair BitBit EQ carries in its top corner and built from the
         same juce::dsp coefficients, so the two cut alike.
 
         On the delay's output rather than inside its feedback path, which is
@@ -530,7 +530,7 @@ private:
         }
     }
 
-    /** The Mod section's insert half, in place. ee::dsp::Phaser on Peak Phase's
+    /** The Mod section's insert half, in place. ee::dsp::Phaser on BitBit Phase's
         own default voicing; its wet/dry is fixed at the setting where the
         notches are deepest (ee::dsp::phaser::kWetMix), so the knob blends the
         whole stage in from out here. At 0 the stage is skipped and the input is

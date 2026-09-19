@@ -22,7 +22,7 @@
 #include "ee/dsp/Rust.h"
 #include "ee/dsp/SpringReverb.h"
 #include "ee/dsp/Overdrive.h"
-#include "ee/dsp/PeakLimiter.h"
+#include "ee/dsp/BitBitLimiter.h"
 #include "ee/dsp/TapeCharacter.h"
 #include "ee/dsp/TapeDelay.h"
 #include "ee/dsp/TapeMachine.h"
@@ -616,7 +616,7 @@ void testDelayTimeChangeStaysOutOfTheLoop()
 }
 
 /** Moving the Tape section from one side of the delay to the other must not
-    click - see PeakDelayProcessor's tapeIn/tapeOut.
+    click - see BitBitDelayProcessor's tapeIn/tapeOut.
 
     The click was never the *colour* changing. It was that one tape section
     handed a different signal keeps playing the previous one out of its delay
@@ -846,7 +846,7 @@ void testTapeCharacter()
 }
 
 //==============================================================================
-// Tape machine (Peak Tape)
+// Tape machine (BitBit Tape)
 
 /** Puts every control at its resting position - which is what the pedal is at
     Saturation, Wear, Flutter and Noise 0, Tone centred and Stereo off. */
@@ -2752,7 +2752,7 @@ void testAutoWahMixRampIsSmooth()
     check (acrossJump < steady * 1.5f + 0.02f, "the Mix jump does not step the output");
 }
 //==============================================================================
-// Peak Spring - the dispersive spring tank.
+// BitBit Spring - the dispersive spring tank.
 
 /** Drives the tank to a steady state, then measures how long the tail takes to
     fall 60 dB once the input stops. */
@@ -4676,7 +4676,7 @@ void testSpringDisperses()
 }
 
 //==============================================================================
-// Bit crusher (Peak Artifact / Peak Alpine's Bit Crush engine)
+// Bit crusher (BitBit Artifact / BitBit Alpine's Bit Crush engine)
 
 void testBitCrusherTransparentAtOff()
 {
@@ -4894,14 +4894,14 @@ void testBitCrusherJitterIsReproducible()
 }
 
 // ---------------------------------------------------------------------------
-// PeakLimiter
+// BitBitLimiter
 // ---------------------------------------------------------------------------
 
-void testPeakLimiterSilence()
+void testBitBitLimiterSilence()
 {
     std::printf ("Peak limiter: silence in -> silence out\n");
 
-    ee::dsp::PeakLimiter limiter;
+    ee::dsp::BitBitLimiter limiter;
     limiter.prepare (kSampleRate);
     limiter.setCeilingDb (ee::dsp::config::kLimiterCeilingDb);
     limiter.setAttackMs (ee::dsp::config::kLimiterAttackMs);
@@ -4918,11 +4918,11 @@ void testPeakLimiterSilence()
     check (allZero, "limiter produced sound from silence");
 }
 
-void testPeakLimiterTransparentBelowCeiling()
+void testBitBitLimiterTransparentBelowCeiling()
 {
     std::printf ("Peak limiter: leaves a signal under the ceiling untouched\n");
 
-    ee::dsp::PeakLimiter limiter;
+    ee::dsp::BitBitLimiter limiter;
     limiter.prepare (kSampleRate);
     limiter.setCeilingDb (ee::dsp::config::kLimiterCeilingDb);
     limiter.setAttackMs (ee::dsp::config::kLimiterAttackMs);
@@ -4952,11 +4952,11 @@ void testPeakLimiterTransparentBelowCeiling()
     check (worst < 1.0e-4f, "limiter touched a signal that never approached the ceiling");
 }
 
-void testPeakLimiterCapsAStackedPeak()
+void testBitBitLimiterCapsAStackedPeak()
 {
     std::printf ("Peak limiter: caps a transient stacked over the ceiling\n");
 
-    ee::dsp::PeakLimiter limiter;
+    ee::dsp::BitBitLimiter limiter;
     limiter.prepare (kSampleRate);
     limiter.setCeilingDb (ee::dsp::config::kLimiterCeilingDb);
     limiter.setAttackMs (ee::dsp::config::kLimiterAttackMs);
@@ -4991,7 +4991,7 @@ void testPeakLimiterCapsAStackedPeak()
     check (worstOver < 0.05f, "limiter let a stacked peak through uncontrolled");
 }
 
-// Peak Grain's Mod tab LFO. sr=1000, period=1s gives a clean 0.001-per-sample
+// BitBit Grain's Mod tab LFO. sr=1000, period=1s gives a clean 0.001-per-sample
 // phase increment, so a block of N samples lands on phase N/1000 exactly -
 // every test below picks N to land on the phase it wants to check, rather
 // than approximating.
@@ -5130,7 +5130,7 @@ void testModRouterAssignments()
 
 int main()
 {
-    std::printf ("=== Synth Peak DSP tests ===\n\n");
+    std::printf ("=== BitBit DSP tests ===\n\n");
 
     testDecayAccuracy();
     std::printf ("\n");
@@ -5295,11 +5295,11 @@ int main()
     std::printf ("\n");
     testBitCrusherJitterIsReproducible();
     std::printf ("\n");
-    testPeakLimiterSilence();
+    testBitBitLimiterSilence();
     std::printf ("\n");
-    testPeakLimiterTransparentBelowCeiling();
+    testBitBitLimiterTransparentBelowCeiling();
     std::printf ("\n");
-    testPeakLimiterCapsAStackedPeak();
+    testBitBitLimiterCapsAStackedPeak();
     std::printf ("\n");
     testBreakpointLfoLinearSegment();
     std::printf ("\n");

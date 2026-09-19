@@ -1,4 +1,4 @@
-// Checks two specific claims about Peak Artifact's Amp engine:
+// Checks two specific claims about BitBit Artifact's Amp engine:
 //
 //   1. Its Bit knob's calibration (ee::fx::ArtifactModule::ampRateHzFor) lands
 //      on the hold factors a real reference unit implied at 50 % and 100 % -

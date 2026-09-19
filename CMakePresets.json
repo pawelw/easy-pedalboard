@@ -23,7 +23,7 @@
       "name": "fast",
       "inherits": "dev",
       "displayName": "Fast (one pedal, Standalone only, nothing installed)",
-      "description": "The build to iterate against. Add -DEE_PLUGINS=peak-wah to cut it down to the pedal you are working on.",
+      "description": "The build to iterate against. Add -DEE_PLUGINS=bitbit-wah to cut it down to the pedal you are working on.",
       "binaryDir": "${sourceDir}/build-fast",
       "cacheVariables": {
         "EE_DEV_FORMATS": "ON",

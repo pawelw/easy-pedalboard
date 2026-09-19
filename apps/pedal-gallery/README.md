@@ -21,9 +21,9 @@ list does not appear here even if it has a face.
 ## Why this doesn't become a second UI to maintain
 
 Each tile in `src/pedals.js` points at that pedal's **own real** `App.jsx`,
-imported straight from its `jsui` project (e.g. `peak-wah-jsui/src/App.jsx`).
+imported straight from its `jsui` project (e.g. `bitbit-wah-jsui/src/App.jsx`).
 Nothing here re-implements a pedal's face - the gallery is only a home page
-and a hash router (`#peak-wah`) around whatever each pedal's jsui already
+and a hash router (`#bitbit-wah`) around whatever each pedal's jsui already
 exports. When a pedal's face changes, the gallery shows the change for free
 on its next reload.
 
@@ -39,6 +39,6 @@ pedal, not a parallel UI.
 
 ## Port
 
-3100, not 3000 - `:3000` is Peak Wah's own dev server, which its compiled
-plugin's `PeakWahWebEditor` points at directly. Reusing it here would starve
+3100, not 3000 - `:3000` is BitBit Wah's own dev server, which its compiled
+plugin's `BitBitWahWebEditor` points at directly. Reusing it here would starve
 the real plugin of its dev server.

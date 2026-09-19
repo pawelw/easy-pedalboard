@@ -1,4 +1,4 @@
-// Drives the real Peak Reverb processor the way a host does, and asserts the
+// Drives the real BitBit Reverb processor the way a host does, and asserts the
 // things that would make it broken rather than merely different: that both
 // engines make sound and stay finite, that the power toggle reaches the audio,
 // that switched off is the input, and that the Init factory preset names every
@@ -38,7 +38,7 @@ void check (bool condition, const char* what)
 template <typename Fn>
 void render (juce::AudioBuffer<float>& out, Fn&& configure)
 {
-    PeakReverbProcessor processor;
+    BitBitReverbProcessor processor;
     configure (processor.apvts);
 
     processor.setPlayConfigDetails (2, 2, kSampleRate, 1024);
@@ -75,7 +75,7 @@ void checkInitPreset()
 {
     std::printf ("Init preset:\n");
 
-    PeakReverbProcessor p;
+    BitBitReverbProcessor p;
     for (auto* param : p.getParameters())
         param->setValueNotifyingHost (param->getDefaultValue() < 0.5f ? 1.0f : 0.0f);
 
@@ -100,13 +100,13 @@ int main()
     juce::AudioBuffer<float> input (2, kLength);
     fillTestSignal (input, kSampleRate);
 
-    std::printf ("=== Peak Reverb host ===\n\n");
+    std::printf ("=== BitBit Reverb host ===\n\n");
 
     checkInitPreset();
     std::printf ("\n");
 
     {
-        PeakReverbProcessor probe;
+        BitBitReverbProcessor probe;
         probe.setPlayConfigDetails (2, 2, kSampleRate, 1024);
         probe.prepareToPlay (kSampleRate, 1024);
         check (probe.getLatencySamples() == 0, "both engines are latency-free, and it says so");
@@ -159,6 +159,6 @@ int main()
             ++failures;
     }
 
-    std::printf ("\n%s\n", failures == 0 ? "OK - Peak Reverb works" : "PEAK REVERB CHECKS FAILED");
+    std::printf ("\n%s\n", failures == 0 ? "OK - BitBit Reverb works" : "PEAK REVERB CHECKS FAILED");
     return failures == 0 ? 0 : 1;
 }

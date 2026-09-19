@@ -15,7 +15,7 @@
      sits as a flex item inside each face's centring .page - so by default a
      window narrower than the card squeezes it instead.
      That is worse than it looks, because a face measures THIS element to tell
-     its editor how big to open (see plugins/peak-delay/jsui/src/autoSize.js).
+     its editor how big to open (see plugins/bitbit-delay/jsui/src/autoSize.js).
      The editor starts at a placeholder size, the card shrinks to fit that, the
      measurement reports the shrunken width back, and the window never grows -
      a stable deadlock at the placeholder, with the card's contents overflowing

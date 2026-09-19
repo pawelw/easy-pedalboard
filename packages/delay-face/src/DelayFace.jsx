@@ -21,20 +21,20 @@ import TimeControl from "./TimeControl.jsx";
 import "./DelayFace.css";
 
 /**
- * Peak Delay's face, minus its enclosure: the tap scope, the Mix/Feedback/time
+ * BitBit Delay's face, minus its enclosure: the tap scope, the Mix/Feedback/time
  * row, and the three-cell stage footer. **No Card and no header** - the host
- * supplies those, because the two hosts want different ones. Peak Delay wraps
- * this in a Card with its title, preset bar and level faders; Peak Alpine
+ * supplies those, because the two hosts want different ones. BitBit Delay wraps
+ * this in a Card with its title, preset bar and level faders; BitBit Alpine
  * drops it into a `ModulePanel`.
  *
  * One component, not two looks. The whole reason this package exists is that
- * the Delay module in a multi-effect host is not a re-draw of Peak Delay's
- * face, it *is* Peak Delay's face - so a fix lands in both, and neither can
+ * the Delay module in a multi-effect host is not a re-draw of BitBit Delay's
+ * face, it *is* BitBit Delay's face - so a fix lands in both, and neither can
  * drift.
  *
- * `prefix` is the parameter-id prefix its controls bind through: "" for Peak
- * Delay, whose parameters are plain (`mix`, `ltime`), and "dly." for Peak
- * Machine, whose are namespaced by module. Nothing below here takes an id map;
+ * `prefix` is the parameter-id prefix its controls bind through: "" for BitBit
+ * Delay, whose parameters are plain (`mix`, `ltime`), and "dly." for BitBit
+ * Alpine, whose are namespaced by module. Nothing below here takes an id map;
  * the `ParamScope` around it does the whole job. The leaf names are identical
  * in both plugins on purpose - that is what makes one prefix enough.
  *
@@ -43,18 +43,18 @@ import "./DelayFace.css";
  * second layout box between the card's padding and the content that has been
  * measured against it since the face was written.
  *
- * `tapeRouter` is the Tape section's Pre/Post stepper. Peak Delay keeps it;
- * Peak Alpine hides it, because there the tape machine is a whole module of
+ * `tapeRouter` is the Tape section's Pre/Post stepper. BitBit Delay keeps it;
+ * BitBit Alpine hides it, because there the tape machine is a whole module of
  * its own and this second, smaller copy of "where does the tape sit" only
  * asked the question twice. Hidden it rests wherever the parameter defaults -
- * Post in Peak Alpine.
+ * Post in BitBit Alpine.
  *
- * `stageKnobSize` is the footer knobs' dial. Peak Delay's own 38px is the
- * default; Peak Alpine passes 36, the size every other small knob on that
+ * `stageKnobSize` is the footer knobs' dial. BitBit Delay's own 38px is the
+ * default; BitBit Alpine passes 36, the size every other small knob on that
  * panel is.
  *
- * `mainKnobSize` is Mix and Feedback. 76px is what Peak Delay's 528px card was
- * laid out around; Peak Alpine's 490px module passes 60.
+ * `mainKnobSize` is Mix and Feedback. 76px is what BitBit Delay's 528px card was
+ * laid out around; BitBit Alpine's 490px module passes 60.
  */
 export default function DelayFace({
   prefix = "",
@@ -211,7 +211,7 @@ function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76 }) 
 
         {/* High rests wide open at the top of its travel and counts down
             from there, so its scale fills from the maximum end - the same
-            distinction Peak EQ draws with an inverted arc on its High Cut.
+            distinction BitBit EQ draws with an inverted arc on its High Cut.
             Low is an ordinary knob: it rests at 0 Hz and fills as it opens. */}
         <div className="pd-footer__section">
           <StageGroup

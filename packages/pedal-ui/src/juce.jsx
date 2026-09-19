@@ -17,19 +17,19 @@ import StageRouter from "./StageRouter.jsx";
  *
  * A pedal's own `juceBindings.jsx` keeps whatever is specific to it: a native
  * function only that processor answers, a hook over a meter feed only it emits.
- * Peak Delay's live in `@synthpeak/delay-face`.
+ * BitBit Delay's live in `@synthpeak/delay-face`.
  */
 
 // A native function, not the parameter's own C++ stringFromValue - JUCE's
 // web-view relays only carry start/end/skew/interval, not the format string.
-// See plugins/peak-delay/jsui/README.md.
+// See plugins/bitbit-delay/jsui/README.md.
 const formatKnobValue = Juce.getNativeFunction("formatKnobValue");
 
 /** The parameter-id prefix in force for a subtree.
  *
  * A face embedded in a multi-effect host is the same face bound to a different
- * set of parameters: Peak Delay's Mix is `mix`, and the same component inside
- * Peak Alpine's Delay module is `dly.mix`. Rather than thread an id map
+ * set of parameters: BitBit Delay's Mix is `mix`, and the same component inside
+ * BitBit Alpine's Delay module is `dly.mix`. Rather than thread an id map
  * through every control, the host declares the prefix once and the hooks below
  * resolve against it.
  *
@@ -63,7 +63,7 @@ export function useParamId(parameterId) {
     places with different parameter ids; React reconciles those by position and
     key and hands the existing component new props, so a hook that latched its
     relay in a `useRef` would go on driving the engine that was there before.
-    Peak Alpine's Reverb module did exactly that: selecting Spring left its
+    BitBit Alpine's Reverb module did exactly that: selecting Spring left its
     Decay and Low Cut knobs turning `rev.space.*`, which is a control that
     moves and does nothing. The same applies to the two hooks below. */
 export function useJuceSliderValue(parameterId) {
@@ -96,7 +96,7 @@ export function useJuceSliderValue(parameterId) {
 
     Takes an already-scoped id: its callers have resolved theirs through
     useParamId, and a pedal-specific hook may pass a synthetic id that is not a
-    real parameter at all (Peak Delay's "ltimeMs"). */
+    real parameter at all (BitBit Delay's "ltimeMs"). */
 export function useFormattedText(scopedId, value) {
   const [text, setText] = useState("");
 
@@ -142,7 +142,7 @@ export function JuceKnob({
   showValueBelow = false,
   bare = false,
   // Passed straight through to Knob - see its own note on these two. Lets a
-  // caller (Peak Grain's ModdableKnob) turn a parameter's own knob into a
+  // caller (BitBit Grain's ModdableKnob) turn a parameter's own knob into a
   // drag-and-drop drop target without this component knowing anything about
   // whatever drag library is doing the dropping.
   dropRef,
@@ -193,7 +193,7 @@ export function JuceKnob({
     *are* - a preset still round-trips, the macro just re-centres on load).
 
     `targets` is `[{ id, min = 0, max = 1 }]`, `id` a leaf name. It is resolved
-    through `idPrefix` when one is given (Peak Alpine's side modules build ids
+    through `idPrefix` when one is given (BitBit Alpine's side modules build ids
     from the engine's own prefix, `mod.trem.`), otherwise through the enclosing
     `ParamScope` (the Artifact face, scoped `art.`). Pass a stable `targets`
     reference - a module-level constant - so the relay lookups are not rebuilt
@@ -233,7 +233,7 @@ export function JuceMacroKnob({
 }
 
 /** One of a header's level faders, bound to a WebSliderRelay by parameter id -
-    the shared `Slider`, the control Peak EQ's bands are, laid on its side at
+    the shared `Slider`, the control BitBit EQ's bands are, laid on its side at
     header size and dragged like a knob. Same optimistic-state pattern as
     JuceKnob: the value is set locally on drag rather than waiting for a relay
     echo that only a real host sends.
@@ -501,13 +501,13 @@ export function installAutoResize({ padding = 4 } = {}) {
 
 /** Like `installAutoResize`, but for a face whose native editor is resizable
  * (a DAW's own corner drag, or its own on-screen grip) rather than fixed to
- * its content - Peak Alpine's host chrome, so its window behaves the way
+ * its content - BitBit Alpine's host chrome, so its window behaves the way
  * every other plugin's does in Ableton, Logic and the rest.
  *
  * The page is measured once, at its natural (unscaled) size, the moment it
  * settles - that measurement becomes the design size the native editor opens
  * at and locks its aspect ratio and min/max drag range to (see
- * `PeakAlpineWebEditor`'s `reportContentSize`). It is not re-measured after
+ * `BitBitAlpineWebEditor`'s `reportContentSize`). It is not re-measured after
  * that: the editor's own size from then on is the user's or the host's to
  * pick, not the page's, exactly as `PedalEditor`'s native faces already work.
  *

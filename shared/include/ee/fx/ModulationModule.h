@@ -10,17 +10,17 @@
 namespace ee::fx
 {
 
-/** Peak Alpine's Modulation module: five engines, one at a time.
+/** BitBit Alpine's Modulation module: five engines, one at a time.
  *
- * Each is the same engine its own pedal runs - Peak Tape's machine, Peak Trem &
- * Pan's tremolo, Peak Chorus's chorus, Peak Phase's phaser, Peak Wah's filter -
+ * Each is the same engine its own pedal runs - BitBit Tape's machine, BitBit Trem &
+ * Pan's tremolo, BitBit Chorus's chorus, BitBit Phase's phaser, BitBit Wah's filter -
  * so a fix to any of them lands in both places. This class is only which one is
  * selected and what it is set to.
  *
  * Filter is `ee::dsp::AutoWah` with its per-note envelope taken out of the
  * picture: Decay is pinned fully up (the engine latches on and the wave just
  * runs) and the tap morph is pinned to low-pass. What is left is an LFO-swept
- * filter, which is modulation rather than an artefact - it lived in Peak
+ * filter, which is modulation rather than an artefact - it lived in BitBit
  * Artifact until it moved here. The module owns the dry/wet, so the engine's own
  * Mix is left fully wet.
  *
@@ -56,7 +56,7 @@ public:
     }
 
     /** Hands the tape engine a recording of a tape floor to loop, the same one
-        Peak Tape plays - without it the Noise knob is the synthesised hiss
+        BitBit Tape plays - without it the Noise knob is the synthesised hiss
         fallback rather than the real floor. Pointers are not owned; the caller
         keeps the samples alive for as long as the module runs. Safe before
         prepare(). See ee::dsp::TapeMachine::setNoiseSample. */
@@ -108,13 +108,13 @@ public:
     }
 
     /** The LFO free-runs; when the owner is synced to a running transport it
-        also aligns the phase to the host grid, exactly as Peak Wah does. */
+        also aligns the phase to the host grid, exactly as BitBit Wah does. */
     void snapFilterPhase (double target01) noexcept { wah.snapPhase (target01); }
     void nudgeFilterPhase (double target01) noexcept { wah.nudgePhase (target01); }
 
     /** The Filter engine's signed cutoff-sweep exponent per channel at the last
         processed sample (Range * gate * lfo) - what the face's response scope
-        rides on, the same feed Peak Wah pushes. The engine stays warm even when
+        rides on, the same feed BitBit Wah pushes. The engine stays warm even when
         it is not the selected one, so these keep moving; the face only reads
         them while Filter is showing. */
     float filterModL() const noexcept { return wah.modL(); }
@@ -126,7 +126,7 @@ protected:
     /** Tape rides a transport delay line, so its wet output wanders in time with
         the wow. Any partial Mix against a static dry is a comb whose notch
         sweeps at the wow rate - audible as tremolo, clean only at the ends. So
-        Tape is not offered a Mix at all: it runs fully wet, matching Peak Tape,
+        Tape is not offered a Mix at all: it runs fully wet, matching BitBit Tape,
         which has no mix control either, and the face drops the Mix knob for it.
         The other engines are unchanged. */
     bool engineUsesMix (int index) const noexcept override { return index != Tape; }
@@ -146,11 +146,11 @@ protected:
         wah.setMix01 (1.0f);
 
         // The module owns the dry/wet, so the chorus runs fully wet and its own
-        // internal blend stays out of the way. Peak Chorus keeps its Mix knob;
+        // internal blend stays out of the way. BitBit Chorus keeps its Mix knob;
         // here that knob is the module's, one level up.
         chorus.setMix01 (1.0f);
 
-        // The tremolo's panning mode is Peak Trem & Pan's, not this module's:
+        // The tremolo's panning mode is BitBit Trem & Pan's, not this module's:
         // the face has four knobs and no Tremolo/Panning switch, so it is fixed
         // on the tremolo law.
         tremolo.setPanning (false);

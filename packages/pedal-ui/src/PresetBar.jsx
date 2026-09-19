@@ -61,7 +61,7 @@ function ChevronRightIcon() {
  * The only state it does own is whether the save dialog is open and what the
  * last save said, because neither is anyone else's business.
  *
- * Peak Wah has its own copy of this (plugins/peak-wah/jsui/src/PresetBar.jsx)
+ * BitBit Wah has its own copy of this (plugins/bitbit-wah/jsui/src/PresetBar.jsx)
  * predating the shared one, styled with literal colours against that pedal's
  * cream panel. Fold it in here when Wah is next touched; doing it blind would
  * move that face's header for no reason of its own.
@@ -70,7 +70,7 @@ function ChevronRightIcon() {
  *  - `"joined"` (default) is the segmented control every pedal face carries:
  *    prev, next and the name box share their edges and read as one object,
  *    with Save beside it.
- *  - `"separated"` is Peak Alpine's host header: discrete rounded
+ *  - `"separated"` is BitBit Alpine's host header: discrete rounded
  *    controls at a wider size. Four rather than one because that header is a
  *    row of separate chrome objects - the level faders and the bypass pill are
  *    next to it - and a segmented group among them reads as the odd one out.
@@ -78,7 +78,7 @@ function ChevronRightIcon() {
  *    room for a preset name to be read rather than truncated.
  *
  * `showSteppers` (default on) hides the prev/next arrows for a face too narrow
- * to carry them - Peak Artifact's single-module card - leaving just the name
+ * to carry them - BitBit Artifact's single-module card - leaving just the name
  * picker and Save.
  */
 export default function PresetBar({

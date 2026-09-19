@@ -7,7 +7,7 @@
 
 /** Offline renderer used to A/B the plugin against a reference recording.
 
-    Runs a dry file through the real PeakReverbProcessor's Space engine, so the
+    Runs a dry file through the real BitBitReverbProcessor's Space engine, so the
     module's mix law and parameter smoothing are exercised rather than
     reimplemented.
 
@@ -50,7 +50,7 @@ int main (int argc, char** argv)
     buffer.clear();
     reader->read (&buffer, 0, numSamples, 0, true, true);
 
-    PeakReverbProcessor processor;
+    BitBitReverbProcessor processor;
     processor.setPlayConfigDetails (2, 2, sampleRate, blockSize);
     processor.prepareToPlay (sampleRate, blockSize);
 

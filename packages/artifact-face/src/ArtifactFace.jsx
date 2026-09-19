@@ -12,7 +12,7 @@ import { ENGINES } from "./engines.jsx";
 import "./ArtifactFace.css";
 
 /**
- * Peak Artifact's face, minus its pedal enclosure: one switchable module drawn
+ * BitBit Artifact's face, minus its pedal enclosure: one switchable module drawn
  * as a `ModulePanel` - a power toggle and name in the header, an engine
  * stepper, and then the selected engine's body, with Mix in the footer. Bit
  * Crush has a stepped-wave display and two rows of knobs; Ring Mod has a
@@ -20,12 +20,12 @@ import "./ArtifactFace.css";
  * corrosion display, one row of knobs and an Oxide / Contact switch; Amp has a
  * display, two rows of knobs and a Mono/Stereo (Haas) switch. The footer Mix
  * doubles as the Ring Mod's and Rust's Blend. (The Filter engine that used to
- * be here is now Peak Alpine's Modulation module's.)
+ * be here is now BitBit Alpine's Modulation module's.)
  *
- * One component, two hosts. Peak Artifact wraps this in its own Card; Peak
+ * One component, two hosts. BitBit Artifact wraps this in its own Card; BitBit
  * Alpine drops it into its module row as the first module. The whole reason
  * this package exists is that the Artifact module in the multi-effect host is
- * not a re-draw of Peak Artifact's face, it *is* that face - so a fix lands in
+ * not a re-draw of BitBit Artifact's face, it *is* that face - so a fix lands in
  * both and neither can drift.
  *
  * Amp's display reuses `CrushScope` (see `AmpDisplay`) with its Bits input
@@ -33,28 +33,28 @@ import "./ArtifactFace.css";
  * reduction, so the picture is a held sine with no amplitude bands, truthful
  * to what the engine actually does (see ee::fx::ArtifactModule's class note).
  *
- * `prefix` is the parameter-id prefix its controls bind through: "" for Peak
- * Artifact, whose parameters are plain (`mix`, `ring.freq`), and "art." for Peak
+ * `prefix` is the parameter-id prefix its controls bind through: "" for BitBit
+ * Artifact, whose parameters are plain (`mix`, `ring.freq`), and "art." for BitBit
  * Alpine, whose are namespaced by module. Nothing below takes an id map; the
  * `ParamScope` does the whole job, and the leaf names are identical in both
  * plugins on purpose.
  *
  * `headerRight` is whatever the host wants in the module header's right-hand
- * slot - Peak Alpine puts a Level trim there, the same one its other modules
- * carry; Peak Artifact passes nothing and the slot stays empty. It is the
+ * slot - BitBit Alpine puts a Level trim there, the same one its other modules
+ * carry; BitBit Artifact passes nothing and the slot stays empty. It is the
  * host's to supply because that Level is the host's chrome, not one of this
  * pedal's parameters - keeping it out here is what lets the face bind only to
- * names Peak Artifact actually has.
+ * names BitBit Artifact actually has.
  *
- * `easyTab` adds the Easy / Adv strip at the foot of the body - Peak Alpine
- * turns it on, the standalone Peak Artifact pedal does not, so that pedal's
+ * `easyTab` adds the Easy / Adv strip at the foot of the body - BitBit Alpine
+ * turns it on, the standalone BitBit Artifact pedal does not, so that pedal's
  * face is untouched. `easyConfig` is the per-engine macro map it needs when
  * `easyTab` is on: `{ [engineName]: { name, targets } }`, handed in from the
  * host rather than kept on this package's engine table (which the standalone
- * pedal has no use for). See Peak Alpine's engines.jsx `ARTIFACT_EASY`.
+ * pedal has no use for). See BitBit Alpine's engines.jsx `ARTIFACT_EASY`.
  *
  * `knobVariant` is Knob's own `variant`, forwarded to every knob this face
- * draws - Peak Artifact's default is "concave"; Peak Alpine passes "flat"
+ * draws - BitBit Artifact's default is "concave"; BitBit Alpine passes "flat"
  * for the copy it embeds as its own module, so the same component can read
  * differently in each host without a second copy of it.
  */
@@ -72,7 +72,7 @@ export default function ArtifactFace({
   );
 }
 
-// Peak Artifact's red. It reaches the power ring, the engine stepper and the
+// BitBit Artifact's red. It reaches the power ring, the engine stepper and the
 // knob value arcs through the one `accent` prop on ModulePanel.
 const ACCENT = "#c00001";
 
@@ -120,7 +120,7 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
 
       {easy && tab === "easy" ? (
         /* The Easy face: this engine's own display well, then one macro knob
-           riding its Adv knobs (Peak Alpine's ARTIFACT_EASY). The macro is
+           riding its Adv knobs (BitBit Alpine's ARTIFACT_EASY). The macro is
            resolved through the `art.` ParamScope this face already declares -
            no idPrefix needed. The well reads the same parameters the macro
            moves, so it answers to the Easy knob too. */
@@ -150,7 +150,7 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
 /* Each engine's display well, split out so its own slider hooks run only for
    the engine that is actually showing one - and so the Easy view can render
    the same well above its macro knob without also mounting that engine's body.
-   The same reason Peak Alpine splits its displays out. */
+   The same reason BitBit Alpine splits its displays out. */
 function CrushDisplay() {
   const [bits] = useJuceSliderValue("crush.bits");
   const [rate] = useJuceSliderValue("crush.rate");

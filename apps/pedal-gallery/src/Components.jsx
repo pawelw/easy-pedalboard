@@ -26,11 +26,11 @@ import {
 
 /** A note onset every two seconds, so the scopes below light the way they do
     in a host. In a real face this count comes off the audio thread
-    (PeakDelayProcessor::strikeCountUi) and there is nothing to fake - a scope
+    (BitBitDelayProcessor::strikeCountUi) and there is nothing to fake - a scope
     with no signal reaching it stays still, which is the whole point of it. */
 // The engine name -> glyph map is the *face's*, not EngineStepper's: which
 // mark stands for which engine is a design decision per host, and the stepper
-// only ever renders the node it is handed. Peak Alpine's own face will carry
+// only ever renders the node it is handed. BitBit Alpine's own face will carry
 // its own copy of this. Chorus is ModIcon on purpose - see the note in
 // pedal-ui's index.js.
 const MOD_ENGINE_ICONS = {
@@ -161,7 +161,7 @@ function Showcase() {
 
         {/* scaleFrom="centre": the arc reads out from twelve o'clock in
             whichever direction the knob has been turned, for a trim whose
-            resting value is the middle of its range rather than an end. Peak
+            resting value is the middle of its range rather than an end. BitBit
             Alpine's module Level knobs are this - at rest they are doing
             nothing, and a knob wound fully clockwise said the opposite.
             Shown beside the "min" reading at the same size, because the point
@@ -344,7 +344,7 @@ function Showcase() {
               ))}
             </div>
 
-            {/* The Easy / Adv strip Peak Alpine's three narrow modules carry:
+            {/* The Easy / Adv strip BitBit Alpine's three narrow modules carry:
                 bleeds to the panel edges and pins to the foot of the body. */}
             <ModuleTabs value={moduleTab} onChange={setModuleTab} />
           </ModulePanel>

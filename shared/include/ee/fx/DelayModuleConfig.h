@@ -1,8 +1,8 @@
 #pragma once
 
 /**
- * Voicing for ee::fx::DelayModule - the settings that make Peak Delay's chain
- * sound like Peak Delay rather than like a delay line with things bolted on.
+ * Voicing for ee::fx::DelayModule - the settings that make BitBit Delay's chain
+ * sound like BitBit Delay rather than like a delay line with things bolted on.
  *
  * Its own namespace (ee::fx::delaymodule) for the reason PhaserConfig.h gives:
  * several voicing headers land in the same test translation unit and would
@@ -29,13 +29,13 @@ constexpr double kPlacementSeconds = 0.25;
 
 // How much of the tape stage's own Wear travel this module's knob reaches: a
 // fully-turned Wear here drives the machine half as hard as a fully-turned Wear
-// on Peak Tape.
+// on BitBit Tape.
 //
 // Not in TapeMachineConfig.h with the rest of the tape voicing, and not a change
-// to the stage itself. The machine is shared, Peak Tape's knob still reaches all
+// to the stage itself. The machine is shared, BitBit Tape's knob still reaches all
 // of it, and re-voicing the engine would move both pedals - which is the thing
 // the shared stage exists to prevent. What is different here is only how far
-// *this* face's knob turns it, which is this module's business: on Peak Tape the
+// *this* face's knob turns it, which is this module's business: on BitBit Tape the
 // machine is the effect and its top end is the point, while here it is a colour
 // on a delay and the top of that range swamped the repeats long before the knob
 // ran out. Halving the reach spreads the useful part across the whole travel
