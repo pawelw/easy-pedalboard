@@ -1,0 +1,74 @@
+# Frozen parameter contract - see tests/ParamGolden.cpp.
+# Every id, range, default and choice order below is what saved sessions and
+# presets are keyed on. Regenerate with --update, in a commit that says why.
+
+identity
+  product      "BitBit Reverb"
+  plugin-code  Brvb
+  manufacturer BtBt
+  bundle-id    com.bitbitaudio.reverb
+  categories   "Fx Reverb"
+
+parameters 10
+0 on
+    name       "On"
+    default    1
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"
+1 engine
+    name       "Engine"
+    default    0
+    version    1
+    steps      2 discrete automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Space" "Spring"
+2 mix
+    name       "Mix"
+    default    0.300000012
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+3 space.decay
+    name       "Space Decay"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0.5 8 interval 0 skew 0.43067655
+4 space.shimmer
+    name       "Space Shimmer"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+5 space.locut
+    name       "Space Low Cut"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      20 800 interval 0 skew 0.437559754
+6 space.reso
+    name       "Space Reso"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+7 spring.decay
+    name       "Spring Decay"
+    default    0.443043411
+    version    1
+    steps      2147483647 continuous automatable
+    range      0.400000006 8 interval 0 skew 0.481231391
+8 spring.tension
+    name       "Spring Tension"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+9 spring.locut
+    name       "Spring Low Cut"
+    default    0.272604346
+    version    1
+    steps      2147483647 continuous automatable
+    range      20 800 interval 0 skew 0.437559754

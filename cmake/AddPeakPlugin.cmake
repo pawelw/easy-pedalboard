@@ -64,6 +64,11 @@ endfunction()
 # analog/digital face: NEEDS_WEBVIEW2 on Windows, JUCE_WEB_BROWSER=1 instead of
 # the default 0, and the caller is responsible for linking juce::juce_gui_extra
 # itself (it is not part of ee_shared).
+# Frozen from the first sale onward: it is half of what a host keys a plugin on,
+# so a saved session finds nothing if it changes. Named rather than inlined so
+# tests/ParamGolden.cpp can freeze the same value it is built from.
+set(EE_MANUFACTURER_CODE BtBt)
+
 function(peak_add_plugin TARGET)
     cmake_parse_arguments(ARG "WEBVIEW" "CODE;PRODUCT;BUNDLE;CATEGORIES" "SOURCES;LIBS" ${ARGN})
 
@@ -87,7 +92,7 @@ function(peak_add_plugin TARGET)
     juce_add_plugin(${TARGET}
         COMPANY_NAME            "BitBit Audio"
         BUNDLE_ID               ${ARG_BUNDLE}
-        PLUGIN_MANUFACTURER_CODE BtBt
+        PLUGIN_MANUFACTURER_CODE ${EE_MANUFACTURER_CODE}
         PLUGIN_CODE             ${ARG_CODE}
         FORMATS                 ${formats}
         PRODUCT_NAME            ${ARG_PRODUCT}
@@ -102,6 +107,23 @@ function(peak_add_plugin TARGET)
         COPY_PLUGIN_AFTER_BUILD ${EE_INSTALL_PLUGINS})
 
     target_sources(${TARGET} PRIVATE src/PluginProcessor.cpp ${ARG_SOURCES})
+
+    # The four identity strings a host looks the plugin up by. They are frozen
+    # from the first sale onward, so tests/ParamGolden.cpp reads them back off
+    # the target and writes them into the checked-in contract file.
+    set_target_properties(${TARGET} PROPERTIES
+        EE_PLUGIN_CODE       "${ARG_CODE}"
+        EE_PLUGIN_PRODUCT    "${ARG_PRODUCT}"
+        EE_PLUGIN_BUNDLE     "${ARG_BUNDLE}"
+        EE_PLUGIN_CATEGORIES "${ARG_CATEGORIES}")
+
+    # So tests/ can enumerate the pedals whose contract is frozen without a
+    # second list to keep in step. Only the six that are sold: the rest are not
+    # packaged, so nothing outside this tree is keyed on their parameter ids.
+    get_filename_component(pedalFolder ${CMAKE_CURRENT_SOURCE_DIR} NAME)
+    if(pedalFolder IN_LIST EE_RELEASE_PLUGINS)
+        set_property(GLOBAL APPEND PROPERTY EE_RELEASE_PLUGIN_TARGETS ${TARGET})
+    endif()
 
     peak_add_factory_presets(${TARGET})
 

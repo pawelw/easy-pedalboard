@@ -67,7 +67,35 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_sympathy_regress_artefacts/Release/ee_sympathy_regress  # Peak Sympathy, checksum per pass
 ./build/tests/ee_sympathy_stress_artefacts/Release/ee_sympathy_stress    # resonator bank runaway / non-finite hunt
 ./build/tests/ee_sympathy_match_artefacts/Release/ee_sympathy_match in.wav out.wav  # by-ear voicing renderer
+./build/tests/ee_param_golden_PeakDelay_artefacts/Release/ee_param_golden_PeakDelay  # the frozen parameter contract, one per product
 ```
+
+**`tests/golden/*.txt` is the frozen parameter contract**, one file per
+*shipping* product (`EE_RELEASE_PLUGINS` in the top-level `CMakeLists.txt` - the
+six in `docs/release-plan.md`, D2; the other nine are not packaged, so nothing
+outside this tree is keyed on their ids). `ee_param_golden_<Target>`
+instantiates the real processor and writes down every parameter id, name,
+range, default, version hint and **choice list in order**, plus the plugin code,
+manufacturer code, bundle id and VST3 categories. A choice list is an engine
+enum, so the "append LAST" rule is enforced here rather than only written down.
+
+It fails when any of that moves - which is the point, because all of it is what
+a saved session and every preset file is keyed on, and renaming a parameter is
+otherwise completely silent. If the change is deliberate:
+
+```bash
+for t in PeakAlpine PeakGrain PeakArtifact PeakModulation PeakDelay PeakReverb; do
+    "build-fast/tests/ee_param_golden_${t}_artefacts/Release/ee_param_golden_$t" --update
+done
+```
+
+...and say why in the commit. Adding a parameter is fine; renaming or reordering
+one is a decision, and after the first sale it is not available at all.
+
+One binary per product rather than one that knows about them all: every pedal's
+`PluginProcessor.cpp` defines `createPluginFilter()`, and that is the same
+object file that defines the processor, so two of them in one link is a
+duplicate symbol.
 
 `auval -v aufx <CODE> Peak` runs Apple's AU validation; the four-letter codes are
 in each plugin's `CMakeLists.txt` (`PLUGIN_CODE`).

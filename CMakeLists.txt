@@ -164,6 +164,14 @@ set(EE_ALL_PLUGINS
     peak-reverb peak-spring peak-delay peak-eq peak-trem-pan peak-chorus peak-alpine
     peak-artifact peak-modulation peak-phase peak-overdrive peak-wah peak-tape peak-grain peak-sympathy)
 
+# The six that are actually sold (docs/release-plan.md, D2). The other nine
+# build, are covered by ee_dsp_tests and are several of the engines inside the
+# modules - they are simply not packaged, and so not frozen: tests/golden holds
+# a parameter contract for these six only. scripts/package-macos.sh ships the
+# same list.
+set(EE_RELEASE_PLUGINS
+    peak-alpine peak-grain peak-artifact peak-modulation peak-delay peak-reverb)
+
 set(EE_PLUGINS "all" CACHE STRING
     "Semicolon-separated pedals to build, or \"all\". e.g. -DEE_PLUGINS=peak-wah;peak-tape")
 option(EE_INSTALL_PLUGINS "Copy built plugins into ~/Library/Audio/Plug-Ins" ON)

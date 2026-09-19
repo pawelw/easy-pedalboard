@@ -21,6 +21,8 @@ mkdir -p "$STAGE"
 # "<artefacts dir>:<product name>" for the pedals that are for sale. The nine
 # single-engine pedals build but are not products (docs/release-plan.md, D2);
 # they are listed below commented out, for the day one becomes the giveaway.
+# Keep in step with EE_RELEASE_PLUGINS in the top-level CMakeLists.txt, which is
+# what decides whose parameter contract is frozen in tests/golden.
 PLUGINS=(
     "peak-alpine/PeakAlpine_artefacts:BitBit Alpine"
     "peak-grain/PeakGrain_artefacts:BitBit Grains"

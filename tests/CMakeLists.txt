@@ -549,3 +549,48 @@ if(TARGET PeakAlpine)
         PRIVATE PeakAlpine ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endif()
+
+# The frozen parameter contract, one binary per shipping product. See
+# ParamGolden.cpp for what it holds and why.
+#
+# One binary each rather than one that knows about them all: every pedal's
+# PluginProcessor.cpp defines createPluginFilter(), so two of them in one link
+# is a duplicate symbol, and the object that defines it is the same one that
+# defines the processor. Generated from the list peak_add_plugin keeps, so a
+# new product is frozen the day it is added instead of the day someone
+# remembers.
+get_property(eeReleaseTargets GLOBAL PROPERTY EE_RELEASE_PLUGIN_TARGETS)
+
+foreach(pluginTarget IN LISTS eeReleaseTargets)
+    set(goldenApp ee_param_golden_${pluginTarget})
+
+    get_target_property(pluginDir ${pluginTarget} SOURCE_DIR)
+    get_target_property(pluginCode ${pluginTarget} EE_PLUGIN_CODE)
+    get_target_property(pluginProduct ${pluginTarget} EE_PLUGIN_PRODUCT)
+    get_target_property(pluginBundle ${pluginTarget} EE_PLUGIN_BUNDLE)
+    get_target_property(pluginCategories ${pluginTarget} EE_PLUGIN_CATEGORIES)
+
+    juce_add_console_app(${goldenApp} PRODUCT_NAME "${goldenApp}")
+
+    target_sources(${goldenApp} PRIVATE ParamGolden.cpp)
+
+    # The processor class name is the target name plus "Processor" in every
+    # pedal; peak_add_plugin is what makes that true.
+    target_compile_definitions(${goldenApp} PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1
+        EE_GOLDEN_PROCESSOR=${pluginTarget}Processor
+        EE_GOLDEN_CODE="${pluginCode}"
+        EE_GOLDEN_PRODUCT="${pluginProduct}"
+        EE_GOLDEN_BUNDLE="${pluginBundle}"
+        EE_GOLDEN_CATEGORIES="${pluginCategories}"
+        EE_GOLDEN_MANUFACTURER="${EE_MANUFACTURER_CODE}"
+        EE_GOLDEN_FILE="${CMAKE_CURRENT_SOURCE_DIR}/golden/${pluginTarget}.txt")
+
+    target_include_directories(${goldenApp} PRIVATE ${pluginDir}/src)
+
+    target_link_libraries(${goldenApp}
+        PRIVATE ${pluginTarget} ee_shared
+        PUBLIC juce::juce_recommended_config_flags)
+endforeach()

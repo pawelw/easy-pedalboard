@@ -29,11 +29,11 @@ targets=$(ninja -C "$BUILD" -t targets all 2>/dev/null)
 run() {
     local name=$1 bin="$BUILD/tests/$1_artefacts/Release/$1"
     if ! grep -q "/$name\b" <<<"$targets"; then
-        printf '  %-20s skipped (not in this selection)\n' "$name"
+        printf '  %-30s skipped (not in this selection)\n' "$name"
         return
     fi
     if [[ ! -x $bin ]]; then
-        printf '  %-20s skipped (not built)\n' "$name"
+        printf '  %-30s skipped (not built)\n' "$name"
         return
     fi
     local out rc new
@@ -47,11 +47,11 @@ run() {
           | grep -vF 'chorus is silent on a silent input')
 
     if [[ $rc -eq 0 ]]; then
-        printf '  %-20s PASS\n' "$name"
+        printf '  %-30s PASS\n' "$name"
     elif [[ -z $new ]]; then
-        printf '  %-20s PASS (known failures only)\n' "$name"
+        printf '  %-30s PASS (known failures only)\n' "$name"
     else
-        printf '  %-20s FAIL\n' "$name"
+        printf '  %-30s FAIL\n' "$name"
         sed 's/^/      /' <<<"$new"
         status=1
     fi
@@ -67,6 +67,18 @@ run ee_wah_stress
 run ee_grain_stress
 run ee_modulation_host
 run ee_reverb_host
+
+# The frozen parameter contract for the six products that are sold. A failure
+# here is not a bug - it is a parameter id, range, default or engine order
+# moving, which breaks every saved session and preset keyed on it. If the change
+# is deliberate, regenerate and say so in the commit:
+#
+#   for t in PeakAlpine PeakGrain PeakArtifact PeakModulation PeakDelay PeakReverb; do
+#       "$BUILD/tests/ee_param_golden_${t}_artefacts/Release/ee_param_golden_$t" --update
+#   done
+for product in PeakAlpine PeakGrain PeakArtifact PeakModulation PeakDelay PeakReverb; do
+    run "ee_param_golden_$product"
+done
 
 if [[ $status -eq 0 ]]; then
     echo "==> OK"

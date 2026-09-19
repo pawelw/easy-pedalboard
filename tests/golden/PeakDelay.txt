@@ -1,0 +1,119 @@
+# Frozen parameter contract - see tests/ParamGolden.cpp.
+# Every id, range, default and choice order below is what saved sessions and
+# presets are keyed on. Regenerate with --update, in a commit that says why.
+
+identity
+  product      "BitBit Delay"
+  plugin-code  Bdly
+  manufacturer BtBt
+  bundle-id    com.bitbitaudio.delay
+  categories   "Fx Delay"
+
+parameters 17
+0 ltime
+    name       "Left Time"
+    default    0.357142866
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 1 interval 0 skew 1
+1 rtime
+    name       "Right Time"
+    default    0.357142866
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 1 interval 0 skew 1
+2 sync
+    name       "Sync L/R"
+    default    1
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"
+3 timeunit
+    name       "Time Unit"
+    default    0
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"
+4 dtype
+    name       "Delay Type"
+    default    0
+    version    1
+    steps      3 discrete automatable
+    range      0 2 interval 1 skew 1
+    choices    3: "Normal" "Wide" "Ping Pong"
+5 fb
+    name       "Feedback"
+    default    0.349999994
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+6 mix
+    name       "Mix"
+    default    0.349999994
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+7 tape
+    name       "Wear"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+8 flutter
+    name       "Flutter"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+9 mod
+    name       "Drift"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+10 phaser
+    name       "Phaser"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+11 locut
+    name       "Low Cut"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      20 1200 interval 0 skew 0.280842483
+12 hicut
+    name       "High Cut"
+    default    1
+    version    1
+    steps      2147483647 continuous automatable
+    range      1200 20000 interval 0 skew 0.364002496
+13 tapepre
+    name       "Tape Placement"
+    default    0
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Post" "Pre"
+14 ingain
+    name       "Input"
+    default    0.666666687
+    version    1
+    steps      2147483647 continuous automatable
+    range      -24 12 interval 0.100000001 skew 1
+15 outgain
+    name       "Output"
+    default    0.666666687
+    version    1
+    steps      2147483647 continuous automatable
+    range      -24 12 interval 0.100000001 skew 1
+16 on
+    name       "On"
+    default    1
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"

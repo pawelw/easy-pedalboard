@@ -1,0 +1,175 @@
+# Frozen parameter contract - see tests/ParamGolden.cpp.
+# Every id, range, default and choice order below is what saved sessions and
+# presets are keyed on. Regenerate with --update, in a commit that says why.
+
+identity
+  product      "BitBit Modulation"
+  plugin-code  Bmod
+  manufacturer BtBt
+  bundle-id    com.bitbitaudio.modulation
+  categories   "Fx Modulation"
+
+parameters 26
+0 on
+    name       "On"
+    default    1
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"
+1 engine
+    name       "Engine"
+    default    0.25
+    version    1
+    steps      5 discrete automatable
+    range      0 4 interval 1 skew 1
+    choices    5: "Tape" "Tremolo" "Chorus" "Phaser" "Filter"
+2 mix
+    name       "Mix"
+    default    0.400000006
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+3 tape.sat
+    name       "Tape Saturation"
+    default    0.349999994
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+4 tape.flutter
+    name       "Tape Flutter"
+    default    0.25
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+5 tape.wear
+    name       "Tape Wear"
+    default    0.300000012
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+6 tape.noise
+    name       "Tape Noise"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+7 tape.tone
+    name       "Tape Tone"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      -100 100 interval 0.100000001 skew 1
+8 tape.stereo
+    name       "Tape Stereo"
+    default    1
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"
+9 trem.amount
+    name       "Tremolo Amount"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+10 trem.rate
+    name       "Tremolo Rate"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 1 interval 0 skew 1
+11 trem.sync
+    name       "Tremolo Sync"
+    default    0
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"
+12 trem.shape
+    name       "Tremolo Shape"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+13 trem.tube
+    name       "Tremolo Tube"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+14 chorus.rate
+    name       "Chorus Rate"
+    default    0.418337196
+    version    1
+    steps      2147483647 continuous automatable
+    range      0.0500000007 8 interval 0 skew 0.326269031
+15 chorus.depth
+    name       "Chorus Depth"
+    default    0.449999988
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+16 chorus.phase
+    name       "Chorus Phase"
+    default    0.611111104
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 180 interval 1 skew 1
+17 phase.rate
+    name       "Phaser Rate"
+    default    0.347108126
+    version    1
+    steps      2147483647 continuous automatable
+    range      0.0299999993 8 interval 0 skew 0.329107255
+18 phase.depth
+    name       "Phaser Depth"
+    default    0.75
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+19 filter.freq
+    name       "Filter Freq"
+    default    0.487000018
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+20 filter.q
+    name       "Filter Q"
+    default    0.579999983
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+21 filter.range
+    name       "Filter Range"
+    default    0.610000014
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+22 filter.time
+    name       "Filter Time"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 1 interval 9.99999975e-05 skew 1
+23 filter.sync
+    name       "Filter Sync"
+    default    0
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"
+24 filter.wave
+    name       "Filter Wave"
+    default    0
+    version    1
+    steps      3 discrete automatable
+    range      0 2 interval 1 skew 1
+    choices    3: "Triangle" "Ramp" "Square"
+25 filter.stereo
+    name       "Filter Stereo"
+    default    0
+    version    1
+    steps      2 discrete boolean automatable
+    range      0 1 interval 1 skew 1
+    choices    2: "Off" "On"

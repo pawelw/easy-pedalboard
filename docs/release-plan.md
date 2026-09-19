@@ -20,7 +20,8 @@ Done and pushed (`84ea8a9`, `2d2f102`). Manufacturer code `BtBt`, plugin codes
 What this now costs to change again: everything. The AU/VST3 ids are what a host
 looks a plugin up by, so from the first sale onward the codes in
 `plugins/*/CMakeLists.txt` and the manufacturer code in
-`cmake/AddPeakPlugin.cmake` are frozen. Put them in the golden file in G1.1.
+`cmake/AddPeakPlugin.cmake` are frozen — and now literally so: they are in the
+golden files from G1.1.
 
 Two loose ends, neither blocking:
 
@@ -248,15 +249,34 @@ costs nothing.
 
 Before hunting bugs, freeze what must never change:
 
-- **Parameter IDs per plugin.** Add a golden-file test: dump every parameter ID,
-  range, default and version-hint to a checked-in text file and fail the build
-  when it changes without the file being updated. An accidental rename silently
-  breaks every saved session and preset, and there is no test for it today.
-- **Engine enum order.** Already a house rule (`CLAUDE.md`: append LAST). Put it
-  in the golden file too.
+- **Parameter IDs per plugin — done** ✅. `tests/golden/<Target>.txt` holds the
+  contract for the six products that ship, and `ee_param_golden_<Target>`
+  regenerates and diffs it. It instantiates the *real* processor — not the
+  layout function — so the defaults in it are post-`snapToRange`, which is where
+  `auval` reads them. Per parameter: id, name, label, normalised default,
+  version hint, step count, discrete/boolean/automatable/meta flags, the
+  `NormalisableRange`, and the choice list. Plus the identity `peak_add_plugin`
+  was called with: plugin code, manufacturer code, bundle id, VST3 categories.
+  In `scripts/dev-check.sh`, so it is in CI.
+- **Engine enum order — done** ✅, and for free: an engine selector is an
+  `AudioParameterChoice`, so its choices *are* the enum, in order, and they are
+  in the golden file. Alpine's 24-way chain order is in there too.
 - **The preset format.** Write a state-version tag into the APVTS tree now, even
   though nothing reads it — the release where you need to migrate state is much
-  easier if 1.0 already stamped a version.
+  easier if 1.0 already stamped a version. **Still to do.**
+
+Three things the freeze deliberately does not cover, so they are not mistaken
+for gaps:
+
+- **The nine single-engine pedals**, per D2. They are not packaged, so no saved
+  session outside this tree is keyed on their ids. `EE_RELEASE_PLUGINS` in the
+  top-level `CMakeLists.txt` is the one list; `scripts/package-macos.sh` ships
+  the same six.
+- **`tests/UiSnapshot.cpp`'s duplicated parameter layouts.** It builds throwaway
+  processors, not the real ones, so the golden file says nothing about whether
+  the two agree. That trap is still open.
+- **Latency and bus layouts**, which are host-visible contract too but move with
+  G5.3.
 
 ### 1.2 pluginval, in CI, at strictness 10 — **macOS is green** ✅
 
@@ -813,7 +833,8 @@ Make them generated, not hand-captured, so they never drift from the product:
 13. **VST3 subcategory metadata** so hosts file the plugins under the right
     headings.
 14. **Parameter display names** — hosts surface them in automation lanes. Check
-    they are readable and, once shipped, frozen.
+    they are readable and, once shipped, frozen. The freezing is done (G1.1);
+    the reading-them-back-and-judging-them pass is not.
 15. **Published CPU figures**, so a reviewer does not invent their own.
 16. **Accessibility**: keyboard access and text scaling in the WebView faces, and
     the native pedals' existing zoom range.
@@ -831,7 +852,7 @@ G0  paperwork  ──────────────┐   Apple Individual 
      parallel with G1)       │   JUCE and VST3 licence audit · third-party
                              │   notices
                              │
-G1  correctness              │   golden param file · CI on both platforms ·
+G1  correctness              │   golden param file ✅ · CI on both platforms ·
     (needs nothing from G0)  │   pluginval 10 · auval strict · ASan/UBSan/TSan ·
                              │   both known failures closed · soak harness ·
                              │   preset-loader fuzzing          — six products
