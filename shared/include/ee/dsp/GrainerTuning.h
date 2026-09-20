@@ -114,25 +114,25 @@ struct GrainerTuningEntry
 };
 
 inline constexpr GrainerTuningEntry kGrainerTuningEntries[] = {
-    { "scatterMaxJitter",   &GrainerTuning::scatterMaxJitter,    0.0f,     1.0f,  3 },
-    { "scatterSizeJitter",  &GrainerTuning::scatterSizeJitter,   0.0f,     1.0f,  3 },
-    { "attackShare",        &GrainerTuning::attackShare,         0.0f,     1.0f,  3 },
-    { "grainLevelJitter",   &GrainerTuning::grainLevelJitter,    0.0f,     1.0f,  3 },
+    { "scatterMaxJitter", &GrainerTuning::scatterMaxJitter, 0.0f, 1.0f, 3 },
+    { "scatterSizeJitter", &GrainerTuning::scatterSizeJitter, 0.0f, 1.0f, 3 },
+    { "attackShare", &GrainerTuning::attackShare, 0.0f, 1.0f, 3 },
+    { "grainLevelJitter", &GrainerTuning::grainLevelJitter, 0.0f, 1.0f, 3 },
 
-    { "shapeAttackMsSoft",  &GrainerTuning::shapeAttackMsSoft,   0.1f,    20.0f,  2 },
-    { "shapeAttackMsHard",  &GrainerTuning::shapeAttackMsHard,   0.1f,    20.0f,  2 },
-    { "shapeDecayShapeSoft", &GrainerTuning::shapeDecayShapeSoft, 0.5f,   10.0f,  2 },
-    { "shapeDecayShapeHard", &GrainerTuning::shapeDecayShapeHard, 0.5f,   10.0f,  2 },
+    { "shapeAttackMsSoft", &GrainerTuning::shapeAttackMsSoft, 0.1f, 20.0f, 2 },
+    { "shapeAttackMsHard", &GrainerTuning::shapeAttackMsHard, 0.1f, 20.0f, 2 },
+    { "shapeDecayShapeSoft", &GrainerTuning::shapeDecayShapeSoft, 0.5f, 10.0f, 2 },
+    { "shapeDecayShapeHard", &GrainerTuning::shapeDecayShapeHard, 0.5f, 10.0f, 2 },
 
-    { "outputTrim",         &GrainerTuning::outputTrim,          0.0f,     3.0f,  3 },
+    { "outputTrim", &GrainerTuning::outputTrim, 0.0f, 3.0f, 3 },
 
-    { "bandSplit",          &GrainerTuning::bandSplit,           0.0f,     1.0f,  3 },
-    { "bandLowHz",          &GrainerTuning::bandLowHz,          40.0f,  1000.0f,  0 },
-    { "bandHighHz",         &GrainerTuning::bandHighHz,        500.0f, 10000.0f,  0 },
-    { "bandLengthRatio",    &GrainerTuning::bandLengthRatio,     1.0f,     8.0f,  2 },
+    { "bandSplit", &GrainerTuning::bandSplit, 0.0f, 1.0f, 3 },
+    { "bandLowHz", &GrainerTuning::bandLowHz, 40.0f, 1000.0f, 0 },
+    { "bandHighHz", &GrainerTuning::bandHighHz, 500.0f, 10000.0f, 0 },
+    { "bandLengthRatio", &GrainerTuning::bandLengthRatio, 1.0f, 8.0f, 2 },
 
-    { "verbResonance",      &GrainerTuning::verbResonance,       0.0f,     1.0f,  3 },
-    { "verbLowCutHz",       &GrainerTuning::verbLowCutHz,       20.0f,   800.0f,  0 },
+    { "verbResonance", &GrainerTuning::verbResonance, 0.0f, 1.0f, 3 },
+    { "verbLowCutHz", &GrainerTuning::verbLowCutHz, 20.0f, 800.0f, 0 },
 };
 
 } // namespace ee::dsp

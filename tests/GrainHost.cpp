@@ -519,11 +519,11 @@ int main (int argc, char* argv[])
             { return 0.5 + 0.5 * std::sin (2.0 * juce::MathConstants<double>::pi * t / period); };
 
             const std::pair<const char*, double> moving[] = {
-                { "size", 3.1 },    { "density", 4.7 }, { "time", 5.3 },    { "feedback", 9.7 }, { "stretch", 2.7 },
-                { "freeze", 13.1 }, { "width", 10.3 }, { "shape", 3.7 },   { "scatter", 4.3 }, { "reverse", 2.3 },  { "stereo", 3.7 },
-                { "scale", 4.1 },   { "root", 5.1 },    { "plow", 2.9 },    { "puni", 6.1 },     { "phigh", 3.3 },
-                { "dtime", 5.9 },   { "dfb", 8.7 },     { "dmix", 6.7 },    { "decay", 7.1 },    { "rmix", 4.9 },
-                { "dry", 8.3 },     { "grains", 7.7 },  { "filter", 5.7 },   { "drive", 4.5 },
+                { "size", 3.1 },    { "density", 4.7 }, { "time", 5.3 },   { "feedback", 9.7 }, { "stretch", 2.7 },
+                { "freeze", 13.1 }, { "width", 10.3 },  { "shape", 3.7 },  { "scatter", 4.3 },  { "reverse", 2.3 },
+                { "stereo", 3.7 },  { "scale", 4.1 },   { "root", 5.1 },   { "plow", 2.9 },     { "puni", 6.1 },
+                { "phigh", 3.3 },   { "dtime", 5.9 },   { "dfb", 8.7 },    { "dmix", 6.7 },     { "decay", 7.1 },
+                { "rmix", 4.9 },    { "dry", 8.3 },     { "grains", 7.7 }, { "filter", 5.7 },   { "drive", 4.5 },
                 { "on", 11.3 } // the host's device on/off, which leaves the tail ringing
             };
 

@@ -1336,7 +1336,13 @@ private:
         return slot;
     }
 
-    void startVoice (Grain& slot, double position, double rate, int length, float pan, float level, int band,
+    void startVoice (Grain& slot,
+                     double position,
+                     double rate,
+                     int length,
+                     float pan,
+                     float level,
+                     int band,
                      float bandLevel) noexcept
     {
         const float angle = (pan + 1.0f) * 0.25f * 3.14159265358979323846f;
@@ -1405,8 +1411,8 @@ private:
         each the length its band's wavelengths need. Sharing the position is
         what keeps a transient landing as one hit rather than as three
         separate effects. */
-    void emitGrains (double position, double rate, int length, float pan, float level, int offset,
-                     bool backwards) noexcept
+    void
+    emitGrains (double position, double rate, int length, float pan, float level, int offset, bool backwards) noexcept
     {
         if (tuning.bandSplit <= 0.0f)
         {
