@@ -17,6 +17,11 @@
 //                 [--dry 100] [--grains 71] [--filter 100] [--drive 35]
 //                 [--grainon 1] [--pitchon 1] [--randon 1] [--delon 1] [--revon 1]
 //                 [--modroute]
+//                 [--tuning <GrainerTuning field> <value>]
+//
+// --tuning reaches the voicing that is not on the face (GrainerTuning.h), by
+// the same field names the -DEE_GRAIN_TUNER panel shows - e.g.
+// `--tuning bandSplit 1`. Repeatable, like --param.
 //
 // --modroute assigns the Mod LFO to eight of its modulation targets at once
 // (size/density/shape/scatter/stereo/filter/drive/bit, mixed depth signs -
@@ -129,6 +134,11 @@ int main (int argc, char* argv[])
     // Empty means "leave at the default".
     std::vector<std::pair<juce::String, float>> knobs;
 
+    // GrainerTuning fields by name - the voicing that is not on the face and
+    // so has no parameter id to reach it through. Same idea as --param, for
+    // the other half of the engine.
+    std::vector<std::pair<juce::String, float>> tuningFields;
+
     for (int i = 1; i < argc; ++i)
     {
         const juce::String arg (argv[i]);
@@ -238,6 +248,11 @@ int main (int argc, char* argv[])
             const auto id = next();
             knobs.emplace_back (id, static_cast<float> (next().getDoubleValue()));
         }
+        else if (arg == "--tuning")
+        {
+            const auto name = next();
+            tuningFields.emplace_back (name, static_cast<float> (next().getDoubleValue()));
+        }
         else if (arg == "--in-file")
         {
             // A recording instead of a generated signal - summed to mono and
@@ -305,6 +320,29 @@ int main (int argc, char* argv[])
             parameter->setValueNotifyingHost (parameter->convertTo0to1 (value));
         else
             std::printf ("  unknown parameter \"%s\"\n", id.toRawUTF8());
+    }
+
+    if (! tuningFields.empty())
+    {
+        auto voicing = processor.tuning();
+
+        for (const auto& [name, value] : tuningFields)
+        {
+            bool found = false;
+            for (const auto& entry : ee::dsp::kGrainerTuningEntries)
+                if (name == entry.name)
+                {
+                    voicing.*(entry.member) = juce::jlimit (entry.minimum, entry.maximum, value);
+                    std::printf ("  tuning %s = %g\n", entry.name, voicing.*(entry.member));
+                    found = true;
+                    break;
+                }
+
+            if (! found)
+                std::printf ("  unknown tuning field \"%s\"\n", name.toRawUTF8());
+        }
+
+        processor.setTuning (voicing);
     }
 
     if (modRoute)

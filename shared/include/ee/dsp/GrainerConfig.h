@@ -54,7 +54,11 @@ constexpr float kMaxGrainSeconds = 1.000f;
 // one-second grains, 32 of them is already indistinguishably dense, and the
 // overlap normalisation divides the expected count out either way. Sizing for
 // the corner would cost per-sample voice work on every patch to serve one.
-constexpr int kMaxGrains = 32;
+//
+// Raised from 32 for the band split (GrainerTuning::bandSplit): a spawn event
+// is three grains rather than one once it is dialled in, so the same patch
+// needs three times the voices to sound the same.
+constexpr int kMaxGrains = 96;
 
 // Guard between a grain's read position and the write head, in samples. Small;
 // it only has to cover the Hermite interpolator's four-sample window and the
@@ -169,8 +173,8 @@ constexpr float kDefaultAttackShare = 0.70f;
 // transient with its envelope already closing. kAttackPreRollMs is the small
 // amount of reach back the other way, so some grains open just before the hit
 // and carry the transient itself rather than starting on top of it.
-constexpr float kAttackJitterMs  = 12.0f;
-constexpr float kAttackSpreadMs  = 260.0f;
+constexpr float kAttackJitterMs = 12.0f;
+constexpr float kAttackSpreadMs = 260.0f;
 constexpr float kAttackPreRollMs = 6.0f;
 
 // How long after an attack grains may still be drawn from it. Past this the note
@@ -284,8 +288,8 @@ constexpr float kDefaultStereoPct = 85.0f;
 // dialled in by ear rather than detected.
 //
 // Only the High group draws from the scale, and it is anchored an octave up
-// (+12 and above - see Grainer::setScale). Low is an octave down and nothing
-// else. Both groups used to draw from the whole range either side of unison,
+// (+12 and above - see Grainer::setScale). Low is one or two octaves down and
+// nothing else. Both groups used to draw from the whole range either side of unison,
 // which sounds like nothing at all: most of the candidates sat a semitone or
 // two off the note, so neither knob audibly did anything. A group has to be
 // plainly higher or lower than the note to read as a group.

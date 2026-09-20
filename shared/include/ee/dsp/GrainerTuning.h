@@ -66,6 +66,29 @@ struct GrainerTuning
     float shapeDecayShapeSoft = 1.0f;
     float shapeDecayShapeHard = 8.0f;
 
+    // BAND SPLIT. A grain carries a pitch only if it holds a couple of cycles
+    // of its own lowest content, so one grain length across the whole spectrum
+    // is always a compromise: long enough for 40 Hz smears every transient,
+    // short enough for a pick attack turns the bass into a thump. This splits
+    // each spawn into one grain per band - same read position, so a transient
+    // still lands as a single hit - and gives each the length its band's
+    // wavelengths need.
+    //   0.0 = off, one full-range grain per spawn, exactly as before
+    //   1.0 = the full bandLengthRatio spread
+    // Deliberately level-neutral: the per-band gain divides the overlap each
+    // length change brings with it back out, so this is not a tilt EQ in
+    // disguise. Use the Filter knob for tone.
+    float bandSplit = 0.0f;
+
+    // The two crossovers. One-pole, so the bands sum back flat and nothing
+    // rings for longer than the grain carrying it lasts.
+    float bandLowHz = 200.0f;
+    float bandHighHz = 2000.0f;
+
+    // How far apart the band lengths run at bandSplit 1: the low band is this
+    // many times the Size knob, the high band that many times shorter.
+    float bandLengthRatio = 3.0f;
+
     // Overlapping grains sum, so the engine divides by the square root of
     // the expected overlap. This trims the result back to roughly unity against
     // the dry signal.
@@ -102,6 +125,11 @@ inline constexpr GrainerTuningEntry kGrainerTuningEntries[] = {
     { "shapeDecayShapeHard", &GrainerTuning::shapeDecayShapeHard, 0.5f,   10.0f,  2 },
 
     { "outputTrim",         &GrainerTuning::outputTrim,          0.0f,     3.0f,  3 },
+
+    { "bandSplit",          &GrainerTuning::bandSplit,           0.0f,     1.0f,  3 },
+    { "bandLowHz",          &GrainerTuning::bandLowHz,          40.0f,  1000.0f,  0 },
+    { "bandHighHz",         &GrainerTuning::bandHighHz,        500.0f, 10000.0f,  0 },
+    { "bandLengthRatio",    &GrainerTuning::bandLengthRatio,     1.0f,     8.0f,  2 },
 
     { "verbResonance",      &GrainerTuning::verbResonance,       0.0f,     1.0f,  3 },
     { "verbLowCutHz",       &GrainerTuning::verbLowCutHz,       20.0f,   800.0f,  0 },

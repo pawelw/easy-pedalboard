@@ -148,10 +148,7 @@ public:
 
     /** Share of the granulated output written back into the buffer, 0 to
         config::kMaxFeedback. */
-    void setFeedback (float amount01) noexcept
-    {
-        feedback = std::clamp (amount01, 0.0f, config::kMaxFeedback);
-    }
+    void setFeedback (float amount01) noexcept { feedback = std::clamp (amount01, 0.0f, config::kMaxFeedback); }
 
     /** How long after an attack grains may still be drawn from it - see
         pickPosition()'s own note. Starts at config::kAttackReachSeconds, the
@@ -167,10 +164,7 @@ public:
 
     /** Read-head scan rate while frozen, in multiples of realtime. +1 forward,
         0 held, -1 backwards. Ignored while playing live. */
-    void setStretch (float rate) noexcept
-    {
-        stretch = std::clamp (rate, -1.0f, 1.0f);
-    }
+    void setStretch (float rate) noexcept { stretch = std::clamp (rate, -1.0f, 1.0f); }
 
     /** Freeze the buffer: stop recording and hold it, and let Stretch scan the
         capture. A loud input still retriggers a fresh capture. */
@@ -202,22 +196,13 @@ public:
 
     /** Timing randomness, 0 (metronomic, identical grains) to 1. Drives both
         the spawn-gap jitter and the per-grain size jitter. */
-    void setScatter (float amount01) noexcept
-    {
-        scatter = std::clamp (amount01, 0.0f, 1.0f);
-    }
+    void setScatter (float amount01) noexcept { scatter = std::clamp (amount01, 0.0f, 1.0f); }
 
     /** Share of grains that play backwards, 0 to 1. */
-    void setReverse (float amount01) noexcept
-    {
-        reverse = std::clamp (amount01, 0.0f, 1.0f);
-    }
+    void setReverse (float amount01) noexcept { reverse = std::clamp (amount01, 0.0f, 1.0f); }
 
     /** Width of the random pan placement, 0 (centred) to 1 (hard left/right). */
-    void setStereo (float amount01) noexcept
-    {
-        stereo = std::clamp (amount01, 0.0f, 1.0f);
-    }
+    void setStereo (float amount01) noexcept { stereo = std::clamp (amount01, 0.0f, 1.0f); }
 
     /** The Filter knob: a plain lowpass cutoff and nothing else. 1 is fully
         open at config::kCloudLowpassHz, 0 fully closed at
@@ -274,14 +259,13 @@ public:
             if (isScaleMember (scale, n, root) && upCount < kMaxScaleCandidates)
                 upCandidates[static_cast<size_t> (upCount++)] = static_cast<float> (n);
 
-        // Low: an octave down, and nothing else - an octave is consonant
+        // Low: whole octaves down, and nothing else - an octave is consonant
         // against anything, so the bottom of the cloud adds weight without
-        // ever landing on a wrong note, whatever the scale says. Only the
-        // one: two octaves down is rate 0.25, under pickRate()'s own
-        // 1/kMaxRate floor, so it would come back clamped to a sour -20
-        // semitones rather than a clean -24.
+        // ever landing on a wrong note, whatever the scale says. Two of them:
+        // -24 is rate 0.25, which is exactly what kMinRate is set to.
         downCandidates[0] = -12.0f;
-        downCount = 1;
+        downCandidates[1] = -24.0f;
+        downCount = 2;
     }
 
     /** How much of the scale the High group takes: 0 is a plain octave up for
@@ -291,20 +275,14 @@ public:
         the interval is the *only* thing it and the Scale switch do - neither
         touches the weight of the three pitch groups, so High stays as loud as
         it was dialled however the scale is set. */
-    void setScaleBlend (float amount01) noexcept
-    {
-        scaleBlend = std::clamp (amount01, 0.0f, 1.0f);
-    }
+    void setScaleBlend (float amount01) noexcept { scaleBlend = std::clamp (amount01, 0.0f, 1.0f); }
 
     /** Drift: every grain spawned samples the same slow shared sine
         (config::kModWowHz) as a pitch bend, up to config::kModMaxCents at
         full travel - see pickRate(). The whole cloud's pitch rises and falls
         together over one cycle, the way ee::dsp::TapeDelay's own Mod knob
         wobbles its one continuously-playing tap. 0 is exactly bypassed. */
-    void setMod (float amount01) noexcept
-    {
-        modAmount = std::clamp (amount01, 0.0f, 1.0f);
-    }
+    void setMod (float amount01) noexcept { modAmount = std::clamp (amount01, 0.0f, 1.0f); }
 
     /** Crush: each active grain sample-and-holds independently, at the rate
         config::bitHoldNFor maps the knob to - the same reduction BitBit
@@ -388,7 +366,11 @@ public:
         always spawns a grain on the same beat, the way ee::dsp::Tremolo locks
         its LFO. A default-constructed `Transport{}`, as the overload above
         passes, leaves the timer free-running exactly as before sync existed. */
-    void process (const float* inL, const float* inR, float* outL, float* outR, int numSamples,
+    void process (const float* inL,
+                  const float* inR,
+                  float* outL,
+                  float* outR,
+                  int numSamples,
                   const Transport& transport) noexcept
     {
         if (size <= 0 || outL == nullptr || outR == nullptr)
@@ -407,8 +389,8 @@ public:
         // spawnGrain() anchors each grain to the current bar line; leaving it
         // while still frozen holds whatever was just recorded, the way engaging
         // a plain Freeze does. Live, spawnGrain() only rounds the Time tap.
-        const bool gridOn = transport.grid && transport.ppqPerSample > 0.0 && transport.quartersPerBar > 0.0
-                            && std::isfinite (transport.ppqStart) && std::isfinite (transport.barStartPpq);
+        const bool gridOn = transport.grid && transport.ppqPerSample > 0.0 && transport.quartersPerBar > 0.0 &&
+                            std::isfinite (transport.ppqStart) && std::isfinite (transport.barStartPpq);
         const bool nowBarLocked = frozen && gridOn && transport.synced;
 
         if (nowBarLocked && ! barLocked)
@@ -496,9 +478,9 @@ public:
                 if (onsetGate (follower))
                 {
                     const int wanted = timeOffsetSamples + maxGrainSamples + config::kGrainReadMarginSamples;
-                    pendingCaptureLen = std::clamp (wanted,
-                                                    static_cast<int> (config::kMinRecaptureSeconds * sampleRate),
-                                                    std::max (1, size - 2 * config::kGrainReadMarginSamples));
+                    pendingCaptureLen =
+                        std::clamp (wanted, static_cast<int> (config::kMinRecaptureSeconds * sampleRate),
+                                    std::max (1, size - 2 * config::kGrainReadMarginSamples));
                     captureRemaining = pendingCaptureLen;
                     capturing = true;
                 }
@@ -561,8 +543,8 @@ public:
                 // below, or all three octaves at once - see GrainerConfig.h's
                 // ATTACK OCTAVES. Anything else spawns exactly as it always has.
                 const int attackReach = static_cast<int> (attackReachSeconds * static_cast<float> (sampleRate));
-                const bool stack = attackStackPending && ! frozen && pitchLow > 0.0f && attackIndex >= 0
-                                   && sinceAttack <= attackReach;
+                const bool stack =
+                    attackStackPending && ! frozen && pitchLow > 0.0f && attackIndex >= 0 && sinceAttack <= attackReach;
                 attackStackPending = false;
 
                 if (stack)
@@ -583,7 +565,7 @@ public:
                 if (bitHoldN > 1)
                     raw = crushed (g, raw, bitHoldN);
 
-                const float windowed = raw * envelopeOf (g);
+                const float windowed = bandedSample (g, raw) * envelopeOf (g);
 
                 sumL += windowed * g.gainL;
                 sumR += windowed * g.gainR;
@@ -660,12 +642,21 @@ public:
     float getDownCandidate (int i) const noexcept { return downCandidates[static_cast<size_t> (i)]; }
 
 private:
+    // Band split - see GrainerTuning::bandSplit. One grain per band per spawn,
+    // each as long as its band's wavelengths need. Declared before Grain so
+    // its `band` member can name kBandFull.
+    static constexpr int kBandLow = 0;
+    static constexpr int kBandMid = 1;
+    static constexpr int kBandHigh = 2;
+    static constexpr int kBandFull = 3;
+    static constexpr int kNumSplitBands = 3;
+
     struct Grain
     {
-        double position = 0.0;   // fractional index into buffer
-        double rate = 1.0;       // samples of source per sample of output; negative plays backwards
-        int attackSamples = 1;   // length of the fade-in
-        float decayEnv = 1.0f;   // running exponential, stepped once per sample
+        double position = 0.0; // fractional index into buffer
+        double rate = 1.0;     // samples of source per sample of output; negative plays backwards
+        int attackSamples = 1; // length of the fade-in
+        float decayEnv = 1.0f; // running exponential, stepped once per sample
         float decayMul = 1.0f;
         float gainL = 0.0f;
         float gainR = 0.0f;
@@ -678,6 +669,12 @@ private:
         // held value or phase.
         int bitCounter = 0;
         float bitHeld = 0.0f;
+
+        // Which band this grain carries, and its two crossover states - see
+        // bandedSample(). kBandFull means the split is off and nothing filters.
+        int band = kBandFull;
+        float bandZ1 = 0.0f;
+        float bandZ2 = 0.0f;
     };
 
     // A grain never exceeds this rate, which bounds how much source one spans
@@ -685,6 +682,12 @@ private:
     // candidate table (see setScale()) tops out at +19 semitones (2.997x) for
     // exactly this reason - config::kMaxScaleSemitones matches this.
     static constexpr double kMaxRate = 3.2;
+
+    // The other end. Not 1/kMaxRate: a slow grain reads *less* source than it
+    // produces, so nothing about the read-ahead guard bounds it - this only
+    // has to be low enough for the deepest interval setScale() offers, which
+    // is -24 semitones.
+    static constexpr double kMinRate = 0.25;
 
     static constexpr float kNormSmoothing = 0.0005f;
     static constexpr float kTwoPi = 6.28318530718f;
@@ -787,8 +790,8 @@ private:
         // Geometric from open to closed, so the knob's bottom half is not all
         // crammed into the last few hundred Hz the way a linear sweep would
         // leave it.
-        const float lpHz = config::kCloudLowpassHz
-                           * std::pow (config::kCloudLowpassMinHz / config::kCloudLowpassHz, 1.0f - cloudFilterAmount);
+        const float lpHz = config::kCloudLowpassHz *
+                           std::pow (config::kCloudLowpassMinHz / config::kCloudLowpassHz, 1.0f - cloudFilterAmount);
 
         // Clamped: the highpass form above is a forward-Euler approximation
         // that only holds for a corner well under Nyquist, and a swept one
@@ -825,8 +828,12 @@ private:
         const float frac = static_cast<float> (position - static_cast<double> (i1));
 
         const int i0 = i1 > 0 ? i1 - 1 : size - 1;
-        int i2 = i1 + 1; if (i2 >= size) i2 -= size;
-        int i3 = i2 + 1; if (i3 >= size) i3 -= size;
+        int i2 = i1 + 1;
+        if (i2 >= size)
+            i2 -= size;
+        int i3 = i2 + 1;
+        if (i3 >= size)
+            i3 -= size;
 
         const float y0 = buffer[static_cast<size_t> (i0)];
         const float y1 = buffer[static_cast<size_t> (i1)];
@@ -853,10 +860,7 @@ private:
     }
 
     /** -1..1. */
-    float nextBipolar() noexcept
-    {
-        return nextFloat() * 2.0f - 1.0f;
-    }
+    float nextBipolar() noexcept { return nextFloat() * 2.0f - 1.0f; }
 
     /** The spawn phase always free-runs (see the per-sample loop); this only
         nudges it onto the host grid while Density is synced to a running
@@ -880,9 +884,9 @@ private:
             double target = transport.ppqStart * transport.cyclesPerQuarter;
             target -= std::floor (target);
 
-            const bool jumped = ! wasSpawnPlaying
-                                 || (haveExpectedSpawnPpq
-                                     && std::abs (transport.ppqStart - expectedSpawnPpq) > config::kSpawnJumpPpq);
+            const bool jumped =
+                ! wasSpawnPlaying ||
+                (haveExpectedSpawnPpq && std::abs (transport.ppqStart - expectedSpawnPpq) > config::kSpawnJumpPpq);
 
             if (jumped)
             {
@@ -979,8 +983,8 @@ private:
         // in tens of them.
         const float k = std::max (0.05f, curDecayShape);
         const float f = decayFloor;
-        const float meanSquare =
-            ((1.0f - f * f) / (2.0f * k) - 2.0f * f * (1.0f - f) / k + f * f) / std::max (1.0e-6f, (1.0f - f) * (1.0f - f));
+        const float meanSquare = ((1.0f - f * f) / (2.0f * k) - 2.0f * f * (1.0f - f) / k + f * f) /
+                                 std::max (1.0e-6f, (1.0f - f) * (1.0f - f));
         const float envelopeRms = std::sqrt (std::max (1.0e-6f, meanSquare));
 
         // Per-grain level jitter (see spawnGrain) scales every grain by a
@@ -991,8 +995,53 @@ private:
         const float j = tuning.grainLevelJitter;
         const float levelRms = std::sqrt (std::max (1.0e-6f, 1.0f - j + j * j / 3.0f));
 
-        normTarget =
-            tuning.outputTrim * (kEnvelopeReferenceRms / envelopeRms) / (std::sqrt (overlap) * levelRms);
+        normTarget = tuning.outputTrim * (kEnvelopeReferenceRms / envelopeRms) / (std::sqrt (overlap) * levelRms);
+
+        // Band split. Lengths scale with wavelength - the low band gets the
+        // ratio times the Size knob, the high band that much less - and the
+        // per-band gain divides out the overlap that length change brings with
+        // it, so turning the split up is level-neutral rather than a tilt EQ.
+        const float split = std::clamp (tuning.bandSplit, 0.0f, 1.0f);
+        const float ratio = 1.0f + split * (std::max (1.0f, tuning.bandLengthRatio) - 1.0f);
+
+        bandLengthScale[kBandLow] = ratio;
+        bandLengthScale[kBandMid] = 1.0f;
+        bandLengthScale[kBandHigh] = 1.0f / ratio;
+
+        for (int b = 0; b < kNumSplitBands; ++b)
+            bandGain[b] = 1.0f / std::sqrt (bandLengthScale[b]);
+
+        bandLowCoeff = onePoleCoeff (std::min (tuning.bandLowHz, tuning.bandHighHz));
+        bandHighCoeff = onePoleCoeff (std::max (tuning.bandLowHz, tuning.bandHighHz));
+    }
+
+    /** One-pole lowpass coefficient for a corner in Hz. */
+    float onePoleCoeff (float hz) const noexcept
+    {
+        const float f = std::clamp (hz, 20.0f, static_cast<float> (sampleRate) * 0.45f);
+        return std::exp (-kTwoPi * f / static_cast<float> (sampleRate));
+    }
+
+    /** The share of `x` this grain's band carries.
+
+        Complementary one-poles, so the three grains of one spawn event sum
+        back to the unsplit grain. Gentle slopes on purpose: a steeper filter
+        rings for longer than a short high-band grain lasts, which would put
+        back exactly the smear the split exists to remove. */
+    float bandedSample (Grain& g, float x) const noexcept
+    {
+        if (g.band == kBandFull)
+            return x;
+
+        g.bandZ1 += (1.0f - bandLowCoeff) * (x - g.bandZ1);
+
+        if (g.band == kBandLow)
+            return g.bandZ1;
+
+        const float aboveLow = x - g.bandZ1;
+        g.bandZ2 += (1.0f - bandHighCoeff) * (aboveLow - g.bandZ2);
+
+        return g.band == kBandMid ? g.bandZ2 : aboveLow - g.bandZ2;
     }
 
     /** Picks a playback rate: one of the three pitch groups in proportion to
@@ -1051,7 +1100,7 @@ private:
 
         const double ratio = std::pow (2.0, (static_cast<double> (semitones) + cents * 0.01) / 12.0);
 
-        return std::clamp (ratio, 1.0 / kMaxRate, kMaxRate);
+        return std::clamp (ratio, kMinRate, kMaxRate);
     }
 
     /** Where the next grain reads from, and the bookkeeping that keeps that
@@ -1068,11 +1117,6 @@ private:
         content - the read loop wraps and there is nothing to guard. */
     void spawnGrain() noexcept
     {
-        Grain* slot = claimSlot();
-
-        if (slot == nullptr)
-            return;
-
         // Grain length, strayed from Size by Scatter.
         float lengthF = sizeMs * 0.001f * static_cast<float> (sampleRate);
         lengthF *= 1.0f + scatter * tuning.scatterSizeJitter * nextBipolar();
@@ -1083,11 +1127,15 @@ private:
 
         double position = 0.0;
 
+        // -1 means frozen: the buffer is static, so every position holds real
+        // content and a longer band grain has nothing to run into.
+        int guardOffset = -1;
+
         if (frozen && ! capturing && ! barLocked)
         {
             // Scan position, scattered a little either side.
-            const double jitter =
-                static_cast<double> (scatter) * static_cast<double> (timeOffsetSamples) * 0.5 * static_cast<double> (nextBipolar());
+            const double jitter = static_cast<double> (scatter) * static_cast<double> (timeOffsetSamples) * 0.5 *
+                                  static_cast<double> (nextBipolar());
 
             position = std::fmod (readHead + jitter, static_cast<double> (size));
             if (position < 0.0)
@@ -1138,8 +1186,8 @@ private:
                     const double step = samplesPerSixteenth;
                     double tap = std::max (1.0, std::round (static_cast<double> (timeOffsetSamples) / step));
                     if (scatter > 0.0f)
-                        tap = std::max (1.0, tap + std::round (static_cast<double> (nextBipolar() * scatter)
-                                                               * config::kGridMaxSlices));
+                        tap = std::max (1.0, tap + std::round (static_cast<double> (nextBipolar() * scatter) *
+                                                               config::kGridMaxSlices));
 
                     offset = static_cast<int> (std::lround (std::min (tap * step, static_cast<double> (size))));
                 }
@@ -1155,8 +1203,8 @@ private:
                 // long silence really does fall silent.
                 const int attackReach = static_cast<int> (attackReachSeconds * static_cast<float> (sampleRate));
 
-                if (attackIndex >= 0 && sinceAttack <= attackReach && sinceAttack <= maxOffset
-                    && nextFloat() < tuning.attackShare)
+                if (attackIndex >= 0 && sinceAttack <= attackReach && sinceAttack <= maxOffset &&
+                    nextFloat() < tuning.attackShare)
                 {
                     // The attack is the anchor; Scatter says how far past it into
                     // the note this particular grain starts. Without a spread here
@@ -1166,7 +1214,8 @@ private:
                     // difference between a cloud and a stutter.
                     const float windowMs = config::kAttackJitterMs + scatter * config::kAttackSpreadMs;
                     const int windowSamples = static_cast<int> (windowMs * 0.001f * static_cast<float> (sampleRate));
-                    const int preRoll = static_cast<int> (config::kAttackPreRollMs * 0.001f * static_cast<float> (sampleRate));
+                    const int preRoll =
+                        static_cast<int> (config::kAttackPreRollMs * 0.001f * static_cast<float> (sampleRate));
 
                     // Subtracting walks *forward* into the note: offset counts back
                     // from the write head, so a smaller one is later audio.
@@ -1180,6 +1229,7 @@ private:
             }
 
             offset = std::clamp (offset, minOffset, maxOffset);
+            guardOffset = offset;
 
             position = static_cast<double> (writeIndex - offset);
             if (position < 0.0)
@@ -1195,7 +1245,7 @@ private:
         // the cloud.
         const float level = 1.0f - tuning.grainLevelJitter * nextFloat();
 
-        startVoice (*slot, position, backwards ? -rate : rate, length, pan, level);
+        emitGrains (position, backwards ? -rate : rate, length, pan, level, guardOffset, backwards);
     }
 
     /** The first grains after a struck note, in place of one random grain -
@@ -1260,8 +1310,7 @@ private:
             if (position < 0.0)
                 position += static_cast<double> (size);
 
-            if (Grain* slot = claimSlot())
-                startVoice (*slot, position, rate, voiceLength, pan, level);
+            emitGrains (position, rate, voiceLength, pan, level, offset, false);
         }
     }
 
@@ -1287,7 +1336,8 @@ private:
         return slot;
     }
 
-    void startVoice (Grain& slot, double position, double rate, int length, float pan, float level) noexcept
+    void startVoice (Grain& slot, double position, double rate, int length, float pan, float level, int band,
+                     float bandLevel) noexcept
     {
         const float angle = (pan + 1.0f) * 0.25f * 3.14159265358979323846f;
 
@@ -1298,14 +1348,14 @@ private:
 
         // Just enough fade-in not to click, and never more than half the grain -
         // a 20 ms grain cannot afford a 5 ms attack.
-        const int attackSamples = std::clamp (
-            static_cast<int> (curAttackMs * 0.001f * static_cast<float> (sampleRate)), 1, std::max (1, length / 2));
+        const int attackSamples = std::clamp (static_cast<int> (curAttackMs * 0.001f * static_cast<float> (sampleRate)),
+                                              1, std::max (1, length / 2));
 
         slot.attackSamples = attackSamples;
         slot.decayEnv = 1.0f;
         slot.decayMul = std::exp (-curDecayShape / static_cast<float> (std::max (1, length - attackSamples)));
-        slot.gainL = std::cos (angle) * level;
-        slot.gainR = std::sin (angle) * level;
+        slot.gainL = std::cos (angle) * level * bandLevel;
+        slot.gainR = std::sin (angle) * level * bandLevel;
         slot.active = true;
 
         // Fresh hold state, so a reused slot's Bit crush starts from this
@@ -1313,6 +1363,66 @@ private:
         // that lived in this slot left its counter.
         slot.bitCounter = 0;
         slot.bitHeld = 0.0f;
+
+        slot.band = band;
+        slot.bandZ1 = 0.0f;
+        slot.bandZ2 = 0.0f;
+    }
+
+    /** The longest a grain may be at this rate and offset without its read
+        head running into audio not yet written (forwards) or off the oldest
+        end of the buffer (backwards) - the same guard spawnGrain() applies
+        when it picks an offset, restated so the band split can lengthen a
+        grain after the fact. A negative offset means a frozen buffer, where
+        every position holds real content and nothing needs guarding. */
+    int lengthThatFits (int wanted, double rate, int offset, bool backwards) const noexcept
+    {
+        double limit = static_cast<double> (wanted);
+
+        if (offset >= 0)
+        {
+            const double margin = static_cast<double> (config::kGrainReadMarginSamples);
+            const double absRate = std::abs (rate);
+
+            if (backwards)
+            {
+                limit = std::min (limit, (static_cast<double> (size - offset) - 2.0 * margin) / (1.0 + absRate));
+            }
+            else
+            {
+                limit = std::min (limit, static_cast<double> (size - offset) - margin);
+
+                if (absRate > 1.0)
+                    limit = std::min (limit, (static_cast<double> (offset) - 2.0 * margin) / (absRate - 1.0));
+            }
+        }
+
+        return std::clamp (static_cast<int> (limit), minGrainSamples, maxGrainSamples);
+    }
+
+    /** One spawn event. Either a single full-range grain, or - with the band
+        split dialled in - one grain per band from the *same* read position,
+        each the length its band's wavelengths need. Sharing the position is
+        what keeps a transient landing as one hit rather than as three
+        separate effects. */
+    void emitGrains (double position, double rate, int length, float pan, float level, int offset,
+                     bool backwards) noexcept
+    {
+        if (tuning.bandSplit <= 0.0f)
+        {
+            if (Grain* slot = claimSlot())
+                startVoice (*slot, position, rate, length, pan, level, kBandFull, 1.0f);
+            return;
+        }
+
+        for (int band = 0; band < kNumSplitBands; ++band)
+        {
+            const int wanted = static_cast<int> (static_cast<float> (length) * bandLengthScale[band]);
+            const int fitted = lengthThatFits (wanted, rate, offset, backwards);
+
+            if (Grain* slot = claimSlot())
+                startVoice (*slot, position, rate, fitted, pan, level, band, bandGain[band]);
+        }
     }
 
     //==========================================================================
@@ -1428,6 +1538,12 @@ private:
     float curAttackMs = 1.0f;
     float decayFloor = 0.0f;
     float decayScale = 1.0f;
+
+    // Band split, derived in updateDerived() from the tuning fields.
+    float bandLengthScale[kNumSplitBands] = { 1.0f, 1.0f, 1.0f };
+    float bandGain[kNumSplitBands] = { 1.0f, 1.0f, 1.0f };
+    float bandLowCoeff = 0.0f;
+    float bandHighCoeff = 0.0f;
 
     std::uint32_t rngState = kRngSeed;
 
