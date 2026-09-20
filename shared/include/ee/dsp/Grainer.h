@@ -356,10 +356,12 @@ public:
         double cyclesPerQuarter = 1.0;
         double ppqPerSample = 0.0;
 
-        // Grid (see GrainerConfig.h's GRID). The caller sets grid only when it
-        // has a finite ppq and the transport is rolling - BitBit Grain always
-        // does then; there is no switch. barStartPpq is the
-        // ppq of any bar line, quartersPerBar the bar's length.
+        // Grid (see GrainerConfig.h's GRID). BitBit Grain always sets it; there
+        // is no switch. The live tap only needs ppqPerSample (a tempo), so it
+        // holds with the transport stopped or absent; the frozen bar-locked
+        // capture also needs a ppq that is really moving, and takes it only
+        // while `synced`. barStartPpq is the ppq of any bar line,
+        // quartersPerBar the bar's length.
         bool grid = false;
         double barStartPpq = 0.0;
         double quartersPerBar = 4.0;
@@ -407,7 +409,7 @@ public:
         // a plain Freeze does. Live, spawnGrain() only rounds the Time tap.
         const bool gridOn = transport.grid && transport.ppqPerSample > 0.0 && transport.quartersPerBar > 0.0
                             && std::isfinite (transport.ppqStart) && std::isfinite (transport.barStartPpq);
-        const bool nowBarLocked = frozen && gridOn;
+        const bool nowBarLocked = frozen && gridOn && transport.synced;
 
         if (nowBarLocked && ! barLocked)
         {

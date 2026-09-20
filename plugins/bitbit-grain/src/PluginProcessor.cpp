@@ -1145,9 +1145,11 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     grainTransport.cyclesPerQuarter =
         1.0 / juce::jmax (1.0e-4, static_cast<double> (densityMap.divisionBeats (densityParam->load())));
     grainTransport.ppqPerSample = bpm / (60.0 * getSampleRate());
-    // Grid is not a switch: whenever the host transport rolls, grain read
-    // points sit on sixteenths - see GrainerConfig.h's GRID.
-    grainTransport.grid = havePpq && isPlaying;
+    // Grid is not a switch: always on. The live tap needs nothing but a tempo
+    // (a host that reports none gets 120), so it holds whether or not the
+    // transport is rolling; the frozen bar-locked capture needs a moving ppq
+    // and the engine only takes it while `synced` - see GrainerConfig.h's GRID.
+    grainTransport.grid = true;
     grainTransport.barStartPpq = barStartPpq;
     grainTransport.quartersPerBar = quartersPerBar;
 
@@ -1188,7 +1190,13 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // Everything else in this section has no modulation target and stays a
     // once-per-block read, unchanged.
     grainer.setTimeMs (timeParam->load());
-    grainer.setFeedback (feedbackParam->load() * 0.01f);
+    // TEMPORARY: the cloud's own feedback is held at zero whatever the hidden
+    // "feedback" parameter says. It has no knob on the face, and at its default
+    // it re-pitches each grain on the way round (220 Hz -> 440 -> 880 ...),
+    // which reads as the High octave repeating far too often. The parameter
+    // stays registered - its id and default are in the golden file - until the
+    // control is either exposed or removed.
+    grainer.setFeedback (0.0f);
     grainer.setStretch (stretchParam->load() * 0.01f);
     // Harmless to set even when Pitch is off: setPitchMix(0,1,0) inside the
     // loop below means the Low/High groups these feed are never picked either

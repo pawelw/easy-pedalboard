@@ -226,11 +226,11 @@ constexpr bool kDefaultStereoWidth = false;
 // ============================================================================
 // GRID  (grain read points on the tempo grid)
 // ============================================================================
-// Not a switch: always on whenever the host transport is rolling (the
-// processor sets Transport::grid from that alone; standalone or stopped, the
-// engine behaves as it did before Grid existed). It keeps where grains read
-// from on sixteenth-note boundaries, so every fragment starts on a beat of the
-// source as well as landing on one.
+// Not a switch: always on. It keeps where grains read from on sixteenth-note
+// boundaries, so every fragment starts on a beat of the source as well as
+// landing on one. The live mode below needs only a tempo, so it holds with the
+// transport stopped and in a host that reports none (120 bpm); the frozen mode
+// needs the host's bar line and so only runs while the transport is rolling.
 //
 // FROZEN - bar-locked capture. The held slice is re-captured on every bar line
 // instead of on loud onsets, and every grain for the rest of that bar replays
