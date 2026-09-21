@@ -462,7 +462,8 @@ public:
         {
             juce::NormalisableRange<float> r (lo, hi);
             r.setSkewForCentre (centre);
-            return ee::dsp::GrainSyncMap { r, false };
+            return ee::dsp::GrainSyncMap { r, false, ee::dsp::kGrainDensityDivisions,
+                                           ee::dsp::kNumGrainDensityDivisions };
         };
 
         const auto sizeText = juce::AudioParameterFloatAttributes()
@@ -633,6 +634,9 @@ public:
             juce::ParameterID { "level", 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 1) + " dB"; })));
+
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "smooth", 1 }, "Smooth", percent,
+                                                                 cfg::kDefaultSmoothPct, percentAttributes));
 
         return layout;
     }

@@ -98,10 +98,11 @@ function GrainSection() {
       </div>
       <div className="pg-section__knobs">
         <ModdableKnob parameterId="density" caption="Destiny" variant="flat" size={30} />
-        <ModdableKnob parameterId="window" caption="Window" variant="flat" size={30} />
+        <ModdableKnob parameterId="size" caption="Size" variant="flat" size={30} />
       </div>
       <div className="pg-section__knobs">
-        <ModdableKnob parameterId="size" caption="Size" variant="flat" size={30} />
+        <ModdableKnob parameterId="feedback" caption="Feedback" variant="flat" size={30} />
+        <ModdableKnob parameterId="smooth" caption="Smooth" variant="flat" size={30} />
         <ModdableKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
       </div>
     </section>

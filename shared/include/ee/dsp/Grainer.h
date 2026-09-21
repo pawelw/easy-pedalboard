@@ -67,6 +67,13 @@ public:
         onsetGate.prepare (fs, kOnsetEnvDecayMs, kOnsetAttackWidthMs, kOnsetRiseRatioOn, kOnsetRiseRatioOff,
                            kOnsetMinRise, kOnsetLockoutMs);
 
+        // One envelope reading per kEnvTraceDecim samples of the buffer, so a
+        // grain can ask how loud its own read point was without walking the
+        // audio at spawn time - see sourceLevelGain().
+        envTraceSize = size / kEnvTraceDecim + 2;
+        envTrace.assign (static_cast<size_t> (envTraceSize), 0.0f);
+        loudRefCoeff = std::exp (-1.0f / (fs * kLoudRefSeconds));
+
         updateCloudFilter();
 
         // So the candidate tables are populated even before the processor's
@@ -98,6 +105,8 @@ public:
         feedbackSample = 0.0f;
         cloudHpX1L = cloudHpY1L = cloudHpX1R = cloudHpY1R = 0.0f;
         cloudLpZL = cloudLpZR = 0.0f;
+        cloudHpX1S = cloudHpY1S = 0.0f;
+        cloudLpZS = 0.0f;
         recordedSamples = 0;
         wowPhase = 0.0;
 
@@ -118,6 +127,9 @@ public:
         follower = 0.0f;
         attackIndex = -1;
         sinceAttack = 0;
+
+        std::fill (envTrace.begin(), envTrace.end(), 0.0f);
+        loudRef = 0.0f;
     }
 
     //==========================================================================
@@ -194,6 +206,22 @@ public:
         updateDerived();
     }
 
+    /** Grain-window swell, 0 to 1. At 0 the window is exactly Shape's - a quick
+        fade-in and a decay, so the start of every grain is heard. At 1 it is
+        the reverse: a linear swell that peaks late in the grain
+        (GrainerTuning::smoothPeak) and is cut off shortly after, the same
+        every time - the start of each grain is buried in the fade-in and what
+        you hear is the vowel, not the onset. On the way it also fades out the
+        per-grain randomness (window and level jitter) and the band split's
+        different grain lengths, both of which would otherwise make every
+        grain a different shape. Blended per grain, not per sample: a grain
+        wears the value it was born with. */
+    void setSmooth (float amount01) noexcept
+    {
+        smooth = std::clamp (amount01, 0.0f, 1.0f);
+        updateDerived();
+    }
+
     /** Timing randomness, 0 (metronomic, identical grains) to 1. Drives both
         the spawn-gap jitter and the per-grain size jitter. */
     void setScatter (float amount01) noexcept { scatter = std::clamp (amount01, 0.0f, 1.0f); }
@@ -266,6 +294,8 @@ public:
         downCandidates[0] = -12.0f;
         downCandidates[1] = -24.0f;
         downCount = 2;
+
+        updateIntervalNorm();
     }
 
     /** How much of the scale the High group takes: 0 is a plain octave up for
@@ -275,7 +305,11 @@ public:
         the interval is the *only* thing it and the Scale switch do - neither
         touches the weight of the three pitch groups, so High stays as loud as
         it was dialled however the scale is set. */
-    void setScaleBlend (float amount01) noexcept { scaleBlend = std::clamp (amount01, 0.0f, 1.0f); }
+    void setScaleBlend (float amount01) noexcept
+    {
+        scaleBlend = std::clamp (amount01, 0.0f, 1.0f);
+        updateIntervalNorm();
+    }
 
     /** Drift: every grain spawned samples the same slow shared sine
         (config::kModWowHz) as a pitch bend, up to config::kModMaxCents at
@@ -304,6 +338,7 @@ public:
         pitchLow = std::max (0.0f, low);
         pitchUnison = std::max (0.0f, unison);
         pitchHigh = std::max (0.0f, high);
+        updateIntervalNorm();
     }
 
     /** The rest of the voicing - everything the face does not carry. Safe to
@@ -353,7 +388,7 @@ public:
         transport. `inR` may be null for a mono source. */
     void process (const float* inL, const float* inR, float* outL, float* outR, int numSamples) noexcept
     {
-        process (inL, inR, outL, outR, numSamples, Transport {});
+        process (inL, inR, outL, outR, nullptr, numSamples, Transport {});
     }
 
     /** Writes the wet grain cloud to outL/outR. The caller keeps its own dry.
@@ -373,8 +408,32 @@ public:
                   int numSamples,
                   const Transport& transport) noexcept
     {
+        process (inL, inR, outL, outR, nullptr, numSamples, transport);
+    }
+
+    /** True while the interval send weighting is dialled in, so a caller can
+        decide whether the extra bus below is worth asking for at all. */
+    bool hasIntervalSend() const noexcept { return tuning.pitchSendPerOctave != 0.0f; }
+
+    /** As above, plus a mono send bus: the same cloud, but with every grain
+        scaled by what its interval is worth as a reverb send (see
+        GrainerTuning::pitchSendPerOctave). It leaves the engine at the same
+        point the main output does - after the cloud filter, before anything
+        the caller puts downstream - so a caller wanting the two coloured alike
+        has to run its own stages over both. `sendOut` may be null, which is
+        what the overloads above pass and costs nothing. */
+    void process (const float* inL,
+                  const float* inR,
+                  float* outL,
+                  float* outR,
+                  float* sendOut,
+                  int numSamples,
+                  const Transport& transport) noexcept
+    {
         if (size <= 0 || outL == nullptr || outR == nullptr)
             return;
+
+        const bool wantSend = sendOut != nullptr;
 
         const bool spawnSynced = transport.synced;
 
@@ -443,6 +502,12 @@ public:
                 // it rather than from wherever the tap window happens to reach.
                 const float rectified = std::abs (sample);
                 follower = rectified > follower ? rectified : rectified + followerCoeff * (follower - rectified);
+                updateLoudRef();
+
+                // ...and how loud the buffer was here, for the grains that
+                // will later be drawn from this point.
+                if (envTraceSize > 0)
+                    envTrace[static_cast<size_t> (writeIndex / kEnvTraceDecim)] = follower;
 
                 if (onsetGate (follower))
                 {
@@ -474,6 +539,7 @@ public:
                 // enough note can start the capture cycle over again.
                 const float rectified = std::abs (sample);
                 follower = rectified > follower ? rectified : rectified + followerCoeff * (follower - rectified);
+                updateLoudRef();
 
                 if (onsetGate (follower))
                 {
@@ -555,6 +621,7 @@ public:
 
             float sumL = 0.0f;
             float sumR = 0.0f;
+            float sumSend = 0.0f;
 
             for (auto& g : grains)
             {
@@ -565,10 +632,13 @@ public:
                 if (bitHoldN > 1)
                     raw = crushed (g, raw, bitHoldN);
 
-                const float windowed = bandedSample (g, raw) * envelopeOf (g);
+                const float windowed = sprayed (g, bandedSample (g, raw)) * envelopeOf (g);
 
                 sumL += windowed * g.gainL;
                 sumR += windowed * g.gainR;
+
+                if (wantSend)
+                    sumSend += windowed * 0.5f * (g.gainL + g.gainR) * g.sendGain;
 
                 g.position += g.rate;
                 if (g.position >= static_cast<double> (size))
@@ -595,6 +665,9 @@ public:
 
             outL[i] = filteredL;
             outR[i] = filteredR;
+
+            if (wantSend)
+                sendOut[i] = cloudLowpass (cloudHighpass (sumSend * smoothedNorm, cloudHpX1S, cloudHpY1S), cloudLpZS);
 
             // What goes back round next sample. tanh bounds it to (-1, 1)
             // whatever the cloud does, so the recirculation cannot build
@@ -656,8 +729,19 @@ private:
         double position = 0.0; // fractional index into buffer
         double rate = 1.0;     // samples of source per sample of output; negative plays backwards
         int attackSamples = 1; // length of the fade-in
+
+        // Smooth, as it stood when this grain was born; 0 leaves envelopeOf()
+        // on exactly the path it had before Smooth existed. invDecayLen turns
+        // the age past the fade-in into a 0..1 position along the decay.
+        float smooth = 0.0f;
+        float invDecayLen = 0.0f;
         float decayEnv = 1.0f; // running exponential, stepped once per sample
         float decayMul = 1.0f;
+
+        // This grain's own decay offset and rescale, so windowJitter can give
+        // it a curve of its own rather than the one every other grain wears.
+        float envFloor = 0.0f;
+        float envScale = 1.0f;
         float gainL = 0.0f;
         float gainR = 0.0f;
         int age = 0;
@@ -675,6 +759,18 @@ private:
         int band = kBandFull;
         float bandZ1 = 0.0f;
         float bandZ2 = 0.0f;
+
+        // What this grain's interval is worth as a reverb send - see
+        // GrainerTuning::pitchSendPerOctave. Scales the send bus only; the
+        // main output never sees it.
+        float sendGain = 1.0f;
+
+        // Filter spray: this grain's own tilt, its one-pole and that pole's
+        // state. Zero amount is an exact pass-through - see sprayed().
+        float sprayAmount = 0.0f;
+        float sprayAlpha = 0.0f;
+        float sprayNorm = 1.0f;
+        float sprayZ = 0.0f;
     };
 
     // A grain never exceeds this rate, which bounds how much source one spans
@@ -716,6 +812,21 @@ private:
     static constexpr float kOnsetLockoutMs = 90.0f;
     static constexpr std::uint32_t kRngSeed = 0x9E3779B9u;
 
+    // One envelope reading per this many samples of buffer. 64 is about
+    // 1.5 ms - finer than the follower itself moves, so nothing is lost, and
+    // it keeps the trace under 8k entries for the whole 10.5 s buffer.
+    static constexpr int kEnvTraceDecim = 64;
+
+    // How long the recent-loudness reference takes to forget a loud passage.
+    // Long enough to hold across a phrase, short enough that a quiet piece
+    // after a loud one is not measured against the loud one for ever.
+    static constexpr float kLoudRefSeconds = 1.5f;
+
+    // Below this the material is silence rather than a quiet note, and both
+    // the source levelling and the density follow leave it alone: lifting it
+    // would only bring up whatever the loop's own noise floor is. -80 dB.
+    static constexpr float kLoudnessFloor = 1.0e-4f;
+
     //==========================================================================
 
     /** Amplitude of a grain at its current age, and steps its decay on.
@@ -733,12 +844,41 @@ private:
     float envelopeOf (Grain& g) const noexcept
     {
         if (g.age < g.attackSamples)
+        {
             return static_cast<float> (g.age) / static_cast<float> (g.attackSamples);
+        }
 
-        const float env = (g.decayEnv - decayFloor) * decayScale;
+        float env = (g.decayEnv - g.envFloor) * g.envScale;
         g.decayEnv *= g.decayMul;
 
+        if (g.smooth > 0.0f)
+        {
+            // Smooth blends the decay toward a straight line down. Both start
+            // at 1 and land on 0, so any blend of them does too and the grain
+            // still cannot click at either end.
+            const float v = std::clamp (static_cast<float> (g.age - g.attackSamples) * g.invDecayLen, 0.0f, 1.0f);
+
+            env += g.smooth * ((1.0f - v) - env);
+        }
+
         return env > 0.0f ? env : 0.0f;
+    }
+
+    /** This grain's own tilt about the corner it drew at spawn - see
+        GrainerTuning::filterSpray. A positive amount leans on the lowpass and
+        comes out darker than the source; a negative one subtracts it, which
+        alone would be a straight boost of everything above the corner rather
+        than a tilt, so the bright side is divided back down to pivot about
+        the corner instead of lifting past it. Amount 0 returns x untouched,
+        which is the whole of the off path. */
+    static float sprayed (Grain& g, float x) noexcept
+    {
+        if (g.sprayAmount == 0.0f)
+            return x;
+
+        g.sprayZ += g.sprayAlpha * (x - g.sprayZ);
+
+        return (x + g.sprayAmount * (g.sprayZ - x)) * g.sprayNorm;
     }
 
     /** Bit's sample-and-hold, one grain's own state. Holds x for bitHoldN
@@ -920,10 +1060,56 @@ private:
     int nextInterval() noexcept
     {
         const float jitterFrac = scatter * tuning.scatterMaxJitter;
-        const float nominal = static_cast<float> (sampleRate) / densityHz;
+        const float nominal = static_cast<float> (sampleRate) / (densityHz * densityFollowFactor());
         const float jittered = nominal * (1.0f + jitterFrac * nextBipolar());
 
         return std::max (1, static_cast<int> (jittered));
+    }
+
+    /** Instantly, what the input's own envelope is doing to the spawn rate -
+        see GrainerTuning::densityFollow. Measured against how loud the
+        material has been lately rather than against any absolute level, so it
+        answers the same whatever the input gain is. */
+    float densityFollowFactor() const noexcept
+    {
+        const float amount = std::clamp (tuning.densityFollow, 0.0f, 1.0f);
+
+        if (amount <= 0.0f || loudRef <= kLoudnessFloor)
+            return 1.0f;
+
+        const float floor = std::clamp (tuning.densityFollowFloor, 0.01f, 1.0f);
+        const float env = std::max (floor, std::clamp (follower / loudRef, 0.0f, 1.0f));
+
+        return 1.0f - amount * (1.0f - env);
+    }
+
+    /** How loud the material has been lately: the envelope follower's own
+        peaks, held and released slowly. Everything that has to be level
+        independent measures against this. */
+    void updateLoudRef() noexcept
+    {
+        loudRef = follower > loudRef ? follower : follower + loudRefCoeff * (loudRef - follower);
+    }
+
+    /** How far a grain starting here is lifted towards that reference - see
+        GrainerTuning::sourceLevelling. Lift only, and silence is left where it
+        is. */
+    float sourceLevelGain (double position) const noexcept
+    {
+        const float amount = std::clamp (tuning.sourceLevelling, 0.0f, 1.0f);
+
+        if (amount <= 0.0f || envTraceSize <= 0 || loudRef <= kLoudnessFloor)
+            return 1.0f;
+
+        const int index = std::clamp (static_cast<int> (position) / kEnvTraceDecim, 0, envTraceSize - 1);
+        const float here = envTrace[static_cast<size_t> (index)];
+
+        if (here <= kLoudnessFloor)
+            return 1.0f;
+
+        const float ratio = std::clamp (loudRef / here, 1.0f, std::max (1.0f, tuning.sourceLevelMaxBoost));
+
+        return std::pow (ratio, amount);
     }
 
     /** Point the frozen read head at the last `len` samples before the write
@@ -967,10 +1153,10 @@ private:
         // unity rather than turning into a boost.
         const float overlap = std::max (1.0f, densityHz * sizeMs * 0.001f);
 
-        // Offset and rescale the decay so it starts at exactly 1 and lands on
-        // exactly 0, whatever shape is dialled in.
+        // Where a decay of this shape would land at the end of a grain. Each
+        // grain rescales itself off its own jittered exponent (see
+        // startVoice); this is only the input to the energy estimate below.
         decayFloor = std::exp (-curDecayShape);
-        decayScale = 1.0f / std::max (1.0e-6f, 1.0f - decayFloor);
 
         // A steeper decay puts less energy in the grain, so without this the
         // Shape control would double as a volume control and there would be no
@@ -985,14 +1171,32 @@ private:
         const float f = decayFloor;
         const float meanSquare = ((1.0f - f * f) / (2.0f * k) - 2.0f * f * (1.0f - f) / k + f * f) /
                                  std::max (1.0e-6f, (1.0f - f) * (1.0f - f));
-        const float envelopeRms = std::sqrt (std::max (1.0e-6f, meanSquare));
+        float envelopeRms = std::sqrt (std::max (1.0e-6f, meanSquare));
+
+        // Smooth changes how much energy the window holds, and a longer fade-in
+        // is exactly the kind of change that would otherwise turn the knob into
+        // a volume control. No closed form for the blend, so it is measured -
+        // and only when Smooth or the decay it blends against actually moved,
+        // since this runs every chunk.
+        if (smooth > 0.0f)
+        {
+            if (smooth != smoothRmsFor || curDecayShape != smoothRmsDecay || tuning.smoothPeak != smoothRmsPeak)
+            {
+                smoothRmsFor = smooth;
+                smoothRmsDecay = curDecayShape;
+                smoothRmsPeak = tuning.smoothPeak;
+                smoothRms = smoothedEnvelopeRms (smooth, k, f);
+            }
+
+            envelopeRms = smoothRms;
+        }
 
         // Per-grain level jitter (see spawnGrain) scales every grain by a
         // random 1 - j*u, u uniform in [0,1). That distribution's RMS is
         // sqrt(E[L^2]) with E[L^2] = 1 - j + j^2/3, divided back out here so
         // the cloud sits at the same level whatever the jitter is - the same
         // move as dividing out the envelope's own RMS above.
-        const float j = tuning.grainLevelJitter;
+        const float j = levelJitterNow();
         const float levelRms = std::sqrt (std::max (1.0e-6f, 1.0f - j + j * j / 3.0f));
 
         normTarget = tuning.outputTrim * (kEnvelopeReferenceRms / envelopeRms) / (std::sqrt (overlap) * levelRms);
@@ -1001,7 +1205,7 @@ private:
         // ratio times the Size knob, the high band that much less - and the
         // per-band gain divides out the overlap that length change brings with
         // it, so turning the split up is level-neutral rather than a tilt EQ.
-        const float split = std::clamp (tuning.bandSplit, 0.0f, 1.0f);
+        const float split = bandSplitNow();
         const float ratio = 1.0f + split * (std::max (1.0f, tuning.bandLengthRatio) - 1.0f);
 
         bandLengthScale[kBandLow] = ratio;
@@ -1013,7 +1217,49 @@ private:
 
         bandLowCoeff = onePoleCoeff (std::min (tuning.bandLowHz, tuning.bandHighHz));
         bandHighCoeff = onePoleCoeff (std::max (tuning.bandLowHz, tuning.bandHighHz));
+
+        updateIntervalNorm();
     }
+
+    /** RMS of the window at this Smooth, over a grain's whole length: a linear
+        fade-in over the first `peak * s` of it (the short fixed attack is
+        ignored, as in the closed form above) and, after it, the decay blended
+        with a straight line down. Midpoint rule, 64 slices. */
+    float smoothedEnvelopeRms (float s, float k, float f) const noexcept
+    {
+        constexpr int kSlices = 64;
+
+        const float attackFrac = std::clamp (std::clamp (tuning.smoothPeak, 0.05f, 0.95f) * s, 0.01f, 0.95f);
+        float sum = 0.0f;
+
+        for (int i = 0; i < kSlices; ++i)
+        {
+            const float u = (static_cast<float> (i) + 0.5f) / static_cast<float> (kSlices);
+            float env;
+
+            if (u < attackFrac)
+            {
+                env = u / attackFrac;
+            }
+            else
+            {
+                const float v = (u - attackFrac) / (1.0f - attackFrac);
+                const float decay = (std::exp (-k * v) - f) / std::max (1.0e-6f, 1.0f - f);
+
+                env = decay + s * ((1.0f - v) - decay);
+            }
+
+            sum += env * env;
+        }
+
+        return std::sqrt (std::max (1.0e-6f, sum / static_cast<float> (kSlices)));
+    }
+
+    /** The per-grain level jitter and the band split as Smooth leaves them:
+        both fade out linearly and are gone at Smooth 1 (see setSmooth). At
+        Smooth 0 they are exactly the tuning's own figures. */
+    float levelJitterNow() const noexcept { return tuning.grainLevelJitter * (1.0f - smooth); }
+    float bandSplitNow() const noexcept { return std::clamp (tuning.bandSplit, 0.0f, 1.0f) * (1.0f - smooth); }
 
     /** One-pole lowpass coefficient for a corner in Hz. */
     float onePoleCoeff (float hz) const noexcept
@@ -1204,7 +1450,7 @@ private:
                 const int attackReach = static_cast<int> (attackReachSeconds * static_cast<float> (sampleRate));
 
                 if (attackIndex >= 0 && sinceAttack <= attackReach && sinceAttack <= maxOffset &&
-                    nextFloat() < tuning.attackShare)
+                    nextFloat() < tuning.attackShare * (1.0f - tuning.smoothAttackShareCut * smooth))
                 {
                     // The attack is the anchor; Scatter says how far past it into
                     // the note this particular grain starts. Without a spread here
@@ -1243,7 +1489,7 @@ private:
         // than it was before this existed; updateDerived() divides the
         // distribution's own RMS back out, so dialling it in does not quieten
         // the cloud.
-        const float level = 1.0f - tuning.grainLevelJitter * nextFloat();
+        const float level = 1.0f - levelJitterNow() * nextFloat();
 
         emitGrains (position, backwards ? -rate : rate, length, pan, level, guardOffset, backwards);
     }
@@ -1277,7 +1523,7 @@ private:
         const int wanted = sinceAttack + preRoll - into;
 
         const float pan = nextBipolar() * stereo;
-        const float level = 1.0f - tuning.grainLevelJitter * nextFloat();
+        const float level = 1.0f - levelJitterNow() * nextFloat();
 
         const int margin = config::kGrainReadMarginSamples;
 
@@ -1343,7 +1589,8 @@ private:
                      float pan,
                      float level,
                      int band,
-                     float bandLevel) noexcept
+                     float bandLevel,
+                     float sendGain) noexcept
     {
         const float angle = (pan + 1.0f) * 0.25f * 3.14159265358979323846f;
 
@@ -1352,14 +1599,55 @@ private:
         slot.length = length;
         slot.age = 0;
 
+        // This grain's own window, strayed either side of the pair Shape set -
+        // see GrainerTuning::windowJitter. The decay exponent strays by a
+        // ratio rather than by an amount, so the same jitter means the same
+        // thing at both ends of the Shape travel.
+        float attackMs = curAttackMs;
+        float decayShape = curDecayShape;
+
+        // Smooth fades the stray out: a swell that is different every time is
+        // not the swell it is meant to be.
+        const float windowStray = tuning.windowJitter * (1.0f - smooth);
+
+        if (windowStray > 0.0f)
+        {
+            const float j = std::clamp (windowStray, 0.0f, 1.0f);
+
+            attackMs = std::max (0.1f, attackMs * (1.0f + j * nextBipolar()));
+            decayShape = std::clamp (decayShape * std::exp (j * nextBipolar()), 0.25f, 12.0f);
+        }
+
         // Just enough fade-in not to click, and never more than half the grain -
         // a 20 ms grain cannot afford a 5 ms attack.
-        const int attackSamples = std::clamp (static_cast<int> (curAttackMs * 0.001f * static_cast<float> (sampleRate)),
-                                              1, std::max (1, length / 2));
+        // Smooth lengthens that fade-in until the peak sits smoothPeak of the way
+        // through the grain, and 0 leaves the figure exactly as it was. The cap
+        // is half the grain otherwise (a 20 ms grain cannot afford a 5 ms
+        // attack) and the swell's own peak position with Smooth on.
+        float attackWanted = attackMs * 0.001f * static_cast<float> (sampleRate);
+        int attackCap = std::max (1, length / 2);
+
+        if (smooth > 0.0f)
+        {
+            const float peak = std::clamp (tuning.smoothPeak, 0.05f, 0.95f);
+
+            attackWanted += smooth * (peak * static_cast<float> (length) - attackWanted);
+            attackCap = std::max (attackCap, static_cast<int> (peak * static_cast<float> (length)));
+        }
+
+        const int attackSamples = std::clamp (static_cast<int> (attackWanted), 1, attackCap);
 
         slot.attackSamples = attackSamples;
+        slot.smooth = smooth;
+        slot.invDecayLen = 1.0f / static_cast<float> (std::max (1, length - attackSamples));
         slot.decayEnv = 1.0f;
-        slot.decayMul = std::exp (-curDecayShape / static_cast<float> (std::max (1, length - attackSamples)));
+        slot.decayMul = std::exp (-decayShape / static_cast<float> (std::max (1, length - attackSamples)));
+
+        // Offset and rescaled so this grain's curve starts at exactly 1 and
+        // lands on exactly 0 whatever its own exponent turned out to be.
+        slot.envFloor = std::exp (-decayShape);
+        slot.envScale = 1.0f / std::max (1.0e-6f, 1.0f - slot.envFloor);
+
         slot.gainL = std::cos (angle) * level * bandLevel;
         slot.gainR = std::sin (angle) * level * bandLevel;
         slot.active = true;
@@ -1373,6 +1661,23 @@ private:
         slot.band = band;
         slot.bandZ1 = 0.0f;
         slot.bandZ2 = 0.0f;
+
+        slot.sendGain = sendGain;
+
+        // Filter spray: a tilt either way and a corner drawn log-uniformly, so
+        // the span reads as evenly covered rather than crowded at its top.
+        slot.sprayZ = 0.0f;
+        slot.sprayAmount = 0.0f;
+
+        if (tuning.filterSpray > 0.0f)
+        {
+            const float lo = std::max (20.0f, std::min (tuning.filterSprayLowHz, tuning.filterSprayHighHz));
+            const float hi = std::max (lo * 1.01f, std::max (tuning.filterSprayLowHz, tuning.filterSprayHighHz));
+
+            slot.sprayAmount = std::clamp (tuning.filterSpray, 0.0f, 1.0f) * nextBipolar();
+            slot.sprayAlpha = 1.0f - onePoleCoeff (lo * std::pow (hi / lo, nextFloat()));
+            slot.sprayNorm = 1.0f / (1.0f + std::max (0.0f, -slot.sprayAmount));
+        }
     }
 
     /** The longest a grain may be at this rate and offset without its read
@@ -1414,10 +1719,19 @@ private:
     void
     emitGrains (double position, double rate, int length, float pan, float level, int offset, bool backwards) noexcept
     {
-        if (tuning.bandSplit <= 0.0f)
+        // Every interval weighting is read back out of the rate rather than
+        // taken from the semitones that produced it, so Mod's drift counts and
+        // one calculation covers both spawn paths.
+        const float octaves = std::log2 (static_cast<float> (std::max (1.0e-6, std::abs (rate))));
+
+        const float tiltedLevel = level * intervalGain (octaves) * intervalGainNormInv * sourceLevelGain (position);
+        const float tiltedPan = pan * intervalPanScale (octaves);
+        const float send = intervalSendGain (octaves);
+
+        if (bandSplitNow() <= 0.0f)
         {
             if (Grain* slot = claimSlot())
-                startVoice (*slot, position, rate, length, pan, level, kBandFull, 1.0f);
+                startVoice (*slot, position, rate, length, tiltedPan, tiltedLevel, kBandFull, 1.0f, send);
             return;
         }
 
@@ -1427,8 +1741,100 @@ private:
             const int fitted = lengthThatFits (wanted, rate, offset, backwards);
 
             if (Grain* slot = claimSlot())
-                startVoice (*slot, position, rate, fitted, pan, level, band, bandGain[band]);
+                startVoice (*slot, position, rate, fitted, tiltedPan, tiltedLevel, band, bandGain[band], send);
         }
+    }
+
+    /** How much louder this grain is for being transposed. Deliberately not
+        compensated anywhere: moving the balance between the pitch groups is
+        the whole point of it. */
+    float intervalGain (float octaves) const noexcept
+    {
+        if (tuning.pitchGainDbPerOctave == 0.0f)
+            return 1.0f;
+
+        return std::clamp (std::pow (10.0f, tuning.pitchGainDbPerOctave * octaves * 0.05f), 0.25f, 4.0f);
+    }
+
+    /** What share of the pan position Stereo picked this grain keeps. An
+        octave down holds half of it and two octaves none, so the sub of the
+        cloud sits in the middle and survives a mono fold-down; unison and
+        anything above keep the full width. */
+    float intervalPanScale (float octaves) const noexcept
+    {
+        const float spread = std::clamp (tuning.pitchPanSpread, 0.0f, 1.0f);
+
+        if (spread <= 0.0f)
+            return 1.0f;
+
+        return 1.0f + spread * (std::clamp (1.0f + octaves * 0.5f, 0.0f, 1.0f) - 1.0f);
+    }
+
+    /** This grain's weight on the send bus. */
+    float intervalSendGain (float octaves) const noexcept
+    {
+        if (tuning.pitchSendPerOctave == 0.0f)
+            return 1.0f;
+
+        return std::clamp (1.0f + tuning.pitchSendPerOctave * octaves, 0.0f, 4.0f);
+    }
+
+    /** RMS of the interval gain over the pitch groups as they are currently
+        weighted, divided back out at spawn.
+
+        Without it the tilt is a volume control as well: every grain of an
+        all-Low cloud is transposed the same way, so the whole cloud simply
+        arrives 6 dB louder and the recirculation runs away with it
+        (ee_grain_stress catches exactly that). Dividing the distribution's own
+        RMS out - the same move grainLevelJitter gets in updateDerived() -
+        leaves the tilt doing the one thing it is for: changing how the groups
+        sit against each other when more than one of them is sounding. */
+    void updateIntervalNorm() noexcept
+    {
+        if (tuning.pitchGainDbPerOctave == 0.0f)
+        {
+            intervalGainNormInv = 1.0f;
+            return;
+        }
+
+        const float total = pitchLow + pitchUnison + pitchHigh;
+        const float wLow = total > 0.0f ? pitchLow / total : 0.0f;
+        const float wHigh = total > 0.0f ? pitchHigh / total : 0.0f;
+        const float wUnison = total > 0.0f ? pitchUnison / total : 1.0f;
+
+        const auto meanPower =
+            [this] (const std::array<float, kMaxScaleCandidates>& candidates, int count, float fallbackOctaves)
+        {
+            if (count <= 0)
+            {
+                const float g = intervalGain (fallbackOctaves);
+                return g * g;
+            }
+
+            float sum = 0.0f;
+            for (int i = 0; i < count; ++i)
+            {
+                const float g = intervalGain (candidates[static_cast<size_t> (i)] / 12.0f);
+                sum += g * g;
+            }
+            return sum / static_cast<float> (count);
+        };
+
+        float power = wUnison;
+
+        if (wLow > 0.0f)
+            power += wLow * meanPower (downCandidates, downCount, -1.0f);
+
+        if (wHigh > 0.0f)
+        {
+            // High takes the plain octave whenever the scale blend does not
+            // land - see pickHighSemitones().
+            const float octave = intervalGain (1.0f);
+            power +=
+                wHigh * (scaleBlend * meanPower (upCandidates, upCount, 1.0f) + (1.0f - scaleBlend) * octave * octave);
+        }
+
+        intervalGainNormInv = 1.0f / std::sqrt (std::max (1.0e-6f, power));
     }
 
     //==========================================================================
@@ -1461,6 +1867,14 @@ private:
     float attackReachSeconds = config::kAttackReachSeconds;
     float stretch = config::kDefaultStretchPct * 0.01f;
     float shape = config::kDefaultShapePct * 0.01f;
+    float smooth = config::kDefaultSmoothPct * 0.01f;
+
+    // The last (smooth, decay) pair smoothedEnvelopeRms() was run for, and what
+    // it said - see updateDerived().
+    float smoothRmsFor = -1.0f;
+    float smoothRmsDecay = -1.0f;
+    float smoothRmsPeak = -1.0f;
+    float smoothRms = 1.0f;
     float scatter = config::kDefaultScatterPct * 0.01f;
     float reverse = config::kDefaultReversePct * 0.01f;
     float stereo = config::kDefaultStereoPct * 0.01f;
@@ -1540,16 +1954,32 @@ private:
     float cloudHpX1R = 0.0f, cloudHpY1R = 0.0f;
     float cloudLpZL = 0.0f, cloudLpZR = 0.0f;
 
+    // The send bus carries the same filter, so it is coloured like the cloud
+    // it is a weighted copy of rather than arriving at the tank raw.
+    float cloudHpX1S = 0.0f, cloudHpY1S = 0.0f;
+    float cloudLpZS = 0.0f;
+
     float curDecayShape = 4.0f;
     float curAttackMs = 1.0f;
     float decayFloor = 0.0f;
-    float decayScale = 1.0f;
 
     // Band split, derived in updateDerived() from the tuning fields.
     float bandLengthScale[kNumSplitBands] = { 1.0f, 1.0f, 1.0f };
     float bandGain[kNumSplitBands] = { 1.0f, 1.0f, 1.0f };
     float bandLowCoeff = 0.0f;
     float bandHighCoeff = 0.0f;
+
+    // Reciprocal of the interval tilt's own RMS over the current pitch mix -
+    // see updateIntervalNorm().
+    float intervalGainNormInv = 1.0f;
+
+    // How loud the buffer was at each decimated position, and how loud the
+    // material has been lately - see sourceLevelGain() and
+    // densityFollowFactor().
+    std::vector<float> envTrace;
+    int envTraceSize = 0;
+    float loudRef = 0.0f;
+    float loudRefCoeff = 0.0f;
 
     std::uint32_t rngState = kRngSeed;
 

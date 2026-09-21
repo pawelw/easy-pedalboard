@@ -211,6 +211,11 @@ private:
         grain cloud alone - same insertion point as the cloud Filter, right
         after grainer.process() and before the Dry/Grains blend. */
     ee::dsp::TubeDrive driveStage;
+
+    // The interval-weighted reverb send's own copy of Drive, so the tank is
+    // fed audio coloured exactly like the cloud it was taken from. Idle
+    // whenever GrainerTuning::pitchSendPerOctave is 0.
+    ee::dsp::TubeDrive sendDrive;
     ee::dsp::HaasWidener haas; // Mono/Stereo: Haas width on the grain cloud
 
     /** The Mod tab's LFO. Not routed to anything yet - Stage 3 adds the
@@ -256,6 +261,7 @@ private:
     std::atomic<float>* freezeParam = nullptr;
     std::atomic<float>* widthParam = nullptr; // width: Mono/Stereo, Haas on the grain cloud
     std::atomic<float>* shapeParam = nullptr;
+    std::atomic<float>* smoothParam = nullptr;
     std::atomic<float>* scatterParam = nullptr;
     std::atomic<float>* reverseParam = nullptr;
     std::atomic<float>* stereoParam = nullptr;

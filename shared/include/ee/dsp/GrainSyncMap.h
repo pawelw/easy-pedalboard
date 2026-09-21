@@ -8,6 +8,41 @@
 namespace ee::dsp
 {
 
+/** Grain's Density divisions, shortest first: the shared table with four
+    faster steps in front of it, down to 1/128. Density is the one knob that
+    wants to run past 1/32 - at 120 BPM a 1/128 is 64 grains a second, where
+    the cloud stops being a rhythm and becomes a texture - and TempoDivision.h's
+    own table is also what BitBit Delay's Time and every LFO Rate select from,
+    so extending that one would move all of them. Kept here for the same reason
+    GrainSyncMap is: it is Grain's own shape of the idea.
+
+    Anything that mirrors this list (the face's envelope display in
+    plugins/bitbit-grain/jsui/src/Displays.jsx) has to be kept in step by
+    hand. */
+inline constexpr TempoDivision kGrainDensityDivisions[] = {
+    { "1/128", 0.03125f },
+    { "1/64T", 1.0f / 24.0f },
+    { "1/64",  0.0625f },
+    { "1/32T", 1.0f / 12.0f },
+    { "1/32",  0.125f },
+    { "1/16T", 1.0f / 6.0f },
+    { "1/16",  0.25f },
+    { "1/16.", 0.375f },
+    { "1/8T",  1.0f / 3.0f },
+    { "1/8",   0.5f },
+    { "1/8.",  0.75f },
+    { "1/4T",  2.0f / 3.0f },
+    { "1/4",   1.0f },
+    { "1/4.",  1.5f },
+    { "1/2T",  4.0f / 3.0f },
+    { "1/2",   2.0f },
+    { "1/2.",  3.0f },
+    { "1/1",   4.0f },
+    { "1/1.",  6.0f },
+};
+
+inline constexpr int kNumGrainDensityDivisions = static_cast<int> (std::size (kGrainDensityDivisions));
+
 /** A knob whose meaning a Sync switch flips: a free value in the knob's own
     unit, or a tempo-locked note division. One normalised 0..1 parameter backs
     both readings, so the switch only reinterprets it - the same trick RateMap
@@ -28,6 +63,11 @@ struct GrainSyncMap
     juce::NormalisableRange<float> freeRange;   ///< 0..1 -> free unit (ms, or /s)
     bool                           durationLike = true;
 
+    /** The divisions the synced reading walks, shortest first. The shared
+        table unless a knob needs its own (see kGrainDensityDivisions). */
+    const TempoDivision*           divisions    = kTempoDivisions;
+    int                            numDivisions = kNumTempoDivisions;
+
     float freeValue (float v01) const noexcept
     {
         return freeRange.convertFrom0to1 (juce::jlimit (0.0f, 1.0f, v01));
@@ -45,7 +85,7 @@ struct GrainSyncMap
         (shortest) there, so turning either knob up always speeds the effect. */
     int divisionIndex (float v01) const noexcept
     {
-        const int   last = kNumTempoDivisions - 1;
+        const int   last = numDivisions - 1;
         const float t    = juce::jlimit (0.0f, 1.0f, v01);
         const float pick = durationLike ? t : 1.0f - t;
         return juce::jlimit (0, last, juce::roundToInt (pick * static_cast<float> (last)));
@@ -54,7 +94,7 @@ struct GrainSyncMap
     /** Length of the selected division at this tempo, in seconds. */
     float divisionSeconds (float v01, double bpm) const noexcept
     {
-        return kTempoDivisions[divisionIndex (v01)].beats * static_cast<float> (60.0 / juce::jmax (1.0, bpm));
+        return divisions[divisionIndex (v01)].beats * static_cast<float> (60.0 / juce::jmax (1.0, bpm));
     }
 
     /** Length of the selected division in quarter notes - tempo-independent, for
@@ -63,7 +103,7 @@ struct GrainSyncMap
         one over this). */
     float divisionBeats (float v01) const noexcept
     {
-        return kTempoDivisions[divisionIndex (v01)].beats;
+        return divisions[divisionIndex (v01)].beats;
     }
 
     /** The value the DSP should use. A duration map returns milliseconds (scale
@@ -80,7 +120,7 @@ struct GrainSyncMap
     juce::String toText (float v01, bool synced, double bpm) const
     {
         if (synced)
-            return kTempoDivisions[divisionIndex (v01)].label;
+            return divisions[divisionIndex (v01)].label;
 
         const float f = freeValue (v01);
 

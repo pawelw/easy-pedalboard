@@ -43,10 +43,10 @@ function parseDurationMs(text) {
   return match[2] === "s" ? value * 1000 : value;
 }
 
-/** Mirrors ee::dsp::TempoDivision's own table (shared/include/ee/dsp/
-    TempoDivision.h) - only the `beats` column, since only how many of a
+/** Mirrors ee::dsp::kGrainDensityDivisions (shared/include/ee/dsp/
+    GrainSyncMap.h) - only the `beats` column, since only how many of a
     division fit in a bar is drawn here, never its label. */
-const GRAIN_SYNC_BEATS = [0.125, 1 / 6, 0.25, 0.375, 1 / 3, 0.5, 0.75, 2 / 3, 1, 1.5, 4 / 3, 2, 3, 4, 6];
+const GRAIN_SYNC_BEATS = [1 / 32, 1 / 24, 1 / 16, 1 / 12, 0.125, 1 / 6, 0.25, 0.375, 1 / 3, 0.5, 0.75, 2 / 3, 1, 1.5, 4 / 3, 2, 3, 4, 6];
 
 /** Which of GrainSyncMap's tempo divisions Destiny would land on if Sync were
     on. Density is a *rate* map there (knob up = faster), so the fastest,
@@ -66,26 +66,27 @@ function grainDivisionBeats(density01) {
     fit in a bar (a quarter note is "1/4", four of which fit in a bar of
     four beats, so it draws four - not a linear guess at Destiny's value).
 
-    Window fades those trailing copies rather than adding to their count: it
-    is how long (see GrainerConfig.h's WINDOW section) the cloud keeps
-    drawing grains from the struck attack before falling back to whatever
-    Time and Scatter are currently offering, so a short Window reads as one
-    clean pass (the trailing copies scale to nothing) and a long one as the
-    cloud still re-singing the same attack several shapes later - the same
-    geometric falloff drawn here, one Window power per step from the lead
-    grain. The lead is drawn first (left), the way a delay's own repeat
+    Feedback fades those trailing copies rather than adding to their count: it
+    is how much of each pass comes back round (see GrainerConfig.h's FEEDBACK
+    section), so at 0 the picture is one clean pass (the trailing copies scale
+    to nothing) and turned up it is the same grain re-sung several times, each
+    fainter than the last - one Feedback power per step from the lead grain.
+    (The knob's position, not its dB gain: a true -22 dB repeat would not show
+    at all.) The lead is drawn first (left), the way a delay's own repeat
     diagram reads: the struck note first, its repeats decaying away to the
     right of it. */
 export function GrainEnvelope({ accent }) {
   const [shape] = useJuceSliderValue("shape");
+  const [smooth] = useJuceSliderValue("smooth");
   const [size] = useJuceSliderValue("size");
   const [density] = useJuceSliderValue("density");
-  const [window01] = useJuceSliderValue("window");
+  const [feedback01] = useJuceSliderValue("feedback");
 
   const shapeA = useModAssignment("shape");
+  const smoothA = useModAssignment("smooth");
   const sizeA = useModAssignment("size");
   const densityA = useModAssignment("density");
-  const windowA = useModAssignment("window");
+  const feedbackA = useModAssignment("feedback");
 
   // Width comes from the readout, not from the knob position. The readout is
   // clamped to the grain length the engine will actually apply (see
@@ -105,23 +106,34 @@ export function GrainEnvelope({ accent }) {
   const sizeSpanBase =
     sizeMs == null ? size : Math.log(clampMs(sizeMs) / SIZE_MIN_MS) / Math.log(SIZE_MAX_MS / SIZE_MIN_MS);
 
-  if (shapeA || sizeA || densityA || windowA)
+  if (shapeA || smoothA || sizeA || densityA || feedbackA)
     return (
       <GrainEnvelopeLive
         accent={accent}
         shape={shape}
         shapeA={shapeA}
+        smooth={smooth}
+        smoothA={smoothA}
         density={density}
         densityA={densityA}
-        window01={window01}
-        windowA={windowA}
+        feedback01={feedback01}
+        feedbackA={feedbackA}
         sizeSpanBase={sizeSpanBase}
         size={size}
         sizeA={sizeA}
       />
     );
 
-  return <GrainEnvelopeBody accent={accent} shape={shape} density={density} window01={window01} sizeSpan={sizeSpanBase} />;
+  return (
+    <GrainEnvelopeBody
+      accent={accent}
+      shape={shape}
+      smooth={smooth}
+      density={density}
+      feedback01={feedback01}
+      sizeSpan={sizeSpanBase}
+    />
+  );
 }
 
 /** GrainEnvelope's own live subscription to the LFO's per-frame output - see
@@ -129,15 +141,16 @@ export function GrainEnvelope({ accent }) {
     the same split, and why it is a separate component (useLfoValue()
     re-renders its subscriber every frame; an unmodulated display, the common
     case, should not pay for that). */
-function GrainEnvelopeLive({ accent, shape, shapeA, density, densityA, window01, windowA, sizeSpanBase, size, sizeA }) {
+function GrainEnvelopeLive({ accent, shape, shapeA, smooth, smoothA, density, densityA, feedback01, feedbackA, sizeSpanBase, size, sizeA }) {
   const lfoValue = useLfoValue();
 
   return (
     <GrainEnvelopeBody
       accent={accent}
       shape={resolveModulated(shape, shapeA, lfoValue)}
+      smooth={resolveModulated(smooth, smoothA, lfoValue)}
       density={resolveModulated(density, densityA, lfoValue)}
-      window01={resolveModulated(window01, windowA, lfoValue)}
+      feedback01={resolveModulated(feedback01, feedbackA, lfoValue)}
       // No live duration text to read a modulated size off (see GrainEnvelope
       // above) - substitutes the raw modulated 0..1 straight in, the same
       // fallback sizeSpanBase itself uses when there is no text to ask.
@@ -149,7 +162,7 @@ function GrainEnvelopeLive({ accent, shape, shapeA, density, densityA, window01,
 /** The envelope's own drawing, given already-resolved 0..1 inputs (the base
     parameters, or their live modulated values - GrainEnvelope/GrainEnvelopeLive's
     own concern, not this component's). */
-function GrainEnvelopeBody({ accent, shape, density, window01, sizeSpan }) {
+function GrainEnvelopeBody({ accent, shape, smooth, density, feedback01, sizeSpan }) {
   const grainCount = Math.min(8, Math.max(1, Math.round(4 / grainDivisionBeats(density))));
   const width = 70 + sizeSpan * 110; // longer Size = wider grain window
   const spacing = grainCount > 1 ? (234 - width) / (grainCount - 1) : 0;
@@ -160,11 +173,11 @@ function GrainEnvelopeBody({ accent, shape, density, window01, sizeSpan }) {
         const x0 = 6 + i * Math.max(spacing, 0);
         const stepsOut = i; // 0 at the lead (left), rising going right
         const isLead = stepsOut === 0;
-        const decay = Math.pow(window01, stepsOut);
+        const decay = Math.pow(feedback01, stepsOut);
         return (
           <path
             key={i}
-            d={grainEnvelopePath(x0, width, shape)}
+            d={grainEnvelopePath(x0, width, shape, smooth)}
             stroke={accent}
             strokeWidth="1.6"
             strokeLinecap="round"
@@ -183,19 +196,30 @@ function GrainEnvelopeBody({ accent, shape, density, window01, sizeSpan }) {
 // short attack up to the peak, then a decay leaning from gentle (Shape 0,
 // Grainer's "soft" end) to a fast pluck that flattens early (Shape 1, its
 // "hard" end) - sampled into a polyline since an SVG path takes no exponent.
-function grainEnvelopePath(x0, width, shape01) {
+//
+// Smooth blends that toward Grainer's swell the way the engine does (see
+// Grainer::envelopeOf): the peak slides late into the grain (SMOOTH_PEAK, the
+// same 0.88 as GrainerTuning::smoothPeak), the rise stays a straight line and
+// the decay bends into a straight line down, so at Smooth 1 the outline is a
+// ramp with a short cut whatever Shape says.
+const SMOOTH_PEAK = 0.88;
+
+function grainEnvelopePath(x0, width, shape01, smooth01 = 0) {
   const top = 6;
   const base = 42;
+  const s = Math.min(1, Math.max(0, smooth01));
   const attackFrac = 0.5 - shape01 * 0.42; // soft: peak near mid-window, hard: near the start
+  const attackWithSmooth = attackFrac + s * (SMOOTH_PEAK - attackFrac);
   const decayShape = 0.6 + shape01 * 3.4; // soft: gentle slope, hard: steep then flat
-  const peakX = x0 + width * Math.max(0.04, attackFrac);
+  const peakX = x0 + width * Math.max(0.04, attackWithSmooth);
 
   const points = [`${x0.toFixed(1)} ${base}`, `${peakX.toFixed(1)} ${top}`];
   const steps = 16;
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
     const x = peakX + (x0 + width - peakX) * t;
-    const y = top + (base - top) * (1 - Math.exp(-decayShape * t));
+    const fall = 1 - Math.exp(-decayShape * t); // 0 at the peak, sinking toward the baseline
+    const y = top + (base - top) * (fall + s * (t - fall));
     points.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
   }
   points.push(`${(x0 + width).toFixed(1)} ${base + 4}`, `${x0.toFixed(1)} ${base + 4}`);

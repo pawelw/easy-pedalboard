@@ -71,8 +71,13 @@ constexpr int kGrainReadMarginSamples = 8;
 // Grains spawned per second. The knob is skewed so the sparse, countable end
 // gets most of the travel - past about 20 /s the changes are textural rather
 // than rhythmic.
+//
+// The ceiling is what the fastest synced division asks for, not a musical
+// limit: kGrainDensityDivisions ends at 1/128, which is 64 /s at 120 BPM and
+// 160 /s at 300. Any lower and the engine's clamp would flatten the top of the
+// division list into one rate at fast tempos.
 constexpr float kMinDensityHz = 1.0f;
-constexpr float kMaxDensityHz = 40.0f;
+constexpr float kMaxDensityHz = 200.0f;
 constexpr float kDensitySkewHz = 12.0f;
 constexpr float kDefaultDensityHz = 12.0f;
 
@@ -105,10 +110,38 @@ constexpr float kDefaultTimeMs = 300.0f;
 // is granulated again on its way round. Hard-capped below unity: the path is no
 // longer feed-forward and a gain of 1 would let a stuck level or a denormal
 // build without bound.
-//   0.30 = a couple of audible repeats                       <-- default
 //   0.92 = a long, self-thickening wash (the ceiling)
-constexpr float kDefaultFeedbackPct = 30.0f;
+//
+// The knob is a percentage on a dB taper, not on the gain: each repeat is
+// quieter than the last by the loop gain, and an ear hears that in dB, so a
+// linear knob would spend nearly all of its travel above what a delay sounds
+// like it is "on". 0 % is off, 100 % is unity (held to kMaxFeedback), and
+// everything between falls on a straight line in dB from kFeedbackFloorDb.
+//
+// Calibrated by measurement against a reference plugin whose feedback
+// knob sat at -22.5 dB, about half way: its repeats came back 20.5 dB under the
+// wet. Ours, at a nominal -22.5 dB, came back 24.0 dB under it - one tap
+// instead of its three, so less of the gain lands in the same place - so the
+// floor is -38 dB rather than -45, which puts 50 % at -19 dB and the same
+// audible amount of repeat.
+constexpr float kDefaultFeedbackPct = 0.0f;
 constexpr float kMaxFeedback = 0.92f;
+constexpr float kFeedbackFloorDb = -38.0f;
+
+/** Loop gain (0..kMaxFeedback) for the Feedback knob at `pct` percent. */
+inline float feedbackGainFor (float pct)
+{
+    const float t = std::clamp (pct * 0.01f, 0.0f, 1.0f);
+
+    if (t <= 0.0f)
+        return 0.0f;
+
+    // Straight in dB, then brought down to exactly nothing over the bottom
+    // 5 % so the knob has a real off rather than a -45 dB whisper at 0.1 %.
+    const float gain = std::pow (10.0f, kFeedbackFloorDb * (1.0f - t) * 0.05f);
+
+    return std::min (kMaxFeedback, gain * std::min (1.0f, t * 20.0f));
+}
 
 // ============================================================================
 // STRETCH  (frozen only)
@@ -130,6 +163,20 @@ constexpr float kDefaultStretchPct = 0.0f;
 // A symmetric window is deliberately not on the travel: it throws the
 // transient away and a plucked note comes back sounding reversed.
 constexpr float kDefaultShapePct = 55.0f;
+
+// ============================================================================
+// SMOOTH
+// ============================================================================
+// Morphs the grain window from Shape's - a millisecond or three of fade-in,
+// then a decay, so the start of every grain lands as a hit - toward a swell:
+// a linear fade-in that peaks late in the grain and is cut off shortly after
+// (GrainerTuning::smoothPeak), identical from grain to grain. The onset of each
+// grain is buried in the fade-in, which is what turns a chopped-up voice into a
+// held one. It costs the very transient Shape exists to keep, so it is an
+// opt-in blend, and 0 is the engine exactly as it was (bit-identical -
+// Grainer takes its untouched path for it), which is why the default is 0 and
+// not something "nicer".
+constexpr float kDefaultSmoothPct = 0.0f;
 
 // ============================================================================
 // SCATTER
@@ -195,6 +242,14 @@ constexpr float kAttackReachSeconds = 3.5f;
 // several seconds. The skew centres the knob's middle on the figure
 // kAttackReachSeconds used to be fixed at, so the default position sounds
 // the same as the old always-3.5s behaviour.
+//
+// There is no Window knob on the face any more (Feedback took its slot), and
+// the processor holds the reach at kFixedAttackReachSeconds - the shortest
+// there was, which keeps the cloud on its regular Time tap instead of
+// re-singing each onset. Measured on a vocal at 83 BPM: 0.2 s put 53 % of
+// frames on the tap at Destiny 1/32 (48 % at the old ~0.5 s default, 40 % at
+// the maximum) and 35 % at 1/8 (29 % / 26 %).
+constexpr float kFixedAttackReachSeconds = 0.2f;
 constexpr float kMinWindowSeconds = 0.2f;
 constexpr float kMaxWindowSeconds = 6.0f;
 constexpr float kWindowSkewSeconds = 3.5f;
@@ -398,7 +453,11 @@ constexpr float kDefaultReverbLoCutHz = 120.0f;
 // second for Density - and a note division. 0.5 is the middle of each skewed
 // free range, i.e. the old kDefaultGrainMs / kDefaultDensityHz landing spots.
 constexpr float kDefaultSize01 = 0.5f;
-constexpr float kDefaultDensity01 = 0.5f;
+//
+// Density's default is not 0.5 any more: its division list grew by four steps
+// at the fast end, so the midpoint moved from 1/4T to 1/8. 7/18 is the same 1/4T
+// the default has always been (index 11 of 19 from the fast end, i.e. pick 11/18).
+constexpr float kDefaultDensity01 = 7.0f / 18.0f;
 constexpr bool kDefaultSizeSync = false;
 constexpr bool kDefaultDensitySync = false;
 

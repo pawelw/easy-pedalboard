@@ -28,6 +28,7 @@ constexpr const char* kStretchID = "stretch";
 constexpr const char* kFreezeID = "freeze";
 constexpr const char* kWidthID = "width";
 constexpr const char* kShapeID = "shape";
+constexpr const char* kSmoothID = "smooth";
 constexpr const char* kScatterID = "scatter";
 constexpr const char* kReverseID = "reverse";
 constexpr const char* kStereoID = "stereo";
@@ -273,7 +274,7 @@ ee::dsp::GrainSyncMap makeDensityMap()
     namespace cfg = ee::dsp::config;
     juce::NormalisableRange<float> r (cfg::kMinDensityHz, cfg::kMaxDensityHz);
     r.setSkewForCentre (cfg::kDensitySkewHz);
-    return { r, false };
+    return { r, false, ee::dsp::kGrainDensityDivisions, ee::dsp::kNumGrainDensityDivisions };
 }
 
 /** Same shape as makeSizeMap(): a duration, so the free range is built in
@@ -325,6 +326,7 @@ BitBitGrainProcessor::BitBitGrainProcessor()
     freezeParam = apvts.getRawParameterValue (kFreezeID);
     widthParam = apvts.getRawParameterValue (kWidthID);
     shapeParam = apvts.getRawParameterValue (kShapeID);
+    smoothParam = apvts.getRawParameterValue (kSmoothID);
     scatterParam = apvts.getRawParameterValue (kScatterID);
     reverseParam = apvts.getRawParameterValue (kReverseID);
     stereoParam = apvts.getRawParameterValue (kStereoID);
@@ -440,6 +442,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
     // ee::dsp::Grainer::setAttackReachSeconds and GrainerConfig.h's WINDOW
     // section. Short is one clean pass; long is a cloud that keeps re-singing
     // the same attack for several seconds.
+    //
+    // Not on the face any more: its slot is the Feedback knob now (a cloud that
+    // keeps going after the input stops is exactly what Feedback is for). The
+    // parameter stays registered - its id is in the golden file and saved
+    // sessions carry it - but nothing reads it: the reach is fixed at
+    // GrainerConfig.h's kFixedAttackReachSeconds.
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kWindowID, 1 }, "Window", unit, cfg::kDefaultWindow01,
         juce::AudioParameterFloatAttributes()
@@ -456,11 +464,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
                                                             cfg::kDefaultWindowSync,
                                                             juce::AudioParameterBoolAttributes().withMeta (true)));
 
-    // The granular delay half - Time, Feedback and Stretch are not on the
-    // face, and run at these fixed defaults: the cloud is still a granular
-    // delay with its own recirculating tail (see ee::dsp::Grainer's own
-    // note), it just isn't a knob here - Window (above) is what the face
-    // controls for "how long does this keep going".
+    // The granular delay half. Feedback is a face knob (a dB taper - see
+    // GrainerConfig.h's FEEDBACK section); Time and Stretch are not, and run at
+    // these fixed defaults.
     auto timeRange = juce::NormalisableRange<float> (cfg::kMinTimeMs, cfg::kMaxTimeMs);
     timeRange.setSkewForCentre (cfg::kTimeSkewMs);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
@@ -670,6 +676,12 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
         juce::ParameterID { kLevelID, 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
                                                                            { return juce::String (v, 1) + " dB"; })));
+
+    // Appended last, after Level: parameter order is part of the frozen
+    // contract (tests/golden/BitBitGrain.txt), and Smooth is newer than all of
+    // them. Its place on the face is next to Shape all the same.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kSmoothID, 1 }, "Smooth", percent,
+                                                             cfg::kDefaultSmoothPct, percentAttributes));
 
     return layout;
 }
@@ -980,6 +992,8 @@ void BitBitGrainProcessor::prepareToPlay (double sampleRate, int maximumExpected
 
     driveStage.prepare (sampleRate);
     driveStage.reset();
+    sendDrive.prepare (sampleRate);
+    sendDrive.reset();
     haas.prepare (sampleRate, ee::dsp::config::kHaasDelayMs, ee::dsp::config::kHaasRampMs);
 
     delay.prepare (sampleRate);
@@ -1049,6 +1063,7 @@ void BitBitGrainProcessor::releaseResources()
 {
     grainer.reset();
     driveStage.reset();
+    sendDrive.reset();
     haas.reset();
     delay.reset();
     reverb.reset();
@@ -1100,15 +1115,14 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 #endif
 
     const double bpm = readPlayHeadBpm();
-    // Grain's own Size/Destiny/Window carry no Sync switch on the face any
-    // more - the GRAINS panel is always tempo-locked now, so these three are
-    // hardcoded true rather than read off ssync/dsync/wsync. Those three
-    // parameters are kept registered (see PluginProcessor.h's note by
-    // sizeSyncParam) purely so a preset or automation lane that still
-    // references them resolves to something; nothing here reads them.
+    // Grain's own Size/Destiny carry no Sync switch on the face any more - the
+    // GRAINS panel is always tempo-locked now, so these are hardcoded true
+    // rather than read off ssync/dsync. Those parameters (and wsync) are kept
+    // registered (see PluginProcessor.h's note by sizeSyncParam) purely so a
+    // preset or automation lane that still references them resolves to
+    // something; nothing here reads them.
     const bool sizeSynced = true;
     const bool densitySynced = true;
-    const bool windowSynced = true;
     const bool delaySynced = delaySyncParam->load() > 0.5f;
 
     // Same three transport facts BitBitTremPanProcessor reads for its own synced
@@ -1182,7 +1196,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // section, which is why Pitch's Low/Unison/High could look turned up and
     // do nothing.
 
-    // Size/Density/Window/Shape/Scatter/Reverse/Stereo/Mod/Pitch Low/Unison/
+    // Size/Density/Window/Shape/Smooth/Feedback/Scatter/Reverse/Stereo/Mod/Pitch Low/Unison/
     // High/Pitch Mix/Filter/Drive/Bit - every modulation target this pedal
     // has (Delay/Reverb's own scope cut) - are set per chunk inside the loop
     // below instead of here, each read through modulatedValue() so a
@@ -1190,13 +1204,6 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // Everything else in this section has no modulation target and stays a
     // once-per-block read, unchanged.
     grainer.setTimeMs (timeParam->load());
-    // TEMPORARY: the cloud's own feedback is held at zero whatever the hidden
-    // "feedback" parameter says. It has no knob on the face, and at its default
-    // it re-pitches each grain on the way round (220 Hz -> 440 -> 880 ...),
-    // which reads as the High octave repeating far too often. The parameter
-    // stays registered - its id and default are in the golden file - until the
-    // control is either exposed or removed.
-    grainer.setFeedback (0.0f);
     grainer.setStretch (stretchParam->load() * 0.01f);
     // Harmless to set even when Pitch is off: setPitchMix(0,1,0) inside the
     // loop below means the Low/High groups these feed are never picked either
@@ -1276,6 +1283,14 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         float* grainL = grainBuffer.getWritePointer (0);
         float* grainR = grainBuffer.getWritePointer (1);
         float* egBuf = engageBuffer.getWritePointer (0);
+        float* mono = monoBuffer.getWritePointer (0); // the reverb's send, however it is arrived at
+
+        // With the interval send weighting dialled in the tank is fed its own
+        // bus out of the engine - the same cloud, weighted per grain by how
+        // far it was transposed - instead of a fold-down of the finished one.
+        // At 0 the engine writes no bus at all and the old fold below stands,
+        // so the routing only exists while it is doing something.
+        const bool intervalSend = grainer.hasIntervalSend();
 
         // The engine's own input gate, so bypass stops recording rather than
         // muting - grains already in flight still have their source. The ramp is
@@ -1298,9 +1313,20 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // callbacks.
         grainer.setSizeMs (sizeMap.value (modulatedValue (kSizeID, sizeParam->load()), sizeSynced, bpm));
         grainer.setDensityHz (densityMap.value (modulatedValue (kDensityID, densityParam->load()), densitySynced, bpm));
-        grainer.setAttackReachSeconds (
-            windowMap.value (modulatedValue (kWindowID, windowParam->load()), windowSynced, bpm) * 0.001f);
+        // Fixed, not the Window parameter: the knob left the face (Feedback
+        // took its slot) and 0.2 s - the shortest reach there was - is what
+        // keeps the cloud on its regular Time tap rather than re-singing each
+        // onset. Whatever a session stored in Window is ignored.
+        grainer.setAttackReachSeconds (ee::dsp::config::kFixedAttackReachSeconds);
         grainer.setShape (modulatedValue (kShapeID, shapeParam->load()) * 0.01f);
+        grainer.setSmooth (modulatedValue (kSmoothID, smoothParam->load()) * 0.01f);
+
+        // The Feedback knob (it took Window's place on the face). With Pitch
+        // Low/High in the mix a repeat is re-pitched on its way round, so an
+        // octave-up grain comes back an octave higher again - the same as any
+        // pitch-shifting feedback loop, and why the taper is kept gentle.
+        grainer.setFeedback (
+            ee::dsp::config::feedbackGainFor (modulatedValue (kFeedbackID, feedbackParam->load())));
         grainer.setScatter (modulatedValue (kScatterID, scatterParam->load()) * 0.01f);
         grainer.setReverse (modulatedValue (kReverseID, reverseParam->load()) * 0.01f);
         grainer.setStereo (modulatedValue (kStereoID, stereoParam->load()) * 0.01f);
@@ -1308,6 +1334,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         grainer.setBit (modulatedValue (kBitID, bitParam->load()) * 0.01f);
         grainer.setCloudFilter (modulatedValue (kFilterID, filterParam->load()) * 0.01f);
         driveStage.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
+        sendDrive.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
 
         // Pitch Mix belongs to the scale alone, and it colours the High group's
         // interval rather than its weight: closed, every up-grain is a plain
@@ -1324,7 +1351,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
                              modulatedValue (kPitchHighID, pitchHighParam->load()));
 
         grainTransport.ppqStart = ppqStart + static_cast<double> (offset) * grainTransport.ppqPerSample;
-        grainer.process (grainL, grainR, grainL, grainR, chunk, grainTransport);
+        grainer.process (grainL, grainR, grainL, grainR, intervalSend ? mono : nullptr, chunk, grainTransport);
 
         // Grain-cloud-only, like the cloud Filter above it - the dry path
         // never reaches this stage.
@@ -1376,6 +1403,14 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
             sendL[i] = wetL * eg; // grain-only, gated: TapeDelay reads before it writes
             sendR[i] = wetR * eg;
 
+            if (intervalSend)
+            {
+                // The send bus at the same level and behind the same gate the
+                // cloud it was weighted from is mixed in at.
+                float s = mono[i] * gw * eg;
+                mono[i] = std::isfinite (s) ? s : 0.0f;
+            }
+
             // In place, so Delay's own crossfade and Reverb's own tap below
             // both read the same already-scaled, already-guarded wet signal
             // Delay's send just used. Nothing else reads grainL/R past this
@@ -1393,7 +1428,6 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         float* delR = delayWetBuffer.getWritePointer (1);
         delay.process (sendL, sendR, delL, delR, chunk);
 
-        float* mono = monoBuffer.getWritePointer (0);
         float* postL = stageBuffer.getWritePointer (0); // reuse: post-delay grain chain
         float* postR = stageBuffer.getWritePointer (1);
 
@@ -1410,8 +1444,15 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
             // grainL/R above), never the dry signal and never Delay's repeats
             // either - gated by eg, same as Delay's own send, so bypass stops
             // feeding the tank rather than cutting it off mid-ring.
-            mono[i] = 0.5f * (grainL[i] + grainR[i]) * eg;
+            if (! intervalSend)
+                mono[i] = 0.5f * (grainL[i] + grainR[i]) * eg;
         }
+
+        // Drive on the weighted bus too, so the tank hears the cloud coloured
+        // as it is downstream. Haas is deliberately not repeated: its side
+        // content cancels in exactly this fold-down by design.
+        if (intervalSend)
+            sendDrive.process (mono, nullptr, chunk);
 
         float* verbL = verbBuffer.getWritePointer (0);
         float* verbR = verbBuffer.getWritePointer (1);

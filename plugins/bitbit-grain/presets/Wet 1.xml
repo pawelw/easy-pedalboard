@@ -2,7 +2,7 @@
 
 <PARAMETERS stateVersion="1">
   <PARAM id="size" value="0.35714287"/>
-  <PARAM id="density" value="0.85714287"/>
+  <PARAM id="density" value="0.66666667"/>
   <PARAM id="window" value="0.5"/>
   <PARAM id="ssync" value="1"/>
   <PARAM id="dsync" value="1"/>
@@ -50,4 +50,5 @@
   <PARAM id="delon" value="0"/>
   <PARAM id="revon" value="1"/>
   <PARAM id="level" value="0"/>
+  <PARAM id="smooth" value="0"/>
 </PARAMETERS>
