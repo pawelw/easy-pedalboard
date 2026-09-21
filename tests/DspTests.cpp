@@ -3815,6 +3815,9 @@ void testGrainerGridLiveTapsWholeSixteenths()
 
         auto tuning = grainer.getTuning();
         tuning.attackShare = 0.0f;
+        // This test is about the Time tap, which followDensity replaces while
+        // the transport plays - see testGrainerFollowDensityReadsOnTheGrid.
+        tuning.followDensity = 0.0f;
         grainer.setTuning (tuning);
 
         std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
@@ -3899,6 +3902,132 @@ void testGrainerGridLiveTapsWholeSixteenths()
                  moved, counted, onSomeSixteenth / juce::jmax (1.0e-30, total));
     check (moved >= counted / 5 && moved <= (4 * counted) / 5, "Scatter 25 % did not move the live grid tap");
     check (onSomeSixteenth / juce::jmax (1.0e-30, total) > 0.95, "a scattered live grid tap fell between sixteenths");
+}
+
+void testGrainerFollowDensityReadsOnTheGrid()
+{
+    std::printf ("Grainer followDensity (the read point follows the Density division):\n");
+
+    // 120 bpm, one tone per sixteenth, Smooth and attack capture off. A grain
+    // spawned at ppq t reads from the sixteenth-note gridline at or before one
+    // grain period ago: at 1/32 (period = half a sixteenth) that alternates
+    // between one and two periods back, at 1/8 (two sixteenths) it is always
+    // two sixteenths back.
+    const double ppqPerSample = 2.0 / kSampleRate;
+    const int sixteenth = static_cast<int> (0.25 / ppqPerSample);
+    const auto toneHz = [] (int j) { return 400.0 + 100.0 * (((j % 12) + 12) % 12); };
+
+    const auto source = [&] (int n)
+    {
+        return 0.5f
+               * static_cast<float> (std::sin (2.0 * juce::MathConstants<double>::pi * toneHz (n / sixteenth) * n
+                                               / kSampleRate));
+    };
+
+    const int slots = 60;
+
+    const auto render = [&] (double cyclesPerQuarter, bool follow)
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (30.0f);
+        grainer.setDensityHz (static_cast<float> (cyclesPerQuarter * 2.0));
+        grainer.setTimeMs (300.0f);
+        grainer.setFeedback (0.0f);
+        grainer.setScatter (0.0f);
+        grainer.setReverse (0.0f);
+        grainer.setStereo (0.0f);
+
+        auto tuning = grainer.getTuning();
+        tuning.attackShare = 0.0f;
+        tuning.followDensity = follow ? 1.0f : 0.0f;
+        grainer.setTuning (tuning);
+
+        std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+        std::vector<float> rendered;
+
+        for (int n = 0; n < slots * sixteenth; n += kBlock)
+        {
+            for (int i = 0; i < kBlock; ++i)
+                inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = source (n + i);
+
+            ee::dsp::Grainer::Transport transport;
+            transport.synced = true;
+            transport.playing = true;
+            transport.ppqStart = n * ppqPerSample;
+            transport.cyclesPerQuarter = cyclesPerQuarter;
+            transport.ppqPerSample = ppqPerSample;
+            transport.grid = true;
+
+            grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock, transport);
+            rendered.insert (rendered.end(), outL.begin(), outL.end());
+        }
+
+        return rendered;
+    };
+
+    // The sixteenth whose tone dominates the grain that spawned `startSample`
+    // into the render, searched over the few it could plausibly be.
+    const auto tapOf = [&] (const std::vector<float>& rendered, int startSample, int spawnSixteenth)
+    {
+        const std::vector<float> grain (rendered.begin() + startSample + 96, rendered.begin() + startSample + 1300);
+        double best = 0.0;
+        int bestBack = 0;
+        for (int back = 0; back <= 5; ++back)
+        {
+            const double p = goertzelPower (grain, toneHz (spawnSixteenth - back), kSampleRate);
+            if (p > best)
+            {
+                best = p;
+                bestBack = back;
+            }
+        }
+        return bestBack;
+    };
+
+    // 1/32: spawns every half sixteenth. Even ones (on a sixteenth) read one
+    // sixteenth back, odd ones (half way through one) read that same sixteenth.
+    {
+        const auto rendered = render (8.0, true);
+        int right = 0, counted = 0;
+        for (int k = 16; k < 2 * (slots - 3); ++k)
+        {
+            const int spawnSixteenth = k / 2;
+            const int expected = (k % 2 == 0) ? 1 : 0;
+            right += tapOf (rendered, k * sixteenth / 2, spawnSixteenth) == expected ? 1 : 0;
+            ++counted;
+        }
+        std::printf ("  1/32: %d of %d grains read the sixteenth the rule names\n", right, counted);
+        check (right >= (counted * 9) / 10, "at 1/32 the read point did not alternate one and two periods back");
+    }
+
+    // 1/8: spawns every two sixteenths, always reading two sixteenths back.
+    {
+        const auto rendered = render (2.0, true);
+        int right = 0, counted = 0;
+        for (int k = 8; k < slots / 2 - 2; ++k)
+        {
+            right += tapOf (rendered, k * 2 * sixteenth, 2 * k) == 2 ? 1 : 0;
+            ++counted;
+        }
+        std::printf ("  1/8: %d of %d grains read two sixteenths back\n", right, counted);
+        check (right >= (counted * 9) / 10, "at 1/8 the read point did not sit two sixteenths back");
+    }
+
+    // With the switch off the same 1/32 setup falls back to the Time tap (300
+    // ms = two sixteenths after rounding), whatever the division is.
+    {
+        const auto rendered = render (8.0, false);
+        int onTimeTap = 0, counted = 0;
+        for (int k = 16; k < 2 * (slots - 3); k += 2)
+        {
+            onTimeTap += tapOf (rendered, k * sixteenth / 2, k / 2) == 2 ? 1 : 0;
+            ++counted;
+        }
+        std::printf ("  switch off: %d of %d grains on the Time tap\n", onTimeTap, counted);
+        check (onTimeTap >= (counted * 9) / 10, "with followDensity off the read point left the Time tap");
+    }
 }
 
 void testGrainerAttackLeadsWithOctaves()
@@ -4325,6 +4454,8 @@ void testGrainerLowGroupIsOctavesOnly()
 
     std::printf ("  down candidates: %d\n", grainer.getDownCandidateCount());
     check (allOctaves, "the Low group landed on something that was not a whole octave down");
+    check (grainer.getDownCandidateCount() == 1 && grainer.getDownCandidate (0) == -12.0f,
+           "the Low group offered anything but the one octave down");
 }
 
 void testGrainerHighGroupIsTheScaleAnOctaveUp()
@@ -5260,6 +5391,7 @@ int main()
     testGrainerGridFrozenCapturesEachBar();
     std::printf ("\n");
     testGrainerGridLiveTapsWholeSixteenths();
+    testGrainerFollowDensityReadsOnTheGrid();
     std::printf ("\n");
     testGrainerAttackLeadsWithOctaves();
     std::printf ("\n");

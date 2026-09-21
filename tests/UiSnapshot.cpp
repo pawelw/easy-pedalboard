@@ -529,8 +529,8 @@ public:
                                                                  juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
                                                                  cfg::kDefaultStretchPct));
         layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "freeze", 1 }, "Freeze", false));
-        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { "width", 1 }, "Stereo Width",
-                                                                cfg::kDefaultStereoWidth));
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "width", 1 }, "Wide", percent,
+                                                                 cfg::kDefaultWidePct, percentAttributes));
 
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "shape", 1 }, "Shape", percent,
                                                                  cfg::kDefaultShapePct, percentAttributes));

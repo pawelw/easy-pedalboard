@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Logo, JucePresetBar, PowerToggle, Pill, Readout, VerticalTabs } from "@synthpeak/pedal-ui";
+import { Logo, JucePresetBar, PowerToggle, Readout, VerticalTabs } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceFader,
@@ -13,6 +13,7 @@ import {
 import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } from "./Displays.jsx";
 import ModTab from "./ModTab.jsx";
 import ModdableKnob from "./ModdableKnob.jsx";
+import Cosmos from "./Cosmos.jsx";
 import "./GrainFace.css";
 
 const FACE_TABS = [
@@ -29,7 +30,10 @@ const FACE_TABS = [
 // *are* plain CSS properties and read the token fine.
 const GRAIN = "#b39bd8";
 const PITCH = "#e78fb3";
-const RANDOM = "#dfa878";
+// Was an orange (#dfa878); now the purple that Grain, Pitch and Random's displays,
+// knob arcs and Random's title all share. Still the "random" token in
+// packages/pedal-ui/src/tokens.css for anything else that reads it.
+const RANDOM = "#6a509c";
 // Delay now shares Reverb's own blue rather than its old green - one colour,
 // not two independently-declared literals that could drift apart.
 const REVERB = "#7fd2d8";
@@ -37,7 +41,7 @@ const DELAY = REVERB;
 const MIXER = "#c9cede";
 
 // The knob value arc (--pui-soft-lit) on Grain/Pitch/Random is unified to
-// this instead of each section's own accent - the same orange the three
+// this instead of each section's own accent - the same purple the three
 // displays above them now share. Delay/Reverb keep their own accent lit.
 const KNOB_LIT = RANDOM;
 
@@ -45,17 +49,6 @@ const KNOB_LIT = RANDOM;
 // rather than Mixer's own pale MIXER lit, the way a drive/overdrive control
 // reads on hardware.
 const DRIVE_LIT = "#c60000";
-
-/** Stereo adds Haas width to the grain cloud - GrainerConfig.h's MONO /
-    STEREO. The plain shared Pill (the same one every other pill on this face
-    uses) rather than SegmentSwitch's own bigger chrome-button look - it used
-    to be sized and coloured like Live/Freeze in the page header, which read
-    heavier than this section-header spot wants. `label` switches with the
-    state the way JuceChoicePill's does. */
-function WidthPill() {
-  const [wide, setWide] = useJuceToggleValue("width");
-  return <Pill label={wide ? "Wide" : "Narrow"} pressed={wide} onClick={() => setWide(!wide)} />;
-}
 
 /** A section's power toggle, bound to its own on/off parameter - Delay and
     Reverb only (Grain/Pitch/Random carry no toggle at all, per the handoff).
@@ -91,7 +84,6 @@ function GrainSection() {
       <div className="pg-section__head">
         <span className="pg-section__name">Grain</span>
         <span className="pg-section__spacer" />
-        <WidthPill />
       </div>
       <div className="pg-section__display">
         <GrainEnvelope accent={RANDOM} />
@@ -99,9 +91,12 @@ function GrainSection() {
       <div className="pg-section__knobs">
         <ModdableKnob parameterId="density" caption="Destiny" variant="flat" size={30} />
         <ModdableKnob parameterId="size" caption="Size" variant="flat" size={30} />
+        {/* Not a ModdableKnob: Wide is set once per block, not per modulation
+            chunk, so there is no LFO route for it to accept. */}
+        <JuceKnob parameterId="width" caption="Wide" variant="flat" size={30} />
       </div>
       <div className="pg-section__knobs">
-        <ModdableKnob parameterId="feedback" caption="Feedback" variant="flat" size={30} />
+        <ModdableKnob parameterId="feedback" caption="Fback" variant="flat" size={30} />
         <ModdableKnob parameterId="smooth" caption="Smooth" variant="flat" size={30} />
         <ModdableKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
       </div>
@@ -161,7 +156,7 @@ function RandomSection() {
         <RandomField accent={RANDOM} />
       </div>
       <div className="pg-section__knobs pg-random__lead-row">
-        <ModdableKnob parameterId="stereo" caption="Stereo" variant="flat" size={38} />
+        <ModdableKnob parameterId="stereo" caption="Spray" variant="flat" size={38} />
         <ModdableKnob parameterId="reverse" caption="Reverse" variant="flat" size={30} />
       </div>
       <div className="pg-section__knobs">
@@ -338,19 +333,17 @@ function Header() {
           <Logo size={32} />
           <h1 className="pg-header__title">BitBit Grains</h1>
         </div>
-        <div className="pg-header__right">
-          <div className="pg-header__level">
-            <JuceFader parameterId="level" label="LEVEL" resetTo={0} length={88} />
-          </div>
-          <PowerToggle on={on} onToggle={setOn} ariaLabel="Bypass" />
-        </div>
-      </div>
-      <div className="pg-header__row">
         <div className="pg-header__live">
           <SegmentSwitch parameterId="freeze" offLabel="Live" onLabel="Freeze" />
         </div>
         <div className="pg-header__presets">
           <JucePresetBar variant="separated" />
+        </div>
+        <div className="pg-header__right">
+          <div className="pg-header__level">
+            <JuceFader parameterId="level" label="LEVEL" resetTo={0} length={88} />
+          </div>
+          <PowerToggle on={on} onToggle={setOn} ariaLabel="Bypass" />
         </div>
       </div>
     </div>
@@ -392,6 +385,8 @@ export default function GrainFace() {
             </div>
           </div>
         </div>
+        <div className="pg-vdivider" />
+        <Cosmos />
         <div className="pg-vdivider" />
         <MixerSection />
       </div>

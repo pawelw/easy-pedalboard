@@ -140,7 +140,7 @@ BitBitGrainWebEditor::BitBitGrainWebEditor (BitBitGrainProcessor& p)
     setSize (588, 620);
     setResizable (false, false);
 
-    startTimerHz (10); // just fast enough that a live tempo change isn't stale for long
+    startTimerHz (30); // 10 Hz would do for the tempo readouts; the cosmos panel wants the grain feed livelier
 
 #if EE_GRAIN_TUNER
     // Flip to true to bring the tuning panel back without reconfiguring CMake.
@@ -172,6 +172,45 @@ void BitBitGrainWebEditor::timerCallback()
     webView.emitEventIfBrowserIsVisible ("grainTempo", juce::var (payload));
 
     webView.emitEventIfBrowserIsVisible ("lfoPhase", processorRef.lfoPhase01());
+
+    // The cosmos panel's feed: every grain born since the last tick, plus the
+    // output level. Sent at the timer's rate, so the page smooths between. Only
+    // while the editor is actually on screen: a hidden or backgrounded window
+    // would otherwise be handed a stream nothing is drawing, and show it all at
+    // once when it comes back.
+    if (! isShowing())
+    {
+        lastGrainEvent = processorRef.grainEngine().grainEventCount();
+    }
+    else
+    {
+        const auto& engine = processorRef.grainEngine();
+        const uint32_t count = engine.grainEventCount();
+
+        // Fell a whole ring behind (editor hidden, host stalled): skip to the
+        // oldest event still intact rather than replaying overwritten ones.
+        if (count - lastGrainEvent > ee::dsp::Grainer::kGrainEventRing)
+            lastGrainEvent = count - ee::dsp::Grainer::kGrainEventRing;
+
+        juce::Array<juce::var> grains;
+        for (; lastGrainEvent != count && grains.size() < 48; ++lastGrainEvent)
+        {
+            const auto e = engine.grainEventAt (lastGrainEvent);
+            juce::Array<juce::var> row;
+            row.add (e.octaves);
+            row.add (e.pan);
+            row.add (e.level);
+            row.add (e.seconds);
+            row.add (e.backwards ? 1 : 0);
+            row.add (e.spread);
+            grains.add (juce::var (row));
+        }
+
+        auto* cosmos = new juce::DynamicObject();
+        cosmos->setProperty ("grains", grains);
+        cosmos->setProperty ("level", processorRef.outputLevel());
+        webView.emitEventIfBrowserIsVisible ("grainCosmos", juce::var (cosmos));
+    }
 
     const int generation = processorRef.lfoStateGeneration();
     if (generation != lastLfoGeneration)

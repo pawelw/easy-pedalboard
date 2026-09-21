@@ -118,15 +118,15 @@ constexpr float kDefaultTimeMs = 300.0f;
 // like it is "on". 0 % is off, 100 % is unity (held to kMaxFeedback), and
 // everything between falls on a straight line in dB from kFeedbackFloorDb.
 //
-// Calibrated by measurement against a reference plugin whose feedback
-// knob sat at -22.5 dB, about half way: its repeats came back 20.5 dB under the
-// wet. Ours, at a nominal -22.5 dB, came back 24.0 dB under it - one tap
-// instead of its three, so less of the gain lands in the same place - so the
-// floor is -38 dB rather than -45, which puts 50 % at -19 dB and the same
-// audible amount of repeat.
+// Calibrated by measurement against a reference plugin whose feedback knob
+// sat at -22.5 dB, about half way: its repeats came back 20.5 dB under the
+// wet. With the grains reading on the Density grid (GrainerTuning::
+// followDensity), ours at a nominal -19 dB came back 18.8 dB under it - the
+// repeats land on the same three taps it has - so the floor is -41.5 dB, which
+// puts 50 % at -20.75 dB and the same audible amount of repeat.
 constexpr float kDefaultFeedbackPct = 0.0f;
 constexpr float kMaxFeedback = 0.92f;
-constexpr float kFeedbackFloorDb = -38.0f;
+constexpr float kFeedbackFloorDb = -41.5f;
 
 /** Loop gain (0..kMaxFeedback) for the Feedback knob at `pct` percent. */
 inline float feedbackGainFor (float pct)
@@ -268,19 +268,20 @@ constexpr float kMinRecaptureSeconds = 0.5f;
 constexpr float kFreezeLoopSeconds = 3.0f;
 
 // ============================================================================
-// MONO / STEREO  (Haas width on the grain cloud)
+// WIDE  (Haas width on the grain cloud)
 // ============================================================================
-// The header switch beside Live/Freeze. Mono leaves the cloud exactly as the engine and Drive
-// made it (Random's Stereo knob still pans grains). Stereo runs it through
-// ee::dsp::HaasWidener: the side channel gets the mid back 6.83 ms late, which
-// widens the image and cancels exactly in a mono fold-down. Delay and width
-// are the ones measured on the reference grainer this was modelled on (side
-// gain ~0.9 there; full width here, as asked for). Cloud only - the dry path
-// never reaches it.
+// The Wide knob on Grain's first row, 0..100 %. At 0 it leaves the cloud exactly
+// as the engine and Drive made it (Random's Spray knob - the `stereo` parameter
+// - still pans grains). Above 0 it runs the cloud through
+// ee::dsp::HaasWidener: the side channel gets the mid back 6.83 ms late, scaled
+// by the knob, which widens the image and cancels exactly in a mono fold-down.
+// Delay is the one measured on the reference grainer this was modelled on
+// (side gain ~0.9 there; 100 % here is full width, as asked for). Cloud only -
+// the dry path never reaches it.
 constexpr float kHaasDelayMs = 6.83f;
 constexpr float kHaasWidth = 1.0f;
 constexpr float kHaasRampMs = 20.0f;
-constexpr bool kDefaultStereoWidth = false;
+constexpr float kDefaultWidePct = 0.0f;
 
 // ============================================================================
 // GRID  (grain read points on the tempo grid)

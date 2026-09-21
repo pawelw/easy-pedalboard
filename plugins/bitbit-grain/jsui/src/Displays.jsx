@@ -165,6 +165,8 @@ function GrainEnvelopeLive({ accent, shape, shapeA, smooth, smoothA, density, de
 function GrainEnvelopeBody({ accent, shape, smooth, density, feedback01, sizeSpan }) {
   const grainCount = Math.min(8, Math.max(1, Math.round(4 / grainDivisionBeats(density))));
   const width = 70 + sizeSpan * 110; // longer Size = wider grain window
+  // The grain's real length, for the swell's fixed-millisecond fade-in.
+  const lengthMs = SIZE_MIN_MS * Math.pow(SIZE_MAX_MS / SIZE_MIN_MS, Math.min(1, Math.max(0, sizeSpan)));
   const spacing = grainCount > 1 ? (234 - width) / (grainCount - 1) : 0;
 
   return (
@@ -177,7 +179,7 @@ function GrainEnvelopeBody({ accent, shape, smooth, density, feedback01, sizeSpa
         return (
           <path
             key={i}
-            d={grainEnvelopePath(x0, width, shape, smooth)}
+            d={grainEnvelopePath(x0, width, shape, smooth, lengthMs)}
             stroke={accent}
             strokeWidth="1.6"
             strokeLinecap="round"
@@ -198,19 +200,26 @@ function GrainEnvelopeBody({ accent, shape, smooth, density, feedback01, sizeSpa
 // "hard" end) - sampled into a polyline since an SVG path takes no exponent.
 //
 // Smooth blends that toward Grainer's swell the way the engine does (see
-// Grainer::envelopeOf): the peak slides late into the grain (SMOOTH_PEAK, the
-// same 0.88 as GrainerTuning::smoothPeak), the rise stays a straight line and
-// the decay bends into a straight line down, so at Smooth 1 the outline is a
-// ramp with a short cut whatever Shape says.
-const SMOOTH_PEAK = 0.88;
+// Grainer::envelopeOf): a linear fade-in of a fixed number of milliseconds, a
+// hold, then a short cut - the same two times whatever the grain length
+// (GrainerTuning::smoothAttackMs / smoothReleaseMs, mirrored here), squeezed
+// only when the grain is too short to hold both. So on a long grain the fade-in
+// is a small part of the outline and the hold fills the rest.
+const SMOOTH_ATTACK_MS = 73;
+const SMOOTH_RELEASE_MS = 17;
 
-function grainEnvelopePath(x0, width, shape01, smooth01 = 0) {
+function grainEnvelopePath(x0, width, shape01, smooth01 = 0, lengthMs = 90) {
   const top = 6;
   const base = 42;
   const s = Math.min(1, Math.max(0, smooth01));
   const attackFrac = 0.5 - shape01 * 0.42; // soft: peak near mid-window, hard: near the start
-  const attackWithSmooth = attackFrac + s * (SMOOTH_PEAK - attackFrac);
   const decayShape = 0.6 + shape01 * 3.4; // soft: gentle slope, hard: steep then flat
+
+  const squeeze = Math.min(1, lengthMs / (SMOOTH_ATTACK_MS + SMOOTH_RELEASE_MS));
+  const swellAttackFrac = (SMOOTH_ATTACK_MS * squeeze) / lengthMs;
+  const swellHold = Math.min(0.98, Math.max(0, 1 - (SMOOTH_RELEASE_MS * squeeze) / (lengthMs * (1 - swellAttackFrac))));
+
+  const attackWithSmooth = attackFrac + s * (swellAttackFrac - attackFrac);
   const peakX = x0 + width * Math.max(0.04, attackWithSmooth);
 
   const points = [`${x0.toFixed(1)} ${base}`, `${peakX.toFixed(1)} ${top}`];
@@ -219,7 +228,8 @@ function grainEnvelopePath(x0, width, shape01, smooth01 = 0) {
     const t = i / steps;
     const x = peakX + (x0 + width - peakX) * t;
     const fall = 1 - Math.exp(-decayShape * t); // 0 at the peak, sinking toward the baseline
-    const y = top + (base - top) * (fall + s * (t - fall));
+    const swell = t < swellHold ? 0 : (t - swellHold) / (1 - swellHold); // held, then cut
+    const y = top + (base - top) * (fall + s * (swell - fall));
     points.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
   }
   points.push(`${(x0 + width).toFixed(1)} ${base + 4}`, `${x0.toFixed(1)} ${base + 4}`);
@@ -303,10 +313,8 @@ const RANDOM_DOTS = [
     distance from the centre line (0 collapses the whole field onto it, 1 is
     the full spread above); Scatter sets how far and how fast the grains jitter
     - it is exactly the engine's own per-grain timing/position jitter, so 0
-    holds them still; Reverse mirrors whatever fraction of the field (by
-    left-to-right order) that knob calls for, so that many grains both drift
-    and taper the other way, standing in for that fraction playing backwards.
-    Each grain is drawn with the same steep-attack/long-decay lean as
+    holds them still. Reverse is not drawn: a reversed grain looks and drifts
+    like any other. Each grain is drawn with the same steep-attack/long-decay lean as
     GrainEnvelope above - a fat rounded head tapering to a thin tail - rather
     than a plain dot, so the two displays read as the same shape.
 
@@ -320,53 +328,48 @@ const RANDOM_DOTS = [
     bend the curve going forward, never relocate a point already drawn. */
 export function RandomField({ accent }) {
   const [stereo] = useJuceSliderValue("stereo");
-  const [reverse] = useJuceSliderValue("reverse");
   const [scatter] = useJuceSliderValue("scatter");
 
   const stereoA = useModAssignment("stereo");
-  const reverseA = useModAssignment("reverse");
   const scatterA = useModAssignment("scatter");
 
-  if (stereoA || reverseA || scatterA)
+  if (stereoA || scatterA)
     return (
       <RandomFieldLive
         accent={accent}
         stereo={stereo}
         stereoA={stereoA}
-        reverse={reverse}
-        reverseA={reverseA}
         scatter={scatter}
         scatterA={scatterA}
       />
     );
 
-  return <RandomFieldBody accent={accent} stereo={stereo} reverse={reverse} scatter={scatter} />;
+  return <RandomFieldBody accent={accent} stereo={stereo} scatter={scatter} />;
 }
 
 /** RandomField's own live subscription to the LFO's per-frame output - see
     GrainEnvelopeLive's own note on why this split exists. Stacks on top of
     RandomFieldBody's own animation frame loop (the grains' jitter, a
     different and unrelated motion) rather than replacing it - this one only
-    re-resolves the three knob-derived numbers the jitter loop and the layout
+    re-resolves the two knob-derived numbers the jitter loop and the layout
     below already read every frame; it does not touch how the jitter itself
     moves. */
-function RandomFieldLive({ accent, stereo, stereoA, reverse, reverseA, scatter, scatterA }) {
+function RandomFieldLive({ accent, stereo, stereoA, scatter, scatterA }) {
   const lfoValue = useLfoValue();
 
   return (
     <RandomFieldBody
       accent={accent}
       stereo={resolveModulated(stereo, stereoA, lfoValue)}
-      reverse={resolveModulated(reverse, reverseA, lfoValue)}
       scatter={resolveModulated(scatter, scatterA, lfoValue)}
     />
   );
 }
 
-function RandomFieldBody({ accent, stereo, reverse, scatter }) {
+function RandomFieldBody({ accent, stereo, scatter }) {
   const n = RANDOM_DOTS.length;
-  const liveRef = useRef({ reverse, scatter });
-  liveRef.current = { reverse, scatter };
+  const liveRef = useRef({ scatter });
+  liveRef.current = { scatter };
   const dotRefs = useRef([]);
 
   useEffect(() => {
@@ -377,7 +380,7 @@ function RandomFieldBody({ accent, stereo, reverse, scatter }) {
     function tick(now) {
       const dt = (now - last) / 1000;
       last = now;
-      const { reverse, scatter } = liveRef.current;
+      const { scatter } = liveRef.current;
       // Grainer::setScatter docs 0 as "metronomic, identical grains" - no
       // jitter at all, not just a small one, so this has no floor.
       const amplitude = scatter * 22; // px of drift travel
@@ -385,8 +388,7 @@ function RandomFieldBody({ accent, stereo, reverse, scatter }) {
 
       for (let i = 0; i < n; i++) {
         phase[i] += speed * dt;
-        const reversed = n > 1 && i / (n - 1) < reverse;
-        const dx = Math.sin(phase[i]) * amplitude * (reversed ? -1 : 1);
+        const dx = Math.sin(phase[i]) * amplitude;
         const el = dotRefs.current[i];
         if (el) el.style.transform = `translate(-50%, -50%) translateX(${dx.toFixed(2)}px)`;
       }
@@ -403,7 +405,6 @@ function RandomFieldBody({ accent, stereo, reverse, scatter }) {
       <span className="pg-field__side pg-field__side--l">L</span>
       <span className="pg-field__side pg-field__side--r">R</span>
       {RANDOM_DOTS.map((d, i) => {
-        const reversed = n > 1 && i / (n - 1) < reverse;
         const top = 50 + (d.top - 50) * stereo;
         const w = d.size * 2.6;
         const h = d.size * 1.5;
@@ -414,7 +415,7 @@ function RandomFieldBody({ accent, stereo, reverse, scatter }) {
             className="pg-field__dot"
             style={{ left: d.left, top: `${top}%`, width: w, height: h, opacity: d.opacity }}
           >
-            <svg viewBox="0 0 14 8" width="100%" height="100%" style={{ transform: reversed ? "scaleX(-1)" : undefined }}>
+            <svg viewBox="0 0 14 8" width="100%" height="100%">
               <path
                 d="M1 4 C1 1.9 3.3 1 5.6 1 C9.6 1 13 2.5 13 4 C13 5.5 9.6 7 5.6 7 C3.3 7 1 6.1 1 4 Z"
                 fill={accent}

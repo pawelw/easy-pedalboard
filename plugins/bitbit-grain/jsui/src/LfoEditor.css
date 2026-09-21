@@ -1,6 +1,6 @@
 /* The Mod tab's own accent - a green independent of whichever section's
    knob is receiving the modulation, and of Grain/Pitch/Random's shared
-   orange (KNOB_LIT). Also feeds --pui-soft-lit below, so the Rate knob's
+   purple (KNOB_LIT). Also feeds --pui-soft-lit below, so the Rate knob's
    own value arc matches the curve/point colour instead of inheriting
    whatever ambient --pui-soft-lit this tab happens to sit under. */
 .pg-lfo {

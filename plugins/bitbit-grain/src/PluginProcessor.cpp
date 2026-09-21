@@ -483,10 +483,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kFreezeID, 1 }, "Freeze", false));
 
-    // Mono/Stereo, beside Live/Freeze: Stereo adds the Haas width to the grain
-    // cloud - see GrainerConfig.h's MONO / STEREO.
-    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kWidthID, 1 }, "Stereo Width",
-                                                            cfg::kDefaultStereoWidth));
+    // Wide, on Grain's first row: how much Haas width the grain cloud gets - see
+    // GrainerConfig.h's WIDE. (Was a Mono/Stereo switch; the id is unchanged.)
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kWidthID, 1 }, "Wide", percent,
+                                                             cfg::kDefaultWidePct, percentAttributes));
 
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kShapeID, 1 }, "Shape", percent,
                                                              cfg::kDefaultShapePct, percentAttributes));
@@ -1210,7 +1210,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // way.
     grainer.setScale (juce::roundToInt (scaleParam->load()), juce::roundToInt (rootParam->load()));
     grainer.setFreeze (freezeParam->load() > 0.5f);
-    haas.setWidth (widthParam->load() > 0.5f ? ee::dsp::config::kHaasWidth : 0.0f);
+    haas.setWidth (widthParam->load() * 0.01f * ee::dsp::config::kHaasWidth);
 
     const float leftSecs = delayMap.value (leftTimeParam->load(), delaySynced, bpm) * 0.001f;
     const float rightSecs = delayMap.value (rightTimeParam->load(), delaySynced, bpm) * 0.001f;
@@ -1273,6 +1273,8 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     const int step = modRouter.hasAssignments() ? juce::jmin (juce::jmin (maxBlock, scratch), kModChunk)
                                                 : juce::jmin (maxBlock, scratch);
 
+    float wetPeak = 0.0f; // the cloud as mixed in, for the face's cosmos panel only
+
     for (int offset = 0; offset < numSamples; offset += step)
     {
         const int chunk = juce::jmin (step, numSamples - offset);
@@ -1325,8 +1327,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // Low/High in the mix a repeat is re-pitched on its way round, so an
         // octave-up grain comes back an octave higher again - the same as any
         // pitch-shifting feedback loop, and why the taper is kept gentle.
-        grainer.setFeedback (
-            ee::dsp::config::feedbackGainFor (modulatedValue (kFeedbackID, feedbackParam->load())));
+        grainer.setFeedback (ee::dsp::config::feedbackGainFor (modulatedValue (kFeedbackID, feedbackParam->load())));
         grainer.setScatter (modulatedValue (kScatterID, scatterParam->load()) * 0.01f);
         grainer.setReverse (modulatedValue (kReverseID, reverseParam->load()) * 0.01f);
         grainer.setStereo (modulatedValue (kStereoID, stereoParam->load()) * 0.01f);
@@ -1417,6 +1418,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
             // point, and the next chunk refills them from the input.
             grainL[i] = wetL;
             grainR[i] = wetR;
+            wetPeak = juce::jmax (wetPeak, std::abs (wetL), std::abs (wetR));
         }
 
         // Delay: the gated grain-only send into the delay line, blended
@@ -1513,6 +1515,17 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         float* outL = buffer.getWritePointer (0);
         float* outR = numOut > 1 ? buffer.getWritePointer (1) : outL;
         outputLimiter.process (outL, outR, numSamples);
+    }
+
+    {
+        // Fast up, slow down: the reader polls at ~30 Hz, so a decay of about
+        // 0.12 s keeps a short hit visible to it while still reading as silence
+        // within a second of the cloud stopping. The grain cloud alone, not the
+        // finished mix - a loud dry note must not light a cloud that is silent.
+        const float decay =
+            std::exp (-static_cast<float> (numSamples) / (0.12f * static_cast<float> (getSampleRate())));
+        visLevel.store (juce::jmax (wetPeak, visLevel.load (std::memory_order_relaxed) * decay),
+                        std::memory_order_relaxed);
     }
 
 #if EE_GRAIN_TRACE

@@ -37,7 +37,7 @@ function ModDropHandler({ children }) {
 
 /**
  * BitBit Grain's enclosure: a 697px Card with no title/logo/preset-bar slots
- * of its own (GrainFace builds its own two-row header as plain children,
+ * of its own (GrainFace builds its own one-row header as plain children,
  * see COMPONENTS.md - Card's single header-slot API has no room for that
  * shape), then the plate.
  *
@@ -46,6 +46,10 @@ function ModDropHandler({ children }) {
  * came out of the five original sections instead - which squeezed Delay and
  * Reverb past the width their own contents need. The editor follows this
  * through reportContentSize, so the plugin window resizes with it.
+ *
+ * 982 is 719 plus the cosmos panel (Cosmos.jsx) and its 3px divider: 260px of
+ * display-only column between the main rows and the Mixer. It sits outside .pg-plate__main, so
+ * every row above keeps exactly the width it had.
  *
  * 719 is that same 697 plus 22px: row 2's own Effects/Mod tab rail
  * (GrainFace.jsx's pg-row2, VerticalTabs.css) sits inside row 2 rather than
@@ -63,7 +67,7 @@ export default function App() {
       <LfoPlaybackProvider>
         <ModRoutingProvider>
           <ModDropHandler>
-            <Card className="pg-card" width={719}>
+            <Card className="pg-card" width={982}>
               <GrainFace />
             </Card>
           </ModDropHandler>

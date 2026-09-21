@@ -1,0 +1,105 @@
+/* The cosmos panel - see Cosmos.jsx. A display-only column at the plate's
+   right edge, full plate height. The canvas is absolutely positioned so its
+   own size never feeds back into the plate's layout: the panel takes its
+   height from the plate, not the other way round. */
+
+.pg-cosmos {
+  box-sizing: border-box;
+  width: 260px;
+  flex: none;
+  /* The plate's own colour shows through this 10px frame, so the scene reads
+     as one more recessed display on the same panel as everything else. */
+  padding: 10px;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Same recess as .pg-section__display and .pg-filter-curve (GrainFace.css):
+   the shared well colour, edge and shadow. The scene's own deep-space
+   gradient sits inside it. */
+.pg-cosmos__display {
+  position: relative;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border-radius: 5px;
+  border: 1px solid var(--pui-module-edge);
+  overflow: hidden;
+  background: radial-gradient(120% 70% at 50% 50%, #0d0c1c 0%, #07070f 55%, #04040a 100%);
+}
+
+/* The well shadow is inset, so on the display itself it would paint under the
+   canvas and vanish behind it - drawn on top instead. */
+.pg-cosmos__display::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: var(--pui-well-shadow);
+  pointer-events: none;
+}
+
+.pg-cosmos__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.pg-cosmos__label {
+  position: absolute;
+  font-family: var(--pui-font-display, system-ui, sans-serif);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: rgba(214, 208, 245, 0.55);
+  white-space: nowrap;
+}
+
+.pg-cosmos__label b {
+  font-weight: 600;
+  color: rgba(240, 236, 255, 0.9);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.08em;
+  margin-right: 4px;
+}
+
+.pg-cosmos__label--tl {
+  top: 10px;
+  left: 12px;
+}
+
+.pg-cosmos__label--tr {
+  top: 10px;
+  right: 12px;
+  letter-spacing: 0.16em;
+}
+
+.pg-cosmos__label--bl {
+  bottom: 10px;
+  left: 12px;
+  letter-spacing: 0.16em;
+}
+
+.pg-cosmos__pip {
+  position: absolute;
+  right: 10px;
+  bottom: 10px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(214, 208, 245, 0.28);
+}
+
+/* Lit only while there is sound to show. */
+.pg-cosmos__pip[data-live="1"] {
+  background: rgba(214, 208, 245, 0.85);
+  box-shadow: 0 0 8px 1px rgba(190, 170, 255, 0.7);
+}
+
+.pg-cosmos[data-frozen] .pg-cosmos__pip[data-live="1"] {
+  background: #b0e8ff;
+  box-shadow: 0 0 8px 1px rgba(150, 225, 255, 0.85);
+}

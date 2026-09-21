@@ -83,6 +83,9 @@ private:
         tick regardless. -1 so the very first tick always sends once. */
     int lastLfoGeneration = -1;
 
+    /** How many of the grain engine's births the cosmos feed has already sent. */
+    uint32_t lastGrainEvent = 0;
+
 #if EE_GRAIN_TUNER
     // Flip showTuner in the .cpp to bring this back without reconfiguring
     // CMake - same switch BitBit Delay's web editor has.

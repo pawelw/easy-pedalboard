@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <cmath>
 #include <cstdint>
 #include <vector>
@@ -208,10 +209,11 @@ public:
 
     /** Grain-window swell, 0 to 1. At 0 the window is exactly Shape's - a quick
         fade-in and a decay, so the start of every grain is heard. At 1 it is
-        the reverse: a linear swell that peaks late in the grain
-        (GrainerTuning::smoothPeak) and is cut off shortly after, the same
-        every time - the start of each grain is buried in the fade-in and what
-        you hear is the vowel, not the onset. On the way it also fades out the
+        the reverse: a linear swell over a fixed number of milliseconds
+        (GrainerTuning::smoothAttackMs), held, then cut off over a few more
+        (smoothReleaseMs), the same every time whatever the grain length - the
+        start of each grain is buried in the fade-in and what you hear is the
+        vowel, not the onset. On the way it also fades out the
         per-grain randomness (window and level jitter) and the band split's
         different grain lengths, both of which would otherwise make every
         grain a different shape. Blended per grain, not per sample: a grain
@@ -287,13 +289,13 @@ public:
             if (isScaleMember (scale, n, root) && upCount < kMaxScaleCandidates)
                 upCandidates[static_cast<size_t> (upCount++)] = static_cast<float> (n);
 
-        // Low: whole octaves down, and nothing else - an octave is consonant
+        // Low: the octave down, and nothing else - an octave is consonant
         // against anything, so the bottom of the cloud adds weight without
-        // ever landing on a wrong note, whatever the scale says. Two of them:
-        // -24 is rate 0.25, which is exactly what kMinRate is set to.
+        // ever landing on a wrong note, whatever the scale says. Just the one:
+        // it used to pick between -12 and -24 at random, and two octaves down
+        // is a rumble under the voice rather than a note in it.
         downCandidates[0] = -12.0f;
-        downCandidates[1] = -24.0f;
-        downCount = 2;
+        downCount = 1;
 
         updateIntervalNorm();
     }
@@ -605,6 +607,30 @@ public:
                     samplesIntoBar = into / transport.ppqPerSample;
                 }
 
+                // Where a followDensity grain reads from, counted back from now
+                // - see GrainerTuning::followDensity. Only meaningful with the
+                // host's position (a synced, playing transport): otherwise it
+                // stays -1 and spawnGrain() falls back to the Time tap.
+                followOffsetSamples = -1.0;
+
+                if (spawnSynced && transport.ppqPerSample > 0.0 && transport.cyclesPerQuarter > 0.0)
+                {
+                    constexpr double kGridQuarters = 0.25; // one sixteenth, the Grid's own step
+
+                    const double ppqNow = transport.ppqStart + static_cast<double> (i) * transport.ppqPerSample;
+                    const double periodQuarters = 1.0 / transport.cyclesPerQuarter;
+
+                    // The sixteenth-note point at or before one grain period
+                    // ago. A spawn lands a sample or so either side of the beat
+                    // it is locked to, so the floor gets two samples of slack
+                    // rather than flipping to the neighbouring gridline on
+                    // rounding.
+                    const double behind = (ppqNow - periodQuarters + 2.0 * transport.ppqPerSample) / kGridQuarters;
+                    const double sourcePpq = std::floor (behind) * kGridQuarters;
+
+                    followOffsetSamples = (ppqNow - sourcePpq) / transport.ppqPerSample;
+                }
+
                 // The first grain after a struck note leads with the octave
                 // below, or all three octaves at once - see GrainerConfig.h's
                 // ATTACK OCTAVES. Anything else spawns exactly as it always has.
@@ -712,6 +738,36 @@ public:
     int getUpCandidateCount() const noexcept { return upCount; }
     int getDownCandidateCount() const noexcept { return downCount; }
     float getUpCandidate (int i) const noexcept { return upCandidates[static_cast<size_t> (i)]; }
+    /** One grain, as it was born - for a display, never for the audio. Read by
+        the editor's timer via `grainEventCount()` / `grainEventAt()`. */
+    struct GrainEvent
+    {
+        float octaves = 0.0f;  // pitch, in octaves from the source (negative = down)
+        float pan = 0.0f;      // -1 left .. +1 right, after the interval's own pan scale
+        float level = 0.0f;    // linear, after the interval and source-level tilt
+        float seconds = 0.0f;  // how long the grain lasts
+        float spread = 0.0f;   // -1..1: how far Scatter strayed it from where it was aimed (0 at Scatter 0)
+        bool backwards = false;
+    };
+
+    /** Total grains born since construction. A reader keeps its own last-seen
+        count and walks `[last, count)`; if it has fallen more than
+        `kGrainEventRing` behind, the oldest were overwritten and it should
+        skip ahead. Lock-free, single writer (the audio thread). Fields are
+        relaxed atomics, so a reader racing a lap can see a mixed event - a
+        wrong dot on a screen, nothing worse. */
+    uint32_t grainEventCount() const noexcept { return eventCount.load (std::memory_order_acquire); }
+
+    GrainEvent grainEventAt (uint32_t index) const noexcept
+    {
+        const auto& slot = eventRing[index % kGrainEventRing];
+        return { slot.octaves.load (std::memory_order_relaxed), slot.pan.load (std::memory_order_relaxed),
+                 slot.level.load (std::memory_order_relaxed), slot.seconds.load (std::memory_order_relaxed),
+                 slot.spread.load (std::memory_order_relaxed), slot.backwards.load (std::memory_order_relaxed) };
+    }
+
+    static constexpr uint32_t kGrainEventRing = 256;
+
     float getDownCandidate (int i) const noexcept { return downCandidates[static_cast<size_t> (i)]; }
 
 private:
@@ -724,6 +780,38 @@ private:
     static constexpr int kBandFull = 3;
     static constexpr int kNumSplitBands = 3;
 
+    struct EventSlot
+    {
+        std::atomic<float> octaves { 0.0f };
+        std::atomic<float> pan { 0.0f };
+        std::atomic<float> level { 0.0f };
+        std::atomic<float> seconds { 0.0f };
+        std::atomic<float> spread { 0.0f };
+        std::atomic<bool> backwards { false };
+    };
+
+    std::array<EventSlot, kGrainEventRing> eventRing;
+    std::atomic<uint32_t> eventCount { 0 };
+
+    /** The bipolar draw Scatter used to stray the grain being spawned from its
+        aim, kept only so publishEvent can say how far. Never read by the audio. */
+    float scatterDraw = 0.0f;
+
+    void publishEvent (float octaves, float pan, float level, int lengthSamples, float spread, bool backwards) noexcept
+    {
+        const uint32_t n = eventCount.load (std::memory_order_relaxed);
+        auto& slot = eventRing[n % kGrainEventRing];
+
+        slot.octaves.store (octaves, std::memory_order_relaxed);
+        slot.pan.store (pan, std::memory_order_relaxed);
+        slot.level.store (level, std::memory_order_relaxed);
+        slot.seconds.store (static_cast<float> (lengthSamples) / static_cast<float> (std::max (1.0, sampleRate)),
+                            std::memory_order_relaxed);
+        slot.spread.store (std::clamp (spread, -1.0f, 1.0f), std::memory_order_relaxed);
+        slot.backwards.store (backwards, std::memory_order_relaxed);
+        eventCount.store (n + 1, std::memory_order_release);
+    }
+
     struct Grain
     {
         double position = 0.0; // fractional index into buffer
@@ -735,6 +823,10 @@ private:
         // the age past the fade-in into a 0..1 position along the decay.
         float smooth = 0.0f;
         float invDecayLen = 0.0f;
+
+        // Where along the decay (0..1) Smooth's cut begins: before it the
+        // swell holds full level, after it the level runs down to nothing.
+        float holdEnd = 1.0f;
         float decayEnv = 1.0f; // running exponential, stepped once per sample
         float decayMul = 1.0f;
 
@@ -782,7 +874,8 @@ private:
     // The other end. Not 1/kMaxRate: a slow grain reads *less* source than it
     // produces, so nothing about the read-ahead guard bounds it - this only
     // has to be low enough for the deepest interval setScale() offers, which
-    // is -24 semitones.
+    // is -12 semitones (rate 0.5); kept at 0.25 (-24) as headroom for Mod's
+    // drift on top of it.
     static constexpr double kMinRate = 0.25;
 
     static constexpr float kNormSmoothing = 0.0005f;
@@ -853,12 +946,13 @@ private:
 
         if (g.smooth > 0.0f)
         {
-            // Smooth blends the decay toward a straight line down. Both start
+            // Smooth blends the decay toward a hold and a short cut. Both start
             // at 1 and land on 0, so any blend of them does too and the grain
             // still cannot click at either end.
             const float v = std::clamp (static_cast<float> (g.age - g.attackSamples) * g.invDecayLen, 0.0f, 1.0f);
+            const float swell = v < g.holdEnd ? 1.0f : (1.0f - v) / std::max (1.0e-6f, 1.0f - g.holdEnd);
 
-            env += g.smooth * ((1.0f - v) - env);
+            env += g.smooth * (swell - env);
         }
 
         return env > 0.0f ? env : 0.0f;
@@ -1180,11 +1274,13 @@ private:
         // since this runs every chunk.
         if (smooth > 0.0f)
         {
-            if (smooth != smoothRmsFor || curDecayShape != smoothRmsDecay || tuning.smoothPeak != smoothRmsPeak)
+            const float lengthKey = sizeMs + tuning.smoothAttackMs * 1000.0f + tuning.smoothReleaseMs * 1.0e6f;
+
+            if (smooth != smoothRmsFor || curDecayShape != smoothRmsDecay || lengthKey != smoothRmsKey)
             {
                 smoothRmsFor = smooth;
                 smoothRmsDecay = curDecayShape;
-                smoothRmsPeak = tuning.smoothPeak;
+                smoothRmsKey = lengthKey;
                 smoothRms = smoothedEnvelopeRms (smooth, k, f);
             }
 
@@ -1221,15 +1317,33 @@ private:
         updateIntervalNorm();
     }
 
-    /** RMS of the window at this Smooth, over a grain's whole length: a linear
-        fade-in over the first `peak * s` of it (the short fixed attack is
+    /** How long Smooth's fade-in and cut are for a grain this long, in samples.
+        Fixed in milliseconds (GrainerTuning::smoothAttackMs / smoothReleaseMs);
+        a grain too short to hold both is squeezed, keeping their proportions. */
+    void swellTimes (float lengthSamples, float& attack, float& release) const noexcept
+    {
+        const float a = std::max (1.0f, tuning.smoothAttackMs) * 0.001f * static_cast<float> (sampleRate);
+        const float r = std::max (1.0f, tuning.smoothReleaseMs) * 0.001f * static_cast<float> (sampleRate);
+        const float squeeze = std::min (1.0f, lengthSamples / (a + r));
+
+        attack = a * squeeze;
+        release = r * squeeze;
+    }
+
+    /** RMS of the window at this Smooth for a grain of the current Size: a
+        linear fade-in over `s` of the swell's attack (the short fixed attack is
         ignored, as in the closed form above) and, after it, the decay blended
-        with a straight line down. Midpoint rule, 64 slices. */
+        with the hold-and-cut. Midpoint rule, 64 slices. */
     float smoothedEnvelopeRms (float s, float k, float f) const noexcept
     {
         constexpr int kSlices = 64;
 
-        const float attackFrac = std::clamp (std::clamp (tuning.smoothPeak, 0.05f, 0.95f) * s, 0.01f, 0.95f);
+        const float lengthSamples = std::max (1.0f, sizeMs * 0.001f * static_cast<float> (sampleRate));
+        float swellAttack = 0.0f, swellRelease = 0.0f;
+        swellTimes (lengthSamples, swellAttack, swellRelease);
+
+        const float attackFrac = std::clamp (s * swellAttack / lengthSamples, 0.01f, 0.95f);
+        const float holdEnd = std::clamp (1.0f - swellRelease / (lengthSamples * (1.0f - attackFrac)), 0.0f, 0.98f);
         float sum = 0.0f;
 
         for (int i = 0; i < kSlices; ++i)
@@ -1245,8 +1359,9 @@ private:
             {
                 const float v = (u - attackFrac) / (1.0f - attackFrac);
                 const float decay = (std::exp (-k * v) - f) / std::max (1.0e-6f, 1.0f - f);
+                const float swell = v < holdEnd ? 1.0f : (1.0f - v) / std::max (1.0e-6f, 1.0f - holdEnd);
 
-                env = decay + s * ((1.0f - v) - decay);
+                env = decay + s * (swell - decay);
             }
 
             sum += env * env;
@@ -1363,6 +1478,8 @@ private:
         content - the read loop wraps and there is nothing to guard. */
     void spawnGrain() noexcept
     {
+        scatterDraw = 0.0f;
+
         // Grain length, strayed from Size by Scatter.
         float lengthF = sizeMs * 0.001f * static_cast<float> (sampleRate);
         lengthF *= 1.0f + scatter * tuning.scatterSizeJitter * nextBipolar();
@@ -1380,8 +1497,10 @@ private:
         if (frozen && ! capturing && ! barLocked)
         {
             // Scan position, scattered a little either side.
+            const float draw = nextBipolar();
+            scatterDraw = draw;
             const double jitter = static_cast<double> (scatter) * static_cast<double> (timeOffsetSamples) * 0.5 *
-                                  static_cast<double> (nextBipolar());
+                                  static_cast<double> (draw);
 
             position = std::fmod (readHead + jitter, static_cast<double> (size));
             if (position < 0.0)
@@ -1421,7 +1540,25 @@ private:
             {
                 const int spread = static_cast<int> (scatter * static_cast<float> (timeOffsetSamples) * 0.5f);
 
-                if (liveGrid)
+                if (liveGrid && followOffsetSamples >= 0.0 && tuning.followDensity > 0.5f)
+                {
+                    // Grid, live, following Density: the read point is on the
+                    // sixteenth grid and at least one grain period back, so it
+                    // moves with the Destiny division instead of sitting on the
+                    // Time knob. At 1/32 that alternates between one and two
+                    // periods (every other grain), at 1/8 it is a constant
+                    // 1/8 behind. Scatter moves it by whole sixteenths either
+                    // side, on the same scale as the Time tap's.
+                    double followed = followOffsetSamples;
+
+                    if (scatter > 0.0f)
+                        followed += std::round (static_cast<double> (nextBipolar() * scatter) *
+                                                config::kGridMaxSlices) *
+                                    samplesPerSixteenth;
+
+                    offset = static_cast<int> (std::lround (std::min (std::max (followed, 1.0), static_cast<double> (size))));
+                }
+                else if (liveGrid)
                 {
                     // Grid, live: the tap in whole sixteenths, never less than
                     // one, and Scatter as a count of sixteenths either side -
@@ -1432,14 +1569,20 @@ private:
                     const double step = samplesPerSixteenth;
                     double tap = std::max (1.0, std::round (static_cast<double> (timeOffsetSamples) / step));
                     if (scatter > 0.0f)
-                        tap = std::max (1.0, tap + std::round (static_cast<double> (nextBipolar() * scatter) *
+                    {
+                        const float draw = nextBipolar();
+                        scatterDraw = draw;
+                        tap = std::max (1.0, tap + std::round (static_cast<double> (draw * scatter) *
                                                                config::kGridMaxSlices));
+                    }
 
                     offset = static_cast<int> (std::lround (std::min (tap * step, static_cast<double> (size))));
                 }
                 else if (spread > 0)
                 {
-                    offset += static_cast<int> (nextBipolar() * static_cast<float> (spread));
+                    const float draw = nextBipolar();
+                    scatterDraw = draw;
+                    offset += static_cast<int> (draw * static_cast<float> (spread));
                 }
 
                 // Most grains come from the last attack, if there was one recently
@@ -1465,12 +1608,15 @@ private:
 
                     // Subtracting walks *forward* into the note: offset counts back
                     // from the write head, so a smaller one is later audio.
-                    const int into =
-                        windowSamples > 0 ? static_cast<int> (nextFloat() * static_cast<float> (windowSamples)) : 0;
+                    const float intoDraw = windowSamples > 0 ? nextFloat() : 0.0f;
+                    const int into = windowSamples > 0 ? static_cast<int> (intoDraw * static_cast<float> (windowSamples)) : 0;
                     const int wanted = sinceAttack + preRoll - into;
 
                     if (wanted >= minOffset && wanted <= maxOffset)
+                    {
                         offset = wanted;
+                        scatterDraw = intoDraw * 2.0f - 1.0f;
+                    }
                 }
             }
 
@@ -1499,6 +1645,8 @@ private:
         the attack, forwards, with one shared length, pan and level. */
     void spawnAttackStack() noexcept
     {
+        scatterDraw = 0.0f;
+
         float semitones[3];
         int voices = 0;
 
@@ -1620,19 +1768,21 @@ private:
 
         // Just enough fade-in not to click, and never more than half the grain -
         // a 20 ms grain cannot afford a 5 ms attack.
-        // Smooth lengthens that fade-in until the peak sits smoothPeak of the way
-        // through the grain, and 0 leaves the figure exactly as it was. The cap
-        // is half the grain otherwise (a 20 ms grain cannot afford a 5 ms
-        // attack) and the swell's own peak position with Smooth on.
+        // Smooth lengthens that fade-in toward the swell's fixed attack time
+        // (GrainerTuning::smoothAttackMs), and 0 leaves the figure exactly as
+        // it was. The cap is half the grain otherwise (a 20 ms grain cannot
+        // afford a 5 ms attack) and the swell's own attack with Smooth on.
         float attackWanted = attackMs * 0.001f * static_cast<float> (sampleRate);
         int attackCap = std::max (1, length / 2);
+        float swellRelease = 0.0f;
 
         if (smooth > 0.0f)
         {
-            const float peak = std::clamp (tuning.smoothPeak, 0.05f, 0.95f);
+            float swellAttack = 0.0f;
+            swellTimes (static_cast<float> (length), swellAttack, swellRelease);
 
-            attackWanted += smooth * (peak * static_cast<float> (length) - attackWanted);
-            attackCap = std::max (attackCap, static_cast<int> (peak * static_cast<float> (length)));
+            attackWanted += smooth * (swellAttack - attackWanted);
+            attackCap = std::max (attackCap, static_cast<int> (swellAttack));
         }
 
         const int attackSamples = std::clamp (static_cast<int> (attackWanted), 1, attackCap);
@@ -1640,6 +1790,9 @@ private:
         slot.attackSamples = attackSamples;
         slot.smooth = smooth;
         slot.invDecayLen = 1.0f / static_cast<float> (std::max (1, length - attackSamples));
+        slot.holdEnd = smooth > 0.0f
+                           ? std::clamp (1.0f - swellRelease * slot.invDecayLen, 0.0f, 0.98f)
+                           : 1.0f;
         slot.decayEnv = 1.0f;
         slot.decayMul = std::exp (-decayShape / static_cast<float> (std::max (1, length - attackSamples)));
 
@@ -1727,6 +1880,8 @@ private:
         const float tiltedLevel = level * intervalGain (octaves) * intervalGainNormInv * sourceLevelGain (position);
         const float tiltedPan = pan * intervalPanScale (octaves);
         const float send = intervalSendGain (octaves);
+
+        publishEvent (octaves, tiltedPan, tiltedLevel, length, scatter * scatterDraw, backwards);
 
         if (bandSplitNow() <= 0.0f)
         {
@@ -1873,7 +2028,7 @@ private:
     // it said - see updateDerived().
     float smoothRmsFor = -1.0f;
     float smoothRmsDecay = -1.0f;
-    float smoothRmsPeak = -1.0f;
+    float smoothRmsKey = -1.0f;
     float smoothRms = 1.0f;
     float scatter = config::kDefaultScatterPct * 0.01f;
     float reverse = config::kDefaultReversePct * 0.01f;
@@ -1918,6 +2073,10 @@ private:
     // GrainerConfig.h's ATTACK OCTAVES.
     bool attackStackPending = false;
     double samplesIntoBar = 0.0;
+
+    // Where the current spawn reads from under followDensity, in samples back
+    // from now; -1 when there is no host position to follow.
+    double followOffsetSamples = -1.0;
     double samplesPerSixteenth = 1.0;
     int captureRemaining = 0;
     int pendingCaptureLen = 0;

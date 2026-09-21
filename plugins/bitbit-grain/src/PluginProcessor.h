@@ -121,6 +121,15 @@ public:
         currentBpm()'s own note. */
     double hostBpm() const { return lastKnownBpm.load(); }
 
+    /** Live feed for the face's cosmos panel - display only, nothing here
+        feeds back into the audio. `grainer` publishes every grain it births;
+        the editor's timer walks the new ones. */
+    const ee::dsp::Grainer& grainEngine() const noexcept { return grainer; }
+
+    /** Peak of the grain cloud (as mixed in, before Delay/Reverb) over the last
+        block, decayed slowly enough that a 30 Hz reader never misses a hit. */
+    float outputLevel() const noexcept { return visLevel.load (std::memory_order_relaxed); }
+
     /** The grain engine's current/default voicing, for the EE_GRAIN_TUNER dev
         panel - same reason as the readouts above, BitBitGrainWebEditor isn't a
         member of this class and needs a way to reach the engine. Unconditional
@@ -204,6 +213,7 @@ private:
     float modulatedValue (const char* paramID, float rawValue) const noexcept;
 
     ee::dsp::Grainer grainer;
+    std::atomic<float> visLevel { 0.0f };
     ee::dsp::TapeDelay delay;
     ee::dsp::FdnReverb reverb;
 
@@ -216,7 +226,7 @@ private:
     // fed audio coloured exactly like the cloud it was taken from. Idle
     // whenever GrainerTuning::pitchSendPerOctave is 0.
     ee::dsp::TubeDrive sendDrive;
-    ee::dsp::HaasWidener haas; // Mono/Stereo: Haas width on the grain cloud
+    ee::dsp::HaasWidener haas; // Wide: Haas width on the grain cloud
 
     /** The Mod tab's LFO. Not routed to anything yet - Stage 3 adds the
         drag-and-drop modulation targets; this stage only ticks its phase and
@@ -259,7 +269,7 @@ private:
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* stretchParam = nullptr;
     std::atomic<float>* freezeParam = nullptr;
-    std::atomic<float>* widthParam = nullptr; // width: Mono/Stereo, Haas on the grain cloud
+    std::atomic<float>* widthParam = nullptr; // width (Wide, 0..100 %): Haas on the grain cloud
     std::atomic<float>* shapeParam = nullptr;
     std::atomic<float>* smoothParam = nullptr;
     std::atomic<float>* scatterParam = nullptr;

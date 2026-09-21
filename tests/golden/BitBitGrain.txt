@@ -75,12 +75,11 @@ parameters 50
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
 10 width
-    name       "Stereo Width"
+    name       "Wide"
     default    0
     version    1
-    steps      2 discrete boolean automatable
-    range      0 1 interval 1 skew 1
-    choices    2: "Off" "On"
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
 11 shape
     name       "Shape"
     default    0.550000012

@@ -38,14 +38,28 @@ struct GrainerTuning
     // identifiable.
     float attackShare = 0.70f;
 
-    // WHERE THE SWELL PEAKS. Smooth's far end is a window that fades in
-    // linearly and is cut off soon after its peak, this far through the grain
-    // (0..1). Measured off a reference plugin's grains at 1/8: peak at 0.82,
-    // a 58 ms rise and a 12 ms fall on an 81 ms grain, every grain alike. The
-    // figure is 0.88 rather than 0.82 because the measurement takes the peak
-    // where the grain is 10 % up, which lands it a few percent early - this
-    // is the value that reproduces those numbers when measured the same way.
-    float smoothPeak = 0.88f;
+    // THE SWELL, IN MILLISECONDS. Smooth's far end is a window that fades in
+    // linearly, holds, and is cut off at the end - with the fade-in and the cut
+    // fixed in time rather than a share of the grain, so a long grain does not
+    // get a longer attack. Measured off a reference plugin's grains: a 58 ms
+    // 10-90 % rise (a 73 ms ramp from nothing) and a 12 ms 90-10 % fall (a ~17 ms
+    // cut), together the 90 ms of its 1/32 grain. A grain shorter than the two
+    // put together is squeezed to keep their proportions; a longer one holds
+    // full level between them. Smooth below 1 blends toward this from Shape's
+    // own window.
+    float smoothAttackMs = 73.0f;
+    float smoothReleaseMs = 17.0f;
+
+    // FOLLOW DENSITY. Where a live grain reads from. Off (0), it is the Time
+    // tap rounded to sixteenths - the same offset whatever Density is. On (1),
+    // while the transport is playing, it follows the Density division: the
+    // sixteenth-note gridline at or before one grain period ago. That is what a
+    // reference plugin does (measured at 83 BPM: at 1/32 its grains read
+    // alternately 181 and 90 ms back, at 1/8 always 361 ms), and it is what
+    // makes Feedback repeat on the grain spacing instead of on Time. Stopped
+    // transport falls back to the Time tap either way. A switch, not a knob:
+    // above 0.5 is on.
+    float followDensity = 1.0f;
 
     // How much of that share Smooth takes away at its top: at Smooth 1 the
     // share is attackShare * (1 - this). A cloud that keeps drawing from the
@@ -237,7 +251,9 @@ inline constexpr GrainerTuningEntry kGrainerTuningEntries[] = {
     { "scatterMaxJitter", &GrainerTuning::scatterMaxJitter, 0.0f, 1.0f, 3 },
     { "scatterSizeJitter", &GrainerTuning::scatterSizeJitter, 0.0f, 1.0f, 3 },
     { "attackShare", &GrainerTuning::attackShare, 0.0f, 1.0f, 3 },
-    { "smoothPeak", &GrainerTuning::smoothPeak, 0.05f, 0.95f, 3 },
+    { "followDensity", &GrainerTuning::followDensity, 0.0f, 1.0f, 0 },
+    { "smoothAttackMs", &GrainerTuning::smoothAttackMs, 1.0f, 300.0f, 1 },
+    { "smoothReleaseMs", &GrainerTuning::smoothReleaseMs, 1.0f, 300.0f, 1 },
     { "smoothAttackShareCut", &GrainerTuning::smoothAttackShareCut, 0.0f, 1.0f, 3 },
     { "grainLevelJitter", &GrainerTuning::grainLevelJitter, 0.0f, 1.0f, 3 },
 

@@ -4,7 +4,7 @@
    inline styles into classes here.
 
    Card carries no title/logo/header of its own (App.jsx passes none), so
-   .pg-header below is the whole header - two custom rows built as plain
+   .pg-header below is the whole header - one custom row built as plain
    children ahead of the plate, not forced into Card's single header-slot
    API, which only has room for one central slot. */
 
@@ -13,7 +13,7 @@
 }
 
 /* No title/logo/headerCenter/headerRight are passed to Card (GrainFace
-   builds its own two-row header as plain children), so its header block
+   builds its own one-row header as plain children), so its header block
    never renders - only the body's own 10px horizontal inset needs zeroing,
    or the plate would sit 10px narrower than the card's own 14px frame. */
 .pg-card .pui-card__body {
@@ -25,7 +25,6 @@
 .pg-header {
   display: flex;
   flex-direction: column;
-  gap: 12px;
   padding: 0 2px 16px;
 }
 
@@ -40,7 +39,7 @@
   align-items: center;
   gap: 11px;
   min-width: 0;
-  flex: 1 1 auto;
+  flex: none;
 }
 
 .pg-header__logo {
@@ -65,6 +64,8 @@
   align-items: center;
   gap: 22px;
   flex: none;
+  /* Level and the bypass switch sit at the far end of the one row. */
+  margin-left: auto;
 }
 
 /* "LEVEL" is wider than the In/Out labels the shared fader was built around
@@ -79,8 +80,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  flex: 1 1 auto;
-  min-width: 0;
+  flex: none;
 }
 
 /* Live/Freeze and Mono/Stereo: one button each, its own label and colour
@@ -96,6 +96,12 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   padding: 8px 13px;
+  /* "Freeze" is wider than "Live"; without a floor the button changes width
+     as it toggles and the preset bar, centred in the room beside it, shifts
+     with it. Wide enough for the longer label. */
+  box-sizing: border-box;
+  min-width: 68px;
+  text-align: center;
   border: 1px solid var(--pui-pill-off-border);
   border-radius: 8px;
   background: var(--pui-chrome);
@@ -112,8 +118,12 @@
 .pg-header__presets {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
-  flex: none;
+  /* Takes all the room between Live/Freeze and Level, and centres the bar in
+     it. */
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 /* ---------------------------------------------------------------- plate */

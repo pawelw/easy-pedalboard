@@ -622,6 +622,22 @@ int main (int argc, char* argv[])
         }
     }
 
+    // What the face's cosmos panel is fed from: every grain the engine has
+    // born, published lock-free. Not part of the checksum - it is display only.
+    {
+        const auto& engine = processor.grainEngine();
+        const auto count = engine.grainEventCount();
+        std::printf ("\ngrain events %u", static_cast<unsigned> (count));
+
+        if (count > 0)
+        {
+            const auto e = engine.grainEventAt (count - 1);
+            std::printf ("  (last: %+.2f oct, pan %+.2f, level %.3f, %.0f ms, spread %+.2f%s)", e.octaves, e.pan, e.level,
+                         e.seconds * 1000.0f, e.spread, e.backwards ? ", reversed" : "");
+        }
+        std::printf ("\n");
+    }
+
     std::printf ("\nchecksum %016llx\n", static_cast<unsigned long long> (checksum));
 
     if (outFile != juce::File())

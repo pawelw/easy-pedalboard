@@ -11,7 +11,7 @@
   <PARAM id="feedback" value="0"/>
   <PARAM id="stretch" value="0"/>
   <PARAM id="freeze" value="0"/>
-  <PARAM id="width" value="1"/>
+  <PARAM id="width" value="100"/>
   <PARAM id="shape" value="0"/>
   <PARAM id="scatter" value="20"/>
   <PARAM id="reverse" value="0"/>
