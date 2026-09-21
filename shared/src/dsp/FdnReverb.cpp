@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "Effects/pitchshifter.h"
+#include "ee/dsp/ShimmerPitchShifter.h"
 
 namespace ee::dsp
 {
@@ -187,7 +187,7 @@ namespace
     }
 }
 
-// Out of line, where daisysp::PitchShifter is a complete type for unique_ptr.
+// Out of line, where ShimmerPitchShifter is a complete type for unique_ptr.
 FdnReverb::FdnReverb() = default;
 FdnReverb::~FdnReverb() = default;
 
@@ -245,9 +245,9 @@ void FdnReverb::prepare (double sampleRate)
     wetLowShelfState.fill (0.0f);
 
     if (shimmerShifterL == nullptr)
-        shimmerShifterL = std::make_unique<daisysp::PitchShifter>();
+        shimmerShifterL = std::make_unique<ShimmerPitchShifter> (1u);
     if (shimmerShifterR == nullptr)
-        shimmerShifterR = std::make_unique<daisysp::PitchShifter>();
+        shimmerShifterR = std::make_unique<ShimmerPitchShifter> (2u);
     for (auto* shifter : { shimmerShifterL.get(), shimmerShifterR.get() })
         shifter->Init (static_cast<float> (sampleRate));
 

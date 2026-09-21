@@ -327,33 +327,60 @@ Still to do here:
   why AAX is deferred, and it is the reason to add it as a separate small
   release once the same DSP has been beaten up through VST3 and AU.
 
-### 1.3 Sanitizers, because you already know there is a race
+### 1.3 Sanitizers - **ASan, UBSan and TSan are green** ✅
 
-Build the offline host tools (`ee_*_host`, `ee_dsp_tests`, `ee_*_stress`) under:
+Run 2026-09-21. `cmake --preset asan` and `cmake --preset tsan` (`EE_SANITIZE`,
+instrumenting JUCE and DaisySP too) build the offline tools in their own trees;
+see CLAUDE.md, *Sanitizers*. Over `ee_dsp_tests`, `ee_preset_tests`,
+`ee_{tape,wah,module,grain,reverb}_stress`, `ee_{alpine,grain,modulation,reverb}_host`
+and `ee_delay_regress` under ASan + UBSan, and `ee_dsp_tests` under TSan: **no
+findings after the fixes below.** Not run under a sanitizer yet: the
+`ee_*_regress` batteries other than Delay's, and the WebView editors (which the
+offline tools do not open).
 
-- **ASan + UBSan** — cheap, catches the overwhelming majority of real crashes.
-- **TSan** — you have a confirmed data race waiting: `daisysp::myrand()` backs the
-  shimmer's modulation slew and is one function-local `static uint32_t seed`
-  advanced per sample, shared by every instance in the process and touched from
-  multiple audio threads (`CLAUDE.md`, "Shimmer is not bit-reproducible"). It is
-  documented as inaudible. It is still undefined behaviour in shipping code, and
-  it blocks checksumming any shimmered render. Fork the DaisySP `PitchShifter` to
-  take a per-instance seed and the race and the reproducibility gap both close.
-- **MSan or valgrind** for the second known failure: *"chorus is silent on a
-  silent input" fails on roughly half of runs with no rebuild in between.*
-  Nondeterminism with a fixed binary and fixed input is uninitialised memory, a
-  shared mutable static, or a denormal/FTZ difference. **Do not ship with this
-  open** — it is the shape of bug that becomes "it sometimes drops out in Logic".
+What it found, none of it anything pluginval or `auval` had noticed:
 
-### 1.4 The two known failures
+- **A heap over-read in `ModDelayLine::read`** - the root of both the
+  *"chorus is silent on a silent input"* flake and a second read in `FdnReverb`.
+  A tiny negative read position plus the buffer size rounds to exactly `size` in
+  float, one sample past the end, so the read returned the neighbouring heap - a
+  different value per run. `Rust.h` and `OctaveShifter.h` had the same wrap and
+  are fixed. Regression: `testModDelayLineWrapBoundary`, which fails under ASan on
+  the old code.
+- **The shimmer's non-reproducibility was two bugs, not one.** The `myrand()`
+  static (a real race across instances) *and* uninitialised members in DaisySP's
+  `PitchShifter`, whose empty user-provided constructor leaves them as heap
+  garbage - large enough that ASan's allocation fill never reaches them, so no
+  sanitizer flags it. BitBit now runs `ee::dsp::ShimmerPitchShifter`, a copy with
+  a generator per instance and every member set in `Init()`.
+  `testShimmerReproducible` renders it sequentially and on two threads and
+  requires all to match; it fails on the old code. `ee_alpine_host`'s shimmered
+  case is now a baseline. The flutter is **not** zero (`ShimmerTuning::flutter`
+  0.25), so this was audible, not inaudible as this plan and CLAUDE.md said.
+  **The MIT notice for the copied class goes in the third-party notices (G0.3).**
 
-`CLAUDE.md` lists them as baseline and `scripts/dev-check.sh` filters them out.
-That filter is right for daily work and wrong for a release. Both get fixed, or
-explicitly re-baselined with a written reason, before G1 closes:
+Still open here: the uninitialised-memory class is the one a sanitizer on macOS
+cannot see (there is no MSan); a Linux CI job with MSan over `ee_dsp_tests` is the
+remaining cheap check. And `ee_soak` (1.5) is where 32 concurrent instances get
+run under TSan.
 
-- `tape at 100 % moves the level too far` — either the test's expectation or the
-  voicing is wrong. Decide which.
-- `chorus is silent on a silent input` — see above.
+### 1.4 The two known failures - **closed** ✅
+
+Both were real and both are fixed; `scripts/dev-check.sh` no longer filters
+anything, and a crash (non-zero exit with no FAIL line) now fails it too, where
+before it would have read as a pass.
+
+- `chorus is silent on a silent input` - the `ModDelayLine` over-read above.
+- `tape at 100 % moves the level too far` - a voicing change, not a bad test.
+  `maxDrive` was tuned to 5.53 in 0b8c5ae and the makeup gain only compensates the
+  curve's slope at the origin, so a played level came out ~4 dB down (-7.8 dB on
+  the test's broadband noise). Decided 2026-09-21: **hold the level.**
+  `TapeCharacter` now calibrates its makeup at `TapeTuning::levelReference`, a
+  gaussian at -20 dBFS rms. The test now feeds it a band-limited source, since
+  the stage rolls the top off deliberately. **This changes audio** - BitBit Delay's
+  Tape sections, Alpine's Delay and Modulation modules, and the Tape machine's Wear
+  stage are louder than before at Tape > 0 - so it belongs before the checksums
+  freeze (G1b), and it wants an A/B by ear at a few Tape settings.
 
 ### 1.5 A real soak harness
 
@@ -862,7 +889,7 @@ G0  paperwork  ──────────────┐   Apple Individual 
                              │
 G1  correctness              │   golden param file ✅ · CI on both platforms ·
     (needs nothing from G0)  │   pluginval 10 · auval strict · ASan/UBSan/TSan ·
-                             │   both known failures closed · soak harness ·
+                             │   both known failures closed ✅ · soak harness ·
                              │   preset-loader fuzzing          — six products
    ↓                         │
 G5a DSP content              │   plate engine · latency work

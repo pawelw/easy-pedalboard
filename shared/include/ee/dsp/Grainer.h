@@ -207,7 +207,8 @@ public:
         updateDerived();
     }
 
-    /** Grain-window swell, 0 to 1. At 0 the window is exactly Shape's - a quick
+    /** Grain-window swell, 0 to 1 (BitBitGrainProcessor sets it to 1 - Shape, so
+        it has no knob of its own). At 0 the window is exactly Shape's - a quick
         fade-in and a decay, so the start of every grain is heard. At 1 it is
         the reverse: a linear swell over a fixed number of milliseconds
         (GrainerTuning::smoothAttackMs), held, then cut off over a few more
@@ -217,11 +218,23 @@ public:
         per-grain randomness (window and level jitter) and the band split's
         different grain lengths, both of which would otherwise make every
         grain a different shape. Blended per grain, not per sample: a grain
-        wears the value it was born with. */
+        wears the value it was born with.
+
+        The value glides to a new setting over config::kSmoothSlewSeconds rather
+        than jumping: grains already sounding keep the window they were born
+        with (a long one lasts a second), so an abrupt change stacks brand-new
+        grains of the other kind on top of them. Before the first block is
+        processed it takes the value at once, so a session that loads with
+        Smooth up does not start by fading in. */
     void setSmooth (float amount01) noexcept
     {
-        smooth = std::clamp (amount01, 0.0f, 1.0f);
-        updateDerived();
+        smoothTarget = std::clamp (amount01, 0.0f, 1.0f);
+
+        if (! smoothSlewPrimed)
+        {
+            smooth = smoothTarget;
+            updateDerived();
+        }
     }
 
     /** Timing randomness, 0 (metronomic, identical grains) to 1. Drives both
@@ -434,6 +447,20 @@ public:
     {
         if (size <= 0 || outL == nullptr || outR == nullptr)
             return;
+
+        smoothSlewPrimed = true;
+
+        if (smooth != smoothTarget)
+        {
+            const float k = 1.0f - std::exp (-static_cast<float> (numSamples) /
+                                             (config::kSmoothSlewSeconds * static_cast<float> (sampleRate)));
+
+            smooth += (smoothTarget - smooth) * k;
+            if (std::abs (smoothTarget - smooth) < 0.002f)
+                smooth = smoothTarget;
+
+            updateDerived();
+        }
 
         const bool wantSend = sendOut != nullptr;
 
@@ -1272,6 +1299,16 @@ private:
         // a volume control. No closed form for the blend, so it is measured -
         // and only when Smooth or the decay it blends against actually moved,
         // since this runs every chunk.
+        //
+        // That compensation is NOT put in the output gain below. That gain acts
+        // on every grain sounding at the moment, and a grain keeps the window
+        // it was born with - so when Smooth moved, grains still ringing (a long
+        // one lasts a second) were rescaled for a window they do not have, a
+        // burst of loud sound for as long as they lasted. Instead each grain is
+        // given its own correction at birth (swellComp), and the gain below
+        // stays what Smooth 0 would make it.
+        float swellEnvComp = 1.0f;
+
         if (smooth > 0.0f)
         {
             const float lengthKey = sizeMs + tuning.smoothAttackMs * 1000.0f + tuning.smoothReleaseMs * 1.0e6f;
@@ -1284,7 +1321,7 @@ private:
                 smoothRms = smoothedEnvelopeRms (smooth, k, f);
             }
 
-            envelopeRms = smoothRms;
+            swellEnvComp = envelopeRms / smoothRms;
         }
 
         // Per-grain level jitter (see spawnGrain) scales every grain by a
@@ -1292,10 +1329,20 @@ private:
         // sqrt(E[L^2]) with E[L^2] = 1 - j + j^2/3, divided back out here so
         // the cloud sits at the same level whatever the jitter is - the same
         // move as dividing out the envelope's own RMS above.
-        const float j = levelJitterNow();
-        const float levelRms = std::sqrt (std::max (1.0e-6f, 1.0f - j + j * j / 3.0f));
+        //
+        // Likewise Smooth fades that jitter out, and the gain keeps to the
+        // jitter Smooth 0 has; a grain born with less of it carries the
+        // difference itself.
+        const auto levelRmsFor = [] (float jitter)
+        { return std::sqrt (std::max (1.0e-6f, 1.0f - jitter + jitter * jitter / 3.0f)); };
+
+        const float levelRms = levelRmsFor (tuning.grainLevelJitter);
 
         normTarget = tuning.outputTrim * (kEnvelopeReferenceRms / envelopeRms) / (std::sqrt (overlap) * levelRms);
+
+        // What a grain born now is scaled by to sit at the level the gain above
+        // assumes: exactly 1 at Smooth 0.
+        swellComp = smooth > 0.0f ? swellEnvComp * (levelRms / levelRmsFor (levelJitterNow())) : 1.0f;
 
         // Band split. Lengths scale with wavelength - the low band gets the
         // ratio times the Size knob, the high band that much less - and the
@@ -1801,8 +1848,8 @@ private:
         slot.envFloor = std::exp (-decayShape);
         slot.envScale = 1.0f / std::max (1.0e-6f, 1.0f - slot.envFloor);
 
-        slot.gainL = std::cos (angle) * level * bandLevel;
-        slot.gainR = std::sin (angle) * level * bandLevel;
+        slot.gainL = std::cos (angle) * level * swellComp * bandLevel;
+        slot.gainR = std::sin (angle) * level * swellComp * bandLevel;
         slot.active = true;
 
         // Fresh hold state, so a reused slot's Bit crush starts from this
@@ -2023,12 +2070,17 @@ private:
     float stretch = config::kDefaultStretchPct * 0.01f;
     float shape = config::kDefaultShapePct * 0.01f;
     float smooth = config::kDefaultSmoothPct * 0.01f;
+    float smoothTarget = config::kDefaultSmoothPct * 0.01f;
+    bool smoothSlewPrimed = false;
 
     // The last (smooth, decay) pair smoothedEnvelopeRms() was run for, and what
     // it said - see updateDerived().
     float smoothRmsFor = -1.0f;
     float smoothRmsDecay = -1.0f;
     float smoothRmsKey = -1.0f;
+
+    // The per-grain level correction Smooth needs - see updateDerived().
+    float swellComp = 1.0f;
     float smoothRms = 1.0f;
     float scatter = config::kDefaultScatterPct * 0.01f;
     float reverse = config::kDefaultReversePct * 0.01f;

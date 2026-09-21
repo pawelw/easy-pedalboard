@@ -176,7 +176,22 @@ constexpr float kDefaultShapePct = 55.0f;
 // opt-in blend, and 0 is the engine exactly as it was (bit-identical -
 // Grainer takes its untouched path for it), which is why the default is 0 and
 // not something "nicer".
+//
+// There is no Smooth knob or parameter: BitBitGrainProcessor drives it as
+// 1 - Shape, so Shape at its plucky end (100) is the engine's own window and at
+// its soft end (0) it is the full swell. This default is only what the engine
+// starts at before anything sets it.
 constexpr float kDefaultSmoothPct = 0.0f;
+
+// How long Smooth takes to glide to a new setting. Grains keep the window they
+// were born with, so a jump would stack grains of the new kind on top of long
+// ones of the old kind still sounding - a burst, and a loud one. Measured going
+// from Smooth 1 to 0 with 600 ms grains on a steady tone (the worst case: a
+// coherent signal, long grains): +9.6 dB with the gain following Smooth, +4.1 dB
+// once the gain was made per-grain, +2.8 / +1.7 / +1.3 dB with this at 0.25 /
+// 0.5 / 0.8 s. 0.5 keeps the knob feeling immediate while grains that long are
+// still ringing anyway.
+constexpr float kSmoothSlewSeconds = 0.5f;
 
 // ============================================================================
 // SCATTER

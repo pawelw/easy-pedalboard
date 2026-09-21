@@ -108,21 +108,12 @@ void filterSynced (juce::AudioProcessorValueTreeState& s)
     setPercent (s, modMix, 60.0f);
 }
 
-/** Every module doing something at once. Note the Shimmer: this case is
-    deliberately *not* a reproducible baseline, and its checksum is printed with
-    a warning rather than kept.
+/** Every module doing something at once, including the Space reverb's Shimmer.
 
-    DaisySP's PitchShifter - which the Space reverb's shimmer is built on - draws
-    its modulation slew coefficients from `daisysp::myrand()`, and that is one
-    function-local `static uint32_t seed` shared by every instance in the
-    process and advanced per sample from inside `Process()`. So two shimmer
-    renders in one process start at different points of the sequence and do not
-    agree, and two plugin instances on different audio threads race on it. The
-    variation is inaudible - a slightly different approach rate on a modulation
-    whose depth is zero unless `SetFun` is called, which nothing here does - but
-    it means no shimmered render can be checksummed against another. Everything
-    else in this file is bit-reproducible; ee_alpine_host's own diagnostic
-    confirmed shimmer is the only stage that is not. */
+    Shimmer used to make this case non-reproducible: DaisySP's PitchShifter drew
+    its modulation from one process-wide static generator and left several members
+    uninitialised. BitBit now runs its own copy (ee/dsp/ShimmerPitchShifter.h) with
+    a generator per instance, so this is a baseline like every other case here. */
 void everything (juce::AudioProcessorValueTreeState& s)
 {
     using namespace ee::alpine::id;
@@ -448,7 +439,7 @@ int main (int argc, char* argv[])
         out.makeCopyOf (input);
         render (out, everything);
 
-        std::printf ("  %s  peak %.6f  rms %.6f   (not a baseline - shimmer, see above)\n",
+        std::printf ("  %s  peak %.6f  rms %.6f\n",
                      checksum (out).toRawUTF8(), out.getMagnitude (0, kLength),
                      out.getRMSLevel (0, 0, kLength));
         check (allFinite (out), "every module at once is finite");

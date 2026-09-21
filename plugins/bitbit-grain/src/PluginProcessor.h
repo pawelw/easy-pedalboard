@@ -271,7 +271,6 @@ private:
     std::atomic<float>* freezeParam = nullptr;
     std::atomic<float>* widthParam = nullptr; // width (Wide, 0..100 %): Haas on the grain cloud
     std::atomic<float>* shapeParam = nullptr;
-    std::atomic<float>* smoothParam = nullptr;
     std::atomic<float>* scatterParam = nullptr;
     std::atomic<float>* reverseParam = nullptr;
     std::atomic<float>* stereoParam = nullptr;

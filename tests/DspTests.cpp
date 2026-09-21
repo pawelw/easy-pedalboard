@@ -4,9 +4,11 @@
 #include <array>
 #include <cmath>
 #include <cstdio>
+#include <cstring>
 #include <limits>
 #include <random>
 #include <set>
+#include <thread>
 #include <vector>
 
 #include "ee/dsp/AutoWah.h"
@@ -17,6 +19,7 @@
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/GrainerConfig.h"
+#include "ee/dsp/ModDelayLine.h"
 #include "ee/dsp/Phaser.h"
 #include "ee/dsp/RingModulator.h"
 #include "ee/dsp/Rust.h"
@@ -403,6 +406,74 @@ void testShimmer()
            "shimmer narrowed the stereo image instead of widening it");
 }
 
+/** FNV-1a over the output of a shimmered reverb fed a burst of noise, so two
+    renders can be compared bit for bit. `seedNoise` varies the input, which is
+    how the perturbing render below differs from the two that are compared. */
+uint64_t shimmerChecksum (unsigned seedNoise)
+{
+    ee::dsp::FdnReverb reverb;
+    reverb.prepare (kSampleRate);
+    reverb.reset();
+    reverb.setDecayTime (4.0f);
+    reverb.setShimmer (1.0f);
+
+    std::mt19937 rng (seedNoise);
+    std::uniform_real_distribution<float> dist (-0.3f, 0.3f);
+    std::vector<float> in (kBlock), l (kBlock), r (kBlock);
+
+    uint64_t hash = 1469598103934665603ull;
+    const auto mix = [&hash] (float v)
+    {
+        uint32_t bits = 0;
+        std::memcpy (&bits, &v, sizeof bits);
+        hash = (hash ^ bits) * 1099511628211ull;
+    };
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 3.0 / kBlock); ++b)
+    {
+        for (auto& x : in)
+            x = b < 40 ? dist (rng) : 0.0f;
+
+        reverb.process (in.data(), l.data(), r.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            mix (l[static_cast<size_t> (i)]);
+            mix (r[static_cast<size_t> (i)]);
+        }
+    }
+
+    return hash;
+}
+
+/** The shimmer's pitch shifter used to draw its modulation from one static
+    generator shared by the whole process, and left several members
+    uninitialised. Either makes a render depend on what ran before it, and the
+    first is a data race between plugin instances. Run under TSan this is the
+    test for the race; under any build it asserts the render is reproducible. */
+void testShimmerReproducible()
+{
+    std::printf ("Shimmer reproducibility (per-instance generator, no shared state):\n");
+
+    const uint64_t first = shimmerChecksum (1);
+    (void) shimmerChecksum (99);             // would advance a shared generator
+    const uint64_t second = shimmerChecksum (1);
+
+    std::printf ("  sequential renders: %016llx %016llx\n",
+                 static_cast<unsigned long long> (first), static_cast<unsigned long long> (second));
+    check (first == second, "a shimmered render differs from an identical one run after another");
+
+    uint64_t a = 0, b = 0;
+    std::thread ta ([&a] { a = shimmerChecksum (1); });
+    std::thread tb ([&b] { b = shimmerChecksum (1); });
+    ta.join();
+    tb.join();
+
+    std::printf ("  concurrent renders: %016llx %016llx\n",
+                 static_cast<unsigned long long> (a), static_cast<unsigned long long> (b));
+    check (a == first && b == first, "concurrent shimmered renders differ from a solo one");
+}
+
 /** Silence in still has to give exact silence out with shimmer fully up. */
 void testShimmerSilence()
 {
@@ -784,7 +855,31 @@ void testTapeCharacter()
         tape.prepare (kSampleRate);
         tape.setAmount (1.0f);
 
-        std::vector<float> l (source), r (source);
+        // The level claim is a midband one - the stage rolls the top off on
+        // purpose, so broadband noise would measure that loss and not the
+        // level. Two one-pole lowpasses at 3 kHz keep the energy where the
+        // stage is meant to leave it alone, and the scale puts the rms at
+        // the level its makeup gain is calibrated for (TapeTuning::levelReference).
+        std::vector<float> band (source);
+        {
+            const float coeff = 1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi * 3000.0f
+                                                 / static_cast<float> (kSampleRate));
+            float z1 = 0.0f, z2 = 0.0f;
+            double energy = 0.0;
+            for (auto& v : band)
+            {
+                z1 += coeff * (v - z1);
+                z2 += coeff * (z1 - z2);
+                v = z2;
+                energy += static_cast<double> (v) * v;
+            }
+            const float scale = tape.getTuning().levelReference
+                                / static_cast<float> (std::sqrt (energy / band.size()));
+            for (auto& v : band)
+                v *= scale;
+        }
+
+        std::vector<float> l (band), r (band);
         tape.process (l.data(), r.data(), total);
 
         const auto rms = [] (const std::vector<float>& v, int from)
@@ -795,7 +890,7 @@ void testTapeCharacter()
             return std::sqrt (sum / (v.size() - from));
         };
 
-        const double before = rms (source, 0);
+        const double before = rms (band, 0);
         const double after = rms (l, 512);
         const double changeDb = 20.0 * std::log10 (after / before);
 
@@ -804,7 +899,9 @@ void testTapeCharacter()
             finite = finite && std::isfinite (l[i]) && std::isfinite (r[i]);
 
         // The reference machine came back +0.5 dB; a character control that
-        // changes the level is a volume control in disguise.
+        // changes the level is a volume control in disguise. With the shipped
+        // drive it took 4 dB off before TapeCharacter calibrated its makeup at a
+        // played level rather than at the origin.
         std::printf ("  level change at 100 %%: %+.2f dB\n", changeDb);
         check (finite, "tape produced a non-finite sample");
         check (std::abs (changeDb) < 1.5, "tape at 100 % moves the level too far");
@@ -1304,6 +1401,42 @@ void testTapeMachineStability()
 
 //==============================================================================
 // Chorus
+
+void testModDelayLineWrapBoundary()
+{
+    std::printf ("ModDelayLine: a read that wraps the buffer edge stays inside it\n");
+
+    // readPos = writeIndex - delay is a hair below zero, and adding the buffer
+    // size back rounds to exactly `size` in float - one past the last sample.
+    // The value is only checkable as "still the constant we filled it with",
+    // but the real assertion is ASan's: this is a read of the heap next door.
+    ee::dsp::ModDelayLine line;
+    line.prepare (kSampleRate, 0.1f);
+
+    const int size = static_cast<int> (kSampleRate * 0.1f) + 4;   // as prepare() sizes it
+    int writeIndex = 0;
+    bool constant = true;
+
+    for (int n = 0; n < 3 * size; ++n)
+    {
+        line.write (1.0f);
+        line.advance();
+        writeIndex = (writeIndex + 1) % size;
+
+        // The first lap is still filling the line with ones.
+        if (n < size || writeIndex < 2 || writeIndex > size - 3)
+            continue;
+
+        // Delays within a few 1e-5 of the write index, either side.
+        for (int j = -40; j <= 40; ++j)
+        {
+            const float delay = static_cast<float> (writeIndex) + 1.0e-5f * static_cast<float> (j);
+            constant = constant && std::abs (line.read (delay) - 1.0f) < 1.0e-4f;
+        }
+    }
+
+    check (constant, "a delay line full of ones reads ones across the wrap point");
+}
 
 void testChorusSilence()
 {
@@ -4428,6 +4561,108 @@ void testGrainerCloudFilterClosesAndDefaultsOpen()
            "an untouched engine did not start with its filter open");
 }
 
+void testGrainerSmoothChangeDoesNotJumpTheLevel()
+{
+    std::printf ("Grainer Smooth: moving the knob does not jump the level of grains already sounding:\n");
+
+    // Smooth changes what window a grain is born with, and the energy that
+    // window holds has to be compensated. If that compensation sat in the output
+    // gain it would move the instant the knob did, and grains still ringing
+    // (long ones last a second) would be re-scaled for a window they do not
+    // have - a burst of loud, dirty sound for as long as they last. So: long
+    // grains on a steady tone with every random element off (so the output
+    // is one repeating pattern), Smooth moved from one end to the other, and
+    // the loudest 50 ms after the change compared with the loudest 50 ms of
+    // each steady state.
+    const auto run = [] (float from, float to, double& steadyFromPeak, double& steadyToPeak, double& worstAfter)
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (600.0f);
+        grainer.setDensityHz (4.0f);
+        grainer.setTimeMs (300.0f);
+        grainer.setFeedback (0.0f);
+        grainer.setScatter (0.0f);
+        grainer.setReverse (0.0f);
+        grainer.setStereo (0.0f);
+
+        auto tuning = grainer.getTuning();
+        tuning.attackShare = 0.0f;
+        tuning.grainLevelJitter = 0.0f;
+        tuning.windowJitter = 0.0f;
+        tuning.filterSpray = 0.0f;
+        tuning.sourceLevelling = 0.0f;
+        tuning.densityFollow = 0.0f;
+        tuning.bandSplit = 0.0f;
+        grainer.setTuning (tuning);
+
+        std::vector<float> in (kBlock), outL (kBlock), outR (kBlock);
+        const int frame = static_cast<int> (kSampleRate * 0.05);
+
+        std::vector<double> before, after;
+        const int total = static_cast<int> (kSampleRate * 14.0);
+        const int change = static_cast<int> (kSampleRate * 7.0);
+        double acc = 0.0;
+        int inFrame = 0;
+
+        grainer.setSmooth (from);
+        bool moved = false;
+        for (int n = 0; n < total; n += kBlock)
+        {
+            if (! moved && n >= change)
+            {
+                grainer.setSmooth (to);
+                moved = true;
+            }
+
+            for (int i = 0; i < kBlock; ++i)
+                in[static_cast<size_t> (i)] = 0.1f
+                                              * static_cast<float> (std::sin (2.0 * juce::MathConstants<double>::pi
+                                                                              * 300.0 * (n + i) / kSampleRate));
+
+            grainer.process (in.data(), in.data(), outL.data(), outR.data(), kBlock);
+
+            for (int i = 0; i < kBlock; ++i)
+            {
+                acc += static_cast<double> (outL[static_cast<size_t> (i)]) * outL[static_cast<size_t> (i)];
+                if (++inFrame == frame)
+                {
+                    (n + i < change ? before : after).push_back (std::sqrt (acc / frame));
+                    acc = 0.0;
+                    inFrame = 0;
+                }
+            }
+        }
+
+        const auto peakOf = [] (const std::vector<double>& v, size_t lo, size_t hi)
+        {
+            double peak = 0.0;
+            for (size_t i = lo; i < hi; ++i)
+                peak = std::max (peak, v[i]);
+            return peak;
+        };
+
+        steadyFromPeak = peakOf (before, before.size() - 60, before.size());
+        steadyToPeak = peakOf (after, after.size() - 60, after.size());
+        worstAfter = peakOf (after, 0, 80); // the 4 s after the change
+    };
+
+    for (const auto& dir : { std::pair<float, float> { 1.0f, 0.0f }, std::pair<float, float> { 0.0f, 1.0f } })
+    {
+        double a = 0.0, b = 0.0, worst = 0.0;
+        run (dir.first, dir.second, a, b, worst);
+        const double ceiling = std::max (a, b);
+        std::printf ("  Smooth %.0f -> %.0f: loudest 50 ms in each steady state %.4f and %.4f, after the change %.4f (%+.1f dB against the louder)\n",
+                     dir.first, dir.second, a, b, worst, 20.0 * std::log10 (worst / juce::jmax (1.0e-9, ceiling)));
+        // A steady tone and 600 ms grains is the worst case for this: the old
+        // and new grains add coherently. The gain following Smooth instead of
+        // being per-grain measured +9.6 dB here, and 1.15 x the louder steady
+        // state is what a fixed, gliding Smooth manages with room to spare.
+        check (worst < ceiling * 1.3, "moving Smooth made grains already sounding jump in level");
+    }
+}
+
 void testGrainerLowGroupIsOctavesOnly()
 {
     std::printf ("Grainer pitch: the Low group is octaves, whatever the scale\n");
@@ -5276,6 +5511,7 @@ int main()
     testShimmer();
     std::printf ("\n");
     testShimmerSilence();
+    testShimmerReproducible();
     std::printf ("\n");
     testDelayTaps();
     std::printf ("\n");
@@ -5303,6 +5539,7 @@ int main()
     std::printf ("\n");
     testTapeMachineStability();
     std::printf ("\n");
+    testModDelayLineWrapBoundary();
     testChorusSilence();
     std::printf ("\n");
     testChorusBypassIsUnity();
@@ -5392,6 +5629,7 @@ int main()
     std::printf ("\n");
     testGrainerGridLiveTapsWholeSixteenths();
     testGrainerFollowDensityReadsOnTheGrid();
+    testGrainerSmoothChangeDoesNotJumpTheLevel();
     std::printf ("\n");
     testGrainerAttackLeadsWithOctaves();
     std::printf ("\n");

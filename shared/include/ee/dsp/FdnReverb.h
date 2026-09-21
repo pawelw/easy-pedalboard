@@ -10,7 +10,7 @@
 #include "ReverbConfig.h"
 #include "ShimmerTuning.h"
 
-namespace daisysp { class PitchShifter; }
+namespace ee::dsp { class ShimmerPitchShifter; }
 
 namespace ee::dsp
 {
@@ -109,8 +109,8 @@ private:
     // header stays out of this one.
     float shimmerAmount = 0.0f;
     ShimmerTuning shimmerTuning;
-    std::unique_ptr<daisysp::PitchShifter> shimmerShifterL;
-    std::unique_ptr<daisysp::PitchShifter> shimmerShifterR;
+    std::unique_ptr<ShimmerPitchShifter> shimmerShifterL;
+    std::unique_ptr<ShimmerPitchShifter> shimmerShifterR;
     juce::SmoothedValue<float> shimmerGain;
 
     float shimmerFeedbackL = 0.0f;

@@ -635,9 +635,6 @@ public:
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 1) + " dB"; })));
 
-        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "smooth", 1 }, "Smooth", percent,
-                                                                 cfg::kDefaultSmoothPct, percentAttributes));
-
         return layout;
     }
 };

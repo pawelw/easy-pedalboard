@@ -826,13 +826,12 @@ Two things follow, and one of them is a real gap:
   or not. That is the price of a constant latency contract, and the ledger
   asserts it: the alternative is calling `setLatencySamples` on every engine
   switch, which hosts handle badly.
-- **Shimmer is not bit-reproducible** — `daisysp::PitchShifter` advances one
-  process-wide `static` RNG per sample, so two shimmered renders never agree and
-  two instances on different audio threads race on it. Found while bisecting a
-  moving checksum that turned out to be nothing to do with the change under
-  test. Inaudible, but it means Shimmer must stay at 0 in any regression
-  battery; `ee_alpine_host` marks its one shimmered case "not a baseline". See
-  CLAUDE.md's known-failures section.
+- **Shimmer was not bit-reproducible, and is now** - fixed under G1.3 of
+  `docs/release-plan.md`: DaisySP's `PitchShifter` advanced one process-wide
+  `static` RNG and left several members uninitialised, so BitBit runs its own
+  copy (`ee::dsp::ShimmerPitchShifter`) with a generator per instance. Found
+  while bisecting a moving checksum that turned out to be nothing to do with the
+  change under test. See CLAUDE.md's *Sanitizers* section.
 - **Bypassing the Delay module drops the real latency to 288 while the plugin
   goes on reporting 576**, so a compensating host pulls everything 6 ms early.
   `ee::fx::DelayModule` crossfades back to the caller's untouched buffer rather

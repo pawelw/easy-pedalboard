@@ -28,7 +28,6 @@ constexpr const char* kStretchID = "stretch";
 constexpr const char* kFreezeID = "freeze";
 constexpr const char* kWidthID = "width";
 constexpr const char* kShapeID = "shape";
-constexpr const char* kSmoothID = "smooth";
 constexpr const char* kScatterID = "scatter";
 constexpr const char* kReverseID = "reverse";
 constexpr const char* kStereoID = "stereo";
@@ -326,7 +325,6 @@ BitBitGrainProcessor::BitBitGrainProcessor()
     freezeParam = apvts.getRawParameterValue (kFreezeID);
     widthParam = apvts.getRawParameterValue (kWidthID);
     shapeParam = apvts.getRawParameterValue (kShapeID);
-    smoothParam = apvts.getRawParameterValue (kSmoothID);
     scatterParam = apvts.getRawParameterValue (kScatterID);
     reverseParam = apvts.getRawParameterValue (kReverseID);
     stereoParam = apvts.getRawParameterValue (kStereoID);
@@ -676,12 +674,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
         juce::ParameterID { kLevelID, 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
                                                                            { return juce::String (v, 1) + " dB"; })));
-
-    // Appended last, after Level: parameter order is part of the frozen
-    // contract (tests/golden/BitBitGrain.txt), and Smooth is newer than all of
-    // them. Its place on the face is next to Shape all the same.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kSmoothID, 1 }, "Smooth", percent,
-                                                             cfg::kDefaultSmoothPct, percentAttributes));
 
     return layout;
 }
@@ -1196,7 +1188,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // section, which is why Pitch's Low/Unison/High could look turned up and
     // do nothing.
 
-    // Size/Density/Window/Shape/Smooth/Feedback/Scatter/Reverse/Stereo/Mod/Pitch Low/Unison/
+    // Size/Density/Window/Shape/Feedback/Scatter/Reverse/Stereo/Mod/Pitch Low/Unison/
     // High/Pitch Mix/Filter/Drive/Bit - every modulation target this pedal
     // has (Delay/Reverb's own scope cut) - are set per chunk inside the loop
     // below instead of here, each read through modulatedValue() so a
@@ -1320,8 +1312,15 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // keeps the cloud on its regular Time tap rather than re-singing each
         // onset. Whatever a session stored in Window is ignored.
         grainer.setAttackReachSeconds (ee::dsp::config::kFixedAttackReachSeconds);
-        grainer.setShape (modulatedValue (kShapeID, shapeParam->load()) * 0.01f);
-        grainer.setSmooth (modulatedValue (kSmoothID, smoothParam->load()) * 0.01f);
+
+        // Shape and Smooth are one control: Shape at its plucky end (100) is
+        // the engine's own window, untouched (Smooth 0); at its soft end (0) the
+        // grain is the full swell (Smooth 1); in between the two blend. Smooth
+        // has no knob or parameter of its own - it is 1 - Shape, modulated
+        // Shape included.
+        const float shape01 = modulatedValue (kShapeID, shapeParam->load()) * 0.01f;
+        grainer.setShape (shape01);
+        grainer.setSmooth (1.0f - shape01);
 
         // The Feedback knob (it took Window's place on the face). With Pitch
         // Low/High in the mix a repeat is re-pitched on its way round, so an

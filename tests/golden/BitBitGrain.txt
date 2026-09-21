@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.grains
   categories   "Fx Delay"
 
-parameters 50
+parameters 49
 0 size
     name       "Size"
     default    0.5
@@ -323,9 +323,3 @@ parameters 50
     version    1
     steps      2147483647 continuous automatable
     range      -24 12 interval 0.100000001 skew 1
-49 smooth
-    name       "Smooth"
-    default    0
-    version    1
-    steps      2147483647 continuous automatable
-    range      0 100 interval 0.100000001 skew 1

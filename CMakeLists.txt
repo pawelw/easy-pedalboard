@@ -69,6 +69,18 @@ if(CCACHE_PROGRAM)
     message(STATUS "Using ccache: ${CCACHE_PROGRAM}")
 endif()
 
+# Sanitizer builds, for the offline test tools (ee_dsp_tests, ee_*_stress,
+# ee_*_host). "address,undefined" or "thread"; the two families cannot be mixed.
+# Set before anything is fetched or defined so JUCE, DaisySP and our own code are
+# all instrumented - an uninstrumented dependency hides exactly the races and
+# overruns this exists to find. Never for a build you hand to anyone.
+set(EE_SANITIZE "" CACHE STRING "Sanitizers to build with: address,undefined or thread (development only)")
+if(EE_SANITIZE)
+    add_compile_options(-fsanitize=${EE_SANITIZE} -fno-omit-frame-pointer -fno-sanitize-recover=undefined -g)
+    add_link_options(-fsanitize=${EE_SANITIZE})
+    message(STATUS "Sanitizers: ${EE_SANITIZE}")
+endif()
+
 include(FetchContent)
 
 FetchContent_Declare(JUCE

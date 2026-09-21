@@ -53,6 +53,13 @@ public:
         if (readPos < 0.0f)
             readPos += static_cast<float> (size);
 
+        // Adding `size` to a tiny negative readPos rounds to exactly `size` in
+        // float (the spacing near 4000 is ~5e-4), which is one past the last
+        // sample. Found by ASan through FdnReverb, whose modulated reads land
+        // there; on a heap buffer it is a read of whatever sits next to it.
+        if (readPos >= static_cast<float> (size))
+            readPos -= static_cast<float> (size);
+
         const int i1 = static_cast<int> (readPos);
         const float frac = readPos - static_cast<float> (i1);
 

@@ -90,6 +90,11 @@ private:
         while (rp < 0.0f)
             rp += static_cast<float> (lineLen);
 
+        // A tiny negative rp plus lineLen rounds to exactly lineLen in float,
+        // which is one past the last sample (see ModDelayLine::read).
+        if (rp >= static_cast<float> (lineLen))
+            rp -= static_cast<float> (lineLen);
+
         const int i0 = static_cast<int> (rp);
         const float frac = rp - static_cast<float> (i0);
         const int i1 = i0 + 1 >= lineLen ? 0 : i0 + 1;

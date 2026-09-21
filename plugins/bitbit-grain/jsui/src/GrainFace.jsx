@@ -97,7 +97,6 @@ function GrainSection() {
       </div>
       <div className="pg-section__knobs">
         <ModdableKnob parameterId="feedback" caption="Fback" variant="flat" size={30} />
-        <ModdableKnob parameterId="smooth" caption="Smooth" variant="flat" size={30} />
         <ModdableKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
       </div>
     </section>

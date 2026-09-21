@@ -41,6 +41,27 @@
       }
     },
     {
+      "name": "asan",
+      "inherits": "fast",
+      "displayName": "ASan + UBSan (offline test tools)",
+      "description": "Build only the test binaries against this - the plugin targets are not meant to be run instrumented. Optimised (-O2 from Release) so the DSP tests finish; -g for readable reports.",
+      "binaryDir": "${sourceDir}/build-asan",
+      "cacheVariables": {
+        "EE_SANITIZE": "address,undefined",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O2 -g"
+      }
+    },
+    {
+      "name": "tsan",
+      "inherits": "fast",
+      "displayName": "TSan (offline test tools)",
+      "binaryDir": "${sourceDir}/build-tsan",
+      "cacheVariables": {
+        "EE_SANITIZE": "thread",
+        "CMAKE_CXX_FLAGS_RELEASE": "-O2 -g"
+      }
+    },
+    {
       "name": "release",
       "displayName": "Release (universal binary, for handing to someone else)",
       "generator": "Ninja",

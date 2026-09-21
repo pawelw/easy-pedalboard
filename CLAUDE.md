@@ -171,32 +171,61 @@ only way to exercise the AU wrapper itself. Address it by identifier
 every third-party component into the process and at least one on this machine
 brings it down with a SIGBUS.
 
-### Known failures — do not chase these
+### Known failures
 
-`ee_dsp_tests` does not exit clean on a healthy tree:
+None. `ee_dsp_tests` exits clean on a healthy tree, and `scripts/dev-check.sh`
+no longer filters anything - a FAIL is yours. Two that used to be waived here
+were closed under G1.4 of `docs/release-plan.md`, and both were real:
 
-- **`tape at 100 % moves the level too far`** fails on every run. Baseline.
-- **`chorus is silent on a silent input`** fails on roughly half of runs, with no
-  rebuild in between — genuine nondeterminism in the Chorus engine. A single green
-  run therefore does not prove a chorus change is safe; run the suite a few times.
+- **`chorus is silent on a silent input`** (was flaky, ~50 % of runs) was an
+  out-of-bounds read in `ModDelayLine::read`. Adding the buffer size to a tiny
+  negative read position rounds to exactly `size` in float, which is one sample
+  past the end, so the read returned whatever the heap held next door - a
+  different value each run. Found by ASan (see *Sanitizers*), which reproduces it
+  in the Chorus and in `FdnReverb`; `Rust.h` and `OctaveShifter.h` carried the same
+  wrap and are fixed too. `testModDelayLineWrapBoundary` is the regression.
+- **`tape at 100 % moves the level too far`** was a voicing change, not a bad
+  test: once `maxDrive` was tuned up to 5.53 the makeup gain, which only
+  compensates the curve's slope at the origin, left a played level ~4 dB down.
+  `TapeCharacter` now calibrates the makeup at `TapeTuning::levelReference` (a
+  gaussian at -20 dBFS rms) instead. The test measures a band-limited source,
+  because the stage rolls the top off on purpose and broadband noise reads that
+  as a level change.
 
-Anything else is yours — and `scripts/dev-check.sh` already filters these two out
-of its verdict, so keep its filter list and this section in sync.
+### Sanitizers
 
-**Shimmer is not bit-reproducible, and it is not our bug.** Any render with the
-Space reverb's Shimmer above zero differs run to run, even in the same process
-with the same binary and the same input — so it cannot be checksummed against
-another render, and a `*_regress` battery must leave Shimmer at 0. DaisySP's
-`PitchShifter`, which the shimmer is built on, draws its modulation slew
-coefficients from `daisysp::myrand()` (`_deps/daisysp-src/Source/Effects/pitchshifter.h`),
-and that is one function-local `static uint32_t seed` shared by every instance
-in the process and advanced *per sample* from inside `Process()`. Two shimmered
-renders therefore start at different points of the sequence; two plugin
-instances on different audio threads also race on it. Inaudible — the depth it
-scales is zero unless `SetFun` is called, which nothing here does — but it will
-waste an afternoon if you are bisecting a checksum. It affects BitBit Reverb and
-BitBit Alpine's Space engine. `ee_alpine_host` prints its one shimmered case
-marked "not a baseline".
+The offline tools build under ASan + UBSan or TSan, in their own trees:
+
+```bash
+cmake --preset asan -DEE_PLUGINS="bitbit-alpine;bitbit-grain;bitbit-artifact;bitbit-modulation;bitbit-delay;bitbit-reverb"
+cmake --build build-asan --target ee_dsp_tests ee_alpine_host ee_grain_host   # ...any test tool
+./build-asan/tests/ee_dsp_tests_artefacts/Release/ee_dsp_tests
+cmake --preset tsan -DEE_PLUGINS=bitbit-chorus && cmake --build build-tsan --target ee_dsp_tests
+```
+
+Build only the test targets there - the plugin targets are not meant to run
+instrumented, and a full ASan build of all six is ~12 minutes. `EE_SANITIZE`
+applies to JUCE and DaisySP too, on purpose. Add
+`-DFETCHCONTENT_SOURCE_DIR_JUCE=$PWD/build/_deps/juce-src` (likewise `_DAISYSP`,
+`_CHOWDSP_WDF`) to reuse an existing checkout instead of re-cloning. ASan runs
+the suite in ~30 s, TSan in ~5 min. A sanitizer cannot see what it does not
+instrument: the *uninitialised* members in DaisySP's `PitchShifter` sat past the
+range ASan's allocation fill covers (see below), so a clean run is evidence, not proof.
+
+**Shimmer is bit-reproducible** (`testShimmerReproducible`), and it used not to
+be, for two reasons in DaisySP's `PitchShifter` - which is why BitBit's shimmer
+now runs `ee::dsp::ShimmerPitchShifter`, a copy with those two fixed. Its
+modulation drew from `daisysp::myrand()`, one function-local `static uint32_t`
+shared by every instance and advanced from `Process()`, so a render depended on
+what had run before it and two instances on different audio threads raced on it.
+And its constructor is user-provided and empty, so several members (`mod_a_amt_`,
+`slewed_mod_`, `mod_coeff_`, `prev_phs_a_`...) started as heap garbage. Each
+instance now has its own generator, seeded in `Init()`, and every member is set
+there. The flutter (`ShimmerTuning::flutter`, 0.25) is **not** zero, so this was
+audible modulation, not inaudible as an earlier version of this file said. The
+voicing is unchanged; only the random sequence differs from the old shared one.
+It affects BitBit Reverb and BitBit Alpine's Space engine. A `*_regress` battery
+can now leave Shimmer above zero.
 
 ## Formatting
 

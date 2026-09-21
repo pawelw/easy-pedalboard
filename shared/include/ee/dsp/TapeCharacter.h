@@ -322,9 +322,40 @@ private:
         bias = amount * tuning.maxBias;
         biasOffset = std::tanh (bias);
 
-        // Slope of the curve at the origin is drive * (1 - tanh(bias)^2). The
-        // trim on top puts the level back where the reference machine left it.
-        makeup = (1.0f + amount * tuning.maxTrim) / (drive * (1.0f - biasOffset * biasOffset));
+        // Slope of the curve at the origin is drive * (1 - tanh(bias)^2), and
+        // dividing by it is all the makeup this needs while drive is small.
+        // Once drive is large it is not: the curve is squashing most of a real
+        // signal, so unity at the origin leaves a played level several dB down
+        // (-4 dB at 1 kHz, Tape 100 %, with the shipped maxDrive). So the gain
+        // is set where the signal actually lives - the rms that comes out of the
+        // curve, for a gaussian input at tuning.levelReference, is put back to
+        // that input's rms. Very quiet input then sits a little above unity and
+        // loud input below it, which is what a saturator does.
+        //
+        // The trim on top puts the level back where the reference machine left it.
+        const float slope = drive * (1.0f - biasOffset * biasOffset);
+        makeup = (1.0f + amount * tuning.maxTrim) / slope;
+
+        const float sigma = tuning.levelReference;
+        if (sigma > 0.0f)
+        {
+            constexpr int steps = 64;
+            double curveEnergy = 0.0, inputEnergy = 0.0;
+
+            for (int i = 0; i < steps; ++i)
+            {
+                const double z = -4.0 + 8.0 * (i + 0.5) / steps;
+                const double weight = std::exp (-0.5 * z * z);
+                const double x = static_cast<double> (sigma) * z;
+                const double y = std::tanh (static_cast<double> (drive) * x + bias) - biasOffset;
+                curveEnergy += weight * y * y;
+                inputEnergy += weight * x * x;
+            }
+
+            if (curveEnergy > 0.0 && inputEnergy > 0.0)
+                makeup = (1.0f + amount * tuning.maxTrim)
+                         * static_cast<float> (std::sqrt (inputEnergy / curveEnergy));
+        }
 
         shelfGain = 1.0f - amount * tuning.maxShelfLoss;
         noiseGain = amount * tuning.maxNoise;

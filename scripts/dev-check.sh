@@ -39,20 +39,17 @@ run() {
     local out rc new
     out=$("$bin" 2>&1); rc=$?
 
-    # The two known-bad checks are filtered out of the verdict so the exit code
-    # means "something you did", not "this tree has always been like this".
-    # Keep this list in sync with the "Known failures" section of CLAUDE.md.
-    new=$(grep -E '^\s+FAIL' <<<"$out" \
-          | grep -vF 'tape at 100 % moves the level too far' \
-          | grep -vF 'chorus is silent on a silent input')
+    # There are no known-bad checks any more (the last two were closed under
+    # G1.4 of docs/release-plan.md), so any FAIL line is yours. If one ever has
+    # to be waived again, filter it here and list it in CLAUDE.md, with why.
+    new=$(grep -E '^\s+FAIL' <<<"$out")
 
     if [[ $rc -eq 0 ]]; then
         printf '  %-30s PASS\n' "$name"
-    elif [[ -z $new ]]; then
-        printf '  %-30s PASS (known failures only)\n' "$name"
     else
-        printf '  %-30s FAIL\n' "$name"
-        sed 's/^/      /' <<<"$new"
+        printf '  %-30s FAIL (exit %d)\n' "$name" "$rc"
+        # A crash has no FAIL line to show, so fall back to the last of the output.
+        sed 's/^/      /' <<<"${new:-$(tail -n 5 <<<"$out")}"
         status=1
     fi
 }

@@ -40,6 +40,10 @@ struct TapeTuning
     float envelopeCornerHz = 6.0f;
     float envReference = 0.02f;
     float maxTilt = 3.0f;
+
+    // The programme level (rms, full scale = 1) the saturation's makeup gain is
+    // calibrated at: -20 dBFS, a played guitar or a mixed bus with headroom.
+    float levelReference = 0.1f;
 };
 
 /** Describes a field for the tuning panel, and names it as the source does. */
@@ -75,6 +79,8 @@ inline constexpr TapeTuningEntry kTapeTuningEntries[] = {
     { "envelopeCornerHz",   &TapeTuning::envelopeCornerHz,   0.5f,   60.0f,    2 },
     { "envReference",       &TapeTuning::envReference,       0.002f,  0.2f,    4 },
     { "maxTilt",            &TapeTuning::maxTilt,            1.0f,   12.0f,    2 },
+
+    { "levelReference",     &TapeTuning::levelReference,     0.0f,    0.5f,    3 },
 };
 
 } // namespace ee::dsp

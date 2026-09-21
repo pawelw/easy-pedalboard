@@ -77,13 +77,11 @@ function grainDivisionBeats(density01) {
     right of it. */
 export function GrainEnvelope({ accent }) {
   const [shape] = useJuceSliderValue("shape");
-  const [smooth] = useJuceSliderValue("smooth");
   const [size] = useJuceSliderValue("size");
   const [density] = useJuceSliderValue("density");
   const [feedback01] = useJuceSliderValue("feedback");
 
   const shapeA = useModAssignment("shape");
-  const smoothA = useModAssignment("smooth");
   const sizeA = useModAssignment("size");
   const densityA = useModAssignment("density");
   const feedbackA = useModAssignment("feedback");
@@ -106,14 +104,12 @@ export function GrainEnvelope({ accent }) {
   const sizeSpanBase =
     sizeMs == null ? size : Math.log(clampMs(sizeMs) / SIZE_MIN_MS) / Math.log(SIZE_MAX_MS / SIZE_MIN_MS);
 
-  if (shapeA || smoothA || sizeA || densityA || feedbackA)
+  if (shapeA || sizeA || densityA || feedbackA)
     return (
       <GrainEnvelopeLive
         accent={accent}
         shape={shape}
         shapeA={shapeA}
-        smooth={smooth}
-        smoothA={smoothA}
         density={density}
         densityA={densityA}
         feedback01={feedback01}
@@ -128,7 +124,6 @@ export function GrainEnvelope({ accent }) {
     <GrainEnvelopeBody
       accent={accent}
       shape={shape}
-      smooth={smooth}
       density={density}
       feedback01={feedback01}
       sizeSpan={sizeSpanBase}
@@ -141,14 +136,13 @@ export function GrainEnvelope({ accent }) {
     the same split, and why it is a separate component (useLfoValue()
     re-renders its subscriber every frame; an unmodulated display, the common
     case, should not pay for that). */
-function GrainEnvelopeLive({ accent, shape, shapeA, smooth, smoothA, density, densityA, feedback01, feedbackA, sizeSpanBase, size, sizeA }) {
+function GrainEnvelopeLive({ accent, shape, shapeA, density, densityA, feedback01, feedbackA, sizeSpanBase, size, sizeA }) {
   const lfoValue = useLfoValue();
 
   return (
     <GrainEnvelopeBody
       accent={accent}
       shape={resolveModulated(shape, shapeA, lfoValue)}
-      smooth={resolveModulated(smooth, smoothA, lfoValue)}
       density={resolveModulated(density, densityA, lfoValue)}
       feedback01={resolveModulated(feedback01, feedbackA, lfoValue)}
       // No live duration text to read a modulated size off (see GrainEnvelope
@@ -162,7 +156,10 @@ function GrainEnvelopeLive({ accent, shape, shapeA, smooth, smoothA, density, de
 /** The envelope's own drawing, given already-resolved 0..1 inputs (the base
     parameters, or their live modulated values - GrainEnvelope/GrainEnvelopeLive's
     own concern, not this component's). */
-function GrainEnvelopeBody({ accent, shape, smooth, density, feedback01, sizeSpan }) {
+function GrainEnvelopeBody({ accent, shape, density, feedback01, sizeSpan }) {
+  // Shape is also the swell: 1 - Shape of the way from its own window to the
+  // fixed-millisecond fade-in (see BitBitGrainProcessor::processBlock).
+  const smooth = 1 - shape;
   const grainCount = Math.min(8, Math.max(1, Math.round(4 / grainDivisionBeats(density))));
   const width = 70 + sizeSpan * 110; // longer Size = wider grain window
   // The grain's real length, for the swell's fixed-millisecond fade-in.
@@ -199,7 +196,7 @@ function GrainEnvelopeBody({ accent, shape, smooth, density, feedback01, sizeSpa
 // Grainer's "soft" end) to a fast pluck that flattens early (Shape 1, its
 // "hard" end) - sampled into a polyline since an SVG path takes no exponent.
 //
-// Smooth blends that toward Grainer's swell the way the engine does (see
+// Smooth (1 - Shape) blends that toward Grainer's swell the way the engine does (see
 // Grainer::envelopeOf): a linear fade-in of a fixed number of milliseconds, a
 // hold, then a short cut - the same two times whatever the grain length
 // (GrainerTuning::smoothAttackMs / smoothReleaseMs, mirrored here), squeezed
