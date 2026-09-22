@@ -483,7 +483,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kFreezeID, 1 }, "Freeze", false));
 
-    // Wide, on Grain's first row: how much Haas width the grain cloud gets - see
+    // Wide, on Grain's first row: how far off centre a grain may land - see
     // GrainerConfig.h's WIDE. (Was a Mono/Stereo switch; the id is unchanged.)
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kWidthID, 1 }, "Wide", percent,
                                                              cfg::kDefaultWidePct, percentAttributes));
@@ -989,7 +989,6 @@ void BitBitGrainProcessor::prepareToPlay (double sampleRate, int maximumExpected
     driveStage.reset();
     sendDrive.prepare (sampleRate);
     sendDrive.reset();
-    haas.prepare (sampleRate, ee::dsp::config::kHaasDelayMs, ee::dsp::config::kHaasRampMs);
 
     delay.prepare (sampleRate);
     delay.reset();
@@ -1059,7 +1058,6 @@ void BitBitGrainProcessor::releaseResources()
     grainer.reset();
     driveStage.reset();
     sendDrive.reset();
-    haas.reset();
     delay.reset();
     reverb.reset();
     outputLimiter.reset();
@@ -1208,7 +1206,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // way.
     grainer.setScale (juce::roundToInt (scaleParam->load()), juce::roundToInt (rootParam->load()));
     grainer.setFreeze (freezeParam->load() > 0.5f);
-    haas.setWidth (widthParam->load() * 0.01f * ee::dsp::config::kHaasWidth);
+    grainer.setWidth (widthParam->load() * 0.01f);
 
     const float leftSecs = delayMap.value (leftTimeParam->load(), delaySynced, bpm) * 0.001f;
     const float rightSecs = delayMap.value (rightTimeParam->load(), delaySynced, bpm) * 0.001f;
@@ -1360,7 +1358,6 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // Grain-cloud-only, like the cloud Filter above it - the dry path
         // never reaches this stage.
         driveStage.process (grainL, grainR, chunk);
-        haas.process (grainL, grainR, chunk);
 
         // The dry note's own level and the grain send are computed here and
         // kept apart from here on: dryBuffer is added back in full only at
@@ -1454,8 +1451,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         }
 
         // Drive on the weighted bus too, so the tank hears the cloud coloured
-        // as it is downstream. Haas is deliberately not repeated: its side
-        // content cancels in exactly this fold-down by design.
+        // as it is downstream.
         if (intervalSend)
             sendDrive.process (mono, nullptr, chunk);
 

@@ -7,7 +7,6 @@
 #include "ee/dsp/BreakpointLfo.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/GrainerConfig.h"
-#include "ee/dsp/HaasWidener.h"
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/BitBitLimiter.h"
@@ -226,7 +225,6 @@ private:
     // fed audio coloured exactly like the cloud it was taken from. Idle
     // whenever GrainerTuning::pitchSendPerOctave is 0.
     ee::dsp::TubeDrive sendDrive;
-    ee::dsp::HaasWidener haas; // Wide: Haas width on the grain cloud
 
     /** The Mod tab's LFO. Not routed to anything yet - Stage 3 adds the
         drag-and-drop modulation targets; this stage only ticks its phase and
@@ -269,7 +267,7 @@ private:
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* stretchParam = nullptr;
     std::atomic<float>* freezeParam = nullptr;
-    std::atomic<float>* widthParam = nullptr; // width (Wide, 0..100 %): Haas on the grain cloud
+    std::atomic<float>* widthParam = nullptr; // width (Wide, 0..100 %): per-grain pan reach, see GrainerConfig.h's WIDE
     std::atomic<float>* shapeParam = nullptr;
     std::atomic<float>* shapeFamilyParam = nullptr;
     std::atomic<float>* scatterParam = nullptr;

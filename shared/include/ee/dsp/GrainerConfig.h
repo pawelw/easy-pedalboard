@@ -318,19 +318,20 @@ constexpr float kMinRecaptureSeconds = 0.5f;
 constexpr float kFreezeLoopSeconds = 3.0f;
 
 // ============================================================================
-// WIDE  (Haas width on the grain cloud)
+// WIDE  (per-grain pan reach)
 // ============================================================================
-// The Wide knob on Grain's first row, 0..100 %. At 0 it leaves the cloud exactly
-// as the engine and Drive made it (Random's Spray knob - the `stereo` parameter
-// - still pans grains). Above 0 it runs the cloud through
-// ee::dsp::HaasWidener: the side channel gets the mid back 6.83 ms late, scaled
-// by the knob, which widens the image and cancels exactly in a mono fold-down.
-// Delay is the one measured on the reference grainer this was modelled on
-// (side gain ~0.9 there; 100 % here is full width, as asked for). Cloud only -
-// the dry path never reaches it.
-constexpr float kHaasDelayMs = 6.83f;
-constexpr float kHaasWidth = 1.0f;
-constexpr float kHaasRampMs = 20.0f;
+// The Wide knob on Grain's first row, 0..100 %, is how far off centre a grain
+// is allowed to land - not a switch and not a post-process on the finished
+// cloud, a bound on Grainer::nextPan() itself. At 0 every grain is dead
+// centre regardless of what Random's Spray knob (the `stereo` parameter) is
+// doing: the cloud is mono. Above 0, with Spray at its own zero, grains
+// hard-alternate left/right/left/right at Wide's reach - a ping-pong cloud,
+// not a Haas-widened mono one. Any Spray replaces the alternation with its
+// own randomness - a random side and a random distance from centre, same as
+// Spray always drew - but nextPan() still clamps that draw to +/-Wide, so
+// Spray can never throw a grain further than Wide allows. Wide with Spray at
+// its default (85 %, see kDefaultStereoPct) is therefore the ceiling on an
+// already-random spread, not a width the cloud gets automatically.
 constexpr float kDefaultWidePct = 0.0f;
 
 // ============================================================================

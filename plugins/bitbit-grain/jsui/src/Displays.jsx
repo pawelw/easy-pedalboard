@@ -291,14 +291,18 @@ const RANDOM_DOTS = [
 ];
 
 /** L/R stereo field: a centre line and a scatter of grains either side, each
-    now driven by this section's own three knobs. Stereo scales every grain's
-    distance from the centre line (0 collapses the whole field onto it, 1 is
-    the full spread above); Scatter sets how far and how fast the grains jitter
-    - it is exactly the engine's own per-grain timing/position jitter, so 0
-    holds them still. Reverse is not drawn: a reversed grain looks and drifts
-    like any other. Each grain is drawn with the same steep-attack/long-decay lean as
-    GrainEnvelope above - a fat rounded head tapering to a thin tail - rather
-    than a plain dot, so the two displays read as the same shape.
+    now driven by this section's own three knobs plus the Grain section's
+    Wide. Stereo scales every grain's distance from the centre line (0
+    collapses the whole field onto it, 1 is the full spread above), but that
+    spread is itself capped by Wide - the same bound Grainer::nextPan()
+    applies to the real audio - so the field collapses to the centre line at
+    Wide 0 regardless of what Stereo is dialled to. Scatter sets how far and
+    how fast the grains jitter - it is exactly the engine's own per-grain
+    timing/position jitter, so 0 holds them still. Reverse is not drawn: a
+    reversed grain looks and drifts like any other. Each grain is drawn with
+    the same steep-attack/long-decay lean as GrainEnvelope above - a fat
+    rounded head tapering to a thin tail - rather than a plain dot, so the two
+    displays read as the same shape.
 
     The jitter itself is a `requestAnimationFrame` loop rather than a CSS
     keyframe animation driven by custom properties: a CSS animation re-reads
@@ -311,6 +315,9 @@ const RANDOM_DOTS = [
 export function RandomField({ accent }) {
   const [stereo] = useJuceSliderValue("stereo");
   const [scatter] = useJuceSliderValue("scatter");
+  // Wide is not a modulation target (see GrainFace's own note on the "width"
+  // knob), so this is the one plain, non-modulated read in the section.
+  const [width] = useJuceSliderValue("width");
 
   const stereoA = useModAssignment("stereo");
   const scatterA = useModAssignment("scatter");
@@ -323,10 +330,11 @@ export function RandomField({ accent }) {
         stereoA={stereoA}
         scatter={scatter}
         scatterA={scatterA}
+        width={width}
       />
     );
 
-  return <RandomFieldBody accent={accent} stereo={stereo} scatter={scatter} />;
+  return <RandomFieldBody accent={accent} stereo={stereo} scatter={scatter} width={width} />;
 }
 
 /** RandomField's own live subscription to the LFO's per-frame output - see
@@ -336,7 +344,7 @@ export function RandomField({ accent }) {
     re-resolves the two knob-derived numbers the jitter loop and the layout
     below already read every frame; it does not touch how the jitter itself
     moves. */
-function RandomFieldLive({ accent, stereo, stereoA, scatter, scatterA }) {
+function RandomFieldLive({ accent, stereo, stereoA, scatter, scatterA, width }) {
   const lfoValue = useLfoValue();
 
   return (
@@ -344,11 +352,12 @@ function RandomFieldLive({ accent, stereo, stereoA, scatter, scatterA }) {
       accent={accent}
       stereo={resolveModulated(stereo, stereoA, lfoValue)}
       scatter={resolveModulated(scatter, scatterA, lfoValue)}
+      width={width}
     />
   );
 }
 
-function RandomFieldBody({ accent, stereo, scatter }) {
+function RandomFieldBody({ accent, stereo, scatter, width }) {
   const n = RANDOM_DOTS.length;
   const liveRef = useRef({ scatter });
   liveRef.current = { scatter };
@@ -387,7 +396,7 @@ function RandomFieldBody({ accent, stereo, scatter }) {
       <span className="pg-field__side pg-field__side--l">L</span>
       <span className="pg-field__side pg-field__side--r">R</span>
       {RANDOM_DOTS.map((d, i) => {
-        const top = 50 + (d.top - 50) * stereo;
+        const top = 50 + (d.top - 50) * stereo * width;
         const w = d.size * 2.6;
         const h = d.size * 1.5;
         return (

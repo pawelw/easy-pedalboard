@@ -102,6 +102,7 @@ public:
         haveExpectedSpawnPpq = false;
         wasSpawnPlaying = false;
         rngState = kRngSeed;
+        panAlternateSign = 1.0f;
         smoothedNorm = normTarget;
         feedbackSample = 0.0f;
         cloudHpX1L = cloudHpY1L = cloudHpX1R = cloudHpY1R = 0.0f;
@@ -275,8 +276,15 @@ public:
     /** Share of grains that play backwards, 0 to 1. */
     void setReverse (float amount01) noexcept { reverse = std::clamp (amount01, 0.0f, 1.0f); }
 
-    /** Width of the random pan placement, 0 (centred) to 1 (hard left/right). */
+    /** Width of the random pan placement, 0 (centred) to 1, bounded by
+        setWidth()'s own reach - see nextPan(). */
     void setStereo (float amount01) noexcept { stereo = std::clamp (amount01, 0.0f, 1.0f); }
+
+    /** How far off centre a grain is allowed to land, 0 (mono - every grain
+        centred, whatever Spray is doing) to 1 (hard left/right). With Spray
+        at zero this alone decides it: grains alternate left/right/left/right
+        at this reach. See GrainerConfig.h's WIDE. */
+    void setWidth (float amount01) noexcept { width = std::clamp (amount01, 0.0f, 1.0f); }
 
     /** The Filter knob: a plain lowpass cutoff and nothing else. 1 is fully
         open at config::kCloudLowpassHz, 0 fully closed at
@@ -1292,6 +1300,22 @@ private:
     /** -1..1. */
     float nextBipolar() noexcept { return nextFloat() * 2.0f - 1.0f; }
 
+    /** Base pan for the next grain (or attack-stack voice) - called once per
+    grain event, not per emitted voice, so a band-split or an attack stack
+    still moves as one - see spawnGrain()/spawnAttackStack(). With Spray
+    (stereo) at zero, grains hard-alternate left/right/left/right at Wide's
+    own reach; any Spray scatters them randomly instead - a random side and a
+    random distance from centre, same as Spray always drew, just never past
+    what Wide allows. See GrainerConfig.h's WIDE. */
+    float nextPan() noexcept
+    {
+        if (stereo > 0.0f)
+            return std::clamp (nextBipolar() * stereo, -width, width);
+
+        panAlternateSign = -panAlternateSign;
+        return panAlternateSign * width;
+    }
+
     /** The spawn phase always free-runs (see the per-sample loop); this only
     nudges it onto the host grid while Density is synced to a running
     transport. A hard snap on the first playing block or a transport jump
@@ -1901,7 +1925,7 @@ private:
                 position += static_cast<double> (size);
         }
 
-        const float pan = nextBipolar() * stereo;
+        const float pan = nextPan();
 
         // Per-grain level, folded into the pan gains rather than carried as a
         // field of its own. Downward only, so the loudest grain is no louder
@@ -1943,7 +1967,7 @@ private:
         const int into = windowSamples > 0 ? static_cast<int> (nextFloat() * static_cast<float> (windowSamples)) : 0;
         const int wanted = sinceAttack + preRoll - into;
 
-        const float pan = nextBipolar() * stereo;
+        const float pan = nextPan();
         const float level = 1.0f - levelJitterNow() * nextFloat();
 
         const int margin = config::kGrainReadMarginSamples;
@@ -2338,6 +2362,12 @@ private:
     float scatter = config::kDefaultScatterPct * 0.01f;
     float reverse = config::kDefaultReversePct * 0.01f;
     float stereo = config::kDefaultStereoPct * 0.01f;
+    float width = config::kDefaultWidePct * 0.01f;
+
+    // Flips sign each time nextPan() draws a deterministic (Spray-off) pan,
+    // so successive grains land left/right/left/right rather than repeating
+    // the same side.
+    float panAlternateSign = 1.0f;
 
     // Scale candidate tables - see setScale(). Sentinels of -1 so the first
     // call (made from prepare()) always populates them.

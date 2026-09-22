@@ -4525,6 +4525,7 @@ void testGrainerStereoIsBalanced()
     grainer.setTimeMs (400.0f);
     grainer.setFeedback (0.0f);
     grainer.setStereo (1.0f);
+    grainer.setWidth (1.0f); // Spray's draw is bounded by Wide - see GrainerConfig.h's WIDE
 
     std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
 
@@ -4556,6 +4557,163 @@ void testGrainerStereoIsBalanced()
     // placement bug that starves one side, and that shows up as many decibels
     // rather than as a fraction of one.
     check (std::abs (balanceDb) < 1.5f, "the grain cloud is lopsided (" + juce::String (balanceDb, 2) + " dB)");
+}
+
+/** Wide at 0 is the gate: whatever Spray (`stereo`) is doing, every grain has
+    to land dead centre and the cloud folds to mono - see Grainer::nextPan()
+    and GrainerConfig.h's WIDE. */
+void testGrainerWideZeroForcesMono()
+{
+    std::printf ("Grainer Wide at 0 with Spray open:\n");
+
+    std::mt19937 rng (5);
+    std::uniform_real_distribution<float> noise (-0.7f, 0.7f);
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.reset();
+    grainer.setSizeMs (120.0f);
+    grainer.setDensityHz (20.0f);
+    grainer.setTimeMs (400.0f);
+    grainer.setFeedback (0.0f);
+    grainer.setStereo (1.0f); // Spray wide open...
+    grainer.setWidth (0.0f);  // ...but Wide shut should still leave everything centred
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    double diffSquares = 0.0;
+    double sumSquares = 0.0;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 6.0 / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+            inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = noise (rng);
+
+        grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const float l = outL[static_cast<size_t> (i)];
+            const float r = outR[static_cast<size_t> (i)];
+            diffSquares += static_cast<double> (l - r) * (l - r);
+            sumSquares += static_cast<double> (l) * l + static_cast<double> (r) * r;
+        }
+    }
+
+    const float diffDb = juce::Decibels::gainToDecibels (
+        static_cast<float> (std::sqrt (diffSquares / juce::jmax (1.0e-12, sumSquares))), -120.0f);
+
+    std::printf ("  L-R difference: %.1f dB below the signal\n", diffDb);
+
+    check (diffDb < -80.0f,
+           "Wide at 0 should leave the cloud mono even with Spray wide open (L-R only " + juce::String (diffDb, 1)
+               + " dB down)");
+}
+
+/** Spray closed (`stereo` 0) hands panning to Wide alone: grains hard-alternate
+    left/right/left/right at Wide's own reach rather than a random draw. */
+void testGrainerWideAlternatesSidesWhenSprayIsClosed()
+{
+    std::printf ("Grainer Wide alternation with Spray closed:\n");
+
+    std::mt19937 rng (7);
+    std::uniform_real_distribution<float> noise (-0.7f, 0.7f);
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.reset();
+    grainer.setSizeMs (60.0f);
+    grainer.setDensityHz (20.0f);
+    grainer.setTimeMs (400.0f);
+    grainer.setFeedback (0.0f);
+    grainer.setStereo (0.0f); // Spray fully closed - Wide alone decides pan
+    grainer.setWidth (1.0f);
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 4.0 / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+            inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = noise (rng);
+
+        grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+    }
+
+    const uint32_t count = grainer.grainEventCount();
+    const uint32_t seen = std::min<uint32_t> (count, ee::dsp::Grainer::kGrainEventRing);
+    check (seen >= 20, "not enough grains spawned to check alternation (" + juce::String (static_cast<int> (seen)) + ")");
+
+    // Attack-stack voices born together share one pan draw on purpose (they
+    // are one musical event, not several) - collapsing consecutive repeats
+    // before checking alternation is what tells those apart from a side
+    // genuinely repeating.
+    std::vector<float> flips;
+    for (uint32_t i = count - seen; i < count; ++i)
+    {
+        const float pan = grainer.grainEventAt (i).pan;
+        check (std::abs (std::abs (pan) - 1.0f) < 1.0e-4f,
+               "grain landed off Wide's extreme with Spray closed (pan " + juce::String (pan, 3) + ")");
+
+        if (flips.empty() || (pan > 0.0f) != (flips.back() > 0.0f))
+            flips.push_back (pan);
+    }
+
+    std::printf ("  %d side flips over %u grains\n", static_cast<int> (flips.size()) - 1, seen);
+
+    check (flips.size() > seen / 4,
+           "grains are not alternating left/right with Spray closed - one side keeps repeating");
+}
+
+/** Spray open again, but Wide pulled in: the same random side/distance draw
+    Spray always made, just never past Wide's own band. */
+void testGrainerSprayBoundedByWide()
+{
+    std::printf ("Grainer Spray bounded by Wide:\n");
+
+    std::mt19937 rng (11);
+    std::uniform_real_distribution<float> noise (-0.7f, 0.7f);
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.reset();
+    grainer.setSizeMs (60.0f);
+    grainer.setDensityHz (20.0f);
+    grainer.setTimeMs (400.0f);
+    grainer.setFeedback (0.0f);
+    grainer.setStereo (1.0f);
+    grainer.setWidth (0.4f);
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 4.0 / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+            inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = noise (rng);
+
+        grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+    }
+
+    const uint32_t count = grainer.grainEventCount();
+    const uint32_t seen = std::min<uint32_t> (count, ee::dsp::Grainer::kGrainEventRing);
+    check (seen >= 20, "not enough grains spawned to check Spray's bound (" + juce::String (static_cast<int> (seen)) + ")");
+
+    float maxAbsPan = 0.0f;
+    bool sawLeft = false;
+    bool sawRight = false;
+
+    for (uint32_t i = count - seen; i < count; ++i)
+    {
+        const float pan = grainer.grainEventAt (i).pan;
+        maxAbsPan = std::max (maxAbsPan, std::abs (pan));
+        sawLeft |= pan < -0.05f;
+        sawRight |= pan > 0.05f;
+    }
+
+    std::printf ("  max |pan| over %u grains: %.3f (Wide = 0.4)\n", seen, static_cast<double> (maxAbsPan));
+
+    check (maxAbsPan <= 0.4f + 1.0e-4f,
+           "Spray threw a grain past Wide's own reach (" + juce::String (maxAbsPan, 3) + ")");
+    check (sawLeft && sawRight, "Spray should still draw both sides within Wide's band");
 }
 
 void testGrainerTailStops()
@@ -5982,6 +6140,12 @@ int main()
     testGrainerAttackLeadsWithOctaves();
     std::printf ("\n");
     testGrainerStereoIsBalanced();
+    std::printf ("\n");
+    testGrainerWideZeroForcesMono();
+    std::printf ("\n");
+    testGrainerWideAlternatesSidesWhenSprayIsClosed();
+    std::printf ("\n");
+    testGrainerSprayBoundedByWide();
     std::printf ("\n");
     testGrainerTailStops();
     std::printf ("\n");
