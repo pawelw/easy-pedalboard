@@ -641,8 +641,8 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
     // ladder instead of the plain one-pole above - see Grainer::
     // setCloudResonance and LadderFilter.h. Rests at 0: kept off the face's
     // main sweep on purpose, a fresh instance or an old preset with no reso
-    // saved yet sounds identical to before this knob existed. Plain percent,
-    // not a modulation target (see resoParam's own note in PluginProcessor.h).
+    // saved yet sounds identical to before this knob existed. A modulation
+    // target like Filter beside it (see modulatedValue()'s own call site).
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kResoID, 1 }, "Reso", percent, 0.0f,
                                                              percentAttributes));
 
@@ -1205,7 +1205,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // do nothing.
 
     // Size/Density/Window/Shape/Feedback/Scatter/Reverse/Stereo/Mod/Pitch Low/Unison/
-    // High/Pitch Mix/Filter/Drive/Bit - every modulation target this pedal
+    // High/Pitch Mix/Filter/Reso/Drive/Bit - every modulation target this pedal
     // has (Delay/Reverb's own scope cut) - are set per chunk inside the loop
     // below instead of here, each read through modulatedValue() so a
     // drag-and-drop LFO assignment actually moves within the block.
@@ -1348,10 +1348,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         grainer.setMod (modulatedValue (kModID, modParam->load()) * 0.01f);
         grainer.setBit (modulatedValue (kBitID, bitParam->load()) * 0.01f);
         grainer.setCloudFilter (modulatedValue (kFilterID, filterParam->load()) * 0.01f);
-        // Not a modulation target (kept small, see PluginProcessor.h's own
-        // note on resoParam) - read straight off the knob, the same as Dry/
-        // Grains above.
-        grainer.setCloudResonance (resoParam->load() * 0.01f);
+        grainer.setCloudResonance (modulatedValue (kResoID, resoParam->load()) * 0.01f);
         driveStage.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
         sendDrive.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
 

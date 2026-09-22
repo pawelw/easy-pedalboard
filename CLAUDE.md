@@ -69,6 +69,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_sympathy_match_artefacts/Release/ee_sympathy_match in.wav out.wav  # by-ear voicing renderer
 ./build/tests/ee_param_golden_BitBitDelay_artefacts/Release/ee_param_golden_BitBitDelay  # the frozen parameter contract, one per product
 ./build/tests/ee_preset_fuzz_BitBitDelay_artefacts/Release/ee_preset_fuzz_BitBitDelay [--seed N] [--iterations N]  # hostile state/preset input, one per product
+./build/tests/ee_soak_BitBitDelay_artefacts/Release/ee_soak_BitBitDelay [--hours 8] [--instances 32] [--editor-cycles]  # the overnight harness (release-plan.md 1.5), one per product - not in dev-check.sh
 ```
 
 **`tests/golden/*.txt` is the frozen parameter contract**, one file per

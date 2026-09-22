@@ -236,9 +236,10 @@ private:
         exposes it for the live playhead marker. */
     ee::dsp::BreakpointLfo modLfo;
 
-    /** Which of Grain/Pitch/Random's knobs the Mod LFO is currently wired
-        into, and how deep - see modulatedValue(). Delay, Reverb and the
-        Mixer are not modulation targets (scope cut for this feature). */
+    /** Which of Grain/Pitch/Random's knobs, or the Mixer's Filter/Reso/
+        Drive/Bit, the Mod LFO is currently wired into, and how deep - see
+        modulatedValue(). Delay and Reverb are not modulation targets (scope
+        cut for this feature). */
     ee::plugin::ModRouter modRouter;
 
     /** Message-thread cache of the breakpoints currently installed into
@@ -300,7 +301,7 @@ private:
     std::atomic<float>* grainLevelParam = nullptr;
     std::atomic<float>* mixLinkParam = nullptr; // mlink: locks the two mixer faders together
     std::atomic<float>* filterParam = nullptr;  // unipolar: the cloud lowpass cutoff, 0 shut .. 100 wide open
-    std::atomic<float>* resoParam = nullptr;    // how much of that cutoff runs through the ladder; not a mod target
+    std::atomic<float>* resoParam = nullptr;    // how much of that cutoff runs through the ladder
     std::atomic<float>* driveParam = nullptr;   // grain-cloud-only tube drive, same engine as Artifact's amp.drive
     std::atomic<float>* onParam = nullptr;
 

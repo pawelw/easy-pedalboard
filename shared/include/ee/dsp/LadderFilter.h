@@ -65,10 +65,26 @@ public:
             s4 += g * (std::tanh (s3) - s4);
         }
 
+        // Without this the tail lands in the denormals and effectively latches
+        // there - measured 5.6e-45 still on the output six seconds after the
+        // input stopped, because a denormal multiplied by a coefficient just
+        // under 1 rounds back to itself. Same threshold and the same reason as
+        // ee::dsp::Grainer's own highpass squelch.
+        squelch (s1);
+        squelch (s2);
+        squelch (s3);
+        squelch (s4);
+
         return s4 * passbandComp;
     }
 
 private:
+    static void squelch (float& s) noexcept
+    {
+        if (std::abs (s) < 1.0e-20f)
+            s = 0.0f;
+    }
+
     static constexpr int kOversample = 4;
 
     // The ideal continuous-time 4-pole feedback loop hits unity gain at the

@@ -15,7 +15,6 @@ import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } fro
 import ModTab from "./ModTab.jsx";
 import ModdableKnob from "./ModdableKnob.jsx";
 import Cosmos from "./Cosmos.jsx";
-import MixerMeter from "./MixerMeter.jsx";
 import "./GrainFace.css";
 
 const FACE_TABS = [
@@ -226,15 +225,11 @@ function MixerSection() {
         <span className="pg-section__spacer" />
       </div>
       <div className="pg-mixer__faders">
-        {/* Each fader carries its own meter on its inner side, so the two
-            ladders face each other across the link button. `height` matches
-            the fader's `length`, and the strip aligns them on their shared
-            bottom edge - the fader's label sits above its track, so bottom is
-            the one edge that lines up without measuring anything. */}
-        <div className="pg-mixer__strip">
-          <JuceFader parameterId="dry" label="Dry" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
-          <MixerMeter channel="dry" side="right" height={110} />
-        </div>
+        {/* No dB ladder/meter riding beside the track any more (it overlapped
+            its own tick numbers with the value readout below the thumb) -
+            the readout alone carries the value now, matching what the host
+            shows below the same slider. */}
+        <JuceFader parameterId="dry" label="Dry" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
         <div className="pg-mixer__link">
           <JucePill parameterId="mlink" icon={<LinkGlyph />} />
         </div>
@@ -245,10 +240,7 @@ function MixerSection() {
             which reads as -3 dB on double-click; unity matches Dry's own
             reset and reads as "off", the neutral double-click has everywhere
             else. */}
-        <div className="pg-mixer__strip">
-          <MixerMeter channel="wet" side="left" height={110} />
-          <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
-        </div>
+        <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
       </div>
       {/* Tube Drive on the grain cloud alone, same engine and default as BitBit
           Artifact's amp.drive - see PluginProcessor.cpp's driveStage. Bit
@@ -268,26 +260,24 @@ function MixerSection() {
         <div className="pg-mixer__filter-knobs">
           {/* No value on the knob at all: the scope above it already shows
               what the filter is doing, so swapping the caption for a
-              percentage mid-drag would only say the same thing worse. */}
-          {/* badgeStyle: this knob sits at the plate's own right edge, so the
-              shared top-right badge anchor (.pui-knob__badge, Knob.css) needs
-              pushing further right than any other knob's - see Knob.jsx's own
-              note on the prop. */}
+              percentage mid-drag would only say the same thing worse. Its
+              badge uses the shared default anchor (.pui-knob__badge,
+              Knob.css) - Reso sits flush to its right now, so Filter is no
+              longer the row's own edge control. */}
+          <ModdableKnob parameterId="filter" caption="Filter" variant="flat" size={36} scaleFrom="max" showValueLabel={false} />
+          {/* 0 is silent: crossfades the same cutoff toward the resonant
+              ladder (Grainer::setCloudResonance) only once turned up.
+              badgeStyle: this knob sits at the plate's own right edge now,
+              so the shared top-right badge anchor needs pushing further
+              right than any other knob's - see Knob.jsx's own note on the
+              prop. */}
           <ModdableKnob
-            parameterId="filter"
-            caption="Filter"
+            parameterId="reso"
+            caption="Reso"
             variant="flat"
             size={36}
-            scaleFrom="max"
-            showValueLabel={false}
             badgeStyle={{ right: "-24px" }}
           />
-          {/* Not a ModdableKnob: kept off the LFO's reach on purpose (see
-              PluginProcessor.h's own note on resoParam) - a secondary control
-              rather than a full mod target like Filter beside it.
-              0 is silent: crossfades the same cutoff toward the resonant
-              ladder (Grainer::setCloudResonance) only once turned up. */}
-          <JuceKnob parameterId="reso" caption="Reso" variant="flat" size={36} />
         </div>
       </div>
     </section>
