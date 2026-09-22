@@ -1300,13 +1300,20 @@ private:
         // and only when Smooth or the decay it blends against actually moved,
         // since this runs every chunk.
         //
-        // That compensation is NOT put in the output gain below. That gain acts
-        // on every grain sounding at the moment, and a grain keeps the window
-        // it was born with - so when Smooth moved, grains still ringing (a long
-        // one lasts a second) were rescaled for a window they do not have, a
-        // burst of loud sound for as long as they lasted. Instead each grain is
-        // given its own correction at birth (swellComp), and the gain below
-        // stays what Smooth 0 would make it.
+        // Neither this nor envelopeRms's own reference-level correction below
+        // is put in the output gain. That gain acts on every grain sounding at
+        // the moment, and a grain keeps the window it was born with - so a
+        // global gain chasing whatever Shape/Smooth are doing *right now*
+        // rescales grains still ringing (a long one lasts a second) for a
+        // window they do not have, a burst of distorted-sounding level for as
+        // long as they lasted. A fast Shape sweep used to do exactly this: only
+        // Smooth's own extra swell energy was corrected per grain, so
+        // envelopeRms - the plain decay's own energy, which moves with Shape
+        // whether or not Smooth is doing anything - was still riding the
+        // (smoothed, but still live) global gain below on its own. Instead
+        // every grain is given its own correction at birth (swellComp), and
+        // the gain below tracks only what genuinely is a block-wide mixing
+        // property: how many grains happen to overlap right now.
         float swellEnvComp = 1.0f;
 
         if (smooth > 0.0f)
@@ -1338,11 +1345,19 @@ private:
 
         const float levelRms = levelRmsFor (tuning.grainLevelJitter);
 
-        normTarget = tuning.outputTrim * (kEnvelopeReferenceRms / envelopeRms) / (std::sqrt (overlap) * levelRms);
+        // envelopeRms no longer divides in here - see the note above. What is
+        // left is genuinely block-wide: overlap (Size/Density) and the fixed
+        // jitter baseline (levelRms, a tuning constant - the live jitter Smooth
+        // leaves a grain with is corrected per grain below, same as always).
+        normTarget = tuning.outputTrim / (std::sqrt (overlap) * levelRms);
 
         // What a grain born now is scaled by to sit at the level the gain above
-        // assumes: exactly 1 at Smooth 0.
-        swellComp = smooth > 0.0f ? swellEnvComp * (levelRms / levelRmsFor (levelJitterNow())) : 1.0f;
+        // assumes. kEnvelopeReferenceRms / envelopeRms alone is exactly what a
+        // Smooth-0 grain needs; swellEnvComp (1 at Smooth 0) folds in whatever
+        // more Smooth's own swell takes, and the last factor (1 at Smooth 0)
+        // whatever less level jitter it leaves the grain with.
+        swellComp = (kEnvelopeReferenceRms / envelopeRms) * swellEnvComp *
+                    (smooth > 0.0f ? (levelRms / levelRmsFor (levelJitterNow())) : 1.0f);
 
         // Band split. Lengths scale with wavelength - the low band gets the
         // ratio times the Size knob, the high band that much less - and the

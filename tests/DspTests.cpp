@@ -4704,6 +4704,106 @@ void testGrainerSmoothChangeDoesNotJumpTheLevel()
     }
 }
 
+void testGrainerShapeChangeDoesNotJumpTheLevel()
+{
+    std::printf ("Grainer Shape: moving the knob does not jump the level of grains already sounding:\n");
+
+    // The same failure testGrainerSmoothChangeDoesNotJumpTheLevel guards, one
+    // control over: Shape's own decay steepness changes how much energy a
+    // grain's plain window holds (updateDerived's envelopeRms), compensated
+    // the same way Smooth's extra swell energy is - each grain corrected at
+    // its own birth (swellComp), not by an output gain that would rescale
+    // grains already ringing for an envelope they do not have. Shape and
+    // Smooth are one control on the face (Smooth = 1 - Shape), so a user
+    // sweeping the knob moves both at once - this exercises Shape's own half
+    // of that pair directly, with Smooth held at 0 throughout so nothing here
+    // rides on the other test's own coverage.
+    const auto run = [] (float from, float to, double& steadyFromPeak, double& steadyToPeak, double& worstAfter)
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (600.0f);
+        grainer.setDensityHz (4.0f);
+        grainer.setTimeMs (300.0f);
+        grainer.setFeedback (0.0f);
+        grainer.setScatter (0.0f);
+        grainer.setReverse (0.0f);
+        grainer.setStereo (0.0f);
+        grainer.setSmooth (0.0f);
+
+        auto tuning = grainer.getTuning();
+        tuning.attackShare = 0.0f;
+        tuning.grainLevelJitter = 0.0f;
+        tuning.windowJitter = 0.0f;
+        tuning.filterSpray = 0.0f;
+        tuning.sourceLevelling = 0.0f;
+        tuning.densityFollow = 0.0f;
+        tuning.bandSplit = 0.0f;
+        grainer.setTuning (tuning);
+
+        std::vector<float> in (kBlock), outL (kBlock), outR (kBlock);
+        const int frame = static_cast<int> (kSampleRate * 0.05);
+
+        std::vector<double> before, after;
+        const int total = static_cast<int> (kSampleRate * 14.0);
+        const int change = static_cast<int> (kSampleRate * 7.0);
+        double acc = 0.0;
+        int inFrame = 0;
+
+        grainer.setShape (from);
+        bool moved = false;
+        for (int n = 0; n < total; n += kBlock)
+        {
+            if (! moved && n >= change)
+            {
+                grainer.setShape (to);
+                moved = true;
+            }
+
+            for (int i = 0; i < kBlock; ++i)
+                in[static_cast<size_t> (i)] = 0.1f
+                                              * static_cast<float> (std::sin (2.0 * juce::MathConstants<double>::pi
+                                                                              * 300.0 * (n + i) / kSampleRate));
+
+            grainer.process (in.data(), in.data(), outL.data(), outR.data(), kBlock);
+
+            for (int i = 0; i < kBlock; ++i)
+            {
+                acc += static_cast<double> (outL[static_cast<size_t> (i)]) * outL[static_cast<size_t> (i)];
+                if (++inFrame == frame)
+                {
+                    (n + i < change ? before : after).push_back (std::sqrt (acc / frame));
+                    acc = 0.0;
+                    inFrame = 0;
+                }
+            }
+        }
+
+        const auto peakOf = [] (const std::vector<double>& v, size_t lo, size_t hi)
+        {
+            double peak = 0.0;
+            for (size_t i = lo; i < hi; ++i)
+                peak = std::max (peak, v[i]);
+            return peak;
+        };
+
+        steadyFromPeak = peakOf (before, before.size() - 60, before.size());
+        steadyToPeak = peakOf (after, after.size() - 60, after.size());
+        worstAfter = peakOf (after, 0, 80); // the 4 s after the change
+    };
+
+    for (const auto& dir : { std::pair<float, float> { 1.0f, 0.0f }, std::pair<float, float> { 0.0f, 1.0f } })
+    {
+        double a = 0.0, b = 0.0, worst = 0.0;
+        run (dir.first, dir.second, a, b, worst);
+        const double ceiling = std::max (a, b);
+        std::printf ("  Shape %.0f -> %.0f: loudest 50 ms in each steady state %.4f and %.4f, after the change %.4f (%+.1f dB against the louder)\n",
+                     dir.first, dir.second, a, b, worst, 20.0 * std::log10 (worst / juce::jmax (1.0e-9, ceiling)));
+        check (worst < ceiling * 1.3, "moving Shape made grains already sounding jump in level");
+    }
+}
+
 void testGrainerLowGroupIsOctavesOnly()
 {
     std::printf ("Grainer pitch: the Low group is octaves, whatever the scale\n");
@@ -5672,6 +5772,7 @@ int main()
     testGrainerGridLiveTapsWholeSixteenths();
     testGrainerFollowDensityReadsOnTheGrid();
     testGrainerSmoothChangeDoesNotJumpTheLevel();
+    testGrainerShapeChangeDoesNotJumpTheLevel();
     std::printf ("\n");
     testGrainerAttackLeadsWithOctaves();
     std::printf ("\n");
