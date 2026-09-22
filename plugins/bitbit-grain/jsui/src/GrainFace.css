@@ -203,8 +203,25 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 2px;
   padding: 6px 0 2px;
+}
+
+/* Fader plus its own meter. Bottom-aligned, which is the one edge the two
+   share without measuring: the fader's label sits above its track, so the
+   track's floor and the meter's are the same line. */
+.pg-mixer__strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
+  flex: none;
+}
+
+/* Over the ladder the meter pulls under it - the thumb is the control and has
+   to stay legible where the two cross. */
+.pg-mixer__strip .pui-fader {
+  position: relative;
+  z-index: 1;
 }
 
 /* Fixed and equal, wide enough for "Grains" - Dry's own track is narrower
@@ -212,9 +229,18 @@
    left to auto-size the two boxes came out different widths and the link
    button (centred between the *boxes*) sat visibly closer to Dry's track
    than Grains' - both tracks need the same offset from their own label's
-   edge for the button to land equidistant from both. */
+   edge for the button to land equidistant from both.
+
+   Narrowed from 40 to bring each rail up against its own ladder and to make
+   room for the meters inside the row's own width; the label is allowed past
+   the box (it is above the track, so it overhangs nothing) rather than
+   wrapping "Grains" onto two lines. */
 .pg-mixer__faders .pui-fader {
-  width: 40px;
+  width: 20px;
+}
+
+.pg-mixer__faders .pui-fader__label {
+  white-space: nowrap;
 }
 
 .pg-mixer__link {
@@ -245,6 +271,14 @@
   gap: 23px;
   margin-top: auto;
   padding-top: 10px;
+}
+
+/* Filter and Reso, side by side under the curve and flush against each
+   other - one pair, not two controls that happen to be adjacent. */
+.pg-mixer__filter-knobs {
+  display: flex;
+  align-items: flex-end;
+  gap: 0;
 }
 
 /* Bit and Drive, between the faders and the Filter block - its own row so it
@@ -653,7 +687,7 @@
    knobs and the link button in a plain flex row - see .pg-delay__body's own
    note. */
 .pg-time-row .pui-readout {
-  width: 86px;
+  width: 97px;
   height: 34px;
   box-sizing: border-box;
   border-radius: 5px;

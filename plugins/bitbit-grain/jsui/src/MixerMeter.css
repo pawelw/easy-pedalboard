@@ -1,0 +1,87 @@
+/* The mixer's two level meters - see MixerMeter.jsx. Narrow on purpose: this
+   sits inside the fader row's own width, between the fader and the link
+   button, so it has to read as a ladder beside the control rather than as a
+   panel of its own. */
+
+.pg-meter {
+  display: flex;
+  align-items: stretch;
+  gap: 3px;
+  flex: none;
+  /* Into the fader's own box, which is mostly the thumb's clearance either
+     side of a 4px rail: the ticks start just off the rail and pass under the
+     thumb, which is the only way the numbers read as this slider's. */
+  margin-left: -3px;
+}
+
+/* side="left" is the right-hand fader's: the same parts, mirrored, so both
+   ladders face the middle. */
+.pg-meter--left {
+  flex-direction: row-reverse;
+  margin-left: 0;
+  margin-right: -3px;
+}
+
+/* No track. An empty slot beside each fader reads as two black columns down
+   the middle of the strip - most of the panel's weight, for something that is
+   silent most of the time. The ladder beside it is the reference the eye
+   needs, so the bar only exists when there is signal in it. */
+.pg-meter__bar {
+  position: relative;
+  width: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+/* Scaled rather than resized: a transform is the one property that moves
+   every frame here without laying the page out again. */
+.pg-meter__fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  transform: scaleY(0);
+  border-radius: 2px;
+  background: linear-gradient(to top, #4f9e6a 0%, #7fd08c 62%, #d8c766 88%, #d88a66 100%);
+}
+
+.pg-meter__scale {
+  position: relative;
+  width: 16px;
+}
+
+.pg-meter__tick {
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  /* The tick marks the line, not the space under it. */
+  transform: translateY(-50%);
+}
+
+.pg-meter__tick::before {
+  content: "";
+  width: 3px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.pg-meter__tick--numbered::before {
+  width: 4px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.pg-meter__num {
+  font-family: var(--pui-font-label);
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.46);
+}
+
+/* Mirrored with the ladder: the tick keeps to the bar's side of the number. */
+.pg-meter--left .pg-meter__tick {
+  left: auto;
+  right: 0;
+  flex-direction: row-reverse;
+}

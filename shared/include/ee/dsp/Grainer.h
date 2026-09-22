@@ -9,6 +9,7 @@
 
 #include "GrainerConfig.h"
 #include "GrainerTuning.h"
+#include "LadderFilter.h"
 #include "OnsetGate.h"
 
 namespace ee::dsp
@@ -106,9 +107,10 @@ public:
         smoothedNorm = normTarget;
         feedbackSample = 0.0f;
         cloudHpX1L = cloudHpY1L = cloudHpX1R = cloudHpY1R = 0.0f;
-        cloudLpZL = cloudLpZR = 0.0f;
         cloudHpX1S = cloudHpY1S = 0.0f;
-        cloudLpZS = 0.0f;
+        cloudLadderL.reset();
+        cloudLadderR.reset();
+        cloudLadderS.reset();
         recordedSamples = 0;
         wowPhase = 0.0;
 
@@ -276,22 +278,21 @@ public:
     /** Share of grains that play backwards, 0 to 1. */
     void setReverse (float amount01) noexcept { reverse = std::clamp (amount01, 0.0f, 1.0f); }
 
-    /** Width of the random pan placement, 0 (centred) to 1, bounded by
-        setWidth()'s own reach - see nextPan(). */
+    /** Width of the random pan placement, 0 (centred) to 1 (hard left/right).
+        Above 0 this takes over panning outright - see setWidth(). */
     void setStereo (float amount01) noexcept { stereo = std::clamp (amount01, 0.0f, 1.0f); }
 
-    /** How far off centre a grain is allowed to land, 0 (mono - every grain
-        centred, whatever Spray is doing) to 1 (hard left/right). With Spray
-        at zero this alone decides it: grains alternate left/right/left/right
-        at this reach. See GrainerConfig.h's WIDE. */
+    /** How far off centre a grain lands when Spray is fully closed, 0 (mono)
+        to 1 (hard left/right, alternating left/right/left/right grain to
+        grain). Spray, above its own 0, overrides this entirely - Wide has no
+        say once Spray is drawing. See GrainerConfig.h's WIDE. */
     void setWidth (float amount01) noexcept { width = std::clamp (amount01, 0.0f, 1.0f); }
 
-    /** The Filter knob: a plain lowpass cutoff and nothing else. 1 is fully
-        open at config::kCloudLowpassHz, 0 fully closed at
-        config::kCloudLowpassMinHz, and the sweep between them is geometric so
-        equal knob steps are equal musical intervals. One pole, 6 dB/oct -
-        deliberately gentle rather than a ladder, and there is no resonance
-        anywhere in this engine, so the response really is just the rolloff.
+    /** The Filter knob: a lowpass cutoff and nothing else. 1 is fully open at
+        config::kCloudLowpassHz, 0 fully closed at config::kCloudLowpassMinHz,
+        and the sweep between them is geometric so equal knob steps are equal
+        musical intervals. A 4-pole ladder, 24 dB/oct, whatever Reso is set to
+        - see cloudFiltered for why it is no longer a one-pole.
 
         The highpass is no longer on the knob. It is a fixed, hidden trap at
         config::kCloudHighpassHz that keeps the cloud tight underneath, and
@@ -305,6 +306,24 @@ public:
             return;
 
         cloudFilterAmount = clamped;
+        updateCloudFilter();
+    }
+
+    /** The Reso knob: the cloud lowpass's own feedback (see LadderFilter.h).
+        0 is a flat 4-pole on the Filter knob's corner; turning it up raises a
+        peak at that corner and, near 1, self-oscillates there. The passband
+        stays where it was throughout - the ladder's own gain loss is divided
+        back out - so this raises a peak rather than sinking everything under
+        it. Cheap to call every block; only recomputes when the value actually
+        moved. */
+    void setCloudResonance (float amount01) noexcept
+    {
+        const float clamped = std::clamp (amount01, 0.0f, 1.0f);
+
+        if (std::abs (clamped - cloudResonanceAmount) < 1.0e-6f)
+            return;
+
+        cloudResonanceAmount = clamped;
         updateCloudFilter();
     }
 
@@ -752,14 +771,15 @@ public:
             // Cloud filter runs on the sum, before the feedback tap, so a
             // recirculating repeat is shaped again on the way round instead
             // of accumulating rumble or top-end untouched.
-            const float filteredL = cloudLowpass (cloudHighpass (wetL, cloudHpX1L, cloudHpY1L), cloudLpZL);
-            const float filteredR = cloudLowpass (cloudHighpass (wetR, cloudHpX1R, cloudHpY1R), cloudLpZR);
+            const float filteredL = cloudFiltered (cloudHighpass (wetL, cloudHpX1L, cloudHpY1L), cloudLadderL);
+            const float filteredR = cloudFiltered (cloudHighpass (wetR, cloudHpX1R, cloudHpY1R), cloudLadderR);
 
             outL[i] = filteredL;
             outR[i] = filteredR;
 
             if (wantSend)
-                sendOut[i] = cloudLowpass (cloudHighpass (sumSend * smoothedNorm, cloudHpX1S, cloudHpY1S), cloudLpZS);
+                sendOut[i] =
+                    cloudFiltered (cloudHighpass (sumSend * smoothedNorm, cloudHpX1S, cloudHpY1S), cloudLadderS);
 
             // What goes back round next sample. tanh bounds it to (-1, 1)
             // whatever the cloud does, so the recirculation cannot build
@@ -1235,15 +1255,27 @@ private:
         // that only holds for a corner well under Nyquist, and a swept one
         // climbs far closer to it than the fixed 60 Hz ever did.
         cloudHpCoeff = std::clamp (1.0f - kTwoPi * hpHz / sr, 0.0f, 0.9999f);
-        cloudLpCoeff = std::clamp (1.0f - std::exp (-kTwoPi * lpHz / sr), 0.0f, 1.0f);
+
+        cloudLadderL.setCutoffAndResonance (lpHz, cloudResonanceAmount, sampleRate);
+        cloudLadderR.setCutoffAndResonance (lpHz, cloudResonanceAmount, sampleRate);
+        cloudLadderS.setCutoffAndResonance (lpHz, cloudResonanceAmount, sampleRate);
     }
 
-    /** One-pole lowpass - the cloud's lowpass, cascaded after the highpass. */
-    float cloudLowpass (float x, float& z) const noexcept
-    {
-        z += cloudLpCoeff * (x - z);
-        return z;
-    }
+    /** The cloud's lowpass: the 4-pole ladder (LadderFilter.h) on the Filter
+        knob's corner, with Reso as its feedback.
+
+        It used to be a one-pole crossfaded toward the ladder, so that Reso 0
+        was the engine exactly as it stood before the knob existed. That blend
+        summed two filters a half-turn out of phase at the corner and they
+        partly cancelled there: measured against the passband, Reso 0.6 peaked
+        +2.6 dB at 0.8x the cutoff and then fell into a -13.5 dB notch just
+        past it, and above the corner the one-pole term took over again, so at
+        Reso 0.9 the response came back *up* from -25 dB at 2x to -22 dB at 4x.
+        One filter, resonance as its own feedback, is the only way the curve
+        stays monotonic past the peak - and it is what the face's scope draws.
+        The cost is that Filter is 24 dB/oct at every Reso setting now,
+        including 0, so it bites four times harder than it used to. */
+    float cloudFiltered (float x, LadderFilter& ladder) noexcept { return ladder.process (x); }
 
     /** Whether transposing by `semitones` (either sign) lands on a member of
     `scale`, given `root` (0-11) is the semitone above unison the scale's
@@ -1302,15 +1334,16 @@ private:
 
     /** Base pan for the next grain (or attack-stack voice) - called once per
     grain event, not per emitted voice, so a band-split or an attack stack
-    still moves as one - see spawnGrain()/spawnAttackStack(). With Spray
-    (stereo) at zero, grains hard-alternate left/right/left/right at Wide's
-    own reach; any Spray scatters them randomly instead - a random side and a
-    random distance from centre, same as Spray always drew, just never past
-    what Wide allows. See GrainerConfig.h's WIDE. */
+    still moves as one - see spawnGrain()/spawnAttackStack(). Spray (stereo)
+    takes priority whenever it is off zero: it draws exactly as it always
+    has, a random side and a random distance from centre, and Wide has no
+    say in it. Only with Spray fully closed does Wide get to run the show,
+    and then it does not draw at random at all - grains hard-alternate
+    left/right/left/right at Wide's own reach. See GrainerConfig.h's WIDE. */
     float nextPan() noexcept
     {
         if (stereo > 0.0f)
-            return std::clamp (nextBipolar() * stereo, -width, width);
+            return nextBipolar() * stereo;
 
         panAlternateSign = -panAlternateSign;
         return panAlternateSign * width;
@@ -2438,7 +2471,6 @@ private:
     // Coefficients set once in prepare(); state per channel, reset with
     // everything else.
     float cloudHpCoeff = 0.0f;
-    float cloudLpCoeff = 0.0f;
     // The Filter knob, 0..1. Open rather than closed, so an engine nobody has
     // called setCloudFilter() on sounds like one with the knob where it rests
     // - under the old bipolar meaning 0 was the resting pair, but here it is
@@ -2446,12 +2478,16 @@ private:
     float cloudFilterAmount = 1.0f;
     float cloudHpX1L = 0.0f, cloudHpY1L = 0.0f;
     float cloudHpX1R = 0.0f, cloudHpY1R = 0.0f;
-    float cloudLpZL = 0.0f, cloudLpZR = 0.0f;
 
     // The send bus carries the same filter, so it is coloured like the cloud
     // it is a weighted copy of rather than arriving at the tank raw.
     float cloudHpX1S = 0.0f, cloudHpY1S = 0.0f;
-    float cloudLpZS = 0.0f;
+
+    // The Reso knob, 0..1, resting at 0 - see setCloudResonance. One
+    // LadderFilter per channel; it is the cloud's lowpass outright now, not
+    // something blended against one (see cloudFiltered).
+    float cloudResonanceAmount = 0.0f;
+    LadderFilter cloudLadderL, cloudLadderR, cloudLadderS;
 
     float curDecayShape = 4.0f;
     float curAttackMs = 1.0f;

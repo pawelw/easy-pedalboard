@@ -611,6 +611,9 @@ public:
                                                                 juce::AudioParameterBoolAttributes().withMeta (true)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "filter", 1 }, "Filter", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f));
+        layout.add (
+            std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "reso", 1 }, "Reso", percent, 0.0f,
+                                                          percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "drive", 1 }, "Drive", percent,
                                                                  ee::dsp::tubedrive::kDefaultDrivePct,
                                                                  percentAttributes));

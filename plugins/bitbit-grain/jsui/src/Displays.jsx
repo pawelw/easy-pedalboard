@@ -293,16 +293,17 @@ const RANDOM_DOTS = [
 /** L/R stereo field: a centre line and a scatter of grains either side, each
     now driven by this section's own three knobs plus the Grain section's
     Wide. Stereo scales every grain's distance from the centre line (0
-    collapses the whole field onto it, 1 is the full spread above), but that
-    spread is itself capped by Wide - the same bound Grainer::nextPan()
-    applies to the real audio - so the field collapses to the centre line at
-    Wide 0 regardless of what Stereo is dialled to. Scatter sets how far and
-    how fast the grains jitter - it is exactly the engine's own per-grain
-    timing/position jitter, so 0 holds them still. Reverse is not drawn: a
-    reversed grain looks and drifts like any other. Each grain is drawn with
-    the same steep-attack/long-decay lean as GrainEnvelope above - a fat
-    rounded head tapering to a thin tail - rather than a plain dot, so the two
-    displays read as the same shape.
+    collapses the whole field onto it, 1 is the full spread above) and, above
+    its own 0, is the only thing that does - it takes priority over Wide
+    outright, the same as Grainer::nextPan() does for the real audio. Only
+    with Stereo fully closed does Wide take over that scaling instead, so the
+    field collapses to the centre line only when both are at 0. Scatter sets
+    how far and how fast the grains jitter - it is exactly the engine's own
+    per-grain timing/position jitter, so 0 holds them still. Reverse is not
+    drawn: a reversed grain looks and drifts like any other. Each grain is
+    drawn with the same steep-attack/long-decay lean as GrainEnvelope above -
+    a fat rounded head tapering to a thin tail - rather than a plain dot, so
+    the two displays read as the same shape.
 
     The jitter itself is a `requestAnimationFrame` loop rather than a CSS
     keyframe animation driven by custom properties: a CSS animation re-reads
@@ -396,7 +397,10 @@ function RandomFieldBody({ accent, stereo, scatter, width }) {
       <span className="pg-field__side pg-field__side--l">L</span>
       <span className="pg-field__side pg-field__side--r">R</span>
       {RANDOM_DOTS.map((d, i) => {
-        const top = 50 + (d.top - 50) * stereo * width;
+        // Stereo takes priority the moment it is off 0, same as nextPan():
+        // Wide only gets to scale the spread while Stereo is fully closed.
+        const spread = stereo > 0 ? stereo : width;
+        const top = 50 + (d.top - 50) * spread;
         const w = d.size * 2.6;
         const h = d.size * 1.5;
         return (
@@ -424,20 +428,33 @@ function RandomFieldBody({ accent, stereo, scatter, width }) {
 // design, so putting it on the scope would advertise a control that is not
 // there.
 const CLOUD_LP_HZ = 13000;
-// Mirrors GrainerConfig.h's kCloudLowpassMinHz exactly - was 320, moved to
-// 150 so the shut end of the knob reads as an actual cut rather than a
-// gentle darkening (see that constant's own note).
-const CLOUD_LP_MIN_HZ = 150;
+// Mirrors GrainerConfig.h's kCloudLowpassMinHz exactly - was 320, then 150,
+// now 20 so the shut end of the knob closes the cloud away rather than only
+// darkening it (see that constant's own note).
+const CLOUD_LP_MIN_HZ = 20;
 
 const CURVE_F_MIN = 20;
 const CURVE_F_MAX = 20000;
-const CURVE_DB_FLOOR = -30;
+// A wide range on purpose. The ladder Reso crossfades in falls at 24 dB/oct,
+// which over a 30 dB plot is off the bottom inside a single octave and reads
+// as a vertical cliff rather than a filter skirt; 60 dB across the same
+// height is the same slope drawn at a legible angle.
+const CURVE_DB_FLOOR = -60;
+// Headroom over unity, so Reso's peak has somewhere to go: without it the
+// resonant bump is simply clipped flat against the top of the plot and the
+// knob looks like it does nothing.
+const CURVE_DB_CEIL = 15;
 const CURVE_GRID_HZ = [100, 1000, 10000];
 const CURVE_W = 120;
 const CURVE_H = 44;
 const CURVE_PAD = 4;
 const CURVE_LOG_MIN = Math.log(CURVE_F_MIN);
 const CURVE_LOG_SPAN = Math.log(CURVE_F_MAX) - CURVE_LOG_MIN;
+
+// LadderFilter::kMaxFeedback, mirrored: Reso 1 is a hair past the classic
+// 4-pole unity-loop-gain point, which is what makes the top of the knob
+// self-oscillate.
+const LADDER_MAX_FEEDBACK = 4.2;
 
 /** Where the cutoff sits for a given knob position - the same geometric sweep
     Grainer::updateCloudFilter() does with its own std::pow, so the drawn
@@ -447,11 +464,35 @@ function cloudCutoff(openness) {
   return CLOUD_LP_HZ * Math.pow(CLOUD_LP_MIN_HZ / CLOUD_LP_HZ, 1 - openness);
 }
 
-/** The lowpass's magnitude in dB: one pole at 6 dB/oct and nothing else. No Q
-    term, because the engine has none - a drawn-on bump would be inventing a
-    control that does not exist. */
-function cloudDb(fHz, lpHz) {
-  return 20 * Math.log10(Math.max(1e-6, lpHz / Math.sqrt(fHz * fHz + lpHz * lpHz)));
+/** The cloud filter's magnitude in dB: the 4-pole ladder Grainer::cloudFiltered
+    runs, with Reso as its feedback - G^4 / (1 + k G^4) over a one-pole G,
+    scaled by LadderFilter's own passband compensation (1 + k) so the flat part
+    stays on the 0 dB line and only the peak moves. */
+function cloudDb(fHz, lpHz, reso = 0) {
+  const w = fHz / lpHz;
+  const d = 1 + w * w;
+  // One stage: 1 / (1 + jw).
+  const pRe = 1 / d;
+  const pIm = -w / d;
+
+  // Four of them in cascade...
+  let gRe = 1;
+  let gIm = 0;
+  for (let i = 0; i < 4; i++) {
+    const re = gRe * pRe - gIm * pIm;
+    gIm = gRe * pIm + gIm * pRe;
+    gRe = re;
+  }
+
+  // ...inside k of negative feedback.
+  const k = reso * LADDER_MAX_FEEDBACK;
+  const denRe = 1 + k * gRe;
+  const denIm = k * gIm;
+  const denMag = denRe * denRe + denIm * denIm || 1e-12;
+  const re = ((gRe * denRe + gIm * denIm) / denMag) * (1 + k);
+  const im = ((gIm * denRe - gRe * denIm) / denMag) * (1 + k);
+
+  return 20 * Math.log10(Math.max(1e-6, Math.hypot(re, im)));
 }
 
 function curveX(hz) {
@@ -460,8 +501,8 @@ function curveX(hz) {
 }
 
 function curveY(db) {
-  const clamped = Math.min(0, Math.max(CURVE_DB_FLOOR, db));
-  return CURVE_PAD + (clamped / CURVE_DB_FLOOR) * (CURVE_H - CURVE_PAD * 2);
+  const clamped = Math.min(CURVE_DB_CEIL, Math.max(CURVE_DB_FLOOR, db));
+  return CURVE_PAD + ((CURVE_DB_CEIL - clamped) / (CURVE_DB_CEIL - CURVE_DB_FLOOR)) * (CURVE_H - CURVE_PAD * 2);
 }
 
 /** FilterCurve's own live subscription to the LFO's per-frame output - split
@@ -473,41 +514,47 @@ function curveY(db) {
     modulatedValue() exactly - base01 + depth * lfoValue, clamped - so the
     curve drawn here is the filter the DSP is actually running, not a
     separate UI-only approximation of it. */
-function ModulatedFilterCurve({ accent, filter, assignment }) {
+function ModulatedFilterCurve({ accent, filter, reso, assignment }) {
   const lfoValue = useLfoValue();
-  return <FilterCurveBody accent={accent} openness={resolveModulated(filter, assignment, lfoValue)} />;
+  return <FilterCurveBody accent={accent} openness={resolveModulated(filter, assignment, lfoValue)} reso={reso} />;
 }
 
 /** The Mixer's Filter response, in place of a printed value. Reads `filter`
-    live and redraws, so the line moves with the knob: wide open it is flat to
-    13 kHz, and winding down walks the corner to 150 Hz. While the Mod tab has
-    an LFO assigned to Filter, it instead redraws every frame from the live
-    modulated value (ModulatedFilterCurve above) - the curve *is* this knob's
-    value readout, so it is the one place a moving LFO assignment has to show
-    up for the display to keep meaning what it says. */
+    and `reso` live and redraws, so the line moves with both knobs: wide open
+    it is flat to 13 kHz, winding Filter down walks the corner to 20 Hz, and
+    Reso raises the peak sitting on that corner. While the Mod tab has an LFO
+    assigned to Filter, it instead redraws every frame from the live modulated
+    value (ModulatedFilterCurve above) - the curve *is* this knob's value
+    readout, so it is the one place a moving LFO assignment has to show up for
+    the display to keep meaning what it says. Reso takes no LFO (see
+    PluginProcessor.h's note on resoParam), so it needs no such path. */
 export function FilterCurve({ accent }) {
   const [filter] = useJuceSliderValue("filter");
+  const [reso] = useJuceSliderValue("reso");
   const assignment = useModAssignment("filter");
 
-  if (assignment) return <ModulatedFilterCurve accent={accent} filter={filter} assignment={assignment} />;
-  return <FilterCurveBody accent={accent} openness={filter} />;
+  if (assignment) return <ModulatedFilterCurve accent={accent} filter={filter} reso={reso} assignment={assignment} />;
+  return <FilterCurveBody accent={accent} openness={filter} reso={reso} />;
 }
 
 /** The curve's own drawing, given the filter's openness (0..1, already
     resolved - the base parameter or the live modulated value, FilterCurve's
     own concern, not this component's). */
-function FilterCurveBody({ accent, openness }) {
+function FilterCurveBody({ accent, openness, reso = 0 }) {
   // The parameter is 0..100 % and the hook hands back 0..1, so it is already
   // the openness the sweep wants.
   const lpHz = cloudCutoff(openness);
 
-  const steps = 72;
+  // Enough to resolve the peak: at high Reso the ladder's bump is only a
+  // fraction of an octave wide, and at 72 steps across ten octaves it fell
+  // between samples and read as a kink rather than a spike.
+  const steps = 180;
   let line = "";
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const hz = Math.exp(CURVE_LOG_MIN + t * CURVE_LOG_SPAN);
     const x = CURVE_PAD + t * (CURVE_W - CURVE_PAD * 2);
-    line += `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${curveY(cloudDb(hz, lpHz)).toFixed(1)} `;
+    line += `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${curveY(cloudDb(hz, lpHz, reso)).toFixed(1)} `;
   }
 
   const floorY = CURVE_H - CURVE_PAD;
@@ -520,7 +567,9 @@ function FilterCurveBody({ accent, openness }) {
           {CURVE_GRID_HZ.map((hz) => (
             <line key={hz} x1={curveX(hz)} y1={CURVE_PAD} x2={curveX(hz)} y2={floorY} />
           ))}
-          <line x1={CURVE_PAD} y1={curveY(-12)} x2={CURVE_W - CURVE_PAD} y2={curveY(-12)} />
+          {/* Unity, not a level partway down: it is what the flat passband
+              sits on and so what Reso's peak is read against. */}
+          <line x1={CURVE_PAD} y1={curveY(0)} x2={CURVE_W - CURVE_PAD} y2={curveY(0)} />
         </g>
         <path d={fill} fill={accent} fillOpacity="0.12" stroke="none" />
         <path

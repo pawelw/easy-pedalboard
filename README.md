@@ -697,7 +697,7 @@ Reverb and Mix bare underneath.
 | **Density** | 1 - 40 /s      | Grains spawned per second. Sparse and countable at the bottom, a continuous cloud at the top. It is not a volume knob - the engine divides out the overlap |
 | **Shape**   | 0 - 100 %      | Grain envelope lean: `0` soft, a long fade-in with the energy spread the whole grain; `100` plucky, a click of an attack with the energy up front. The engine divides the envelope's own energy back out, so this does not double as a volume knob |
 | **Shape Family** | Triangle, Gaussian, Sinc, Spike | The window Shape morphs. Triangle (the default) is the asymmetric fade-in-then-decay above; the other three are symmetric windows with no transient of their own - Gaussian a plain bell, Sinc a windowed sinc (audible side-lobes at Shape's plucky end), Spike a two-sided exponential point. All four are level-matched, so switching does not jump the volume |
-| **Wide**    | 0 - 100 %      | How far off centre a grain may land. `0` is mono - every grain dead centre, whatever Random's Spray is doing. Above `0`, with Spray at its own `0`, grains hard-alternate left/right/left/right at this reach - a ping-pong cloud. Any Spray hands panning to it instead (see Random below), but Wide still caps how far it can throw a grain |
+| **Wide**    | 0 - 100 %      | How far off centre a grain lands - but only while Random's Spray is fully closed; Spray takes over panning outright the moment it is above `0` (see Random below), and Wide is ignored. With Spray closed, `0` is mono - every grain dead centre - and above `0` grains hard-alternate left/right/left/right at this reach, a ping-pong cloud rather than a random one |
 
 **Pitch** - Low/Unison/High are weights against each other, not positions on a
 scale; the Scale block underneath colours which notes High lands on, and
@@ -725,7 +725,7 @@ from.
 | ------------ | -------------- | ---------------------------------------------------------------------- |
 | **Reverse**  | 0 - 100 %      | Share of grains that play backwards. Forward-only is much more legible; past halfway the phrase stops being followable at all |
 | **Scatter**  | 0 - 100 %      | One knob over all the timing randomness: how much the gap between grains wanders, and how much each grain's length strays from Size. `0` is a metronome spraying identical grains; wound up the cloud stops repeating |
-| **Stereo**   | 0 - 100 %      | Random pan placement - a random side and a random distance from centre, per grain. Its distance never exceeds what the Grain section's Wide knob allows: at Wide `0` this is silent regardless of its own setting, and at Wide `100` it is unbounded. `0` hands panning back to Wide's own left/right alternation |
+| **Stereo**   | 0 - 100 %      | Random pan placement - a random side and a random distance from centre, per grain. Takes over panning outright the moment it is above `0`, whatever the Grain section's Wide knob is set to. `0` hands panning back to Wide, which pans deterministically instead - see Wide above |
 
 **Reverb** - a plate behind the cloud, plus a button (top right of the
 section) for what feeds it:
@@ -762,15 +762,14 @@ shifting pitch, because each grain still plays at rate 1. A loud enough input
 retriggers: the engine grabs a fresh `Time` window and re-freezes, so the loop
 starts again on the new sound.
 
-**Wide** sits beside it, in the Grain section. At `0` the cloud is mono - every
-grain lands dead centre, whatever Random's **Stereo** knob is set to. Turn it
-up with Stereo at its own `0` and grains hard-pan left, right, left, right,
-each successive one on the opposite side from the last, out to Wide's own
-reach. Bring Stereo up and it takes over the panning with its usual random
-side and random distance from centre, but Wide still bounds how far that
-randomness can throw a grain - so Wide is always the outer edge of the image,
-never just a width added on top of it. The dry signal is never panned by
-either knob.
+**Wide** sits beside it, in the Grain section, and only has a say while
+Random's **Stereo** knob is fully closed - the moment Stereo is above `0` it
+takes over panning outright, drawing its usual random side and random
+distance from centre exactly as it always has, and Wide is ignored. With
+Stereo closed, Wide decides instead: `0` is mono - every grain lands dead
+centre - and above `0` grains hard-pan left, right, left, right, each
+successive one on the opposite side from the last, out to Wide's own reach.
+The dry signal is never panned by either knob.
 
 **Grid** is always on: whenever the host transport is rolling, grains read from
 whole sixteenth notes. There is no switch. With the transport stopped, or in the

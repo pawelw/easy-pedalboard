@@ -129,6 +129,10 @@ public:
         block, decayed slowly enough that a 30 Hz reader never misses a hit. */
     float outputLevel() const noexcept { return visLevel.load (std::memory_order_relaxed); }
 
+    /** The same reading for the dry path, taken where the Dry fader has just
+        set it - so the face's two meters answer for their own fader. */
+    float dryOutputLevel() const noexcept { return visDryLevel.load (std::memory_order_relaxed); }
+
     /** The grain engine's current/default voicing, for the EE_GRAIN_TUNER dev
         panel - same reason as the readouts above, BitBitGrainWebEditor isn't a
         member of this class and needs a way to reach the engine. Unconditional
@@ -213,6 +217,7 @@ private:
 
     ee::dsp::Grainer grainer;
     std::atomic<float> visLevel { 0.0f };
+    std::atomic<float> visDryLevel { 0.0f };
     ee::dsp::TapeDelay delay;
     ee::dsp::FdnReverb reverb;
 
@@ -294,7 +299,8 @@ private:
     std::atomic<float>* dryLevelParam = nullptr;
     std::atomic<float>* grainLevelParam = nullptr;
     std::atomic<float>* mixLinkParam = nullptr; // mlink: locks the two mixer faders together
-    std::atomic<float>* filterParam = nullptr;  // bipolar: -100 sweeps the cloud LP down, +100 the HP up
+    std::atomic<float>* filterParam = nullptr;  // unipolar: the cloud lowpass cutoff, 0 shut .. 100 wide open
+    std::atomic<float>* resoParam = nullptr;    // how much of that cutoff runs through the ladder; not a mod target
     std::atomic<float>* driveParam = nullptr;   // grain-cloud-only tube drive, same engine as Artifact's amp.drive
     std::atomic<float>* onParam = nullptr;
 

@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.grains
   categories   "Fx Delay"
 
-parameters 50
+parameters 51
 0 size
     name       "Size"
     default    0.5
@@ -242,88 +242,94 @@ parameters 50
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-37 drive
+37 reso
+    name       "Reso"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+38 drive
     name       "Drive"
     default    0.349999994
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-38 on
+39 on
     name       "On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-39 lforate
+40 lforate
     name       "Mod Rate"
     default    0.300000012
     version    1
     steps      2147483647 continuous automatable
     range      0 1 interval 0 skew 1
-40 lfosync
+41 lfosync
     name       "Mod Sync"
     default    0
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-41 lfoon
+42 lfoon
     name       "Mod On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-42 grainon
+43 grainon
     name       "Grain On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-43 pitchon
+44 pitchon
     name       "Pitch On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-44 scaleon
+45 scaleon
     name       "Scale On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-45 randon
+46 randon
     name       "Random On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-46 delon
+47 delon
     name       "Delay On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-47 revon
+48 revon
     name       "Reverb On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-48 level
+49 level
     name       "Level"
     default    0.666666687
     version    1
     steps      2147483647 continuous automatable
     range      -24 12 interval 0.100000001 skew 1
-49 shapefamily
+50 shapefamily
     name       "Shape Family"
     default    0
     version    1

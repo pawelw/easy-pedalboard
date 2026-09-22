@@ -55,6 +55,7 @@ constexpr const char* kDryLevelID = "dry";
 constexpr const char* kGrainLevelID = "grains";
 constexpr const char* kMixLinkID = "mlink";
 constexpr const char* kFilterID = "filter";
+constexpr const char* kResoID = "reso";
 constexpr const char* kDriveID = "drive";
 constexpr const char* kOnID = "on";
 constexpr const char* kLevelID = "level";
@@ -352,6 +353,7 @@ BitBitGrainProcessor::BitBitGrainProcessor()
     grainLevelParam = apvts.getRawParameterValue (kGrainLevelID);
     mixLinkParam = apvts.getRawParameterValue (kMixLinkID);
     filterParam = apvts.getRawParameterValue (kFilterID);
+    resoParam = apvts.getRawParameterValue (kResoID);
     driveParam = apvts.getRawParameterValue (kDriveID);
     onParam = apvts.getRawParameterValue (kOnID);
     lfoRateParam = apvts.getRawParameterValue (kLfoRateID);
@@ -483,8 +485,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kFreezeID, 1 }, "Freeze", false));
 
-    // Wide, on Grain's first row: how far off centre a grain may land - see
-    // GrainerConfig.h's WIDE. (Was a Mono/Stereo switch; the id is unchanged.)
+    // Wide, on Grain's first row: how far off centre a grain lands with
+    // Random's Spray closed - see GrainerConfig.h's WIDE. (Was a Mono/Stereo
+    // switch; the id is unchanged.)
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kWidthID, 1 }, "Wide", percent,
                                                              cfg::kDefaultWidePct, percentAttributes));
 
@@ -633,6 +636,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
 
                 return juce::String (juce::roundToInt (hz)) + " Hz";
             })));
+
+    // How much the Filter knob's cutoff runs through a resonant 4-pole
+    // ladder instead of the plain one-pole above - see Grainer::
+    // setCloudResonance and LadderFilter.h. Rests at 0: kept off the face's
+    // main sweep on purpose, a fresh instance or an old preset with no reso
+    // saved yet sounds identical to before this knob existed. Plain percent,
+    // not a modulation target (see resoParam's own note in PluginProcessor.h).
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kResoID, 1 }, "Reso", percent, 0.0f,
+                                                             percentAttributes));
 
     // Amp's own single-knob tube drive (see ee/dsp/TubeDrive.h), on the grain
     // cloud alone - same "grains only" reach as Filter just above, not the dry
@@ -1269,7 +1281,8 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     const int step = modRouter.hasAssignments() ? juce::jmin (juce::jmin (maxBlock, scratch), kModChunk)
                                                 : juce::jmin (maxBlock, scratch);
 
-    float wetPeak = 0.0f; // the cloud as mixed in, for the face's cosmos panel only
+    float wetPeak = 0.0f; // the cloud as mixed in, for the face's cosmos panel and its meter
+    float dryPeak = 0.0f; // the dry path at the same point, for the face's other meter
 
     for (int offset = 0; offset < numSamples; offset += step)
     {
@@ -1335,6 +1348,10 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         grainer.setMod (modulatedValue (kModID, modParam->load()) * 0.01f);
         grainer.setBit (modulatedValue (kBitID, bitParam->load()) * 0.01f);
         grainer.setCloudFilter (modulatedValue (kFilterID, filterParam->load()) * 0.01f);
+        // Not a modulation target (kept small, see PluginProcessor.h's own
+        // note on resoParam) - read straight off the knob, the same as Dry/
+        // Grains above.
+        grainer.setCloudResonance (resoParam->load() * 0.01f);
         driveStage.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
         sendDrive.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
 
@@ -1419,6 +1436,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
             grainL[i] = wetL;
             grainR[i] = wetR;
             wetPeak = juce::jmax (wetPeak, std::abs (wetL), std::abs (wetR));
+            dryPeak = juce::jmax (dryPeak, std::abs (dL), std::abs (dR));
         }
 
         // Delay: the gated grain-only send into the delay line, blended
@@ -1519,12 +1537,16 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     {
         // Fast up, slow down: the reader polls at ~30 Hz, so a decay of about
         // 0.12 s keeps a short hit visible to it while still reading as silence
-        // within a second of the cloud stopping. The grain cloud alone, not the
-        // finished mix - a loud dry note must not light a cloud that is silent.
+        // within a second of the cloud stopping. Both are taken where the two
+        // faders have just set them and before anything downstream, so each
+        // meter reads its own path rather than the finished mix - a loud dry
+        // note must not light a cloud that is silent.
         const float decay =
             std::exp (-static_cast<float> (numSamples) / (0.12f * static_cast<float> (getSampleRate())));
         visLevel.store (juce::jmax (wetPeak, visLevel.load (std::memory_order_relaxed) * decay),
                         std::memory_order_relaxed);
+        visDryLevel.store (juce::jmax (dryPeak, visDryLevel.load (std::memory_order_relaxed) * decay),
+                           std::memory_order_relaxed);
     }
 
 #if EE_GRAIN_TRACE

@@ -318,20 +318,18 @@ constexpr float kMinRecaptureSeconds = 0.5f;
 constexpr float kFreezeLoopSeconds = 3.0f;
 
 // ============================================================================
-// WIDE  (per-grain pan reach)
+// WIDE  (per-grain pan reach, Spray off only)
 // ============================================================================
-// The Wide knob on Grain's first row, 0..100 %, is how far off centre a grain
-// is allowed to land - not a switch and not a post-process on the finished
-// cloud, a bound on Grainer::nextPan() itself. At 0 every grain is dead
-// centre regardless of what Random's Spray knob (the `stereo` parameter) is
-// doing: the cloud is mono. Above 0, with Spray at its own zero, grains
-// hard-alternate left/right/left/right at Wide's reach - a ping-pong cloud,
-// not a Haas-widened mono one. Any Spray replaces the alternation with its
-// own randomness - a random side and a random distance from centre, same as
-// Spray always drew - but nextPan() still clamps that draw to +/-Wide, so
-// Spray can never throw a grain further than Wide allows. Wide with Spray at
-// its default (85 %, see kDefaultStereoPct) is therefore the ceiling on an
-// already-random spread, not a width the cloud gets automatically.
+// The Wide knob on Grain's first row, 0..100 %, only gets a say when Random's
+// Spray knob (the `stereo` parameter) is fully closed - Spray takes priority
+// the moment it is off zero and draws exactly as it always has (a random side
+// and a random distance from centre), ignoring Wide entirely. See
+// Grainer::nextPan(). With Spray closed, Wide decides how far off centre a
+// grain lands: 0 is dead centre (the cloud is mono), 100 % is hard
+// left/right, and grains alternate left/right/left/right one to the next
+// rather than drawing at random - a ping-pong cloud. Because Spray defaults
+// to 85 % (kDefaultStereoPct), Wide is inert - and the cloud pans exactly as
+// it always did - until Spray is pulled down to 0.
 constexpr float kDefaultWidePct = 0.0f;
 
 // ============================================================================
@@ -610,10 +608,14 @@ constexpr float kDefaultGrainLevelPct = 65.0f;
 // They do quite different jobs, and only one of them is on the face.
 //
 // The lowpass IS the Filter knob: a plain cutoff, resting wide open at the
-// corner below and closing to kCloudLowpassMinHz. 6 dB/oct, no resonance -
-// gentle by choice, not a ladder. Even wide open it still takes the edge off
-// the extra high-frequency content a pitched-up or bit-crushed grain adds
-// that the source never had.
+// corner below and closing to kCloudLowpassMinHz. A 4-pole ladder
+// (LadderFilter.h), 24 dB/oct, flat until the Reso knob raises its feedback.
+// Even wide open it still takes the edge off the extra high-frequency content
+// a pitched-up or bit-crushed grain adds that the source never had.
+//
+// The Reso knob (Grainer::setCloudResonance) is that ladder's feedback and
+// nothing else - see Grainer::cloudFiltered for why this is one filter rather
+// than a one-pole with a ladder blended against it.
 //
 // The highpass is hidden and fixed: nothing on the face moves it. It bleeds
 // off the DC and rumble that a short grain envelope's asymmetry and the
@@ -630,11 +632,13 @@ constexpr float kCloudLowpassHz = 13000.0f;
 // kCloudLowpassHz above and the knob rests there, so a face that never
 // touches this sounds exactly as it did before the knob existed.
 //
-// Was 320 Hz - too polite fully closed, it still let most of the cloud's
-// body through. 150 keeps the kCloudHighpassHz corner (110 Hz) well clear
-// but takes noticeably more of the low end with it, so "min" actually reads
-// as a cut rather than a gentle darkening.
-constexpr float kCloudLowpassMinHz = 150.0f;
+// Was 320 Hz and then 150 Hz, both of which still let the cloud's body
+// through at the bottom of the travel. 20 Hz takes the corner under the fixed
+// kCloudHighpassHz trap (110 Hz), so the knob's last stretch closes the cloud
+// away rather than merely darkening it - a filter that shuts, the way a
+// hardware lowpass does. It is also onePoleCoeff's own floor, so nothing
+// below this would do anything anyway.
+constexpr float kCloudLowpassMinHz = 20.0f;
 
 // Both stages have their own state now, so the cloud can go on decaying for a
 // moment after the engine itself has stopped feeding them anything. The
