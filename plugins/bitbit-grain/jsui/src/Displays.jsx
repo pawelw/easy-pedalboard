@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { useJuceSliderValue, useParamId, useFormattedText } from "@synthpeak/pedal-ui/juce";
 import { useModAssignment } from "./ModRouting.jsx";
 import { useLfoValue } from "./LfoPlayback.jsx";
+import { grainEnvelopePath } from "./envelopeShape.js";
 
 /**
  * The five recessed displays across the plate (COMPONENTS.md's "Displays"
@@ -191,47 +192,8 @@ function GrainEnvelopeBody({ accent, shape, density, feedback01, sizeSpan }) {
   );
 }
 
-// One grain window's outline, closed down to the baseline for the fill: a
-// short attack up to the peak, then a decay leaning from gentle (Shape 0,
-// Grainer's "soft" end) to a fast pluck that flattens early (Shape 1, its
-// "hard" end) - sampled into a polyline since an SVG path takes no exponent.
-//
-// Smooth (1 - Shape) blends that toward Grainer's swell the way the engine does (see
-// Grainer::envelopeOf): a linear fade-in of a fixed number of milliseconds, a
-// hold, then a short cut - the same two times whatever the grain length
-// (GrainerTuning::smoothAttackMs / smoothReleaseMs, mirrored here), squeezed
-// only when the grain is too short to hold both. So on a long grain the fade-in
-// is a small part of the outline and the hold fills the rest.
-const SMOOTH_ATTACK_MS = 73;
-const SMOOTH_RELEASE_MS = 17;
-
-function grainEnvelopePath(x0, width, shape01, smooth01 = 0, lengthMs = 90) {
-  const top = 6;
-  const base = 42;
-  const s = Math.min(1, Math.max(0, smooth01));
-  const attackFrac = 0.5 - shape01 * 0.42; // soft: peak near mid-window, hard: near the start
-  const decayShape = 0.6 + shape01 * 3.4; // soft: gentle slope, hard: steep then flat
-
-  const squeeze = Math.min(1, lengthMs / (SMOOTH_ATTACK_MS + SMOOTH_RELEASE_MS));
-  const swellAttackFrac = (SMOOTH_ATTACK_MS * squeeze) / lengthMs;
-  const swellHold = Math.min(0.98, Math.max(0, 1 - (SMOOTH_RELEASE_MS * squeeze) / (lengthMs * (1 - swellAttackFrac))));
-
-  const attackWithSmooth = attackFrac + s * (swellAttackFrac - attackFrac);
-  const peakX = x0 + width * Math.max(0.04, attackWithSmooth);
-
-  const points = [`${x0.toFixed(1)} ${base}`, `${peakX.toFixed(1)} ${top}`];
-  const steps = 16;
-  for (let i = 1; i <= steps; i++) {
-    const t = i / steps;
-    const x = peakX + (x0 + width - peakX) * t;
-    const fall = 1 - Math.exp(-decayShape * t); // 0 at the peak, sinking toward the baseline
-    const swell = t < swellHold ? 0 : (t - swellHold) / (1 - swellHold); // held, then cut
-    const y = top + (base - top) * (fall + s * (swell - fall));
-    points.push(`${x.toFixed(1)} ${y.toFixed(1)}`);
-  }
-  points.push(`${(x0 + width).toFixed(1)} ${base + 4}`, `${x0.toFixed(1)} ${base + 4}`);
-  return `M ${points.join(" L ")} Z`;
-}
+// grainEnvelopePath itself moved to envelopeShape.js, shared with
+// GrainShapeIcon.jsx (the Shape knob's own glyph) - see that file's note.
 
 /** Three bars, heights from the Low/Unison/High pitch-weight parameters -
     the one display in this row that COMPONENTS.md documents as reactive. */
@@ -543,14 +505,33 @@ function FilterCurveBody({ accent, openness }) {
   );
 }
 
-// Falling bar heights, 28 -> 3px - Reverb's tail (COMPONENTS.md: "eight 5px
-// bars falling 28 -> 3px").
-const TAIL_HEIGHTS = [28, 22, 17, 13, 9, 6, 4, 3];
+// Eight bars falling 28 -> 3px (COMPONENTS.md), bending with Decay the way
+// BitBit Alpine's own reverb-tail bars do (packages/module-face/src/
+// SideModule.jsx's decayBars) - the exponent runs the opposite way to Decay,
+// so a short decay is already on the floor a couple of bars in and a long
+// one holds up across the row. Was a fixed array (COMPONENTS.md's own numbers
+// at rest, decay01 = 0), so the display never moved no matter what Decay was
+// dialled to; this is that same rest shape, now a function of it.
+const TAIL_BARS = 8;
+const TAIL_MIN = 3;
+const TAIL_MAX = 28;
+
+function reverbTailHeights(decay01) {
+  const curve = 0.45 + (1 - decay01) * 1.6;
+  return Array.from({ length: TAIL_BARS }, (_, i) => TAIL_MIN + (TAIL_MAX - TAIL_MIN) * Math.pow(1 - i / (TAIL_BARS - 1), curve));
+}
 
 export function ReverbTail({ accent }) {
+  // Not a ModdableKnob target (PluginProcessor.cpp's own kModChunk note: Delay
+  // and Reverb are out of the LFO's reach), so there is no live-modulated
+  // reading to resolve here the way GrainEnvelope/PitchWeights do - the base
+  // value is the whole of it.
+  const [decay] = useJuceSliderValue("decay");
+  const heights = reverbTailHeights(decay);
+
   return (
     <div className="pg-tail">
-      {TAIL_HEIGHTS.map((h, i) => (
+      {heights.map((h, i) => (
         <div key={i} className="pg-tail__bar" style={{ height: `${h}px`, background: accent }} />
       ))}
     </div>

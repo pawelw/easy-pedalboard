@@ -99,7 +99,7 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
                               if (auto* c = getConstrainer())
                                   c->setFixedAspectRatio ((double)baseWidth / (double)baseHeight);
 
-                              resizeGrip = std::make_unique<juce::ResizableCornerComponent> (this, getConstrainer());
+                              resizeGrip = std::make_unique<ee::plugin::CornerResizer> (*this, *getConstrainer());
                               addAndMakeVisible (*resizeGrip);
                           }
 #if EE_ALPINE_WATCHDOG
@@ -246,8 +246,8 @@ void BitBitAlpineWebEditor::resized()
 
     if (resizeGrip != nullptr)
     {
-        constexpr int gripSize = 18;
-        resizeGrip->setBounds (getWidth() - gripSize, getHeight() - gripSize, gripSize, gripSize);
+        resizeGrip->setBounds (0, getHeight() - ee::plugin::CornerResizer::kSize, ee::plugin::CornerResizer::kSize,
+                                ee::plugin::CornerResizer::kSize);
         resizeGrip->toFront (false);
     }
 }

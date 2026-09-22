@@ -141,6 +141,12 @@ export function JuceKnob({
   showValueLabel = true,
   showValueBelow = false,
   bare = false,
+  // Passed straight through to Knob - see its own note on each. `icon` was
+  // never wired up here before (only BitBit Wah's own local JuceKnob forwarded
+  // it); BitBit Grain's Shape is the first caller of the shared one to use it.
+  icon,
+  cornerLabels,
+  pointer,
   // Passed straight through to Knob - see its own note on these two. Lets a
   // caller (BitBit Grain's ModdableKnob) turn a parameter's own knob into a
   // drag-and-drop drop target without this component knowing anything about
@@ -153,10 +159,22 @@ export function JuceKnob({
   badgeStyle,
   // Also passed straight through - see Knob's own note on it.
   modIndicator,
+  // Mirrors the knob's own position and drag direction without touching the
+  // parameter it binds to: turned fully one way, it now reads/sets the
+  // parameter's *other* end of travel. Everything downstream of the
+  // parameter - the readout text below, presets, automation - still speaks
+  // in the real value; only this control's own position and the arc/mod
+  // tick that track it are flipped. BitBit Grain's Shape knob is the one
+  // caller so far (GrainFace.jsx).
+  invert = false,
 }) {
   const id = useParamId(parameterId);
   const [value, setValue, sliderState] = useJuceSliderValue(parameterId);
   const readout = useFormattedText(id, value);
+
+  const displayValue = invert ? 1 - value : value;
+  const handleChange = invert ? (v) => setValue(1 - v) : setValue;
+  const displayModIndicator = invert && modIndicator != null ? 1 - modIndicator : modIndicator;
 
   return (
     <Knob
@@ -167,17 +185,20 @@ export function JuceKnob({
       scaleFrom={scaleFrom}
       caption={caption}
       endMarkerLabel={endMarkerLabel}
-      value={value}
+      icon={icon}
+      cornerLabels={cornerLabels}
+      pointer={pointer}
+      value={displayValue}
       valueLabel={showValueLabel ? readout : undefined}
       subLabel={showValueBelow ? readout : undefined}
-      onChange={setValue}
+      onChange={handleChange}
       onDragStart={() => sliderState.sliderDragStarted()}
       onDragEnd={() => sliderState.sliderDragEnded()}
       dropRef={dropRef}
       dropActive={dropActive}
       badge={badge}
       badgeStyle={badgeStyle}
-      modIndicator={modIndicator}
+      modIndicator={displayModIndicator}
     />
   );
 }

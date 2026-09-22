@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 import { Card } from "@synthpeak/pedal-ui";
-import { installAutoResize } from "@synthpeak/pedal-ui/juce";
+import { installResizableFace } from "@synthpeak/pedal-ui/juce";
 import GrainFace from "./GrainFace.jsx";
 import { ModRoutingProvider, useModRouting } from "./ModRouting.jsx";
 import { MOD_SOURCE_LFO } from "./ModSourceChip.jsx";
@@ -60,7 +60,7 @@ function ModDropHandler({ children }) {
  * 22px more breathing room instead.
  */
 export default function App() {
-  useEffect(() => installAutoResize(), []);
+  useEffect(() => installResizableFace(), []);
 
   return (
     <div className="page">

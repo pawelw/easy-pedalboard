@@ -414,11 +414,31 @@ Run it overnight per product — six of them, per D2. A clean 8-hour soak per
 product is a reasonable bar
 for G1.
 
-### 1.6 Input fuzzing where user data enters
+### 1.6 Input fuzzing where user data enters - **done** ✅
 
-`PresetStore` reads XML the user can edit, move and corrupt. Fuzz it with
-truncated, malformed, wrong-schema and enormous files — a plugin that throws on a
-bad preset file takes the host down with it.
+Run 2026-09-21. `ee_preset_fuzz_<Product>`, one per sold product, sends ~2,500
+hostile inputs through **both** doors a state comes in by - the host's
+`setStateInformation` and a user preset file through `PresetStore::load` - under
+ASan: every prefix of a real state, byte flips and splices, invalid UTF-8 and
+NULs, NaN / infinity / overflow / text in every value, dropped, duplicated and
+invented parameters, hostile JSON in Grain's LFO properties, 100,000-deep
+nesting, and multi-megabyte files. See CLAUDE.md, *Input that somebody else wrote*.
+It is in `scripts/dev-check.sh`.
+
+Two real findings, both fixed, neither anything a normal user would meet and
+both trivially reachable by a corrupt file:
+
+- **A 70 kB file crashed the process.** JUCE's XML parser (and its JSON one)
+  recurses per level of nesting; a run of opening tags overflows the stack,
+  which in a host is the host's. Refused before the parser now, in
+  `ee/plugin/SafeParse.h`, at every place the loaders touch untrusted text.
+- **`value="nan"` installed a NaN parameter**, and from there a NaN into the DSP.
+  `sanitisedState` resets a non-finite value to that parameter's default.
+
+All six products pass, ~2,500 inputs each. Not covered: the WebView bridge's
+`presetSave` / `presetLoad` name arguments (they come from our own face, and the
+store sanitises the name into a filename), and a preset in the *factory* bank,
+which is compiled in and checked by `ee_preset_tests`.
 
 ### 1.7 Other correctness checks worth running once each
 

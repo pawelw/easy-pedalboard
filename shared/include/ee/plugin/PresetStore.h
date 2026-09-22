@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+#include "ee/plugin/SafeParse.h"
 #include "ee/plugin/StateVersion.h"
 
 namespace ee::plugin
@@ -100,7 +101,7 @@ public:
         if (xml == nullptr || ! xml->hasTagName (state.state.getType()))
             return false;
 
-        const auto tree = juce::ValueTree::fromXml (*xml);
+        const auto tree = sanitisedState (juce::ValueTree::fromXml (*xml), state);
 
         if (installState)
             installState (tree);
@@ -331,12 +332,12 @@ private:
         if (data == nullptr || size <= 0)
             return nullptr;
 
-        return juce::XmlDocument::parse (juce::String::fromUTF8 (data, size));
+        return parseXmlText (juce::String::fromUTF8 (data, size));
     }
 
     std::unique_ptr<juce::XmlElement> readUser (const juce::String& name) const
     {
-        return juce::XmlDocument::parse (userDirectory().getChildFile (sanitise (name) + presetExtension));
+        return parseXmlFile (userDirectory().getChildFile (sanitise (name) + presetExtension));
     }
 
     std::vector<Entry> flattened() const

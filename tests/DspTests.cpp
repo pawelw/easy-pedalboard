@@ -15,6 +15,7 @@
 #include "ee/dsp/BitCrusher.h"
 #include "ee/dsp/BreakpointLfo.h"
 #include "ee/plugin/ModRouter.h"
+#include "ee/plugin/SafeParse.h"
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/Grainer.h"
@@ -1401,6 +1402,46 @@ void testTapeMachineStability()
 
 //==============================================================================
 // Chorus
+
+/** The parsers in JUCE recurse per level of nesting, so a file that is only
+    opening tags overflows the host's stack instead of failing to parse. The
+    scans in ee/plugin/SafeParse.h refuse it first; this holds them to refusing
+    the deep and to admitting everything a state actually looks like. */
+void testSafeParse()
+{
+    std::printf ("SafeParse: deep nesting is refused before the parser, real state is not\n");
+
+    const auto deepXml = [] (int depth)
+    {
+        return juce::String ("<S>") + juce::String::repeatedString ("<a>", depth)
+               + juce::String::repeatedString ("</a>", depth) + "</S>";
+    };
+
+    check (ee::plugin::parseXmlText (deepXml (10)) != nullptr, "a shallow tree parses");
+    check (ee::plugin::parseXmlText (deepXml (200000)) == nullptr, "200000 levels are refused, not recursed into");
+    check (ee::plugin::parseXmlText (juce::String ("<S>") + juce::String::repeatedString ("<a>", 500000)) == nullptr,
+           "...and so is an unterminated run of opening tags");
+
+    // What a real state looks like: a root, a row of self-closing children with
+    // '/' and '>' inside quoted values that must not be mistaken for tag ends.
+    const juce::String realistic =
+        "<PARAMETERS stateVersion=\"1\" lfo=\"[{&quot;x&quot;:0}]\"><PARAM id=\"a\" value=\"0.5\"/>"
+        "<PARAM id=\"b/>\" value=\"1\"/><PARAM id=\"c\" value=\"2\"></PARAM></PARAMETERS>";
+    check (ee::plugin::xmlNestingWithin (realistic.toRawUTF8(), realistic.getNumBytesAsUTF8()),
+           "a realistic state is within the limit");
+
+    // A '/>' hidden in an attribute must not be read as a close, or a deep file
+    // could disguise itself as a shallow one.
+    const auto disguised = juce::String ("<S>") + juce::String::repeatedString ("<a x=\"/>\">", 500) + "</S>";
+    check (! ee::plugin::xmlNestingWithin (disguised.toRawUTF8(), disguised.getNumBytesAsUTF8()),
+           "'/>' inside a quoted attribute does not hide nesting");
+
+    check (ee::plugin::parseJson ("[{\"a\":[1,2,{\"b\":null}]}]").isArray(), "shallow JSON parses");
+    check (ee::plugin::parseJson (juce::String::repeatedString ("[", 100000)).isVoid(), "100000 nested arrays are refused");
+    check (ee::plugin::parseJson (juce::String::repeatedString ("{\"a\":", 100000)).isVoid(), "...and nested objects");
+    check (ee::plugin::parseJson ("[\"[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"]").isArray(),
+           "brackets inside a string do not count as depth");
+}
 
 void testModDelayLineWrapBoundary()
 {
@@ -5540,6 +5581,7 @@ int main()
     testTapeMachineStability();
     std::printf ("\n");
     testModDelayLineWrapBoundary();
+    testSafeParse();
     testChorusSilence();
     std::printf ("\n");
     testChorusBypassIsUnity();

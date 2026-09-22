@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
+#include "ee/plugin/CornerResizer.h"
 #include "ee/plugin/RelaySet.h"
 
 // Off by default (see EE_JSUI_DEV_SERVER in cmake/AddBitBitPlugin.cmake): the
@@ -74,10 +75,10 @@ private:
     int baseWidth = 0;
     int baseHeight = 0;
 
-    // Its own grip rather than useBottomRightCornerResizer's: that one draws
-    // outside setResizable's control over where, and this way it sits above
-    // the WebView the same way PedalEditor's does above its face.
-    std::unique_ptr<juce::ResizableCornerComponent> resizeGrip;
+    // Bottom-left rather than juce::ResizableCornerComponent's fixed
+    // bottom-right - see CornerResizer's own note; every resizable release
+    // pedal shares this one grip, this being the first of them.
+    std::unique_ptr<ee::plugin::CornerResizer> resizeGrip;
 
     // Where the page comes from - see EE_JSUI_DEV_SERVER above.
     static constexpr bool kUseDevServer = EE_JSUI_DEV_SERVER != 0;

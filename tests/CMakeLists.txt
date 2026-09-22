@@ -595,3 +595,31 @@ foreach(pluginTarget IN LISTS eeReleaseTargets)
         PRIVATE ${pluginTarget} ee_shared
         PUBLIC juce::juce_recommended_config_flags)
 endforeach()
+
+# Hostile input through the two doors a state comes in by: setStateInformation
+# and a user preset file. One binary per shipping product, for the same
+# duplicate-createPluginFilter() reason as the golden files above. See
+# PresetFuzz.cpp.
+foreach(pluginTarget IN LISTS eeReleaseTargets)
+    set(fuzzApp ee_preset_fuzz_${pluginTarget})
+
+    get_target_property(pluginDir ${pluginTarget} SOURCE_DIR)
+    get_target_property(pluginProduct ${pluginTarget} EE_PLUGIN_PRODUCT)
+
+    juce_add_console_app(${fuzzApp} PRODUCT_NAME "${fuzzApp}")
+
+    target_sources(${fuzzApp} PRIVATE PresetFuzz.cpp)
+
+    target_compile_definitions(${fuzzApp} PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1
+        EE_FUZZ_PROCESSOR=${pluginTarget}Processor
+        EE_FUZZ_NAME="${pluginProduct}")
+
+    target_include_directories(${fuzzApp} PRIVATE ${pluginDir}/src)
+
+    target_link_libraries(${fuzzApp}
+        PRIVATE ${pluginTarget} ee_shared
+        PUBLIC juce::juce_recommended_config_flags)
+endforeach()

@@ -198,9 +198,9 @@ void BitBitReverbProcessor::getStateInformation (juce::MemoryBlock& destData)
 
 void BitBitReverbProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    if (auto xml = getXmlFromBinary (data, sizeInBytes))
+    if (auto xml = ee::plugin::xmlFromBinary (data, sizeInBytes))
         if (xml->hasTagName (apvts.state.getType()))
-            installState (juce::ValueTree::fromXml (*xml));
+            installState (ee::plugin::sanitisedState (juce::ValueTree::fromXml (*xml), apvts));
 }
 
 juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()

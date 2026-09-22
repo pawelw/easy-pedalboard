@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ee/plugin/SafeParse.h"
+
 #include <juce_core/juce_core.h>
 
 #include <vector>
@@ -40,7 +42,7 @@ inline std::vector<ee::dsp::LfoBreakpoint> lfoBreakpointsFromJson (const juce::S
     if (json.isEmpty())
         return points;
 
-    const auto parsed = juce::JSON::parse (json);
+    const auto parsed = parseJson (json);
     auto* root = parsed.getDynamicObject();
     if (root == nullptr)
         return points;

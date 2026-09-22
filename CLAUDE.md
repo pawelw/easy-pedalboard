@@ -68,6 +68,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_sympathy_stress_artefacts/Release/ee_sympathy_stress    # resonator bank runaway / non-finite hunt
 ./build/tests/ee_sympathy_match_artefacts/Release/ee_sympathy_match in.wav out.wav  # by-ear voicing renderer
 ./build/tests/ee_param_golden_BitBitDelay_artefacts/Release/ee_param_golden_BitBitDelay  # the frozen parameter contract, one per product
+./build/tests/ee_preset_fuzz_BitBitDelay_artefacts/Release/ee_preset_fuzz_BitBitDelay [--seed N] [--iterations N]  # hostile state/preset input, one per product
 ```
 
 **`tests/golden/*.txt` is the frozen parameter contract**, one file per
@@ -191,6 +192,38 @@ were closed under G1.4 of `docs/release-plan.md`, and both were real:
   gaussian at -20 dBFS rms) instead. The test measures a band-limited source,
   because the stage rolls the top off on purpose and broadband noise reads that
   as a level change.
+
+### Input that somebody else wrote
+
+A state arrives by two doors - `setStateInformation` (a host reopening a project)
+and `PresetStore::load` (a user preset file the user may have edited or half
+copied) - and both go through `ee/plugin/SafeParse.h` and `sanitisedState`
+(`StateVersion.h`) before anything is installed. `ee_preset_fuzz_<Target>` (one
+per sold product, same duplicate-`createPluginFilter()` reason as the golden
+files) feeds both doors mutated valid states, truncations at every byte, NaN /
+overflow / text in every value, deep nesting and multi-megabyte files, and holds
+them to: no throw, no crash, every parameter finite and in range, finite audio,
+and a refused preset leaves the state untouched. Deterministic per `--seed`; if
+it dies, the input it died on is in `$TMPDIR/ee_preset_fuzz_<Target>/`. It
+writes one `zz-fuzz-preset.xml` into the product's real user-preset folder and
+removes it again. Run it under `--preset asan` for anything touching a loader.
+
+It found two things on its first run, both fixed 2026-09-21:
+
+- **JUCE's XML and JSON parsers recurse per level of nesting**, so a 70 kB file of
+  opening tags overflows the stack - the host's stack. Refused now by a linear
+  scan before the parser (`xmlNestingWithin`, `jsonNestingWithin`, depth 64, and
+  a 32 MB size cap). Use `parseXmlText` / `parseXmlFile` / `xmlFromBinary` /
+  `parseJson`, never the JUCE calls, on anything that is not our own output.
+- **`value="nan"` puts a NaN in the parameter.** `String` parses it, APVTS
+  installs it, and the DSP gets a NaN cutoff. `sanitisedState` puts a non-finite
+  value back to that parameter's default; out-of-range finite values are clamped
+  by APVTS already.
+
+A new pedal's `setStateInformation` should be
+`installState (ee::plugin::sanitisedState (ValueTree::fromXml (*xml), apvts))` on
+`ee::plugin::xmlFromBinary`, and get its own fuzz binary for free from the loop
+in `tests/CMakeLists.txt`.
 
 ### Sanitizers
 

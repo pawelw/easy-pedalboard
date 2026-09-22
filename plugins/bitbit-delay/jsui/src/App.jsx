@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Card, JucePresetBar } from "@synthpeak/pedal-ui";
-import { JuceFader, installAutoResize } from "@synthpeak/pedal-ui/juce";
+import { JuceFader, installResizableFace } from "@synthpeak/pedal-ui/juce";
 import { DelayFace } from "@synthpeak/delay-face";
 import "./index.css";
 
@@ -26,7 +26,7 @@ function HeaderLevels() {
  * default, so nothing is passed.
  */
 export default function App() {
-  useEffect(() => installAutoResize(), []);
+  useEffect(() => installResizableFace(), []);
 
   return (
     <div className="page">

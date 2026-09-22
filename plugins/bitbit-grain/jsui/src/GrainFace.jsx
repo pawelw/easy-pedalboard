@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Logo, JucePresetBar, PowerToggle, Readout, VerticalTabs } from "@synthpeak/pedal-ui";
+import { Logo, JucePresetBar, PowerToggle, Readout, VerticalTabs, Pill } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceFader,
@@ -14,6 +14,7 @@ import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } fro
 import ModTab from "./ModTab.jsx";
 import ModdableKnob from "./ModdableKnob.jsx";
 import Cosmos from "./Cosmos.jsx";
+import GrainShapeIcon from "./GrainShapeIcon.jsx";
 import "./GrainFace.css";
 
 const FACE_TABS = [
@@ -78,6 +79,16 @@ function TimeRow({ side, parameterId }) {
   );
 }
 
+/** The Shape knob's own cap glyph: the real (uninverted) parameter value,
+    read straight off the parameter rather than off the icon callback's own
+    `v` - the knob is `invert`ed below, so that `v` is the flipped drag
+    position, not Shape itself, and the glyph has to draw the sound Shape is
+    actually making regardless of which way the knob turns to get there. */
+function ShapeGlyph() {
+  const [shape01] = useJuceSliderValue("shape");
+  return <GrainShapeIcon shape01={shape01} size={20} />;
+}
+
 function GrainSection() {
   return (
     <section className="pg-section pg-section--grain" style={{ "--pui-accent": GRAIN, "--pui-soft-lit": KNOB_LIT }}>
@@ -97,7 +108,31 @@ function GrainSection() {
       </div>
       <div className="pg-section__knobs">
         <ModdableKnob parameterId="feedback" caption="Fback" variant="flat" size={30} />
-        <ModdableKnob parameterId="shape" caption="Shape" variant="flat" size={30} />
+        {/* invert: the knob's position is mirrored - turned to what reads as
+            "max" now sets Shape to its actual minimum, and vice versa. The
+            parameter itself, its readout text and its presets are untouched;
+            see JuceKnob's own note on the prop.
+            icon/pointer: the cap draws the envelope Shape is actually making
+            (ShapeGlyph, off the real parameter, not the flipped knob
+            position) instead of the plain white dot every other knob shows -
+            same idea as BitBit Wah's own Shape knob (WaveIcon). `pointer={false}`
+            clears that dot so the glyph has the cap to itself. */}
+        <ModdableKnob
+          parameterId="shape"
+          caption="Shape"
+          variant="flat"
+          size={30}
+          invert
+          pointer={false}
+          icon={() => <ShapeGlyph />}
+        />
+      </div>
+      {/* Live/Freeze, moved down here from the header - same slot Pitch's own
+          Root/Scale pills moved into (see .pg-pitch__divider's own note),
+          under this section's last knob row rather than crowding the header
+          row. */}
+      <div className="pg-grain__live">
+        <SegmentSwitch parameterId="freeze" offLabel="Live" onLabel="Freeze" />
       </div>
     </section>
   );
@@ -301,25 +336,16 @@ function ReverbSection() {
   );
 }
 
-/** A two-state toggle, one button whose own label and colour both track the
-    current state - "Live" dark, click it and it reads "Freeze" light, click
-    again and it's back to "Live" dark. Was a joined two-button segment (one
-    button per state, the current one lit); this is the same on/off styling
-    (`.pg-segment__btn[data-on]`, unchanged) collapsed onto a single control
-    now that only one label needs to be visible at a time. */
+/** A two-state toggle, one pill whose own label tracks the current state -
+    "Live" unlit, click it and it reads "Freeze" lit, click again and it's
+    back to "Live". Built on the shared Pill (Sync's and Normal/Wide/Ping
+    Pong's own component on Delay's row) rather than a hand-rolled button, so
+    it is the same size and look as those pills without a second copy of
+    their CSS to keep in step - was a bespoke `.pg-segment__btn`. */
 function SegmentSwitch({ parameterId, offLabel, onLabel, className }) {
   const [on, setOn] = useJuceToggleValue(parameterId);
 
-  return (
-    <button
-      type="button"
-      className={className ? `pg-segment__btn ${className}` : "pg-segment__btn"}
-      data-on={on || undefined}
-      onClick={() => setOn(!on)}
-    >
-      {on ? onLabel : offLabel}
-    </button>
-  );
+  return <Pill label={on ? onLabel : offLabel} pressed={on} onClick={() => setOn(!on)} className={className} />;
 }
 
 function Header() {
@@ -331,9 +357,6 @@ function Header() {
         <div className="pg-header__brand">
           <Logo size={32} />
           <h1 className="pg-header__title">BitBit Grains</h1>
-        </div>
-        <div className="pg-header__live">
-          <SegmentSwitch parameterId="freeze" offLabel="Live" onLabel="Freeze" />
         </div>
         <div className="pg-header__presets">
           <JucePresetBar variant="separated" />

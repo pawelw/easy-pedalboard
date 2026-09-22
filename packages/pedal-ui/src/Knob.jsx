@@ -466,6 +466,13 @@ function EndMarker({ label, radius, lit }) {
  * the bottom of the range - "back to twelve o'clock" is a position on the
  * hardware, and it is the same gesture on every knob whatever that knob
  * happens to open at.
+ *
+ * `pointer`: false hides the rotating dot/needle/bar every variant otherwise
+ * draws over the cap - for a caller whose `icon` already reads as the value
+ * (BitBit Grain's Shape, whose glyph *is* the envelope the value produces),
+ * so the two aren't fighting for the same small area. The arc/tick ring
+ * outside the cap is untouched; only the thing pinned to the cap's own
+ * centre goes away. Default true, so every other caller is unaffected.
  */
 export default function Knob({
   value,
@@ -485,6 +492,7 @@ export default function Knob({
   scaleFrom = "min",
   bare = false,
   centreValue = 0.5,
+  pointer = true,
   // A drop target for a drag-and-drop library this component knows nothing
   // about (a caller wires up its own useDroppable/useDrop and hands the
   // pieces in) - `dropRef` is that library's node ref, attached to the dial
@@ -730,7 +738,7 @@ export default function Knob({
             icon && <div className="pui-knob__icon">{icon(value)}</div>
           ) : isConcave ? (
             <div className="pui-knob__concave-face">
-              <Pointer angle={angle} diameter={size} concave />
+              {pointer && <Pointer angle={angle} diameter={size} concave />}
               {icon && <div className="pui-knob__icon">{icon(value)}</div>}
             </div>
           ) : isSoft ? (
@@ -739,7 +747,7 @@ export default function Knob({
                   there is no ring here, so the cap itself carries both the
                   face gradient and the raised shadow. */}
               <div className="pui-knob__soft-cap">
-                <Pointer angle={angle} diameter={dialSize} soft />
+                {pointer && <Pointer angle={angle} diameter={dialSize} soft />}
                 {icon && <div className="pui-knob__icon">{icon(value)}</div>}
               </div>
             </>
@@ -747,7 +755,7 @@ export default function Knob({
             <>
               <div className="pui-knob__scale-ring" />
               <div className="pui-knob__scale-cap">
-                <Pointer angle={angle} diameter={size} />
+                {pointer && <Pointer angle={angle} diameter={size} />}
                 {icon && <div className="pui-knob__icon">{icon(value)}</div>}
               </div>
             </>
@@ -755,7 +763,7 @@ export default function Knob({
             <>
               <Collar radius={radius} angle={angle} />
               <div className="pui-knob__cap">
-                <div className="pui-knob__dot" style={{ transform: `rotate(${angle}deg)` }} />
+                {pointer && <div className="pui-knob__dot" style={{ transform: `rotate(${angle}deg)` }} />}
                 {icon && <div className="pui-knob__icon">{icon(value)}</div>}
               </div>
             </>

@@ -65,6 +65,12 @@ run ee_grain_stress
 run ee_modulation_host
 run ee_reverb_host
 
+# Hostile input through setStateInformation and a user preset file, one binary
+# per sold product. See tests/PresetFuzz.cpp.
+for product in BitBitAlpine BitBitGrain BitBitArtifact BitBitModulation BitBitDelay BitBitReverb; do
+    run "ee_preset_fuzz_$product"
+done
+
 # The frozen parameter contract for the six products that are sold. A failure
 # here is not a bug - it is a parameter id, range, default or engine order
 # moving, which breaks every saved session and preset keyed on it. If the change

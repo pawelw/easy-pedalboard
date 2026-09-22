@@ -36,12 +36,37 @@ BitBitArtifactWebEditor::BitBitArtifactWebEditor (BitBitArtifactProcessor& p)
                   // way - it has no dedicated JUCE option - so a knob drag that
                   // starts with the right button does not pop it up.
                   .withUserScript ("document.addEventListener('contextmenu', function (e) { e.preventDefault(); });")
+                  // See installResizableFace: the page measures its own real
+                  // rendered size once and reports it here, which becomes
+                  // this window's design size - what the resize range and
+                  // locked aspect ratio are set from, same as BitBitAlpine's.
                   .withNativeFunction ("reportContentSize",
                                        [this] (const juce::Array<juce::var>& args,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
                                        {
-                                           setSize (juce::jmax (100, static_cast<int> (args[0])),
-                                                    juce::jmax (100, static_cast<int> (args[1])));
+                                           const int w = juce::jmax (100, static_cast<int> (args[0]));
+                                           const int h = juce::jmax (100, static_cast<int> (args[1]));
+
+                                           if (baseWidth <= 0)
+                                           {
+                                               baseWidth = w;
+                                               baseHeight = h;
+
+                                               setResizable (true, false);
+                                               setResizeLimits (juce::roundToInt (baseWidth * kMinZoom),
+                                                                 juce::roundToInt (baseHeight * kMinZoom),
+                                                                 juce::roundToInt (baseWidth * kMaxZoom),
+                                                                 juce::roundToInt (baseHeight * kMaxZoom));
+
+                                               if (auto* c = getConstrainer())
+                                                   c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
+
+                                               resizeGrip =
+                                                   std::make_unique<ee::plugin::CornerResizer> (*this, *getConstrainer());
+                                               addAndMakeVisible (*resizeGrip);
+                                           }
+
+                                           setSize (w, h);
                                            complete (true);
                                        })
                   // A knob's printed value. A native function rather than the
@@ -80,6 +105,13 @@ BitBitArtifactWebEditor::~BitBitArtifactWebEditor() = default;
 void BitBitArtifactWebEditor::resized()
 {
     webView.setBounds (getLocalBounds());
+
+    if (resizeGrip != nullptr)
+    {
+        resizeGrip->setBounds (0, getHeight() - ee::plugin::CornerResizer::kSize, ee::plugin::CornerResizer::kSize,
+                                ee::plugin::CornerResizer::kSize);
+        resizeGrip->toFront (false);
+    }
 }
 
 std::optional<juce::WebBrowserComponent::Resource> BitBitArtifactWebEditor::getResource (const juce::String& url)

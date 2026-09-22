@@ -1558,11 +1558,11 @@ void BitBitGrainProcessor::getStateInformation (juce::MemoryBlock& destData)
 
 void BitBitGrainProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    if (auto xml = getXmlFromBinary (data, sizeInBytes))
+    if (auto xml = ee::plugin::xmlFromBinary (data, sizeInBytes))
     {
         if (xml->hasTagName (apvts.state.getType()))
         {
-            installState (juce::ValueTree::fromXml (*xml));
+            installState (ee::plugin::sanitisedState (juce::ValueTree::fromXml (*xml), apvts));
 
             const auto restore = [this] (const char* prop, std::atomic<float>& slot, const std::atomic<float>* fallback)
             { slot.store (static_cast<float> (apvts.state.getProperty (prop, fallback->load()))); };

@@ -76,52 +76,14 @@
   transform: translateX(-4px);
 }
 
-.pg-header__live {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: none;
-}
-
-/* Live/Freeze and Mono/Stereo: one button each, its own label and colour
-   tracking the current state (dark chrome for Live/Mono, the lit pill look
-   for Freeze/Stereo) - was a joined two-button segment, one button per
-   state; kept the same on/off styling, just on a single control now. */
-.pg-segment__btn {
-  appearance: none;
-  font-family: var(--pui-font-label);
-  font-weight: 700;
-  font-size: 9px;
-  line-height: 1;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  padding: 8px 13px;
-  /* "Freeze" is wider than "Live"; without a floor the button changes width
-     as it toggles and the preset bar, centred in the room beside it, shifts
-     with it. Wide enough for the longer label. */
-  box-sizing: border-box;
-  min-width: 68px;
-  text-align: center;
-  border: 1px solid var(--pui-pill-off-border);
-  border-radius: 8px;
-  background: var(--pui-chrome);
-  color: var(--pui-pill-off-ink);
-  cursor: pointer;
-}
-
-.pg-segment__btn[data-on] {
-  border-color: transparent;
-  background: var(--pui-pill-on-bg);
-  color: var(--pui-pill-on-ink);
-}
-
 .pg-header__presets {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  /* Takes all the room between Live/Freeze and Level, and centres the bar in
-     it. */
+  /* Takes all the room between the brand and Level, and centres the bar in
+     it - Live/Freeze used to sit here too (see .pg-grain__live below, where
+     it lives now). */
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -326,6 +288,16 @@
   margin-top: 10px;
 }
 
+/* Live/Freeze, moved down from the header into Grain's own last slot - same
+   move as Pitch's Root/Scale pills (that section's own note on
+   .pg-pitch__divider). Centred under Fback/Shape rather than left-aligned
+   the way Root/Scale sit, since there is only the one pill here to place. */
+.pg-grain__live {
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 /* Row 1 (Grain/Pitch/Random) sits right under .pg-plate's own top edge, which
    carries this same hairline as part of --pui-module-shadow's inset - row 2
    is past the .pg-hdivider below it and out from under that, so Delay/Reverb
@@ -339,6 +311,40 @@
 .pg-section--reverb {
   grid-column: 5;
   box-shadow: inset 0 1px 0 0 #ffffff14;
+}
+
+/* Delay and Reverb's effect knobs: a filled accent cap in a dark bezel, the
+   value arc hugging the bezel's outside edge, and a short dark tick on the
+   cap. Scoped here rather than in Knob.css so every other pedal's concave
+   knobs keep their dark dish. The cap and the arc both read --pui-soft-lit,
+   which each section already sets to its own accent, so the two stay one
+   colour family. The bezel thickness is a percentage so the 49px lead knobs
+   and the 32px Reverb ones carry the same proportions. */
+.pg-section--delay .pui-knob__body--concave,
+.pg-section--reverb .pui-knob__body--concave {
+  background: #2e3539;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgb(255 255 255 / 9%);
+}
+
+.pg-section--delay .pui-knob__concave-face,
+.pg-section--reverb .pui-knob__concave-face {
+  inset: 8%;
+  /* A dish, not a dome: shaded at the top where the bezel's lip shadows it,
+     lighter toward the bottom, with a thin highlight bouncing off the lower lip. */
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--pui-soft-lit) 92%, #1c3438) 0%,
+    color-mix(in srgb, var(--pui-soft-lit) 98%, #ffffff) 100%
+  );
+  
+}
+
+.pg-section--delay .pui-knob__pointer--concave,
+.pg-section--reverb .pui-knob__pointer--concave {
+  top: 11%;
+  height: 20%;
+  background: #000000;
+  box-shadow: none;
 }
 
 /* One pixel smaller than every other section's knob caption - both are 30px

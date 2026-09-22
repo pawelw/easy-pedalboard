@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
+#include "ee/plugin/CornerResizer.h"
 #include "ee/plugin/RelaySet.h"
 
 // Off by default (see EE_JSUI_DEV_SERVER in cmake/AddBitBitPlugin.cmake): the
@@ -36,6 +37,20 @@ private:
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
 
     BitBitReverbProcessor& processorRef;
+
+    // Same range every resizable release pedal's window drags across - see
+    // BitBitAlpineWebEditor's identical constants, the first of them.
+    static constexpr float kMinZoom = 0.6f;
+    static constexpr float kMaxZoom = 2.0f;
+
+    // The size the page reported the one time it is measured - see
+    // installResizableFace. 0 until that first report arrives.
+    int baseWidth = 0;
+    int baseHeight = 0;
+
+    // Bottom-left grip, added once the first report above sizes the window -
+    // see CornerResizer's own note on why bottom-left.
+    std::unique_ptr<ee::plugin::CornerResizer> resizeGrip;
 
     static constexpr bool kUseDevServer = EE_JSUI_DEV_SERVER != 0;
     static const juce::String devServerAddress;

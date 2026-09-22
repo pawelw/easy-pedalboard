@@ -47,6 +47,12 @@ BitBitGrainWebEditor::BitBitGrainWebEditor (BitBitGrainProcessor& p)
                   // way - it has no dedicated JUCE option - so a knob drag that
                   // starts with the right button does not pop it up.
                   .withUserScript ("document.addEventListener('contextmenu', function (e) { e.preventDefault(); });")
+                  // See installResizableFace: the page measures its own real
+                  // rendered size once and reports it here, which becomes
+                  // this window's design size - what the resize range and
+                  // locked aspect ratio are set from, same as BitBitAlpine's
+                  // (whose own watchdog panel is the same dev-only shape as
+                  // this pedal's tuner one, added the same way below).
                   .withNativeFunction ("reportContentSize",
                                        [this] (const juce::Array<juce::var>& args,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
@@ -59,6 +65,25 @@ BitBitGrainWebEditor::BitBitGrainWebEditor (BitBitGrainProcessor& p)
 #else
                                            const int panelWidth = 0;
 #endif
+                                           if (baseWidth <= 0)
+                                           {
+                                               baseWidth = width;
+                                               baseHeight = height;
+
+                                               setResizable (true, false);
+                                               setResizeLimits (juce::roundToInt (baseWidth * kMinZoom),
+                                                                 juce::roundToInt (baseHeight * kMinZoom),
+                                                                 juce::roundToInt (baseWidth * kMaxZoom),
+                                                                 juce::roundToInt (baseHeight * kMaxZoom));
+
+                                               if (auto* c = getConstrainer())
+                                                   c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
+
+                                               resizeGrip =
+                                                   std::make_unique<ee::plugin::CornerResizer> (*this, *getConstrainer());
+                                               addAndMakeVisible (*resizeGrip);
+                                           }
+
                                            setSize (width + panelWidth, height);
                                            complete (true);
                                        })
@@ -223,16 +248,21 @@ void BitBitGrainWebEditor::timerCallback()
 
 void BitBitGrainWebEditor::resized()
 {
+    auto bounds = getLocalBounds();
+
 #if EE_GRAIN_TUNER
     if (tunerPanel != nullptr)
-    {
-        auto bounds = getLocalBounds();
         tunerPanel->setBounds (bounds.removeFromRight (GrainTunerPanel::preferredWidth));
-        webView.setBounds (bounds);
-        return;
-    }
 #endif
-    webView.setBounds (getLocalBounds());
+
+    webView.setBounds (bounds);
+
+    if (resizeGrip != nullptr)
+    {
+        resizeGrip->setBounds (0, getHeight() - ee::plugin::CornerResizer::kSize, ee::plugin::CornerResizer::kSize,
+                                ee::plugin::CornerResizer::kSize);
+        resizeGrip->toFront (false);
+    }
 }
 
 std::optional<juce::WebBrowserComponent::Resource> BitBitGrainWebEditor::getResource (const juce::String& url)

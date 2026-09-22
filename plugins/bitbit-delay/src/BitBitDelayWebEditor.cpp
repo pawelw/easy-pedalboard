@@ -76,10 +76,12 @@ BitBitDelayWebEditor::BitBitDelayWebEditor (BitBitDelayProcessor& p)
               .withOptionsFrom (tapePreRelay)
               .withOptionsFrom (onRelay)
               .withOptionsFrom (controlParameterIndexReceiver)
-              // See jsui/src/autoSize.js: the page measures its own real
-              // rendered size and reports it here, rather than this
-              // editor opening at a size guessed from a browser that
-              // isn't the WebView engine actually rendering it.
+              // See installResizableFace: the page measures its own real
+              // rendered size once and reports it here, which becomes this
+              // window's design size - what the resize range and locked
+              // aspect ratio are set from, same as BitBitAlpine's (whose own
+              // watchdog panel is the same dev-only shape as this pedal's
+              // tape-tuner one, added the same way below).
               .withNativeFunction ("reportContentSize",
                                    [this] (const juce::Array<juce::var>& args,
                                            juce::WebBrowserComponent::NativeFunctionCompletion complete)
@@ -92,6 +94,25 @@ BitBitDelayWebEditor::BitBitDelayWebEditor (BitBitDelayProcessor& p)
 #else
                                             const int panelWidth = 0;
 #endif
+                                       if (baseWidth <= 0)
+                                       {
+                                           baseWidth = width;
+                                           baseHeight = height;
+
+                                           setResizable (true, false);
+                                           setResizeLimits (juce::roundToInt (baseWidth * kMinZoom),
+                                                             juce::roundToInt (baseHeight * kMinZoom),
+                                                             juce::roundToInt (baseWidth * kMaxZoom),
+                                                             juce::roundToInt (baseHeight * kMaxZoom));
+
+                                           if (auto* c = getConstrainer())
+                                               c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
+
+                                           resizeGrip =
+                                               std::make_unique<ee::plugin::CornerResizer> (*this, *getConstrainer());
+                                           addAndMakeVisible (*resizeGrip);
+                                       }
+
                                        setSize (width + panelWidth, height);
                                        complete (true);
                                    })
@@ -197,16 +218,21 @@ void BitBitDelayWebEditor::timerCallback()
 
 void BitBitDelayWebEditor::resized()
 {
+    auto bounds = getLocalBounds();
+
 #if EE_TAPE_TUNER
     if (tunerPanel != nullptr)
-    {
-        auto bounds = getLocalBounds();
         tunerPanel->setBounds (bounds.removeFromRight (TapeTunerPanel::preferredWidth));
-        webView.setBounds (bounds);
-        return;
-    }
 #endif
-    webView.setBounds (getLocalBounds());
+
+    webView.setBounds (bounds);
+
+    if (resizeGrip != nullptr)
+    {
+        resizeGrip->setBounds (0, getHeight() - ee::plugin::CornerResizer::kSize, ee::plugin::CornerResizer::kSize,
+                                ee::plugin::CornerResizer::kSize);
+        resizeGrip->toFront (false);
+    }
 }
 
 std::optional<juce::WebBrowserComponent::Resource> BitBitDelayWebEditor::getResource (const juce::String& url)

@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { Card, JucePresetBar } from "@synthpeak/pedal-ui";
-import { installAutoResize } from "@synthpeak/pedal-ui/juce";
+import { installResizableFace } from "@synthpeak/pedal-ui/juce";
 import { ReverbFace } from "@synthpeak/module-face";
 import "./index.css";
 
@@ -10,7 +10,7 @@ import "./index.css";
  * only what is this pedal's: its card and its preset bar.
  */
 export default function App() {
-  useEffect(() => installAutoResize(), []);
+  useEffect(() => installResizableFace(), []);
 
   return (
     <div className="page">

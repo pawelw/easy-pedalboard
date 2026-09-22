@@ -1,5 +1,7 @@
 #pragma once
 
+#include "ee/plugin/SafeParse.h"
+
 #include <juce_core/juce_core.h>
 
 #include <vector>
@@ -34,7 +36,7 @@ inline std::vector<ModAssignment> modRoutingFromJson (const juce::String& json)
     if (json.isEmpty())
         return assignments;
 
-    const auto parsed = juce::JSON::parse (json);
+    const auto parsed = parseJson (json);
     if (auto* array = parsed.getArray())
     {
         for (const auto& item : *array)
