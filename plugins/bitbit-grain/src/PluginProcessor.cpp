@@ -28,6 +28,7 @@ constexpr const char* kStretchID = "stretch";
 constexpr const char* kFreezeID = "freeze";
 constexpr const char* kWidthID = "width";
 constexpr const char* kShapeID = "shape";
+constexpr const char* kShapeFamilyID = "shapefamily";
 constexpr const char* kScatterID = "scatter";
 constexpr const char* kReverseID = "reverse";
 constexpr const char* kStereoID = "stereo";
@@ -325,6 +326,7 @@ BitBitGrainProcessor::BitBitGrainProcessor()
     freezeParam = apvts.getRawParameterValue (kFreezeID);
     widthParam = apvts.getRawParameterValue (kWidthID);
     shapeParam = apvts.getRawParameterValue (kShapeID);
+    shapeFamilyParam = apvts.getRawParameterValue (kShapeFamilyID);
     scatterParam = apvts.getRawParameterValue (kScatterID);
     reverseParam = apvts.getRawParameterValue (kReverseID);
     stereoParam = apvts.getRawParameterValue (kStereoID);
@@ -675,6 +677,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
         juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
                                                                            { return juce::String (v, 1) + " dB"; })));
 
+    // Which window the Shape knob morphs - ee::dsp::Grainer::ShapeFamily, in
+    // the same order. Appended last and last for good, per CLAUDE.md's rule
+    // for an engine choice: this index is what every saved session and preset
+    // keys on. Triangle is index 0 and the default, so an old session with no
+    // opinion about this parameter loads exactly as it always has.
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { kShapeFamilyID, 1 }, "Shape Family",
+        juce::StringArray { "Triangle", "Gaussian", "Sinc", "Spike" }, 0));
+
     return layout;
 }
 
@@ -694,22 +705,14 @@ double BitBitGrainProcessor::readPlayHeadBpm()
 
 juce::String BitBitGrainProcessor::sizeReadout() const
 {
-    // Always milliseconds, synced or not - a grain's length is a duration a
-    // listener hears, not a rhythmic position, so the note-division label
-    // toText() would show once synced is not what belongs here.
-    //
-    // Clamped to what Grainer::setSizeMs() will actually apply
-    // (config::kMinGrainMs..kMaxGrainMs): synced mode picks a tempo division
-    // with no relation to that range, so at a slow enough tempo the top of
-    // the knob's travel can select a division several seconds long while the
-    // engine silently caps every grain at kMaxGrainMs (500 ms) regardless -
-    // showing the true division length there was a readout that described a
-    // sound nothing was making. sizeMap.toMsText()'s own formatting (>=1s
-    // shows seconds) is duplicated here rather than reused, since clamping
-    // has to happen on the raw ms value before that decision.
+    // Free-running, not tempo-synced (see processBlock's sizeSynced) - a
+    // grain's length is a duration a listener hears, not a rhythmic
+    // position, and reading it off a tempo division made the knob jump
+    // between the division's ms lengths as it turned instead of sweeping
+    // smoothly across kMinGrainMs..kMaxGrainMs. bpm plays no part any more;
+    // currentBpm() is not called here.
     namespace cfg = ee::dsp::config;
-    const float ms =
-        juce::jlimit (cfg::kMinGrainMs, cfg::kMaxGrainMs, sizeMap.value (sizeParam->load(), true, currentBpm()));
+    const float ms = juce::jlimit (cfg::kMinGrainMs, cfg::kMaxGrainMs, sizeMap.value (sizeParam->load(), false, 0.0));
     return ms >= 1000.0f ? juce::String (ms * 0.001f, 2) + " s" : juce::String (juce::roundToInt (ms)) + " ms";
 }
 
@@ -1107,13 +1110,16 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 #endif
 
     const double bpm = readPlayHeadBpm();
-    // Grain's own Size/Destiny carry no Sync switch on the face any more - the
-    // GRAINS panel is always tempo-locked now, so these are hardcoded true
-    // rather than read off ssync/dsync. Those parameters (and wsync) are kept
-    // registered (see PluginProcessor.h's note by sizeSyncParam) purely so a
-    // preset or automation lane that still references them resolves to
-    // something; nothing here reads them.
-    const bool sizeSynced = true;
+    // Grain's own Size/Density carry no Sync switch on the face any more, so
+    // these are hardcoded rather than read off ssync/dsync. Density stays
+    // tempo-locked (the grain spawn grid). Size is free-running: turning the
+    // knob is a duration a listener hears, and snapping it to a tempo
+    // division made it jump between the division's ms lengths instead of
+    // sweeping smoothly - see sizeReadout()'s matching change. ssync/dsync
+    // (and wsync) are kept registered (see PluginProcessor.h's note by
+    // sizeSyncParam) purely so a preset or automation lane that still
+    // references them resolves to something; nothing here reads them.
+    const bool sizeSynced = false;
     const bool densitySynced = true;
     const bool delaySynced = delaySyncParam->load() > 0.5f;
 
@@ -1313,14 +1319,12 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // onset. Whatever a session stored in Window is ignored.
         grainer.setAttackReachSeconds (ee::dsp::config::kFixedAttackReachSeconds);
 
-        // Shape and Smooth are one control: Shape at its plucky end (100) is
-        // the engine's own window, untouched (Smooth 0); at its soft end (0) the
-        // grain is the full swell (Smooth 1); in between the two blend. Smooth
-        // has no knob or parameter of its own - it is 1 - Shape, modulated
-        // Shape included.
+        // Shape and Smooth are one control - see GrainerConfig.h's SMOOTH
+        // section for why the swell only occupies the bottom of the travel.
         const float shape01 = modulatedValue (kShapeID, shapeParam->load()) * 0.01f;
         grainer.setShape (shape01);
-        grainer.setSmooth (1.0f - shape01);
+        grainer.setSmooth (ee::dsp::config::smoothForShape (shape01));
+        grainer.setShapeFamily (juce::roundToInt (shapeFamilyParam->load()));
 
         // The Feedback knob (it took Window's place on the face). With Pitch
         // Low/High in the mix a repeat is re-pitched on its way round, so an

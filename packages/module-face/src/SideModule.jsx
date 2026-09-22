@@ -29,11 +29,11 @@ import "./SideModule.css";
 const BAR_MIN = 8;
 const BAR_SPAN = 26;
 
-// The Filter scope is shorter than the 63px bar wells on purpose: its body
-// carries a wave picker and a Sync pill under two knobs, and at full height the
-// module grew ~10px taller than it is on Tape, so the whole row (and the
-// window) would jump every time the engine stepped onto Filter.
-const FILTER_SCOPE_HEIGHT = 53;
+// The Filter scope fills the display slot, like every other well (see
+// ModulePanel.css's slot ladder). It used to be cut to 53px to keep its body
+// from growing the module; the slot is fixed now, so the height it draws at is
+// only about how the scope reads.
+const FILTER_SCOPE_HEIGHT = 64;
 
 const TREM_BARS = 26;
 const DECAY_BARS = 7;

@@ -54,6 +54,12 @@ export default function Dropdown({
         allowDeselect={false}
         comboboxProps={{
           position: `${openDirection === "up" ? "top" : "bottom"}-${menuAlign}`,
+          // Rendered in place rather than portalled to <body>, for the reason
+          // PresetPicker.jsx documents: every colour here is inherited from
+          // the `data-pui-theme` wrapper PedalUIProvider stamps, so a
+          // portalled panel resolves off the bare :root and opens in the
+          // light theme on a dark face.
+          withinPortal: false,
           classNames: { dropdown: "pui-dropdown__panel", option: "pui-dropdown__option" },
         }}
         classNames={{

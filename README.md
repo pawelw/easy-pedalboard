@@ -696,6 +696,7 @@ Reverb and Mix bare underneath.
 | **Size**    | 20 ms - 1.00 s | Grain length. Under ~40 ms the fragments stop being recognisable and turn into a metallic buzz at the spawn rate; over ~300 ms you hear whole notes come back. Synced, the readout is clamped to the length the engine will actually apply, since a tempo division can be longer than the knob's own ceiling |
 | **Density** | 1 - 40 /s      | Grains spawned per second. Sparse and countable at the bottom, a continuous cloud at the top. It is not a volume knob - the engine divides out the overlap |
 | **Shape**   | 0 - 100 %      | Grain envelope lean: `0` soft, a long fade-in with the energy spread the whole grain; `100` plucky, a click of an attack with the energy up front. The engine divides the envelope's own energy back out, so this does not double as a volume knob |
+| **Shape Family** | Triangle, Gaussian, Sinc, Spike | The window Shape morphs. Triangle (the default) is the asymmetric fade-in-then-decay above; the other three are symmetric windows with no transient of their own - Gaussian a plain bell, Sinc a windowed sinc (audible side-lobes at Shape's plucky end), Spike a two-sided exponential point. All four are level-matched, so switching does not jump the volume |
 
 **Pitch** - Low/Unison/High are weights against each other, not positions on a
 scale; the Scale block underneath colours which notes High lands on, and
@@ -809,6 +810,17 @@ backwards - a Hann window fades a grain in over its entire first half, which
 throws away the transient and leaves a swell the ear reads as reverse playback.
 Both ends still reach exactly zero, which is what stops a grain clicking whatever
 its content. **Shape** morphs between the two ends the tuning header names.
+
+**Shape Family**, the dropdown under the Shape knob, picks a different window
+outright rather than a different lean on this one: Gaussian, Sinc or Spike,
+each a plain symmetric function of the grain's own position rather than the
+asymmetric fade-in-then-decay above - so none of them keeps the transient the
+way Triangle (the default, and the one described above) does on purpose. Shape
+still controls each one's own steepness or width. Every family closes to exactly
+zero at both ends whatever Shape is set to, and every family is level-matched
+against the others (`Grainer::familyEnvelopeRms`, the same energy correction
+Shape's own closed form gets), so neither the knob nor the dropdown ever doubles
+as a volume control.
 
 The feedback path means the engine can, in principle, latch a non-finite value
 or build without bound. Four things stop it: Feedback is capped below unity, the

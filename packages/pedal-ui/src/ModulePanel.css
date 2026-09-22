@@ -7,7 +7,9 @@
      every module to its own tallest (`.pa-modules { align-items: stretch }`,
      currently the Delay module's own content, 504px) - this is that same
      number, so a module reads the same size wherever it is dropped, including
-     standalone (BitBit Artifact), where there is no row to stretch it. */
+     standalone (BitBit Artifact), where there is no row to stretch it. A module
+     with a footer clears this on `--pui-body-floor` alone; this is the floor
+     for the wide, footerless one. */
   min-height: 504px;
   /* The header strip's own divider runs edge to edge, and the module's corners
      are rounded - so the strip has to be clipped back to them. */
@@ -37,6 +39,29 @@
      problems are the same problem: inside a module, a line is a module line.
      Set here rather than in the face, so the face never learns where it is. */
   --pui-divider: var(--pui-module-divider);
+}
+
+/* The vertical rhythm every module body is built on, and the reason a knob row
+   in one module lands on the knob row beside it. A body is a ladder of slots
+   below the engine stepper: a display well takes one, a knob row takes one, and
+   nothing in between is allowed a height of its own. `lead` is the stepper to
+   the first slot, `gap` every slot after that.
+
+   Here rather than in each face because that is exactly what went wrong: the
+   `af-` and `sm-` stylesheets each carried their own copy of these numbers and
+   the two ladders drifted a few pixels apart, which on a row of modules reads
+   as three faces that do not quite agree. */
+.pui-module {
+  --pui-slot: 65px;
+  --pui-slot-gap: 12px;
+  --pui-slot-lead: 20px;
+
+  /* The tallest body any engine asks for - Filter's, at 367.1px (stepper, a
+     display slot, two knob rows where the second hangs a wave picker and a
+     Sync pill under it, and the Mono/Stereo switch). A floor rather than a
+     fitting, because without it the module is as tall as whichever engine is
+     selected, and stepping onto Filter grew the whole plugin by 15px. */
+  --pui-body-floor: 368px;
 }
 
 .pui-module__header {
@@ -83,10 +108,12 @@
   display: flex;
   flex-direction: column;
   padding: 14px 12px 0;
+  box-sizing: border-box;
+  min-height: var(--pui-body-floor);
 }
 
 .pui-module--wide .pui-module__body {
-  padding: 16px 18px 0;
+  padding: 14px 18px 0;
 }
 
 .pui-module__footer {
@@ -95,6 +122,12 @@
   justify-content: center;
   padding: 16px 12px 8px;
   border-top: 1px solid var(--pui-module-divider);
+  /* The height a 38px knob with its caption takes, held whether or not there
+     is one in there - Tape's footer is empty (it runs fully wet) and without a
+     floor it would collapse to its padding, putting its top border, and every
+     bottom-pinned switch above it, a few pixels off its neighbours'. */
+  box-sizing: border-box;
+  min-height: 92px;
 }
 
 .pui-module--wide .pui-module__footer {

@@ -82,8 +82,8 @@
   justify-content: center;
   gap: 10px;
   /* Takes all the room between the brand and Level, and centres the bar in
-     it - Live/Freeze used to sit here too (see .pg-grain__live below, where
-     it lives now). */
+     it - Live/Freeze used to sit here too, then in Grain's own last knob
+     row; it's in Grain's section head now (.pg-section__head-right). */
   flex: 1 1 auto;
   min-width: 0;
 }
@@ -109,6 +109,24 @@
 .pg-plate__main {
   flex: 1 1 auto;
   min-width: 0;
+}
+
+/* The whole-pedal Bypass (Header's PowerToggle) dims the plate as one object -
+   the same 0.42/140ms language as a section's own on/off above and Alpine's
+   pa-modules--bypassed, one scope up. On the plate's *children* rather than the
+   plate itself, so its border/shadow/background stay lit and the enclosure
+   keeps reading as a compartment rather than fading along with what is inside
+   it - ModulePanel.css makes the same call for the same reason. A section that
+   is individually off (data-off from useSectionPower) already dims to 0.42;
+   0.42 of 0.42 (~0.18) is deliberate here too, not a bug to "fix" by excluding
+   already-dim sections - a switched-off section under a bypassed plate should
+   still read dimmer than one that is merely off. */
+.pg-plate > * {
+  transition: opacity 140ms ease;
+}
+
+.pg-plate[data-off] > * {
+  opacity: 0.42;
 }
 
 /* Inside the grid rows (.pg-row) a vdivider gets its width from the grid's own
@@ -288,14 +306,39 @@
   margin-top: 10px;
 }
 
-/* Live/Freeze, moved down from the header into Grain's own last slot - same
-   move as Pitch's Root/Scale pills (that section's own note on
-   .pg-pitch__divider). Centred under Fback/Shape rather than left-aligned
-   the way Root/Scale sit, since there is only the one pill here to place. */
-.pg-grain__live {
+/* The Shape knob and its Family stepper, stacked as one control - see
+   GrainFace.jsx's own note. Centred under the knob, gap kept small since the
+   stepper reads as part of the knob's own caption stack rather than a
+   separate control below it. */
+.pg-grain__shape-stack {
   display: flex;
-  justify-content: center;
-  margin-top: 10px;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+/* EngineStepper is sized for a module body (22px arrows, 10px name); next to a
+   30px knob's own caption it has to come down to the weight the dropdown it
+   replaced was scaled to, or it widens the Fback/Shape row it sits in. The
+   name keeps the panel's ink and the arrows the section accent, as the
+   component intends. */
+.pg-grain__shapefamily .pui-stepper {
+  gap: 0;
+  padding: 2px 2px;
+}
+
+.pg-grain__shapefamily .pui-stepper__arrow {
+  width: 14px;
+  height: 14px;
+}
+
+/* Fixed, not fitted: the four names are different lengths, and a well that
+   resized as you stepped through them would shift the Fback knob beside it. */
+.pg-grain__shapefamily .pui-stepper__name {
+  width: 42px;
+  text-align: center;
+  font-size: 8px;
+  letter-spacing: 0.08em;
 }
 
 /* Row 1 (Grain/Pitch/Random) sits right under .pg-plate's own top edge, which
@@ -328,7 +371,7 @@
 
 .pg-section--delay .pui-knob__concave-face,
 .pg-section--reverb .pui-knob__concave-face {
-  inset: 8%;
+  inset: 5%;
   /* A dish, not a dome: shaded at the top where the bezel's lip shadows it,
      lighter toward the bottom, with a thin highlight bouncing off the lower lip. */
   background: linear-gradient(
@@ -347,13 +390,9 @@
   box-shadow: none;
 }
 
-/* One pixel smaller than every other section's knob caption - both are 30px
-   knobs (Reverb's concave ones now match Grain's own size, just shrunk 20%
-   off Delay's 38px), so the two read as one family of "narrow" knobs rather
-   than two different sizes that happen to be neighbours. */
 .pg-section--grain .pui-knob__caption,
 .pg-section--reverb .pui-knob__caption {
-  font-size: 9px;
+  font-size: 11px;
 }
 
 .pg-section__head {
@@ -382,6 +421,12 @@
   gap: 7px;
   flex: none;
   min-width: 138px;
+}
+
+/* Grain's head-right holds one pill in a column a third the width Delay's
+   three-pill row spans - Delay's 138px reserve would overflow it here. */
+.pg-section--grain .pg-section__head-right {
+  min-width: 0;
 }
 
 /* A switched-off section (Delay/Reverb here, Scale below) dims to 0.42 over
@@ -447,11 +492,8 @@
    fixed gap there ran wider than its own column and spilled past both
    edges, so it stays on the base space-around rule below instead (same as
    Reverb's own row of 3, which fits it fine). */
-/* Reverb/Grain-sized (30px) now, not Random's 38px - same caption-size
-   drop as .pg-section--reverb/.pg-section--grain above, for the same
-   reason: two different sizes reading as one family. */
 .pg-section--pitch .pui-knob__caption {
-  font-size: 9px;
+  font-size: 11px;
 }
 
 /* Grain/Pitch/Random's own titles, in Mixer's neutral #c9cede rather than

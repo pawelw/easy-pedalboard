@@ -200,10 +200,41 @@ public:
             capturing = false;
     }
 
-    /** Grain-envelope lean, 0 (soft) to 1 (plucky). */
+    /** Which window the Shape knob morphs - the same place ReverbModule::Engine
+        lives, an enum on the engine itself rather than in *Config.h, because
+        nothing outside the engine needs the names, only the plain index the
+        "shapefamily" AudioParameterChoice carries (see setShapeFamily). Append
+        only: a saved session is this index forever (CLAUDE.md). Triangle is
+        the only asymmetric one, the only one with a transient-preserving
+        fade-in, and the only one Smooth's swell blends against - the other
+        three are plain symmetric windows, each with its own steepness/width
+        tuning in GrainerTuning.h (shapeGauss, shapeSinc and shapeSpike, each
+        Soft/Hard). */
+    enum ShapeFamily
+    {
+        kShapeTriangle = 0,
+        kShapeGaussian,
+        kShapeSinc,
+        kShapeSpike,
+        kNumShapeFamilies
+    };
+
+    /** Grain-envelope lean, 0 (soft) to 1 (plucky). What "soft" and "plucky"
+        mean depends on Shape Family - see setShapeFamily. */
     void setShape (float amount01) noexcept
     {
         shape = std::clamp (amount01, 0.0f, 1.0f);
+        updateDerived();
+    }
+
+    /** Which window Shape morphs - Grainer::ShapeFamily.
+        Silently clamped to a known member rather than asserting: a session
+        saved by a later build with a family this one does not know falls back
+        to Triangle instead of reading garbage off the end of the switch in
+        familyEnvelope. */
+    void setShapeFamily (int family) noexcept
+    {
+        shapeFamily = (family >= 0 && family < kNumShapeFamilies) ? family : kShapeTriangle;
         updateDerived();
     }
 
@@ -769,11 +800,11 @@ public:
         the editor's timer via `grainEventCount()` / `grainEventAt()`. */
     struct GrainEvent
     {
-        float octaves = 0.0f;  // pitch, in octaves from the source (negative = down)
-        float pan = 0.0f;      // -1 left .. +1 right, after the interval's own pan scale
-        float level = 0.0f;    // linear, after the interval and source-level tilt
-        float seconds = 0.0f;  // how long the grain lasts
-        float spread = 0.0f;   // -1..1: how far Scatter strayed it from where it was aimed (0 at Scatter 0)
+        float octaves = 0.0f; // pitch, in octaves from the source (negative = down)
+        float pan = 0.0f;     // -1 left .. +1 right, after the interval's own pan scale
+        float level = 0.0f;   // linear, after the interval and source-level tilt
+        float seconds = 0.0f; // how long the grain lasts
+        float spread = 0.0f;  // -1..1: how far Scatter strayed it from where it was aimed (0 at Scatter 0)
         bool backwards = false;
     };
 
@@ -789,8 +820,8 @@ public:
     {
         const auto& slot = eventRing[index % kGrainEventRing];
         return { slot.octaves.load (std::memory_order_relaxed), slot.pan.load (std::memory_order_relaxed),
-                 slot.level.load (std::memory_order_relaxed), slot.seconds.load (std::memory_order_relaxed),
-                 slot.spread.load (std::memory_order_relaxed), slot.backwards.load (std::memory_order_relaxed) };
+                 slot.level.load (std::memory_order_relaxed),   slot.seconds.load (std::memory_order_relaxed),
+                 slot.spread.load (std::memory_order_relaxed),  slot.backwards.load (std::memory_order_relaxed) };
     }
 
     static constexpr uint32_t kGrainEventRing = 256;
@@ -861,6 +892,16 @@ private:
         // it a curve of its own rather than the one every other grain wears.
         float envFloor = 0.0f;
         float envScale = 1.0f;
+
+        // Which window this grain wears - see Grainer::ShapeFamily
+        // - and that family's own steepness/width, jittered the same way
+        // decayShape is (windowJitter). kShapeTriangle never reads shapeParam;
+        // it is the fields above instead. Set once at spawn, like everything
+        // else here - a family change mid-flight does not reach into a grain
+        // already sounding, the same rule the shape pair already followed.
+        int family = 0;
+        float shapeParam = 0.0f;
+
         float gainL = 0.0f;
         float gainR = 0.0f;
         int age = 0;
@@ -906,6 +947,7 @@ private:
     static constexpr double kMinRate = 0.25;
 
     static constexpr float kNormSmoothing = 0.0005f;
+    static constexpr float kPi = 3.14159265359f;
     static constexpr float kTwoPi = 6.28318530718f;
 
     // Generous: the chromatic scale over +/-19 semitones gives 19 members
@@ -960,9 +1002,29 @@ private:
 
         The decay is stepped by a multiply rather than recomputed, and it is
         offset so it reaches exactly zero at the end of the grain. Zero at both
-        ends is what makes a grain unable to click whatever its content. */
+        ends is what makes a grain unable to click whatever its content.
+
+        Of Shape Family's other three windows, Gaussian and Sinc are centred on
+        purpose - a transient-preserving fade-in is what makes Triangle the odd
+        one out, not the rule - while Spike is start-anchored like Triangle and
+        so borrows its fade-in below. All three are evaluated directly from the
+        grain's own age rather than stepped by a multiply (see familyEnvelope);
+        the branch below only runs the cheap path for the family every grain has
+        by default, so choosing Triangle never pays for the others. */
     float envelopeOf (Grain& g) const noexcept
     {
+        if (g.family != kShapeTriangle)
+        {
+            const float env = familyEnvelope (g.family, g.shapeParam, g.age, g.length);
+
+            // Spike peaks at age 0, so it needs Triangle's own fade-in; the two
+            // centred families reach zero there by themselves.
+            if (g.family == kShapeSpike && g.age < g.attackSamples)
+                return env * static_cast<float> (g.age) / static_cast<float> (g.attackSamples);
+
+            return env;
+        }
+
         if (g.age < g.attackSamples)
         {
             return static_cast<float> (g.age) / static_cast<float> (g.attackSamples);
@@ -985,13 +1047,120 @@ private:
         return env > 0.0f ? env : 0.0f;
     }
 
+    /** The three windows Shape Family can pick instead of Triangle's own
+        asymmetric pair - see Grainer::ShapeFamily. `param` is
+        that family's own steepness or width
+        (GrainerTuning::shapeGauss/shapeSinc/shapeSpike, each Soft/Hard, interpolated by
+        Shape - see familyShapeParam); `age`/`length` are the grain's, as
+        envelopeOf reads them. Every one closes to exactly 0 at age length-1
+        whatever `param` is, so a Family switch cannot click at the end.
+        Gaussian and Sinc are centred and so close at age 0 too; Spike is
+        one-sided and opens at full level, and takes Triangle's own fade-in from
+        envelopeOf for that end.
+
+        Gaussian and Spike both use the same floor-and-rescale trick
+        Triangle's own decay does (subtract the value the raw curve would
+        have at the edge, divide the peak back up to 1) so the *shape* of the
+        formula is the only thing that differs between them. Sinc instead
+        multiplies by a Hann taper - its own raw shape does not fall to zero
+        at a boundary chosen independently of its period, so nothing short of
+        an explicit taper closes it. */
+    static float familyEnvelope (int family, float param, int age, int length) noexcept
+    {
+        const float u =
+            length > 1 ? std::clamp (static_cast<float> (age) / static_cast<float> (length - 1), 0.0f, 1.0f) : 0.0f;
+
+        return familyEnvelopeAt (family, param, u);
+    }
+
+    /** familyEnvelope's own formulas, taking the grain position directly
+        rather than an age/length pair to quantise it from - what
+        familyEnvelopeRms integrates over. */
+    static float familyEnvelopeAt (int family, float param, float u) noexcept
+    {
+        switch (family)
+        {
+        case kShapeGaussian:
+        {
+            const float d = u - 0.5f;
+            const float raw = std::exp (-param * d * d);
+            const float floor = std::exp (-param * 0.25f);
+            return (raw - floor) / std::max (1.0e-6f, 1.0f - floor);
+        }
+
+        case kShapeSpike:
+        {
+            // One-sided: full level at the start, then away - so a Spike
+            // grain leads with its transient the way Triangle does, and
+            // unlike the two centred families above.
+            const float raw = std::exp (-param * u);
+            const float floor = std::exp (-param);
+            return (raw - floor) / std::max (1.0e-6f, 1.0f - floor);
+        }
+
+        case kShapeSinc:
+        {
+            const float x = (u - 0.5f) * param * kPi;
+            const float raw = std::abs (x) < 1.0e-5f ? 1.0f : std::sin (x) / x;
+            const float taper = 0.5f - 0.5f * std::cos (kTwoPi * u);
+            return raw * taper;
+        }
+
+        default:
+            return 0.0f;
+        }
+    }
+
+    /** Shape Family's own steepness/width at the current Shape, before any
+    per-grain stray - see startVoice. Triangle is not one of these cases;
+    it keeps curAttackMs/curDecayShape, computed alongside this in
+    updateDerived(). */
+    float familyShapeParam (int family) const noexcept
+    {
+        switch (family)
+        {
+        case kShapeGaussian:
+            return tuning.shapeGaussKSoft + shape * (tuning.shapeGaussKHard - tuning.shapeGaussKSoft);
+        case kShapeSinc:
+            return tuning.shapeSincWidthSoft + shape * (tuning.shapeSincWidthHard - tuning.shapeSincWidthSoft);
+        case kShapeSpike:
+            return tuning.shapeSpikeKSoft + shape * (tuning.shapeSpikeKHard - tuning.shapeSpikeKSoft);
+        default:
+            return 0.0f;
+        }
+    }
+
+    /** Mean-square of familyEnvelope(family, param, ·, ·) over a whole grain,
+    midpoint rule - the same "no closed form, so it is measured" move
+    smoothedEnvelopeRms makes for Smooth's own blend, for the same reason:
+    without this, switching Family or moving Shape within one would double
+    as a volume control (updateDerived divides it back out into swellComp,
+    the same way Triangle's own closed-form envelopeRms is). Independent of
+    sample rate or grain length - familyEnvelope is already a plain
+    function of position (0..1), not of time - so it only has to be run
+    again when Family or Shape actually changes (see updateDerived). */
+    static float familyEnvelopeRms (int family, float param) noexcept
+    {
+        constexpr int kSlices = 128;
+        double sum = 0.0;
+
+        for (int i = 0; i < kSlices; ++i)
+        {
+            const float u = (static_cast<float> (i) + 0.5f) / static_cast<float> (kSlices);
+            const float env = familyEnvelopeAt (family, param, u);
+            sum += static_cast<double> (env) * env;
+        }
+
+        return static_cast<float> (std::sqrt (std::max (1.0e-12, sum / kSlices)));
+    }
+
     /** This grain's own tilt about the corner it drew at spawn - see
-        GrainerTuning::filterSpray. A positive amount leans on the lowpass and
-        comes out darker than the source; a negative one subtracts it, which
-        alone would be a straight boost of everything above the corner rather
-        than a tilt, so the bright side is divided back down to pivot about
-        the corner instead of lifting past it. Amount 0 returns x untouched,
-        which is the whole of the off path. */
+    GrainerTuning::filterSpray. A positive amount leans on the lowpass and
+    comes out darker than the source; a negative one subtracts it, which
+    alone would be a straight boost of everything above the corner rather
+    than a tilt, so the bright side is divided back down to pivot about
+    the corner instead of lifting past it. Amount 0 returns x untouched,
+    which is the whole of the off path. */
     static float sprayed (Grain& g, float x) noexcept
     {
         if (g.sprayAmount == 0.0f)
@@ -1003,9 +1172,9 @@ private:
     }
 
     /** Bit's sample-and-hold, one grain's own state. Holds x for bitHoldN
-        samples then re-samples - bitHoldN == 1 holds every sample, which is
-        exactly x back out, so Bit at rest is a bit-exact pass-through the
-        same way BitCrusher's own fast path is. */
+    samples then re-samples - bitHoldN == 1 holds every sample, which is
+    exactly x back out, so Bit at rest is a bit-exact pass-through the
+    same way BitCrusher's own fast path is. */
     static float crushed (Grain& g, float x, int holdN) noexcept
     {
         if (g.bitCounter <= 0)
@@ -1019,13 +1188,13 @@ private:
 
     /** One-pole DC blocker (Smith's classic form) - the cloud's highpass.
 
-        Squelches below 1e-20: a pole this close to 1 (60 Hz corner) never
-        reaches an exact float32 zero through rounding alone once it is down
-        in denormal territory - repeated multiplication by the coefficient
-        rounds back to the same representable value and latches there
-        (confirmed by simulation: still nonzero after 100+ seconds). The
-        lowpass stage does not need this - its coefficient is far enough from
-        1 to underflow to zero in well under a millisecond. */
+    Squelches below 1e-20: a pole this close to 1 (60 Hz corner) never
+    reaches an exact float32 zero through rounding alone once it is down
+    in denormal territory - repeated multiplication by the coefficient
+    rounds back to the same representable value and latches there
+    (confirmed by simulation: still nonzero after 100+ seconds). The
+    lowpass stage does not need this - its coefficient is far enough from
+    1 to underflow to zero in well under a millisecond. */
     float cloudHighpass (float x, float& x1, float& y1) const noexcept
     {
         float y = x - x1 + cloudHpCoeff * y1;
@@ -1037,10 +1206,10 @@ private:
     }
 
     /** Both cloud filter coefficients, from cloudFilterAmount. The sweep is
-        exponential (a ratio raised to the amount) rather than linear in hertz,
-        because a filter's travel only sounds even when it moves by octaves.
-        Highpass as a DC blocker (Smith's one-pole: R relates to corner as
-        fc ~= (1-R) * sr / 2*pi), lowpass as the usual one-pole. */
+    exponential (a ratio raised to the amount) rather than linear in hertz,
+    because a filter's travel only sounds even when it moves by octaves.
+    Highpass as a DC blocker (Smith's one-pole: R relates to corner as
+    fc ~= (1-R) * sr / 2*pi), lowpass as the usual one-pole. */
     void updateCloudFilter() noexcept
     {
         const float sr = static_cast<float> (sampleRate);
@@ -1069,9 +1238,9 @@ private:
     }
 
     /** Whether transposing by `semitones` (either sign) lands on a member of
-        `scale`, given `root` (0-11) is the semitone above unison the scale's
-        own tonic sits at - see setScale()'s note on what that does and does
-        not promise without pitch tracking. */
+    `scale`, given `root` (0-11) is the semitone above unison the scale's
+    own tonic sits at - see setScale()'s note on what that does and does
+    not promise without pitch tracking. */
     static bool isScaleMember (const config::ScaleDegrees& scale, int semitones, int root) noexcept
     {
         const int pitchClass = ((semitones - root) % 12 + 12) % 12;
@@ -1082,7 +1251,7 @@ private:
     }
 
     /** Four-point Hermite read, the same interpolator ModDelayLine uses. Linear
-        would lose the top octave off every backwards grain. */
+    would lose the top octave off every backwards grain. */
     float read (double position) const noexcept
     {
         const int i1 = static_cast<int> (position);
@@ -1111,7 +1280,7 @@ private:
     //==========================================================================
 
     /** 0..1. Xorshift rather than juce::Random so the engine stays a plain
-        header and a test can reproduce a run exactly. */
+    header and a test can reproduce a run exactly. */
     float nextFloat() noexcept
     {
         rngState ^= rngState << 13;
@@ -1124,18 +1293,18 @@ private:
     float nextBipolar() noexcept { return nextFloat() * 2.0f - 1.0f; }
 
     /** The spawn phase always free-runs (see the per-sample loop); this only
-        nudges it onto the host grid while Density is synced to a running
-        transport. A hard snap on the first playing block or a transport jump
-        (loop / relocate), otherwise a gentle per-block pull capped small - the
-        same reasoning as ee::dsp::Tremolo::alignToTransport, applied to a spawn
-        instant instead of an LFO phase.
+    nudges it onto the host grid while Density is synced to a running
+    transport. A hard snap on the first playing block or a transport jump
+    (loop / relocate), otherwise a gentle per-block pull capped small - the
+    same reasoning as ee::dsp::Tremolo::alignToTransport, applied to a spawn
+    instant instead of an LFO phase.
 
-        Returns true when a snap has landed (to within one sample) right on the
-        beat Density is synced to - starting or relocating exactly on a bar - so
-        the caller can drop a grain there immediately rather than leaving the
-        first cycle silent while spawnPhase counts up from the top all over
-        again. A snap that lands mid-cycle (an ordinary relocate) does not: the
-        next grain is still wherever the grid's next boundary falls. */
+    Returns true when a snap has landed (to within one sample) right on the
+    beat Density is synced to - starting or relocating exactly on a bar - so
+    the caller can drop a grain there immediately rather than leaving the
+    first cycle silent while spawnPhase counts up from the top all over
+    again. A snap that lands mid-cycle (an ordinary relocate) does not: the
+    next grain is still wherever the grid's next boundary falls. */
     bool alignSpawnToTransport (const Transport& transport, int numSamples, double phaseInc) noexcept
     {
         bool spawnOnArrival = false;
@@ -1188,9 +1357,9 @@ private:
     }
 
     /** Instantly, what the input's own envelope is doing to the spawn rate -
-        see GrainerTuning::densityFollow. Measured against how loud the
-        material has been lately rather than against any absolute level, so it
-        answers the same whatever the input gain is. */
+    see GrainerTuning::densityFollow. Measured against how loud the
+    material has been lately rather than against any absolute level, so it
+    answers the same whatever the input gain is. */
     float densityFollowFactor() const noexcept
     {
         const float amount = std::clamp (tuning.densityFollow, 0.0f, 1.0f);
@@ -1205,16 +1374,16 @@ private:
     }
 
     /** How loud the material has been lately: the envelope follower's own
-        peaks, held and released slowly. Everything that has to be level
-        independent measures against this. */
+    peaks, held and released slowly. Everything that has to be level
+    independent measures against this. */
     void updateLoudRef() noexcept
     {
         loudRef = follower > loudRef ? follower : follower + loudRefCoeff * (loudRef - follower);
     }
 
     /** How far a grain starting here is lifted towards that reference - see
-        GrainerTuning::sourceLevelling. Lift only, and silence is left where it
-        is. */
+    GrainerTuning::sourceLevelling. Lift only, and silence is left where it
+    is. */
     float sourceLevelGain (double position) const noexcept
     {
         const float amount = std::clamp (tuning.sourceLevelling, 0.0f, 1.0f);
@@ -1234,7 +1403,7 @@ private:
     }
 
     /** Point the frozen read head at the last `len` samples before the write
-        head and start it scanning from the tap point inside that window. */
+    head and start it scanning from the tap point inside that window. */
     void beginFreezeWindow (int len) noexcept
     {
         freezeLoopLen = std::clamp (len, 1, std::max (1, size - 2 * config::kGrainReadMarginSamples));
@@ -1294,6 +1463,28 @@ private:
                                  std::max (1.0e-6f, (1.0f - f) * (1.0f - f));
         float envelopeRms = std::sqrt (std::max (1.0e-6f, meanSquare));
 
+        // A Shape Family other than Triangle has no closed form (Sinc's own
+        // rules one out outright - it is not even always positive), so it is
+        // measured the way Smooth's own blend is below, and replaces
+        // envelopeRms outright - the closed form above was always Triangle's.
+        // Cached the same way smoothRms is and for the same reason
+        // (updateDerived runs every chunk, whether or not Shape or Family
+        // actually moved) - 128 exp/sin calls is not something to spend on
+        // every chunk when neither has changed since the last one.
+        if (shapeFamily != kShapeTriangle)
+        {
+            const float param = familyShapeParam (shapeFamily);
+
+            if (shapeFamily != familyRmsFor || param != familyRmsParam)
+            {
+                familyRmsFor = shapeFamily;
+                familyRmsParam = param;
+                familyRms = familyEnvelopeRms (shapeFamily, param);
+            }
+
+            envelopeRms = familyRms;
+        }
+
         // Smooth changes how much energy the window holds, and a longer fade-in
         // is exactly the kind of change that would otherwise turn the knob into
         // a volume control. No closed form for the blend, so it is measured -
@@ -1316,7 +1507,10 @@ private:
         // property: how many grains happen to overlap right now.
         float swellEnvComp = 1.0f;
 
-        if (smooth > 0.0f)
+        // Smooth only blends against Triangle's own decay (see envelopeOf) -
+        // a non-Triangle grain never reads g.smooth, so correcting for a swell
+        // it does not have would just mis-scale it.
+        if (smooth > 0.0f && shapeFamily == kShapeTriangle)
         {
             const float lengthKey = sizeMs + tuning.smoothAttackMs * 1000.0f + tuning.smoothReleaseMs * 1.0e6f;
 
@@ -1380,8 +1574,8 @@ private:
     }
 
     /** How long Smooth's fade-in and cut are for a grain this long, in samples.
-        Fixed in milliseconds (GrainerTuning::smoothAttackMs / smoothReleaseMs);
-        a grain too short to hold both is squeezed, keeping their proportions. */
+    Fixed in milliseconds (GrainerTuning::smoothAttackMs / smoothReleaseMs);
+    a grain too short to hold both is squeezed, keeping their proportions. */
     void swellTimes (float lengthSamples, float& attack, float& release) const noexcept
     {
         const float a = std::max (1.0f, tuning.smoothAttackMs) * 0.001f * static_cast<float> (sampleRate);
@@ -1393,9 +1587,9 @@ private:
     }
 
     /** RMS of the window at this Smooth for a grain of the current Size: a
-        linear fade-in over `s` of the swell's attack (the short fixed attack is
-        ignored, as in the closed form above) and, after it, the decay blended
-        with the hold-and-cut. Midpoint rule, 64 slices. */
+    linear fade-in over `s` of the swell's attack (the short fixed attack is
+    ignored, as in the closed form above) and, after it, the decay blended
+    with the hold-and-cut. Midpoint rule, 64 slices. */
     float smoothedEnvelopeRms (float s, float k, float f) const noexcept
     {
         constexpr int kSlices = 64;
@@ -1433,10 +1627,25 @@ private:
     }
 
     /** The per-grain level jitter and the band split as Smooth leaves them:
-        both fade out linearly and are gone at Smooth 1 (see setSmooth). At
-        Smooth 0 they are exactly the tuning's own figures. */
+    both fade out linearly and are gone at Smooth 1 (see setSmooth). At
+    Smooth 0 they are exactly the tuning's own figures.
+
+    The band split is off for every family but Triangle. Its three grains
+    share a start and differ in length, so the longest runs half again past
+    the Size knob and a centred window peaks at half of its own grain -
+    which lands the spawn as a flam. Measured against a reference plugin,
+    whose alternative windows are one grain each: our narrowed Gaussian ran
+    162 ms with a second hit 90 ms in against its 88 ms single bell, 98 ms
+    once the split was out; Spike likewise only matches at either end of its
+    travel with the split off. */
     float levelJitterNow() const noexcept { return tuning.grainLevelJitter * (1.0f - smooth); }
-    float bandSplitNow() const noexcept { return std::clamp (tuning.bandSplit, 0.0f, 1.0f) * (1.0f - smooth); }
+    float bandSplitNow() const noexcept
+    {
+        if (shapeFamily != kShapeTriangle)
+            return 0.0f;
+
+        return std::clamp (tuning.bandSplit, 0.0f, 1.0f) * (1.0f - smooth);
+    }
 
     /** One-pole lowpass coefficient for a corner in Hz. */
     float onePoleCoeff (float hz) const noexcept
@@ -1447,10 +1656,10 @@ private:
 
     /** The share of `x` this grain's band carries.
 
-        Complementary one-poles, so the three grains of one spawn event sum
-        back to the unsplit grain. Gentle slopes on purpose: a steeper filter
-        rings for longer than a short high-band grain lasts, which would put
-        back exactly the smear the split exists to remove. */
+    Complementary one-poles, so the three grains of one spawn event sum
+    back to the unsplit grain. Gentle slopes on purpose: a steeper filter
+    rings for longer than a short high-band grain lasts, which would put
+    back exactly the smear the split exists to remove. */
     float bandedSample (Grain& g, float x) const noexcept
     {
         if (g.band == kBandFull)
@@ -1468,9 +1677,9 @@ private:
     }
 
     /** Picks a playback rate: one of the three pitch groups in proportion to
-        their weights, then (for Low/High) a semitone offset uniformly at
-        random from that direction's scale-quantized candidate table - see
-        setScale(). */
+    their weights, then (for Low/High) a semitone offset uniformly at
+    random from that direction's scale-quantized candidate table - see
+    setScale(). */
     double pickRate() noexcept
     {
         float semitones = 0.0f;
@@ -1497,10 +1706,10 @@ private:
     }
 
     /** The High group's interval for one grain. The octave up is where this
-        group lives; the scale is a colour laid over it, dialled by
-        setScaleBlend(). The octave is the fallback rather than unison so that
-        closing the blend (or switching Scale off) still transposes - High
-        reading as unison was the bug that made the knob inaudible. */
+    group lives; the scale is a colour laid over it, dialled by
+    setScaleBlend(). The octave is the fallback rather than unison so that
+    closing the blend (or switching Scale off) still transposes - High
+    reading as unison was the bug that made the knob inaudible. */
     float pickHighSemitones() noexcept
     {
         if (upCount > 0 && nextFloat() < scaleBlend)
@@ -1527,17 +1736,17 @@ private:
     }
 
     /** Where the next grain reads from, and the bookkeeping that keeps that
-        read legal.
+    read legal.
 
-        Live, a forward grain reads towards the write head faster than the head
-        moves whenever its rate is above 1, and if it starts too close it
-        catches up and reads samples that have not been written yet. A backwards
-        grain has the opposite problem: it walks towards the oldest end of the
-        buffer and can run off it. Both are prevented by where the grain is
-        allowed to start.
+    Live, a forward grain reads towards the write head faster than the head
+    moves whenever its rate is above 1, and if it starts too close it
+    catches up and reads samples that have not been written yet. A backwards
+    grain has the opposite problem: it walks towards the oldest end of the
+    buffer and can run off it. Both are prevented by where the grain is
+    allowed to start.
 
-        Frozen, the buffer is full and static, so any position holds real
-        content - the read loop wraps and there is nothing to guard. */
+    Frozen, the buffer is full and static, so any position holds real
+    content - the read loop wraps and there is nothing to guard. */
     void spawnGrain() noexcept
     {
         scatterDraw = 0.0f;
@@ -1614,11 +1823,12 @@ private:
                     double followed = followOffsetSamples;
 
                     if (scatter > 0.0f)
-                        followed += std::round (static_cast<double> (nextBipolar() * scatter) *
-                                                config::kGridMaxSlices) *
-                                    samplesPerSixteenth;
+                        followed +=
+                            std::round (static_cast<double> (nextBipolar() * scatter) * config::kGridMaxSlices) *
+                            samplesPerSixteenth;
 
-                    offset = static_cast<int> (std::lround (std::min (std::max (followed, 1.0), static_cast<double> (size))));
+                    offset = static_cast<int> (
+                        std::lround (std::min (std::max (followed, 1.0), static_cast<double> (size))));
                 }
                 else if (liveGrid)
                 {
@@ -1634,8 +1844,8 @@ private:
                     {
                         const float draw = nextBipolar();
                         scatterDraw = draw;
-                        tap = std::max (1.0, tap + std::round (static_cast<double> (draw * scatter) *
-                                                               config::kGridMaxSlices));
+                        tap = std::max (
+                            1.0, tap + std::round (static_cast<double> (draw * scatter) * config::kGridMaxSlices));
                     }
 
                     offset = static_cast<int> (std::lround (std::min (tap * step, static_cast<double> (size))));
@@ -1671,7 +1881,8 @@ private:
                     // Subtracting walks *forward* into the note: offset counts back
                     // from the write head, so a smaller one is later audio.
                     const float intoDraw = windowSamples > 0 ? nextFloat() : 0.0f;
-                    const int into = windowSamples > 0 ? static_cast<int> (intoDraw * static_cast<float> (windowSamples)) : 0;
+                    const int into =
+                        windowSamples > 0 ? static_cast<int> (intoDraw * static_cast<float> (windowSamples)) : 0;
                     const int wanted = sinceAttack + preRoll - into;
 
                     if (wanted >= minOffset && wanted <= maxOffset)
@@ -1703,8 +1914,8 @@ private:
     }
 
     /** The first grains after a struck note, in place of one random grain -
-        see GrainerConfig.h's ATTACK OCTAVES. Every voice starts together, at
-        the attack, forwards, with one shared length, pan and level. */
+    see GrainerConfig.h's ATTACK OCTAVES. Every voice starts together, at
+    the attack, forwards, with one shared length, pan and level. */
     void spawnAttackStack() noexcept
     {
         scatterDraw = 0.0f;
@@ -1771,7 +1982,7 @@ private:
     }
 
     /** A free grain, or - pool full - the one nearest its own end, which is the
-        one whose window is quietest and so the least audible to cut short. */
+    one whose window is quietest and so the least audible to cut short. */
     Grain* claimSlot() noexcept
     {
         for (auto& g : grains)
@@ -1828,6 +2039,26 @@ private:
             decayShape = std::clamp (decayShape * std::exp (j * nextBipolar()), 0.25f, 12.0f);
         }
 
+        // This grain's own family and, if it is not Triangle, that family's
+        // own steepness/width, strayed by a ratio the same way decayShape is
+        // above - proportionally rather than by a fixed range, so it stays
+        // sane whatever family's own absolute scale is (Gaussian's K reaches
+        // into the hundreds; Sinc's width tops out under 25). Everything below
+        // this (attackSamples, decayMul, envFloor, envScale) still gets
+        // computed for a non-Triangle grain - wasted, since envelopeOf takes
+        // the familyEnvelope path for it - rather than threading a second
+        // branch through the rest of this function for a spawn-time cost
+        // nothing here is short of.
+        slot.family = shapeFamily;
+        slot.shapeParam = familyShapeParam (shapeFamily);
+
+        if (windowStray > 0.0f && shapeFamily != kShapeTriangle)
+        {
+            const float j = std::clamp (windowStray, 0.0f, 1.0f);
+            const float central = slot.shapeParam;
+            slot.shapeParam = std::clamp (central * std::exp (j * nextBipolar()), central * 0.3f, central * 3.0f);
+        }
+
         // Just enough fade-in not to click, and never more than half the grain -
         // a 20 ms grain cannot afford a 5 ms attack.
         // Smooth lengthens that fade-in toward the swell's fixed attack time
@@ -1852,9 +2083,7 @@ private:
         slot.attackSamples = attackSamples;
         slot.smooth = smooth;
         slot.invDecayLen = 1.0f / static_cast<float> (std::max (1, length - attackSamples));
-        slot.holdEnd = smooth > 0.0f
-                           ? std::clamp (1.0f - swellRelease * slot.invDecayLen, 0.0f, 0.98f)
-                           : 1.0f;
+        slot.holdEnd = smooth > 0.0f ? std::clamp (1.0f - swellRelease * slot.invDecayLen, 0.0f, 0.98f) : 1.0f;
         slot.decayEnv = 1.0f;
         slot.decayMul = std::exp (-decayShape / static_cast<float> (std::max (1, length - attackSamples)));
 
@@ -1896,11 +2125,11 @@ private:
     }
 
     /** The longest a grain may be at this rate and offset without its read
-        head running into audio not yet written (forwards) or off the oldest
-        end of the buffer (backwards) - the same guard spawnGrain() applies
-        when it picks an offset, restated so the band split can lengthen a
-        grain after the fact. A negative offset means a frozen buffer, where
-        every position holds real content and nothing needs guarding. */
+    head running into audio not yet written (forwards) or off the oldest
+    end of the buffer (backwards) - the same guard spawnGrain() applies
+    when it picks an offset, restated so the band split can lengthen a
+    grain after the fact. A negative offset means a frozen buffer, where
+    every position holds real content and nothing needs guarding. */
     int lengthThatFits (int wanted, double rate, int offset, bool backwards) const noexcept
     {
         double limit = static_cast<double> (wanted);
@@ -1927,10 +2156,10 @@ private:
     }
 
     /** One spawn event. Either a single full-range grain, or - with the band
-        split dialled in - one grain per band from the *same* read position,
-        each the length its band's wavelengths need. Sharing the position is
-        what keeps a transient landing as one hit rather than as three
-        separate effects. */
+    split dialled in - one grain per band from the *same* read position,
+    each the length its band's wavelengths need. Sharing the position is
+    what keeps a transient landing as one hit rather than as three
+    separate effects. */
     void
     emitGrains (double position, double rate, int length, float pan, float level, int offset, bool backwards) noexcept
     {
@@ -1963,8 +2192,8 @@ private:
     }
 
     /** How much louder this grain is for being transposed. Deliberately not
-        compensated anywhere: moving the balance between the pitch groups is
-        the whole point of it. */
+    compensated anywhere: moving the balance between the pitch groups is
+    the whole point of it. */
     float intervalGain (float octaves) const noexcept
     {
         if (tuning.pitchGainDbPerOctave == 0.0f)
@@ -1974,9 +2203,9 @@ private:
     }
 
     /** What share of the pan position Stereo picked this grain keeps. An
-        octave down holds half of it and two octaves none, so the sub of the
-        cloud sits in the middle and survives a mono fold-down; unison and
-        anything above keep the full width. */
+    octave down holds half of it and two octaves none, so the sub of the
+    cloud sits in the middle and survives a mono fold-down; unison and
+    anything above keep the full width. */
     float intervalPanScale (float octaves) const noexcept
     {
         const float spread = std::clamp (tuning.pitchPanSpread, 0.0f, 1.0f);
@@ -1997,15 +2226,15 @@ private:
     }
 
     /** RMS of the interval gain over the pitch groups as they are currently
-        weighted, divided back out at spawn.
+    weighted, divided back out at spawn.
 
-        Without it the tilt is a volume control as well: every grain of an
-        all-Low cloud is transposed the same way, so the whole cloud simply
-        arrives 6 dB louder and the recirculation runs away with it
-        (ee_grain_stress catches exactly that). Dividing the distribution's own
-        RMS out - the same move grainLevelJitter gets in updateDerived() -
-        leaves the tilt doing the one thing it is for: changing how the groups
-        sit against each other when more than one of them is sounding. */
+    Without it the tilt is a volume control as well: every grain of an
+    all-Low cloud is transposed the same way, so the whole cloud simply
+    arrives 6 dB louder and the recirculation runs away with it
+    (ee_grain_stress catches exactly that). Dividing the distribution's own
+    RMS out - the same move grainLevelJitter gets in updateDerived() -
+    leaves the tilt doing the one thing it is for: changing how the groups
+    sit against each other when more than one of them is sounding. */
     void updateIntervalNorm() noexcept
     {
         if (tuning.pitchGainDbPerOctave == 0.0f)
@@ -2084,6 +2313,7 @@ private:
     float attackReachSeconds = config::kAttackReachSeconds;
     float stretch = config::kDefaultStretchPct * 0.01f;
     float shape = config::kDefaultShapePct * 0.01f;
+    int shapeFamily = kShapeTriangle;
     float smooth = config::kDefaultSmoothPct * 0.01f;
     float smoothTarget = config::kDefaultSmoothPct * 0.01f;
     bool smoothSlewPrimed = false;
@@ -2097,6 +2327,14 @@ private:
     // The per-grain level correction Smooth needs - see updateDerived().
     float swellComp = 1.0f;
     float smoothRms = 1.0f;
+
+    // The last (family, param) pair familyEnvelopeRms() was run for, and what
+    // it said - see updateDerived(). kShapeTriangle never sets this; that
+    // family has no measured RMS of its own.
+    int familyRmsFor = -1;
+    float familyRmsParam = -1.0f;
+    float familyRms = 1.0f;
+
     float scatter = config::kDefaultScatterPct * 0.01f;
     float reverse = config::kDefaultReversePct * 0.01f;
     float stereo = config::kDefaultStereoPct * 0.01f;

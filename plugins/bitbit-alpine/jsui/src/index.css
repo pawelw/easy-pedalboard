@@ -147,15 +147,8 @@
 }
 
 /* Every module's footer holds the same height whether or not there is a Mix
-   knob in it - Modulation's Tape has none (it runs fully wet), and without this
-   its footer would collapse to its padding and pull the module out of step with
-   the others. 87px is the height a soft 38px knob with its caption takes. The
-   Modulation and Reverb faces carry their own copy of this floor for their
-   standalone pedals (packages/module-face/src/SideModule.css). */
-.pa-modules .pui-module__footer {
-  box-sizing: border-box;
-  min-height: 87px;
-}
+   knob in it - the floor is `.pui-module__footer`'s own now (ModulePanel.css),
+   so the row has nothing of its own to say about it. */
 
 /* The native build stamp (App.jsx's BuildStamp) - fixed outside the card so
    it never enters installAutoResize's size measurement, low-contrast so it

@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useJuceSliderValue, useParamId, useFormattedText } from "@synthpeak/pedal-ui/juce";
 import { useModAssignment } from "./ModRouting.jsx";
 import { useLfoValue } from "./LfoPlayback.jsx";
-import { grainEnvelopePath } from "./envelopeShape.js";
+import { grainEnvelopePath, familyEnvelopePath, smoothForShape, FAMILY_TRIANGLE } from "./envelopeShape.js";
 
 /**
  * The five recessed displays across the plate (COMPONENTS.md's "Displays"
@@ -13,7 +13,7 @@ import { grainEnvelopePath } from "./envelopeShape.js";
 
 // The Size range, mirroring GrainerConfig.h's kMinGrainMs/kMaxGrainMs. Only
 // GrainEnvelope uses these, to turn the printed duration back into a width.
-const SIZE_MIN_MS = 20;
+const SIZE_MIN_MS = 30;
 const SIZE_MAX_MS = 1000;
 
 function clampMs(ms) {
@@ -76,7 +76,7 @@ function grainDivisionBeats(density01) {
     at all.) The lead is drawn first (left), the way a delay's own repeat
     diagram reads: the struck note first, its repeats decaying away to the
     right of it. */
-export function GrainEnvelope({ accent }) {
+export function GrainEnvelope({ accent, family = FAMILY_TRIANGLE }) {
   const [shape] = useJuceSliderValue("shape");
   const [size] = useJuceSliderValue("size");
   const [density] = useJuceSliderValue("density");
@@ -109,6 +109,7 @@ export function GrainEnvelope({ accent }) {
     return (
       <GrainEnvelopeLive
         accent={accent}
+        family={family}
         shape={shape}
         shapeA={shapeA}
         density={density}
@@ -124,6 +125,7 @@ export function GrainEnvelope({ accent }) {
   return (
     <GrainEnvelopeBody
       accent={accent}
+      family={family}
       shape={shape}
       density={density}
       feedback01={feedback01}
@@ -136,13 +138,28 @@ export function GrainEnvelope({ accent }) {
     ModdableKnob.jsx's ModulatedKnob and FilterCurve's ModulatedFilterCurve for
     the same split, and why it is a separate component (useLfoValue()
     re-renders its subscriber every frame; an unmodulated display, the common
-    case, should not pay for that). */
-function GrainEnvelopeLive({ accent, shape, shapeA, density, densityA, feedback01, feedbackA, sizeSpanBase, size, sizeA }) {
+    case, should not pay for that). Family is not itself modulatable (a
+    discrete window choice, not a knob a Mod row can target), so it only ever
+    passes through here unchanged. */
+function GrainEnvelopeLive({
+  accent,
+  family,
+  shape,
+  shapeA,
+  density,
+  densityA,
+  feedback01,
+  feedbackA,
+  sizeSpanBase,
+  size,
+  sizeA,
+}) {
   const lfoValue = useLfoValue();
 
   return (
     <GrainEnvelopeBody
       accent={accent}
+      family={family}
       shape={resolveModulated(shape, shapeA, lfoValue)}
       density={resolveModulated(density, densityA, lfoValue)}
       feedback01={resolveModulated(feedback01, feedbackA, lfoValue)}
@@ -157,15 +174,21 @@ function GrainEnvelopeLive({ accent, shape, shapeA, density, densityA, feedback0
 /** The envelope's own drawing, given already-resolved 0..1 inputs (the base
     parameters, or their live modulated values - GrainEnvelope/GrainEnvelopeLive's
     own concern, not this component's). */
-function GrainEnvelopeBody({ accent, shape, density, feedback01, sizeSpan }) {
-  // Shape is also the swell: 1 - Shape of the way from its own window to the
-  // fixed-millisecond fade-in (see BitBitGrainProcessor::processBlock).
-  const smooth = 1 - shape;
+function GrainEnvelopeBody({ accent, family = FAMILY_TRIANGLE, shape, density, feedback01, sizeSpan }) {
+  // Shape is also the swell, over the bottom of its travel only (see
+  // GrainerConfig.h's SMOOTH section) - and only for Triangle. The other three
+  // families have no swell blend of their own (see Grainer::envelopeOf's own
+  // note), so Smooth plays no part in their path.
+  const smooth = smoothForShape(shape);
   const grainCount = Math.min(8, Math.max(1, Math.round(4 / grainDivisionBeats(density))));
   const width = 70 + sizeSpan * 110; // longer Size = wider grain window
   // The grain's real length, for the swell's fixed-millisecond fade-in.
   const lengthMs = SIZE_MIN_MS * Math.pow(SIZE_MAX_MS / SIZE_MIN_MS, Math.min(1, Math.max(0, sizeSpan)));
   const spacing = grainCount > 1 ? (234 - width) / (grainCount - 1) : 0;
+  const pathFor =
+    family === FAMILY_TRIANGLE
+      ? (x0) => grainEnvelopePath(x0, width, shape, smooth, lengthMs)
+      : (x0) => familyEnvelopePath(x0, width, family, shape);
 
   return (
     <svg width="100%" height="48" viewBox="0 0 240 48" preserveAspectRatio="none" fill="none">
@@ -177,7 +200,7 @@ function GrainEnvelopeBody({ accent, shape, density, feedback01, sizeSpan }) {
         return (
           <path
             key={i}
-            d={grainEnvelopePath(x0, width, shape, smooth, lengthMs)}
+            d={pathFor(x0)}
             stroke={accent}
             strokeWidth="1.6"
             strokeLinecap="round"

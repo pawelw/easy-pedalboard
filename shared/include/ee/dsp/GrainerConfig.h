@@ -35,7 +35,7 @@ namespace ee::dsp::config
 // the Time window still fits without being clamped back.
 constexpr float kGrainBufferSeconds = 10.5f;
 
-constexpr float kMinGrainSeconds = 0.020f;
+constexpr float kMinGrainSeconds = 0.030f;
 
 // Raised from 0.5 s: synced, the Size knob can select a tempo division far
 // longer than this, and every position past the cap produced the same grain -
@@ -165,6 +165,20 @@ constexpr float kDefaultStretchPct = 0.0f;
 constexpr float kDefaultShapePct = 55.0f;
 
 // ============================================================================
+// SHAPE FAMILY
+// ============================================================================
+// Which window Shape morphs. Triangle (index 0, the default) is GrainerTuning's
+// asymmetric pair above and everything else in this file that mentions Shape or
+// Smooth - the only one with a transient-preserving fade-in, and the only one
+// Smooth's swell blends against. The other three (Gaussian, Sinc, Spike -
+// GrainerTuning::shapeGauss*/shapeSinc*/shapeSpike*) are symmetric and have no
+// Smooth blend of their own. The enum itself is Grainer::ShapeFamily, the same
+// place ReverbModule::Engine lives rather than in a Config header - nothing
+// outside the engine needs the names, only the index BitBitGrainProcessor's
+// "shapefamily" AudioParameterChoice carries. Append only there, the same rule
+// as every other engine enum in this tree (CLAUDE.md).
+
+// ============================================================================
 // SMOOTH
 // ============================================================================
 // Morphs the grain window from Shape's - a millisecond or three of fade-in,
@@ -177,11 +191,32 @@ constexpr float kDefaultShapePct = 55.0f;
 // Grainer takes its untouched path for it), which is why the default is 0 and
 // not something "nicer".
 //
-// There is no Smooth knob or parameter: BitBitGrainProcessor drives it as
-// 1 - Shape, so Shape at its plucky end (100) is the engine's own window and at
-// its soft end (0) it is the full swell. This default is only what the engine
+// There is no Smooth knob or parameter: BitBitGrainProcessor drives it off the
+// Shape knob (smoothForShape below). This default is only what the engine
 // starts at before anything sets it.
 constexpr float kDefaultSmoothPct = 0.0f;
+
+// Where on the Shape travel the swell starts coming in. Shape and Smooth were
+// merged onto one knob as a straight Smooth = 1 - Shape, and that put a swell
+// on every setting but the very top: at the default Shape 55 the window was
+// 45 % held-and-cut, so a grain sat near full level for its whole length and
+// then stopped dead instead of decaying. Measured against a reference plugin
+// on the same part (198 ms grains, 1/8 spawn): its grains fall steadily from
+// -6 to -31 dB and end; ours stalled around -11 dB and cliffed. A decaying
+// grain is what makes a cloud read as rhythm rather than as a held texture,
+// and the decay exponents that read closest to the reference (shapeDecayShape*
+// around 2.5, i.e. Shape ~20 %) were exactly the part of the travel the swell
+// had swamped. So the swell now occupies only the bottom of the knob: Shape
+// above this is the engine's own window untouched, and the whole of it is
+// still reachable by turning Shape down to 0.
+constexpr float kSmoothShapeKnee = 0.25f;
+
+/** Smooth for a 0..1 Shape knob position - 0 above the knee, reaching 1 at
+    Shape 0. */
+constexpr float smoothForShape (float shape01) noexcept
+{
+    return shape01 >= kSmoothShapeKnee ? 0.0f : (kSmoothShapeKnee - shape01) / kSmoothShapeKnee;
+}
 
 // How long Smooth takes to glide to a new setting. Grains keep the window they
 // were born with, so a jump would stack grains of the new kind on top of long

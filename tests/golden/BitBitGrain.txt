@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.grains
   categories   "Fx Delay"
 
-parameters 49
+parameters 50
 0 size
     name       "Size"
     default    0.5
@@ -323,3 +323,10 @@ parameters 49
     version    1
     steps      2147483647 continuous automatable
     range      -24 12 interval 0.100000001 skew 1
+49 shapefamily
+    name       "Shape Family"
+    default    0
+    version    1
+    steps      4 discrete automatable
+    range      0 3 interval 1 skew 1
+    choices    4: "Triangle" "Gaussian" "Sinc" "Spike"

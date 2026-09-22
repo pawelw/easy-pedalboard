@@ -102,6 +102,50 @@ struct GrainerTuning
     float shapeDecayShapeSoft = 1.0f;
     float shapeDecayShapeHard = 8.0f;
 
+    // The other three windows Shape Family can pick instead of the asymmetric
+    // one above (GrainerConfig.h's GrainShapeFamily) - all three symmetric, so
+    // none of them keeps a transient the way the default does; choosing one is
+    // choosing a softer onset on purpose. Each is a plain function of the
+    // grain's own position (see Grainer::familyEnvelope), evaluated directly
+    // rather than stepped by a per-sample multiply, so - unlike the default -
+    // they cost a transcendental call per sample; only grains actually using
+    // one pay for it. Every one of the three is centred, closes to exactly
+    // zero at both ends whatever Shape is set to (so switching Family never
+    // clicks), and Shape still strays per grain the same way (windowJitter)
+    // and never doubles as a volume control (see Grainer::familyEnvelopeRms).
+    //
+    // shapeGauss*: the bell's own steepness - low is wide and soft ("swell"),
+    // high draws in to a narrow peak.
+    float shapeGaussKSoft = 6.0f;
+    float shapeGaussKHard = 60.0f;
+
+    // shapeSinc*Width: how many half-cycles the window's central sinc spans
+    // corner to corner, in units of pi - low is close to one broad lobe (barely
+    // more than a bump), high rings with several audible side-lobes. A Hann
+    // taper (not tuned - see familyEnvelope) forces the true zero at both ends
+    // whatever this lands on, so the lobe count does not have to divide evenly.
+    float shapeSincWidthSoft = 2.4f;
+    float shapeSincWidthHard = 11.0f;
+
+    // shapeSpike*K: the one-sided exponential's own steepness away from the
+    // grain's start. Spike opens at full level and falls from there (the other
+    // two families are centred), so it leads with the transient the way
+    // Triangle does and reads as an attack rather than as a bump.
+    //
+    // Soft/Hard are Shape 0 and Shape 1 as everywhere else here, but for this
+    // family that runs sharp-to-gentle rather than the other way round:
+    // Shape 0 is the spike proper and Shape 1 opens out into a triangle. Both
+    // ends measured off a reference plugin on a ~200 ms grain - at its spike
+    // end a near-instant attack and then a straight fall to -45 dB by 110 ms,
+    // at its other end a window indistinguishable from its plain triangle
+    // (flat for the first quarter, -29 dB by 190 ms). Which makes this the same
+    // curve shapeDecayShape* describes, over much the same range, reversed -
+    // Spike is Triangle with a fixed short attack and no Smooth blend.
+    // (2026-09-22: was 14/34 two-sided and centred, where the whole knob read
+    // as a mound with no attack at either end.)
+    float shapeSpikeKSoft = 14.0f;
+    float shapeSpikeKHard = 1.8f;
+
     // How far each grain's own window strays from the pair Shape just set.
     // Shape is one envelope and every grain in flight wears it exactly, so at
     // a steady Density the cloud is a train of identical windows and they comb
@@ -182,6 +226,9 @@ struct GrainerTuning
     // ground to the four features below rather than the other way round
     // because it is the one that measured as NOT helping the reference A/B.
     // Above ~0.3 needs that per-band gain rethinking first.
+    //
+    // Triangle only - see Grainer::bandSplitNow. A centred window peaks at
+    // half of its own grain, so three lengths become three hits.
     float bandSplit = 0.25f;
 
     // The two crossovers. One-pole, so the bands sum back flat and nothing
@@ -261,6 +308,14 @@ inline constexpr GrainerTuningEntry kGrainerTuningEntries[] = {
     { "shapeAttackMsHard", &GrainerTuning::shapeAttackMsHard, 0.1f, 20.0f, 2 },
     { "shapeDecayShapeSoft", &GrainerTuning::shapeDecayShapeSoft, 0.5f, 10.0f, 2 },
     { "shapeDecayShapeHard", &GrainerTuning::shapeDecayShapeHard, 0.5f, 10.0f, 2 },
+
+    { "shapeGaussKSoft", &GrainerTuning::shapeGaussKSoft, 1.0f, 40.0f, 2 },
+    { "shapeGaussKHard", &GrainerTuning::shapeGaussKHard, 5.0f, 200.0f, 1 },
+    { "shapeSincWidthSoft", &GrainerTuning::shapeSincWidthSoft, 1.0f, 6.0f, 2 },
+    { "shapeSincWidthHard", &GrainerTuning::shapeSincWidthHard, 4.0f, 24.0f, 2 },
+    { "shapeSpikeKSoft", &GrainerTuning::shapeSpikeKSoft, 1.0f, 40.0f, 2 },
+    { "shapeSpikeKHard", &GrainerTuning::shapeSpikeKHard, 1.0f, 40.0f, 2 },
+
     { "windowJitter", &GrainerTuning::windowJitter, 0.0f, 1.0f, 3 },
 
     { "sourceLevelling", &GrainerTuning::sourceLevelling, 0.0f, 1.0f, 3 },

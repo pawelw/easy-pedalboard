@@ -23,13 +23,14 @@
 
 /* --------------------------------------------------------------- module body */
 
-/* An engine's knob rows. Gap to the stepper/display above is the
-   handoff's 22px; between the rows it is 18px. */
+/* An engine's knob rows, on the shared slot ladder (ModulePanel.css). Every
+   engine body here opens with a display well, which takes the first slot - so
+   the rows always start one rung down rather than at the lead. */
 .af-knobs {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  margin-top: 20px;
+  gap: var(--pui-slot-gap);
+  margin-top: var(--pui-slot-gap);
 }
 
 /* The Easy tab's single macro knob (BitBit Alpine only - `easyTab`), centred.
@@ -48,9 +49,13 @@
   gap: 8px;
 }
 
+/* The first slot of the ladder, whatever the scope inside it measures (64px) -
+   the knob rows below it are the same rungs the modules beside it use. */
 .af-display {
   position: relative;
-  margin-top: 16px;
+  box-sizing: border-box;
+  height: var(--pui-slot);
+  margin-top: var(--pui-slot-lead);
   /* The scopes read these for their well and grid. Onyx leaves the
      --pui-scope-* group on the light-theme values (it is a digital-pedal
      token set), so this face sets its own: a near-black well with the
@@ -60,23 +65,28 @@
   --pui-scope-grid: #3b2122;
 }
 
-/* Every engine body: a display and its knob rows, held to one height so
-   stepping engines never resizes the module (220px is what the old Filter body
-   measured, kept so the module is the size it always was). */
+/* Every engine body: a display and its knob rows. `flex: 1` so the body fills
+   the module down to the footer - without it the column ends on its own
+   content and the switches below, which pin to *its* foot, stop where that
+   happens to be rather than on the line the other modules' do. The min-height
+   is the old floor (220px is what the Filter body measured), kept so stepping
+   engines can never shrink it. */
 .af-crush,
 .af-ring,
 .af-rust,
 .af-amp {
   display: flex;
   flex-direction: column;
+  flex: 1;
   min-height: 220px;
 }
 
 /* Ring Mod's Earworm / Green Lantern and Rust's Oxide / Contact switches drop
-   to the foot of the body, the same place Amp's Mono/Stereo sits. */
+   to the foot of the body, the same place Amp's Mono/Stereo sits. The padding
+   below is the module-face switch's, so the two land on the same line. */
 .af-mode-switch {
   margin-top: auto;
-  padding: 18px 0 6px;
+  padding: 16px 0 6px;
 }
 
 /* --------------------------------------------------------------- the switches */
@@ -92,7 +102,7 @@
    it sits just clear of the footer's top border. */
 .af-ms-switch {
   margin-top: auto;
-  padding: 18px 0 6px;
+  padding: 16px 0 6px;
 }
 
 .af-switch-label {

@@ -635,6 +635,12 @@ public:
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 1) + " dB"; })));
 
+        // Mirrors PluginProcessor.cpp's own "shapefamily", appended last there
+        // too - see ee::dsp::Grainer::ShapeFamily.
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { "shapefamily", 1 }, "Shape Family",
+            juce::StringArray { "Triangle", "Gaussian", "Sinc", "Spike" }, 0));
+
         return layout;
     }
 };

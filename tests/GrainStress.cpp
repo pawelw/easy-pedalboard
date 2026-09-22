@@ -67,7 +67,8 @@ struct Result
 };
 
 Result run (float sizeMs, float densityHz, float timeMs, float pitch, float feedback, bool freeze, float stretch,
-            float verbDecaySeconds, float verb, Input input)
+            float verbDecaySeconds, float verb, Input input,
+            int shapeFamily = ee::dsp::Grainer::kShapeTriangle, float shape = -1.0f)
 {
     ee::dsp::Grainer grainer;
     grainer.prepare (kSampleRate);
@@ -78,6 +79,9 @@ Result run (float sizeMs, float densityHz, float timeMs, float pitch, float feed
     grainer.setFeedback (feedback);
     grainer.setStretch (stretch);
     grainer.setPitchMix (juce::jmax (0.0f, -pitch), 1.0f - std::abs (pitch), juce::jmax (0.0f, pitch));
+    grainer.setShapeFamily (shapeFamily);
+    if (shape >= 0.0f)
+        grainer.setShape (shape);
 
     // The post delay, driven at the same feedback the grain loop is - both
     // "feedback wound up" cases at once. Modulation off, as the pedal runs it.
@@ -258,6 +262,33 @@ int main()
                                   + juce::String (pitch, 1);
                     }
                 }
+
+        // The three Shape Family windows testGrainerShapeFamiliesAreFiniteUnderSweep
+        // (ee_dsp_tests) already sweeps on their own, joined up here with the
+        // post delay and reverb the way every other case in this file is - a
+        // short pass, ends of Shape only, the same reduced-grid move the freeze
+        // cases above make.
+        const int families[] = { ee::dsp::Grainer::kShapeGaussian, ee::dsp::Grainer::kShapeSinc,
+                                 ee::dsp::Grainer::kShapeSpike };
+        const float familyShapes[] = { 0.0f, 1.0f };
+
+        for (int family : families)
+            for (float shape : familyShapes)
+                for (float size : sizes)
+                    for (float feedback : feedbacks)
+                    {
+                        const auto result = run (size, cfg::kMaxDensityHz, 400.0f, 0.0f, feedback, false, 1.0f,
+                                                 ee::dsp::FdnReverb::kMaxDecay, 1.0f, input, family, shape);
+
+                        finite = finite && result.finite;
+
+                        if (result.peak > worstPeak)
+                        {
+                            worstPeak = result.peak;
+                            worstAt = "family " + juce::String (family) + ", shape " + juce::String (shape, 1)
+                                      + ", size " + juce::String (size, 0) + " ms, fb " + juce::String (feedback, 2);
+                        }
+                    }
 
         std::printf ("%-10s worst peak %.3g\n", nameOf (input), worstPeak);
         std::printf ("           at %s\n", worstAt.toRawUTF8());

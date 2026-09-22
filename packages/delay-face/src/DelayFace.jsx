@@ -55,12 +55,18 @@ import "./DelayFace.css";
  *
  * `mainKnobSize` is Mix and Feedback. 76px is what BitBit Delay's 528px card was
  * laid out around; BitBit Alpine's 490px module passes 60.
+ *
+ * `scopeHeight` is the tap scope's well. BitBit Delay's own 110px is the
+ * default; BitBit Alpine passes the height that takes the well from the top of
+ * its neighbours' engine stepper to the bottom of their display, so the three
+ * modules read as one row rather than as three stacks of their own.
  */
 export default function DelayFace({
   prefix = "",
   tapeRouter = true,
   stageKnobSize,
   mainKnobSize = 76,
+  scopeHeight = 110,
 }) {
   return (
     <ParamScope prefix={prefix}>
@@ -68,6 +74,7 @@ export default function DelayFace({
         tapeRouter={tapeRouter}
         stageKnobSize={stageKnobSize}
         mainKnobSize={mainKnobSize}
+        scopeHeight={scopeHeight}
       />
     </ParamScope>
   );
@@ -75,7 +82,7 @@ export default function DelayFace({
 
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     DelayFace itself would read the enclosing scope, not the one it declares. */
-function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76 }) {
+function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) {
   const [leftMs, rightMs] = useDelayTimesMs();
   const [feedback01] = useJuceSliderValue("fb");
   const [mix01] = useJuceSliderValue("mix");
@@ -84,7 +91,7 @@ function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76 }) 
   return (
     <>
       <TapScope
-        height={110}
+        height={scopeHeight}
         leftMs={leftMs}
         rightMs={rightMs}
         feedback01={feedback01}

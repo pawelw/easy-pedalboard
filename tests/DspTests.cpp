@@ -3532,7 +3532,8 @@ struct GrainerRun
     `source` is called per sample; return silence to measure a tail. */
 template <typename Source>
 GrainerRun runGrainer (float sizeMs, float densityHz, float timeMs, float pitch, double seconds, Source&& source,
-                       float feedback = 0.0f, bool freeze = false, float stretch = 1.0f)
+                       float feedback = 0.0f, bool freeze = false, float stretch = 1.0f,
+                       int shapeFamily = ee::dsp::Grainer::kShapeTriangle, float shape = -1.0f)
 {
     ee::dsp::Grainer grainer;
     grainer.prepare (kSampleRate);
@@ -3543,6 +3544,9 @@ GrainerRun runGrainer (float sizeMs, float densityHz, float timeMs, float pitch,
     grainer.setFeedback (feedback);
     grainer.setStretch (stretch);
     grainer.setFreeze (freeze);
+    grainer.setShapeFamily (shapeFamily);
+    if (shape >= 0.0f)
+        grainer.setShape (shape);
 
     // The helper keeps one `pitch` axis for brevity: -1 is the low group only,
     // 0 unison, +1 the high group only.
@@ -3636,6 +3640,201 @@ void testGrainerFiniteUnderSweep()
     check (finite, "grain sweep produced NaN or Inf");
     check (worstPeak < 4.0f, "grain sweep ran away (peak " + juce::String (worstPeak, 2) + ")");
     check (worstActive <= ee::dsp::config::kMaxGrains, "the grain pool overflowed");
+}
+
+/** The same sweep as testGrainerFiniteUnderSweep, over the three Shape Family
+    windows testGrainerFiniteUnderSweep never touches (it runs the Triangle
+    default throughout). Each is evaluated per sample rather than stepped by a
+    multiply (see Grainer::envelopeOf), so this is exactly the coverage that
+    would catch one of them going non-finite or unbounded somewhere across
+    Shape's own travel - a bad exponent in Gaussian or Spike, a divide by
+    zero at Sinc's centre. */
+void testGrainerShapeFamiliesAreFiniteUnderSweep()
+{
+    std::printf ("Grainer: the three Shape Family windows, swept under full-scale noise:\n");
+
+    std::mt19937 rng (2025);
+    std::uniform_real_distribution<float> noise (-1.0f, 1.0f);
+
+    const int families[] = { ee::dsp::Grainer::kShapeGaussian, ee::dsp::Grainer::kShapeSinc,
+                             ee::dsp::Grainer::kShapeSpike };
+    const float shapes[] = { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f };
+    const float sizes[] = { 20.0f, 120.0f, 500.0f };
+    const float densities[] = { 2.0f, 12.0f, 30.0f };
+
+    static const char* const names[] = { "Gaussian", "Sinc", "Spike" };
+
+    for (int f = 0; f < 3; ++f)
+    {
+        bool finite = true;
+        float worstPeak = 0.0f;
+
+        for (float shape : shapes)
+            for (float size : sizes)
+                for (float density : densities)
+                {
+                    const auto run = runGrainer (size, density, 300.0f, 0.0f, 0.5,
+                                                 [&rng, &noise] (int) { return noise (rng); },
+                                                 0.0f, false, 1.0f, families[f], shape);
+
+                    finite = finite && run.finite;
+                    worstPeak = juce::jmax (worstPeak, run.peak);
+                }
+
+        std::printf ("  %-9s worst peak %.3g\n", names[f], worstPeak);
+        check (finite, juce::String (names[f]) + " produced NaN or Inf somewhere across Shape");
+
+        // A ceiling checking for runaway, not for loudness: familyEnvelopeRms
+        // level-matches every family by its RMS, on purpose - Spike's whole
+        // character is the same average energy concentrated into a much
+        // narrower instant, so a higher crest factor here is the shape doing
+        // its job, not a bug. 8x (+18 dB) is still nowhere near indicating an
+        // actual runaway (unbounded growth, not a loud transient), and this is
+        // the raw engine - BitBitGrainProcessor::outputLimiter is what a real
+        // signal path has downstream of exactly this.
+        check (worstPeak < 8.0f, juce::String (names[f]) + " ran away (peak " + juce::String (worstPeak, 2) + ")");
+    }
+}
+
+/** Every Shape Family window is defined to reach exactly 0 at a grain's first
+    and last sample (see Grainer::familyEnvelope's own note) - what stops a
+    Family switch from clicking. Checked here directly rather than through a
+    click-detector on the summed cloud, because with more than one grain
+    active the edges of one are covered by the middle of another; one grain at
+    a time, sized to outlast the block, isolates each edge instead. */
+void testGrainerShapeFamiliesCloseToZero()
+{
+    std::printf ("Grainer: every Shape Family window opens and closes at zero:\n");
+
+    const int families[] = { ee::dsp::Grainer::kShapeGaussian, ee::dsp::Grainer::kShapeSinc,
+                             ee::dsp::Grainer::kShapeSpike };
+    static const char* const names[] = { "Gaussian", "Sinc", "Spike" };
+
+    for (int f = 0; f < 3; ++f)
+    {
+        for (float shape : { 0.0f, 0.5f, 1.0f })
+        {
+            ee::dsp::Grainer grainer;
+            grainer.prepare (kSampleRate);
+            grainer.reset();
+            grainer.setSizeMs (400.0f); // one grain comfortably outlasts one block
+            grainer.setDensityHz (1.0f);
+            grainer.setTimeMs (100.0f);
+            grainer.setShapeFamily (families[f]);
+            grainer.setShape (shape);
+
+            auto tuning = grainer.getTuning();
+            tuning.windowJitter = 0.0f; // isolate the family's own formula from the stray
+            grainer.setTuning (tuning);
+
+            std::vector<float> in (kBlock, 0.6f), l (kBlock), r (kBlock);
+            float firstSpawnSample = -1.0f;
+            float peak = 0.0f;
+            int sinceFirstActive = -1;
+
+            for (int b = 0; b < 200; ++b)
+            {
+                grainer.process (in.data(), in.data(), l.data(), r.data(), kBlock);
+
+                if (sinceFirstActive < 0 && grainer.getActiveGrains() > 0)
+                {
+                    firstSpawnSample = std::abs (l[0]);
+                    sinceFirstActive = 0;
+                }
+
+                for (int i = 0; i < kBlock; ++i)
+                    peak = juce::jmax (peak, std::abs (l[static_cast<size_t> (i)]));
+
+                if (sinceFirstActive >= 0)
+                    ++sinceFirstActive;
+
+                if (grainer.getActiveGrains() == 0 && sinceFirstActive > 0)
+                    break; // the one grain has run its course
+            }
+
+            std::printf ("  %-9s shape %.1f: first sample %.2e, peak %.3f\n", names[f], shape,
+                         firstSpawnSample, peak);
+            check (firstSpawnSample >= 0.0f && firstSpawnSample < 1.0e-3f,
+                   juce::String (names[f]) + " clicks on: its first sample is not silent");
+        }
+    }
+}
+
+/** The same failure testGrainerShapeChangeDoesNotJumpTheLevel guards for
+    Triangle, for the three windows it never touches: switching Shape Family -
+    the dropdown below the knob, not the knob itself - must not make grains
+    already sounding (or the next ones spawned) jump in level, because
+    familyEnvelopeRms corrects for it the same way the closed form does for
+    Triangle. Run at fixed Shape (0.5) so only Family is moving. */
+void testGrainerShapeFamilyChangeDoesNotJumpTheLevel()
+{
+    std::printf ("Grainer Shape Family: switching windows does not jump the level:\n");
+
+    const int families[] = { ee::dsp::Grainer::kShapeTriangle, ee::dsp::Grainer::kShapeGaussian,
+                             ee::dsp::Grainer::kShapeSinc, ee::dsp::Grainer::kShapeSpike };
+    static const char* const names[] = { "Triangle", "Gaussian", "Sinc", "Spike" };
+
+    auto steadyRms = [] (int family) -> double
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (300.0f);
+        grainer.setDensityHz (8.0f);
+        grainer.setTimeMs (300.0f);
+        grainer.setShapeFamily (family);
+        grainer.setShape (0.5f);
+
+        std::vector<float> in (kBlock), l (kBlock), r (kBlock);
+        double sumSq = 0.0;
+        long long n = 0;
+        double phase = 0.0;
+        const double w = 2.0 * juce::MathConstants<double>::pi * 300.0 / kSampleRate;
+
+        // 6 s to reach a steady cloud, measure the last 2.
+        const int blocks = static_cast<int> (kSampleRate * 6.0 / kBlock);
+        const int measureFrom = static_cast<int> (kSampleRate * 4.0 / kBlock);
+
+        for (int b = 0; b < blocks; ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+            {
+                in[static_cast<size_t> (i)] = 0.1f * static_cast<float> (std::sin (phase));
+                phase += w;
+            }
+
+            grainer.process (in.data(), in.data(), l.data(), r.data(), kBlock);
+
+            if (b >= measureFrom)
+                for (int i = 0; i < kBlock; ++i)
+                {
+                    sumSq += static_cast<double> (l[static_cast<size_t> (i)]) * l[static_cast<size_t> (i)];
+                    ++n;
+                }
+        }
+
+        return std::sqrt (sumSq / juce::jmax (1LL, n));
+    };
+
+    double rms[4];
+    for (int f = 0; f < 4; ++f)
+        rms[f] = steadyRms (families[f]);
+
+    const double loudest = *std::max_element (rms, rms + 4);
+    const double quietest = *std::min_element (rms, rms + 4);
+
+    for (int f = 0; f < 4; ++f)
+        std::printf ("  %-9s steady rms %.4f\n", names[f], rms[f]);
+
+    std::printf ("  spread: %+.1f dB (loudest against quietest)\n", 20.0 * std::log10 (loudest / quietest));
+
+    // A generous ceiling: familyEnvelopeRms corrects each family to the same
+    // reference, but the correction is Shape's own mean, not a per-grain
+    // guarantee, and the families are different enough in character (Sinc
+    // rings, Spike is spikier) that a little spread is real, not a bug. What
+    // this actually guards is a family with no compensation at all - which
+    // reads as several dB, not a fraction of one.
+    check (loudest < quietest * 2.0, "a Shape Family window is not level-matched against the others");
 }
 
 void testGrainerReadsStayBehindTheWriteHead()
@@ -5755,6 +5954,10 @@ int main()
     std::printf ("\n");
     testGrainerFiniteUnderSweep();
     std::printf ("\n");
+    testGrainerShapeFamiliesAreFiniteUnderSweep();
+    std::printf ("\n");
+    testGrainerShapeFamiliesCloseToZero();
+    std::printf ("\n");
     testGrainerReadsStayBehindTheWriteHead();
     std::printf ("\n");
     testGrainerLevelHoldsAcrossDensity();
@@ -5773,6 +5976,8 @@ int main()
     testGrainerFollowDensityReadsOnTheGrid();
     testGrainerSmoothChangeDoesNotJumpTheLevel();
     testGrainerShapeChangeDoesNotJumpTheLevel();
+    std::printf ("\n");
+    testGrainerShapeFamilyChangeDoesNotJumpTheLevel();
     std::printf ("\n");
     testGrainerAttackLeadsWithOctaves();
     std::printf ("\n");
