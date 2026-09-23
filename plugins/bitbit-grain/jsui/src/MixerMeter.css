@@ -1,0 +1,67 @@
+/* The mixer's two dB ladders - see MixerMeter.jsx. No live level bar any
+   more (it used to ride beside the ladder here and, together with the
+   ladder's own tick numbers, overlap the value readout below the fader's
+   thumb) - the numbers alone are the reference now. Narrow on purpose: this
+   sits inside the fader row's own width, between the fader and the link
+   button, so it has to read as a ladder beside the control rather than as a
+   panel of its own. */
+
+.pg-meter {
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  /* Into the fader's own box, which is mostly the thumb's clearance either
+     side of a 4px rail: the ticks start just off the rail and pass under the
+     thumb, which is the only way the numbers read as this slider's. */
+  margin-left: -3px;
+}
+
+/* side="left" is the right-hand fader's: the same parts, mirrored, so both
+   ladders face the middle. */
+.pg-meter--left {
+  flex-direction: row-reverse;
+  margin-left: 0;
+  margin-right: -3px;
+}
+
+.pg-meter__scale {
+  position: relative;
+  width: 16px;
+}
+
+.pg-meter__tick {
+  position: absolute;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  /* The tick marks the line, not the space under it. */
+  transform: translateY(-50%);
+}
+
+.pg-meter__tick::before {
+  content: "";
+  width: 3px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.pg-meter__tick--numbered::before {
+  width: 4px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.pg-meter__num {
+  font-family: var(--pui-font-label);
+  font-size: 8px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: rgba(255, 255, 255, 0.46);
+}
+
+/* Mirrored with the ladder: the tick keeps to the bar's side of the number. */
+.pg-meter--left .pg-meter__tick {
+  left: auto;
+  right: 0;
+  flex-direction: row-reverse;
+}

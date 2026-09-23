@@ -611,6 +611,9 @@ public:
                                                                 juce::AudioParameterBoolAttributes().withMeta (true)));
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "filter", 1 }, "Filter", juce::NormalisableRange<float> (0.0f, 100.0f, 0.1f), 100.0f));
+        layout.add (
+            std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "reso", 1 }, "Reso", percent, 0.0f,
+                                                          percentAttributes));
         layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { "drive", 1 }, "Drive", percent,
                                                                  ee::dsp::tubedrive::kDefaultDrivePct,
                                                                  percentAttributes));
@@ -634,6 +637,12 @@ public:
             juce::ParameterID { "level", 1 }, "Level", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.1f), 0.0f,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 1) + " dB"; })));
+
+        // Mirrors PluginProcessor.cpp's own "shapefamily", appended last there
+        // too - see ee::dsp::Grainer::ShapeFamily.
+        layout.add (std::make_unique<juce::AudioParameterChoice> (
+            juce::ParameterID { "shapefamily", 1 }, "Shape Family",
+            juce::StringArray { "Triangle", "Gaussian", "Sinc", "Spike" }, 0));
 
         return layout;
     }

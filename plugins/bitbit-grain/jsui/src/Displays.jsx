@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { useJuceSliderValue, useParamId, useFormattedText } from "@synthpeak/pedal-ui/juce";
 import { useModAssignment } from "./ModRouting.jsx";
 import { useLfoValue } from "./LfoPlayback.jsx";
-import { grainEnvelopePath } from "./envelopeShape.js";
+import { grainEnvelopePath, familyEnvelopePath, smoothForShape, FAMILY_TRIANGLE } from "./envelopeShape.js";
 
 /**
  * The five recessed displays across the plate (COMPONENTS.md's "Displays"
@@ -13,7 +13,7 @@ import { grainEnvelopePath } from "./envelopeShape.js";
 
 // The Size range, mirroring GrainerConfig.h's kMinGrainMs/kMaxGrainMs. Only
 // GrainEnvelope uses these, to turn the printed duration back into a width.
-const SIZE_MIN_MS = 20;
+const SIZE_MIN_MS = 30;
 const SIZE_MAX_MS = 1000;
 
 function clampMs(ms) {
@@ -76,7 +76,7 @@ function grainDivisionBeats(density01) {
     at all.) The lead is drawn first (left), the way a delay's own repeat
     diagram reads: the struck note first, its repeats decaying away to the
     right of it. */
-export function GrainEnvelope({ accent }) {
+export function GrainEnvelope({ accent, family = FAMILY_TRIANGLE }) {
   const [shape] = useJuceSliderValue("shape");
   const [size] = useJuceSliderValue("size");
   const [density] = useJuceSliderValue("density");
@@ -109,6 +109,7 @@ export function GrainEnvelope({ accent }) {
     return (
       <GrainEnvelopeLive
         accent={accent}
+        family={family}
         shape={shape}
         shapeA={shapeA}
         density={density}
@@ -124,6 +125,7 @@ export function GrainEnvelope({ accent }) {
   return (
     <GrainEnvelopeBody
       accent={accent}
+      family={family}
       shape={shape}
       density={density}
       feedback01={feedback01}
@@ -136,13 +138,28 @@ export function GrainEnvelope({ accent }) {
     ModdableKnob.jsx's ModulatedKnob and FilterCurve's ModulatedFilterCurve for
     the same split, and why it is a separate component (useLfoValue()
     re-renders its subscriber every frame; an unmodulated display, the common
-    case, should not pay for that). */
-function GrainEnvelopeLive({ accent, shape, shapeA, density, densityA, feedback01, feedbackA, sizeSpanBase, size, sizeA }) {
+    case, should not pay for that). Family is not itself modulatable (a
+    discrete window choice, not a knob a Mod row can target), so it only ever
+    passes through here unchanged. */
+function GrainEnvelopeLive({
+  accent,
+  family,
+  shape,
+  shapeA,
+  density,
+  densityA,
+  feedback01,
+  feedbackA,
+  sizeSpanBase,
+  size,
+  sizeA,
+}) {
   const lfoValue = useLfoValue();
 
   return (
     <GrainEnvelopeBody
       accent={accent}
+      family={family}
       shape={resolveModulated(shape, shapeA, lfoValue)}
       density={resolveModulated(density, densityA, lfoValue)}
       feedback01={resolveModulated(feedback01, feedbackA, lfoValue)}
@@ -157,15 +174,21 @@ function GrainEnvelopeLive({ accent, shape, shapeA, density, densityA, feedback0
 /** The envelope's own drawing, given already-resolved 0..1 inputs (the base
     parameters, or their live modulated values - GrainEnvelope/GrainEnvelopeLive's
     own concern, not this component's). */
-function GrainEnvelopeBody({ accent, shape, density, feedback01, sizeSpan }) {
-  // Shape is also the swell: 1 - Shape of the way from its own window to the
-  // fixed-millisecond fade-in (see BitBitGrainProcessor::processBlock).
-  const smooth = 1 - shape;
+function GrainEnvelopeBody({ accent, family = FAMILY_TRIANGLE, shape, density, feedback01, sizeSpan }) {
+  // Shape is also the swell, over the bottom of its travel only (see
+  // GrainerConfig.h's SMOOTH section) - and only for Triangle. The other three
+  // families have no swell blend of their own (see Grainer::envelopeOf's own
+  // note), so Smooth plays no part in their path.
+  const smooth = smoothForShape(shape);
   const grainCount = Math.min(8, Math.max(1, Math.round(4 / grainDivisionBeats(density))));
   const width = 70 + sizeSpan * 110; // longer Size = wider grain window
   // The grain's real length, for the swell's fixed-millisecond fade-in.
   const lengthMs = SIZE_MIN_MS * Math.pow(SIZE_MAX_MS / SIZE_MIN_MS, Math.min(1, Math.max(0, sizeSpan)));
   const spacing = grainCount > 1 ? (234 - width) / (grainCount - 1) : 0;
+  const pathFor =
+    family === FAMILY_TRIANGLE
+      ? (x0) => grainEnvelopePath(x0, width, shape, smooth, lengthMs)
+      : (x0) => familyEnvelopePath(x0, width, family, shape);
 
   return (
     <svg width="100%" height="48" viewBox="0 0 240 48" preserveAspectRatio="none" fill="none">
@@ -177,7 +200,7 @@ function GrainEnvelopeBody({ accent, shape, density, feedback01, sizeSpan }) {
         return (
           <path
             key={i}
-            d={grainEnvelopePath(x0, width, shape, smooth, lengthMs)}
+            d={pathFor(x0)}
             stroke={accent}
             strokeWidth="1.6"
             strokeLinecap="round"
@@ -267,15 +290,20 @@ const RANDOM_DOTS = [
   { left: "88%", top: 64, size: 3, opacity: 0.65 },
 ];
 
-/** L/R stereo field: a centre line and a scatter of grains either side, each
-    now driven by this section's own three knobs. Stereo scales every grain's
-    distance from the centre line (0 collapses the whole field onto it, 1 is
-    the full spread above); Scatter sets how far and how fast the grains jitter
-    - it is exactly the engine's own per-grain timing/position jitter, so 0
-    holds them still. Reverse is not drawn: a reversed grain looks and drifts
-    like any other. Each grain is drawn with the same steep-attack/long-decay lean as
-    GrainEnvelope above - a fat rounded head tapering to a thin tail - rather
-    than a plain dot, so the two displays read as the same shape.
+/** L/R stereo field: a centre line and a scatter of grains either side,
+    driven by this section's own knobs alone - the Grain section's Wide also
+    scales this spread in the real audio (Grainer::nextPan(), while Stereo
+    sits at 0), but is deliberately left out of this display: Wide belongs to
+    Grain's own panel, and turning it used to redraw Random's field too,
+    which read as a display bug rather than the intended cross-talk. Stereo
+    scales every grain's distance from the centre line (0 collapses the whole
+    field onto it, 1 is the full spread above). Scatter sets
+    how far and how fast the grains jitter - it is exactly the engine's own
+    per-grain timing/position jitter, so 0 holds them still. Reverse is not
+    drawn: a reversed grain looks and drifts like any other. Each grain is
+    drawn with the same steep-attack/long-decay lean as GrainEnvelope above -
+    a fat rounded head tapering to a thin tail - rather than a plain dot, so
+    the two displays read as the same shape.
 
     The jitter itself is a `requestAnimationFrame` loop rather than a CSS
     keyframe animation driven by custom properties: a CSS animation re-reads
@@ -294,13 +322,7 @@ export function RandomField({ accent }) {
 
   if (stereoA || scatterA)
     return (
-      <RandomFieldLive
-        accent={accent}
-        stereo={stereo}
-        stereoA={stereoA}
-        scatter={scatter}
-        scatterA={scatterA}
-      />
+      <RandomFieldLive accent={accent} stereo={stereo} stereoA={stereoA} scatter={scatter} scatterA={scatterA} />
     );
 
   return <RandomFieldBody accent={accent} stereo={stereo} scatter={scatter} />;
@@ -392,20 +414,33 @@ function RandomFieldBody({ accent, stereo, scatter }) {
 // design, so putting it on the scope would advertise a control that is not
 // there.
 const CLOUD_LP_HZ = 13000;
-// Mirrors GrainerConfig.h's kCloudLowpassMinHz exactly - was 320, moved to
-// 150 so the shut end of the knob reads as an actual cut rather than a
-// gentle darkening (see that constant's own note).
-const CLOUD_LP_MIN_HZ = 150;
+// Mirrors GrainerConfig.h's kCloudLowpassMinHz exactly - was 320, then 150,
+// now 20 so the shut end of the knob closes the cloud away rather than only
+// darkening it (see that constant's own note).
+const CLOUD_LP_MIN_HZ = 20;
 
 const CURVE_F_MIN = 20;
 const CURVE_F_MAX = 20000;
-const CURVE_DB_FLOOR = -30;
+// A wide range on purpose. The ladder Reso crossfades in falls at 24 dB/oct,
+// which over a 30 dB plot is off the bottom inside a single octave and reads
+// as a vertical cliff rather than a filter skirt; 60 dB across the same
+// height is the same slope drawn at a legible angle.
+const CURVE_DB_FLOOR = -60;
+// Headroom over unity, so Reso's peak has somewhere to go: without it the
+// resonant bump is simply clipped flat against the top of the plot and the
+// knob looks like it does nothing.
+const CURVE_DB_CEIL = 15;
 const CURVE_GRID_HZ = [100, 1000, 10000];
 const CURVE_W = 120;
 const CURVE_H = 44;
 const CURVE_PAD = 4;
 const CURVE_LOG_MIN = Math.log(CURVE_F_MIN);
 const CURVE_LOG_SPAN = Math.log(CURVE_F_MAX) - CURVE_LOG_MIN;
+
+// LadderFilter::kMaxFeedback, mirrored: Reso 1 is a hair past the classic
+// 4-pole unity-loop-gain point, which is what makes the top of the knob
+// self-oscillate.
+const LADDER_MAX_FEEDBACK = 4.2;
 
 /** Where the cutoff sits for a given knob position - the same geometric sweep
     Grainer::updateCloudFilter() does with its own std::pow, so the drawn
@@ -415,11 +450,35 @@ function cloudCutoff(openness) {
   return CLOUD_LP_HZ * Math.pow(CLOUD_LP_MIN_HZ / CLOUD_LP_HZ, 1 - openness);
 }
 
-/** The lowpass's magnitude in dB: one pole at 6 dB/oct and nothing else. No Q
-    term, because the engine has none - a drawn-on bump would be inventing a
-    control that does not exist. */
-function cloudDb(fHz, lpHz) {
-  return 20 * Math.log10(Math.max(1e-6, lpHz / Math.sqrt(fHz * fHz + lpHz * lpHz)));
+/** The cloud filter's magnitude in dB: the 4-pole ladder Grainer::cloudFiltered
+    runs, with Reso as its feedback - G^4 / (1 + k G^4) over a one-pole G,
+    scaled by LadderFilter's own passband compensation (1 + k) so the flat part
+    stays on the 0 dB line and only the peak moves. */
+function cloudDb(fHz, lpHz, reso = 0) {
+  const w = fHz / lpHz;
+  const d = 1 + w * w;
+  // One stage: 1 / (1 + jw).
+  const pRe = 1 / d;
+  const pIm = -w / d;
+
+  // Four of them in cascade...
+  let gRe = 1;
+  let gIm = 0;
+  for (let i = 0; i < 4; i++) {
+    const re = gRe * pRe - gIm * pIm;
+    gIm = gRe * pIm + gIm * pRe;
+    gRe = re;
+  }
+
+  // ...inside k of negative feedback.
+  const k = reso * LADDER_MAX_FEEDBACK;
+  const denRe = 1 + k * gRe;
+  const denIm = k * gIm;
+  const denMag = denRe * denRe + denIm * denIm || 1e-12;
+  const re = ((gRe * denRe + gIm * denIm) / denMag) * (1 + k);
+  const im = ((gIm * denRe - gRe * denIm) / denMag) * (1 + k);
+
+  return 20 * Math.log10(Math.max(1e-6, Math.hypot(re, im)));
 }
 
 function curveX(hz) {
@@ -428,54 +487,76 @@ function curveX(hz) {
 }
 
 function curveY(db) {
-  const clamped = Math.min(0, Math.max(CURVE_DB_FLOOR, db));
-  return CURVE_PAD + (clamped / CURVE_DB_FLOOR) * (CURVE_H - CURVE_PAD * 2);
+  const clamped = Math.min(CURVE_DB_CEIL, Math.max(CURVE_DB_FLOOR, db));
+  return CURVE_PAD + ((CURVE_DB_CEIL - clamped) / (CURVE_DB_CEIL - CURVE_DB_FLOOR)) * (CURVE_H - CURVE_PAD * 2);
 }
 
 /** FilterCurve's own live subscription to the LFO's per-frame output - split
-    out so it only ever mounts while `filter` actually has an assignment (see
-    FilterCurve below), the same reason ModdableKnob.jsx's ModulatedKnob is a
-    separate component from ModdableKnob itself: useLfoValue() re-renders its
-    subscriber every animation frame, and an unmodulated Filter knob (the
-    common case) should not pay for that. Mirrors PluginProcessor.cpp's own
-    modulatedValue() exactly - base01 + depth * lfoValue, clamped - so the
-    curve drawn here is the filter the DSP is actually running, not a
-    separate UI-only approximation of it. */
-function ModulatedFilterCurve({ accent, filter, assignment }) {
+    out so it only ever mounts while `filter` or `reso` actually has an
+    assignment (see FilterCurve below), the same reason ModdableKnob.jsx's
+    ModulatedKnob is a separate component from ModdableKnob itself:
+    useLfoValue() re-renders its subscriber every animation frame, and an
+    unmodulated pair (the common case) should not pay for that. Mirrors
+    PluginProcessor.cpp's own modulatedValue() exactly - base01 + depth *
+    lfoValue, clamped, applied independently to each - so the curve drawn
+    here is the filter the DSP is actually running, not a separate UI-only
+    approximation of it. */
+function ModulatedFilterCurve({ accent, filter, filterAssignment, reso, resoAssignment }) {
   const lfoValue = useLfoValue();
-  return <FilterCurveBody accent={accent} openness={resolveModulated(filter, assignment, lfoValue)} />;
+  return (
+    <FilterCurveBody
+      accent={accent}
+      openness={resolveModulated(filter, filterAssignment, lfoValue)}
+      reso={resolveModulated(reso, resoAssignment, lfoValue)}
+    />
+  );
 }
 
 /** The Mixer's Filter response, in place of a printed value. Reads `filter`
-    live and redraws, so the line moves with the knob: wide open it is flat to
-    13 kHz, and winding down walks the corner to 150 Hz. While the Mod tab has
-    an LFO assigned to Filter, it instead redraws every frame from the live
-    modulated value (ModulatedFilterCurve above) - the curve *is* this knob's
-    value readout, so it is the one place a moving LFO assignment has to show
-    up for the display to keep meaning what it says. */
+    and `reso` live and redraws, so the line moves with both knobs: wide open
+    it is flat to 13 kHz, winding Filter down walks the corner to 20 Hz, and
+    Reso raises the peak sitting on that corner. While the Mod tab has an LFO
+    assigned to either, it instead redraws every frame from the live modulated
+    value (ModulatedFilterCurve above) - the curve *is* these knobs' value
+    readout, so it is the one place a moving LFO assignment has to show up for
+    the display to keep meaning what it says. */
 export function FilterCurve({ accent }) {
   const [filter] = useJuceSliderValue("filter");
-  const assignment = useModAssignment("filter");
+  const [reso] = useJuceSliderValue("reso");
+  const filterAssignment = useModAssignment("filter");
+  const resoAssignment = useModAssignment("reso");
 
-  if (assignment) return <ModulatedFilterCurve accent={accent} filter={filter} assignment={assignment} />;
-  return <FilterCurveBody accent={accent} openness={filter} />;
+  if (filterAssignment || resoAssignment)
+    return (
+      <ModulatedFilterCurve
+        accent={accent}
+        filter={filter}
+        filterAssignment={filterAssignment}
+        reso={reso}
+        resoAssignment={resoAssignment}
+      />
+    );
+  return <FilterCurveBody accent={accent} openness={filter} reso={reso} />;
 }
 
 /** The curve's own drawing, given the filter's openness (0..1, already
     resolved - the base parameter or the live modulated value, FilterCurve's
     own concern, not this component's). */
-function FilterCurveBody({ accent, openness }) {
+function FilterCurveBody({ accent, openness, reso = 0 }) {
   // The parameter is 0..100 % and the hook hands back 0..1, so it is already
   // the openness the sweep wants.
   const lpHz = cloudCutoff(openness);
 
-  const steps = 72;
+  // Enough to resolve the peak: at high Reso the ladder's bump is only a
+  // fraction of an octave wide, and at 72 steps across ten octaves it fell
+  // between samples and read as a kink rather than a spike.
+  const steps = 180;
   let line = "";
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
     const hz = Math.exp(CURVE_LOG_MIN + t * CURVE_LOG_SPAN);
     const x = CURVE_PAD + t * (CURVE_W - CURVE_PAD * 2);
-    line += `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${curveY(cloudDb(hz, lpHz)).toFixed(1)} `;
+    line += `${i === 0 ? "M" : "L"}${x.toFixed(1)} ${curveY(cloudDb(hz, lpHz, reso)).toFixed(1)} `;
   }
 
   const floorY = CURVE_H - CURVE_PAD;
@@ -488,7 +569,9 @@ function FilterCurveBody({ accent, openness }) {
           {CURVE_GRID_HZ.map((hz) => (
             <line key={hz} x1={curveX(hz)} y1={CURVE_PAD} x2={curveX(hz)} y2={floorY} />
           ))}
-          <line x1={CURVE_PAD} y1={curveY(-12)} x2={CURVE_W - CURVE_PAD} y2={curveY(-12)} />
+          {/* Unity, not a level partway down: it is what the flat passband
+              sits on and so what Reso's peak is read against. */}
+          <line x1={CURVE_PAD} y1={curveY(0)} x2={CURVE_W - CURVE_PAD} y2={curveY(0)} />
         </g>
         <path d={fill} fill={accent} fillOpacity="0.12" stroke="none" />
         <path

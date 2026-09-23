@@ -37,6 +37,8 @@ public:
     static constexpr float kMaxDecay = 8.0f;
     static constexpr float kMinLowCutHz = 20.0f;
     static constexpr float kMaxLowCutHz = 800.0f;
+    static constexpr float kMinPredelayMs = config::kUserPredelayMinMs;
+    static constexpr float kMaxPredelayMs = config::kUserPredelayMaxMs;
 
     FdnReverb();
     ~FdnReverb();
@@ -64,6 +66,17 @@ public:
         band can ever ring longer than the decay knob says.
     */
     void setDecayTilt (float lowRatio, float highRatio) noexcept;
+
+    /** How fast the top end dies relative to the decay knob, 0..1. 0.5 (the
+        default) reproduces the fixed kHighDecayRatio voicing; below it the
+        tail stays brighter than that, above it the top is absorbed faster.
+        The low band is untouched - see setDecayTilt for that. */
+    void setDamping (float amount01) noexcept;
+
+    /** Explicit predelay in ms (kMinPredelayMs..kMaxPredelayMs), overriding
+        the decay-linked auto amount. Pass a negative value to return to that
+        auto amount. */
+    void setPredelay (float ms) noexcept;
 
     /** Amount of pitch-shifted tail folded back into the network, 0..1. 0 is
         exactly the reverb with no shimmer path running at all; turning it up
@@ -100,6 +113,8 @@ private:
     float lowCutHz = kMinLowCutHz;
     float lowRatio = config::kLowDecayRatio;
     float highRatio = config::kHighDecayRatio;
+    // Negative = no override, use the decay-linked auto amount.
+    float predelayOverrideMs = -1.0f;
 
     // Shimmer: a stereo pair of pitch shifters fed a predelayed tap of the wet
     // output, their results shaped and injected back into the network one

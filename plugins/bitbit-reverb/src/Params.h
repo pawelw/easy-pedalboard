@@ -27,4 +27,10 @@ inline constexpr const char* springDecay = "spring.decay";
 inline constexpr const char* springTension = "spring.tension";
 inline constexpr const char* springLoCut = "spring.locut";
 
+// Appended after Spring, not slotted into the Space block above: AU addresses
+// parameters by index, and BitBit Reverb has shipped, so an existing param's
+// index cannot move. See createParameterLayout().
+inline constexpr const char* spacePredelay = "space.predelay";
+inline constexpr const char* spaceDamping = "space.damping";
+
 } // namespace ee::reverb::id

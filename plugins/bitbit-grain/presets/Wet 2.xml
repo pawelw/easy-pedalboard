@@ -38,6 +38,7 @@
   <PARAM id="grains" value="65"/>
   <PARAM id="mlink" value="0"/>
   <PARAM id="filter" value="55"/>
+  <PARAM id="reso" value="0"/>
   <PARAM id="drive" value="0"/>
   <PARAM id="on" value="1"/>
   <PARAM id="lforate" value="0.3"/>

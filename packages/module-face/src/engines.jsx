@@ -182,6 +182,8 @@ export const REVERB_ENGINES = [
       ["shimmer", "Shimmer"],
       ["locut", "Low Cut"],
       ["reso", "Reso"],
+      ["predelay", "Pre-delay"],
+      ["damping", "Damping"],
     ],
     // Shimmer is left out - it is a taste control, and not bit-reproducible
     // (see CLAUDE.md), so a macro should not be nudging it under the player.

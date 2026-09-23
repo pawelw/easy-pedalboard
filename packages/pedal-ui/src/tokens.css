@@ -1,5 +1,9 @@
-@import "@fontsource/space-grotesk/500.css";
-@import "@fontsource/space-grotesk/700.css";
+/* Active face font - swap both the @import and --pui-font-primary below to try
+   another one; every face reads through --pui-font-primary so nothing else
+   needs to change. */
+@import "@fontsource/urbanist/400.css";
+@import "@fontsource/urbanist/500.css";
+@import "@fontsource/urbanist/700.css";
 
 /* The rack-module look shared by every component: cream panels, black ink,
    scalloped-collar knobs, pill switches. One palette so a pedal reads as one
@@ -64,8 +68,9 @@
      or starts passing sweepGap again. */
   --pui-knob-reach-small: 5px;
 
-  --pui-font-display: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
-  --pui-font-label: "Space Grotesk", -apple-system, "Helvetica Neue", sans-serif;
+  --pui-font-primary: "Urbanist", -apple-system, "Helvetica Neue", sans-serif;
+  --pui-font-display: var(--pui-font-primary);
+  --pui-font-label: var(--pui-font-primary);
 
   /* Below: the default half of the token set (see PedalUIProvider's `theme`
      prop and the `[data-pui-theme="onyx"]` / `[data-pui-theme="grey"]` blocks

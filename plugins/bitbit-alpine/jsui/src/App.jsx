@@ -182,7 +182,7 @@ function DelayModule() {
       headerRight={<ModuleLevel parameterId="dly.level" />}
       className="pa-delay"
     >
-      <DelayFace prefix="dly." tapeRouter={false} stageKnobSize={36} mainKnobSize={60} />
+      <DelayFace prefix="dly." tapeRouter={false} stageKnobSize={36} mainKnobSize={60} scopeHeight={117} />
     </ModulePanel>
   );
 }

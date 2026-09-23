@@ -47,6 +47,15 @@ constexpr float kLowCornerHz = 450.0f;
 constexpr float kHighDecayRatio = 0.45f;
 constexpr float kHighCornerHz = 5000.0f;
 
+// The Damping knob's range, in the same units as kHighDecayRatio above. It
+// only ever moves the high ratio - the low ratio stays fixed at
+// kLowDecayRatio - and is centred so that 50 % lands exactly on the ratio
+// above, i.e. dialling Damping to noon reproduces the old fixed voicing.
+//   kDampingMaxRatio (0 %)   = brighter than the fixed default
+//   kDampingMinRatio (100 %) = darker, absorbs the top fast
+constexpr float kDampingMinRatio = 0.15f;
+constexpr float kDampingMaxRatio = 0.75f;
+
 // ============================================================================
 // INPUT DIFFUSION
 // ============================================================================
@@ -98,9 +107,18 @@ constexpr float kStereoWidth = 1.6f;
 // PREDELAY
 // ============================================================================
 // Scales with the decay knob between these two values. A long predelay puts an
-// audible gap between the note and the tail, which reads as a slap.
+// audible gap between the note and the tail, which reads as a slap. This is
+// the auto amount used until the Pre-delay knob below overrides it.
 constexpr float kPredelayMinMs = 6.0f;
 constexpr float kPredelayMaxMs = 28.0f;
+
+// The Pre-delay knob's own range - independent of, and wider than, the auto
+// range above, since a plate can be pushed toward a slap-back gap on purpose.
+// Kept as separate constants (not a rename of the pair above) so the
+// decay-linked auto behaviour is untouched for anything that never calls
+// setPredelay - BitBit Grain's own reverb instance, the offline DSP tests.
+constexpr float kUserPredelayMinMs = 0.0f;
+constexpr float kUserPredelayMaxMs = 60.0f;
 
 // ============================================================================
 // MODULATION DEPTH

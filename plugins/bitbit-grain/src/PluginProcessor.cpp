@@ -28,6 +28,7 @@ constexpr const char* kStretchID = "stretch";
 constexpr const char* kFreezeID = "freeze";
 constexpr const char* kWidthID = "width";
 constexpr const char* kShapeID = "shape";
+constexpr const char* kShapeFamilyID = "shapefamily";
 constexpr const char* kScatterID = "scatter";
 constexpr const char* kReverseID = "reverse";
 constexpr const char* kStereoID = "stereo";
@@ -54,6 +55,7 @@ constexpr const char* kDryLevelID = "dry";
 constexpr const char* kGrainLevelID = "grains";
 constexpr const char* kMixLinkID = "mlink";
 constexpr const char* kFilterID = "filter";
+constexpr const char* kResoID = "reso";
 constexpr const char* kDriveID = "drive";
 constexpr const char* kOnID = "on";
 constexpr const char* kLevelID = "level";
@@ -325,6 +327,7 @@ BitBitGrainProcessor::BitBitGrainProcessor()
     freezeParam = apvts.getRawParameterValue (kFreezeID);
     widthParam = apvts.getRawParameterValue (kWidthID);
     shapeParam = apvts.getRawParameterValue (kShapeID);
+    shapeFamilyParam = apvts.getRawParameterValue (kShapeFamilyID);
     scatterParam = apvts.getRawParameterValue (kScatterID);
     reverseParam = apvts.getRawParameterValue (kReverseID);
     stereoParam = apvts.getRawParameterValue (kStereoID);
@@ -350,6 +353,7 @@ BitBitGrainProcessor::BitBitGrainProcessor()
     grainLevelParam = apvts.getRawParameterValue (kGrainLevelID);
     mixLinkParam = apvts.getRawParameterValue (kMixLinkID);
     filterParam = apvts.getRawParameterValue (kFilterID);
+    resoParam = apvts.getRawParameterValue (kResoID);
     driveParam = apvts.getRawParameterValue (kDriveID);
     onParam = apvts.getRawParameterValue (kOnID);
     lfoRateParam = apvts.getRawParameterValue (kLfoRateID);
@@ -481,8 +485,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
 
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { kFreezeID, 1 }, "Freeze", false));
 
-    // Wide, on Grain's first row: how much Haas width the grain cloud gets - see
-    // GrainerConfig.h's WIDE. (Was a Mono/Stereo switch; the id is unchanged.)
+    // Wide, on Grain's first row: how far off centre a grain lands with
+    // Random's Spray closed - see GrainerConfig.h's WIDE. (Was a Mono/Stereo
+    // switch; the id is unchanged.)
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kWidthID, 1 }, "Wide", percent,
                                                              cfg::kDefaultWidePct, percentAttributes));
 
@@ -632,6 +637,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
                 return juce::String (juce::roundToInt (hz)) + " Hz";
             })));
 
+    // How much the Filter knob's cutoff runs through a resonant 4-pole
+    // ladder instead of the plain one-pole above - see Grainer::
+    // setCloudResonance and LadderFilter.h. Rests at 0: kept off the face's
+    // main sweep on purpose, a fresh instance or an old preset with no reso
+    // saved yet sounds identical to before this knob existed. A modulation
+    // target like Filter beside it (see modulatedValue()'s own call site).
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { kResoID, 1 }, "Reso", percent, 0.0f,
+                                                             percentAttributes));
+
     // Amp's own single-knob tube drive (see ee/dsp/TubeDrive.h), on the grain
     // cloud alone - same "grains only" reach as Filter just above, not the dry
     // path. Same fitted engine and default as BitBit Artifact's amp.drive.
@@ -675,6 +689,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
         juce::AudioParameterFloatAttributes().withStringFromValueFunction ([] (float v, int)
                                                                            { return juce::String (v, 1) + " dB"; })));
 
+    // Which window the Shape knob morphs - ee::dsp::Grainer::ShapeFamily, in
+    // the same order. Appended last and last for good, per CLAUDE.md's rule
+    // for an engine choice: this index is what every saved session and preset
+    // keys on. Triangle is index 0 and the default, so an old session with no
+    // opinion about this parameter loads exactly as it always has.
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { kShapeFamilyID, 1 }, "Shape Family",
+        juce::StringArray { "Triangle", "Gaussian", "Sinc", "Spike" }, 0));
+
     return layout;
 }
 
@@ -694,22 +717,14 @@ double BitBitGrainProcessor::readPlayHeadBpm()
 
 juce::String BitBitGrainProcessor::sizeReadout() const
 {
-    // Always milliseconds, synced or not - a grain's length is a duration a
-    // listener hears, not a rhythmic position, so the note-division label
-    // toText() would show once synced is not what belongs here.
-    //
-    // Clamped to what Grainer::setSizeMs() will actually apply
-    // (config::kMinGrainMs..kMaxGrainMs): synced mode picks a tempo division
-    // with no relation to that range, so at a slow enough tempo the top of
-    // the knob's travel can select a division several seconds long while the
-    // engine silently caps every grain at kMaxGrainMs (500 ms) regardless -
-    // showing the true division length there was a readout that described a
-    // sound nothing was making. sizeMap.toMsText()'s own formatting (>=1s
-    // shows seconds) is duplicated here rather than reused, since clamping
-    // has to happen on the raw ms value before that decision.
+    // Free-running, not tempo-synced (see processBlock's sizeSynced) - a
+    // grain's length is a duration a listener hears, not a rhythmic
+    // position, and reading it off a tempo division made the knob jump
+    // between the division's ms lengths as it turned instead of sweeping
+    // smoothly across kMinGrainMs..kMaxGrainMs. bpm plays no part any more;
+    // currentBpm() is not called here.
     namespace cfg = ee::dsp::config;
-    const float ms =
-        juce::jlimit (cfg::kMinGrainMs, cfg::kMaxGrainMs, sizeMap.value (sizeParam->load(), true, currentBpm()));
+    const float ms = juce::jlimit (cfg::kMinGrainMs, cfg::kMaxGrainMs, sizeMap.value (sizeParam->load(), false, 0.0));
     return ms >= 1000.0f ? juce::String (ms * 0.001f, 2) + " s" : juce::String (juce::roundToInt (ms)) + " ms";
 }
 
@@ -986,7 +1001,6 @@ void BitBitGrainProcessor::prepareToPlay (double sampleRate, int maximumExpected
     driveStage.reset();
     sendDrive.prepare (sampleRate);
     sendDrive.reset();
-    haas.prepare (sampleRate, ee::dsp::config::kHaasDelayMs, ee::dsp::config::kHaasRampMs);
 
     delay.prepare (sampleRate);
     delay.reset();
@@ -1056,7 +1070,6 @@ void BitBitGrainProcessor::releaseResources()
     grainer.reset();
     driveStage.reset();
     sendDrive.reset();
-    haas.reset();
     delay.reset();
     reverb.reset();
     outputLimiter.reset();
@@ -1107,13 +1120,16 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 #endif
 
     const double bpm = readPlayHeadBpm();
-    // Grain's own Size/Destiny carry no Sync switch on the face any more - the
-    // GRAINS panel is always tempo-locked now, so these are hardcoded true
-    // rather than read off ssync/dsync. Those parameters (and wsync) are kept
-    // registered (see PluginProcessor.h's note by sizeSyncParam) purely so a
-    // preset or automation lane that still references them resolves to
-    // something; nothing here reads them.
-    const bool sizeSynced = true;
+    // Grain's own Size/Density carry no Sync switch on the face any more, so
+    // these are hardcoded rather than read off ssync/dsync. Density stays
+    // tempo-locked (the grain spawn grid). Size is free-running: turning the
+    // knob is a duration a listener hears, and snapping it to a tempo
+    // division made it jump between the division's ms lengths instead of
+    // sweeping smoothly - see sizeReadout()'s matching change. ssync/dsync
+    // (and wsync) are kept registered (see PluginProcessor.h's note by
+    // sizeSyncParam) purely so a preset or automation lane that still
+    // references them resolves to something; nothing here reads them.
+    const bool sizeSynced = false;
     const bool densitySynced = true;
     const bool delaySynced = delaySyncParam->load() > 0.5f;
 
@@ -1189,7 +1205,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // do nothing.
 
     // Size/Density/Window/Shape/Feedback/Scatter/Reverse/Stereo/Mod/Pitch Low/Unison/
-    // High/Pitch Mix/Filter/Drive/Bit - every modulation target this pedal
+    // High/Pitch Mix/Filter/Reso/Drive/Bit - every modulation target this pedal
     // has (Delay/Reverb's own scope cut) - are set per chunk inside the loop
     // below instead of here, each read through modulatedValue() so a
     // drag-and-drop LFO assignment actually moves within the block.
@@ -1202,7 +1218,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // way.
     grainer.setScale (juce::roundToInt (scaleParam->load()), juce::roundToInt (rootParam->load()));
     grainer.setFreeze (freezeParam->load() > 0.5f);
-    haas.setWidth (widthParam->load() * 0.01f * ee::dsp::config::kHaasWidth);
+    grainer.setWidth (widthParam->load() * 0.01f);
 
     const float leftSecs = delayMap.value (leftTimeParam->load(), delaySynced, bpm) * 0.001f;
     const float rightSecs = delayMap.value (rightTimeParam->load(), delaySynced, bpm) * 0.001f;
@@ -1265,7 +1281,8 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     const int step = modRouter.hasAssignments() ? juce::jmin (juce::jmin (maxBlock, scratch), kModChunk)
                                                 : juce::jmin (maxBlock, scratch);
 
-    float wetPeak = 0.0f; // the cloud as mixed in, for the face's cosmos panel only
+    float wetPeak = 0.0f; // the cloud as mixed in, for the face's cosmos panel and its meter
+    float dryPeak = 0.0f; // the dry path at the same point, for the face's other meter
 
     for (int offset = 0; offset < numSamples; offset += step)
     {
@@ -1313,14 +1330,12 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // onset. Whatever a session stored in Window is ignored.
         grainer.setAttackReachSeconds (ee::dsp::config::kFixedAttackReachSeconds);
 
-        // Shape and Smooth are one control: Shape at its plucky end (100) is
-        // the engine's own window, untouched (Smooth 0); at its soft end (0) the
-        // grain is the full swell (Smooth 1); in between the two blend. Smooth
-        // has no knob or parameter of its own - it is 1 - Shape, modulated
-        // Shape included.
+        // Shape and Smooth are one control - see GrainerConfig.h's SMOOTH
+        // section for why the swell only occupies the bottom of the travel.
         const float shape01 = modulatedValue (kShapeID, shapeParam->load()) * 0.01f;
         grainer.setShape (shape01);
-        grainer.setSmooth (1.0f - shape01);
+        grainer.setSmooth (ee::dsp::config::smoothForShape (shape01));
+        grainer.setShapeFamily (juce::roundToInt (shapeFamilyParam->load()));
 
         // The Feedback knob (it took Window's place on the face). With Pitch
         // Low/High in the mix a repeat is re-pitched on its way round, so an
@@ -1333,6 +1348,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         grainer.setMod (modulatedValue (kModID, modParam->load()) * 0.01f);
         grainer.setBit (modulatedValue (kBitID, bitParam->load()) * 0.01f);
         grainer.setCloudFilter (modulatedValue (kFilterID, filterParam->load()) * 0.01f);
+        grainer.setCloudResonance (modulatedValue (kResoID, resoParam->load()) * 0.01f);
         driveStage.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
         sendDrive.setDrive01 (modulatedValue (kDriveID, driveParam->load()) * 0.01f);
 
@@ -1356,7 +1372,6 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         // Grain-cloud-only, like the cloud Filter above it - the dry path
         // never reaches this stage.
         driveStage.process (grainL, grainR, chunk);
-        haas.process (grainL, grainR, chunk);
 
         // The dry note's own level and the grain send are computed here and
         // kept apart from here on: dryBuffer is added back in full only at
@@ -1418,6 +1433,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
             grainL[i] = wetL;
             grainR[i] = wetR;
             wetPeak = juce::jmax (wetPeak, std::abs (wetL), std::abs (wetR));
+            dryPeak = juce::jmax (dryPeak, std::abs (dL), std::abs (dR));
         }
 
         // Delay: the gated grain-only send into the delay line, blended
@@ -1450,8 +1466,7 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
         }
 
         // Drive on the weighted bus too, so the tank hears the cloud coloured
-        // as it is downstream. Haas is deliberately not repeated: its side
-        // content cancels in exactly this fold-down by design.
+        // as it is downstream.
         if (intervalSend)
             sendDrive.process (mono, nullptr, chunk);
 
@@ -1519,12 +1534,16 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     {
         // Fast up, slow down: the reader polls at ~30 Hz, so a decay of about
         // 0.12 s keeps a short hit visible to it while still reading as silence
-        // within a second of the cloud stopping. The grain cloud alone, not the
-        // finished mix - a loud dry note must not light a cloud that is silent.
+        // within a second of the cloud stopping. Both are taken where the two
+        // faders have just set them and before anything downstream, so each
+        // meter reads its own path rather than the finished mix - a loud dry
+        // note must not light a cloud that is silent.
         const float decay =
             std::exp (-static_cast<float> (numSamples) / (0.12f * static_cast<float> (getSampleRate())));
         visLevel.store (juce::jmax (wetPeak, visLevel.load (std::memory_order_relaxed) * decay),
                         std::memory_order_relaxed);
+        visDryLevel.store (juce::jmax (dryPeak, visDryLevel.load (std::memory_order_relaxed) * decay),
+                           std::memory_order_relaxed);
     }
 
 #if EE_GRAIN_TRACE

@@ -1,4 +1,4 @@
-import { grainEnvelopePath } from "./envelopeShape.js";
+import { grainEnvelopePath, familyEnvelopePath, smoothForShape, FAMILY_TRIANGLE } from "./envelopeShape.js";
 
 // Well past SMOOTH_ATTACK_MS + SMOOTH_RELEASE_MS (90ms), so `squeeze` in
 // grainEnvelopePath never kicks in here - the icon always reads the plain
@@ -13,13 +13,17 @@ const ICON_LENGTH_MS = 200;
     its Shape knob. `shape01` must be the real (uninverted) parameter value:
     GrainFace.jsx reads it straight off the parameter rather than off the
     knob's own (flipped) drag position, so the glyph stays correct regardless
-    of the knob's `invert`. */
-export default function GrainShapeIcon({ shape01, size = 20, color = "currentColor" }) {
-  const smooth01 = 1 - shape01; // Shape is also the swell - see grainEnvelopePath's own note
+    of the knob's `invert`. `family` (FAMILY_TRIANGLE by default) picks which
+    of the four windows the Shape Family dropdown below the knob has selected -
+    grainEnvelopePath for Triangle, familyEnvelopePath for the other three. */
+export default function GrainShapeIcon({ shape01, family = FAMILY_TRIANGLE, size = 20, color = "currentColor" }) {
   const margin = size * 0.12;
   const top = size * 0.14;
   const base = size * 0.62;
-  const d = grainEnvelopePath(margin, size - margin * 2, shape01, smooth01, ICON_LENGTH_MS, top, base, size * 0.08);
+  const d =
+    family === FAMILY_TRIANGLE
+      ? grainEnvelopePath(margin, size - margin * 2, shape01, smoothForShape(shape01), ICON_LENGTH_MS, top, base, size * 0.08)
+      : familyEnvelopePath(margin, size - margin * 2, family, shape01, top, base, size * 0.08);
 
   return (
     // Knob.css's shared .pui-knob__icon wrapper rotates whatever it's given

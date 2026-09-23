@@ -65,6 +65,28 @@ public:
             loPass[static_cast<size_t> (ch)].reset();
         }
 
+        // hiPassCoeffs/loPassCoeffs are otherwise allocated lazily, the first
+        // time each filter actually goes active (see updateFilters) - which
+        // keeps a session that never touches the Filter section allocation-
+        // free forever, but means the *first* knob turn away from rest would
+        // allocate on the audio thread instead of here. Both start bypassed
+        // (pendingLoCutHz/pendingHiCutHz rest at the inactive ends), so build
+        // them now regardless, off the audio thread; updateFilters below still
+        // computes the values that actually matter once either goes active.
+        if (hiPassCoeffs == nullptr)
+        {
+            hiPassCoeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass (sr, pendingLoCutHz);
+            for (int ch = 0; ch < kMaxChannels; ++ch)
+                hiPass[static_cast<size_t> (ch)].coefficients = hiPassCoeffs;
+        }
+
+        if (loPassCoeffs == nullptr)
+        {
+            loPassCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass (sr, pendingHiCutHz);
+            for (int ch = 0; ch < kMaxChannels; ++ch)
+                loPass[static_cast<size_t> (ch)].coefficients = loPassCoeffs;
+        }
+
         updateFilters (true);
 
         // The phaser runs on BitBit Phase's own default voicing - one knob here,
@@ -468,6 +490,17 @@ private:
     {
         const float lo = pendingLoCutHz;
 
+        // Coefficients<float>::makeHighPass/makeLowPass each allocate a new
+        // Coefficients object - fine the way this was gated (only on an
+        // actual knob move), except a host automating either cut writes a
+        // different value practically every block, which is exactly what
+        // ee_soak_BitBitDelay's allocation guard is driving when it randomises
+        // every parameter continuously. ArrayCoefficients computes the same
+        // maths into a stack std::array with no allocation; assigning it onto
+        // an already-allocated Coefficients object reuses that object's array
+        // storage rather than replacing it (see Coefficients::assignImpl), so
+        // only the very first build - before hiPassCoeffs/loPassCoeffs exist -
+        // still goes through the allocating factory.
         if (force || std::abs (lo - loCutHz) > 1.0e-3f)
         {
             loCutHz = lo;
@@ -475,9 +508,16 @@ private:
 
             if (hiPassActive)
             {
-                auto c = juce::dsp::IIR::Coefficients<float>::makeHighPass (sr, lo);
-                for (int ch = 0; ch < kMaxChannels; ++ch)
-                    hiPass[static_cast<size_t> (ch)].coefficients = c;
+                if (hiPassCoeffs == nullptr)
+                {
+                    hiPassCoeffs = juce::dsp::IIR::Coefficients<float>::makeHighPass (sr, lo);
+                    for (int ch = 0; ch < kMaxChannels; ++ch)
+                        hiPass[static_cast<size_t> (ch)].coefficients = hiPassCoeffs;
+                }
+                else
+                {
+                    *hiPassCoeffs = juce::dsp::IIR::ArrayCoefficients<float>::makeHighPass (sr, lo);
+                }
             }
         }
 
@@ -490,9 +530,16 @@ private:
 
             if (loPassActive)
             {
-                auto c = juce::dsp::IIR::Coefficients<float>::makeLowPass (sr, hi);
-                for (int ch = 0; ch < kMaxChannels; ++ch)
-                    loPass[static_cast<size_t> (ch)].coefficients = c;
+                if (loPassCoeffs == nullptr)
+                {
+                    loPassCoeffs = juce::dsp::IIR::Coefficients<float>::makeLowPass (sr, hi);
+                    for (int ch = 0; ch < kMaxChannels; ++ch)
+                        loPass[static_cast<size_t> (ch)].coefficients = loPassCoeffs;
+                }
+                else
+                {
+                    *loPassCoeffs = juce::dsp::IIR::ArrayCoefficients<float>::makeLowPass (sr, hi);
+                }
             }
         }
     }
@@ -562,6 +609,11 @@ private:
 
     std::array<juce::dsp::IIR::Filter<float>, kMaxChannels> hiPass;
     std::array<juce::dsp::IIR::Filter<float>, kMaxChannels> loPass;
+
+    // Allocated once (in updateFilters, the first time each is needed), then
+    // mutated in place - see the comment there.
+    juce::dsp::IIR::Coefficients<float>::Ptr hiPassCoeffs;
+    juce::dsp::IIR::Coefficients<float>::Ptr loPassCoeffs;
 
     // Settings, in real units, as the owner last handed them over.
     float leftSeconds = 0.5f;

@@ -678,7 +678,7 @@ voicing lives in `shared/include/ee/dsp/AutoWahConfig.h`; the LFO rate range is
 ### BitBit Grain
 
 A granular delay into a plain plate. Mono or stereo in, stereo out. Fifteen
-knobs in four captioned sections, **Live / Freeze** and **Mono / Stereo** switches across the top, and
+knobs in four captioned sections, a **Live / Freeze** switch across the top, and
 Reverb and Mix bare underneath.
 
 **Delay** - the echo, and what you do to a frozen buffer:
@@ -696,6 +696,8 @@ Reverb and Mix bare underneath.
 | **Size**    | 20 ms - 1.00 s | Grain length. Under ~40 ms the fragments stop being recognisable and turn into a metallic buzz at the spawn rate; over ~300 ms you hear whole notes come back. Synced, the readout is clamped to the length the engine will actually apply, since a tempo division can be longer than the knob's own ceiling |
 | **Density** | 1 - 40 /s      | Grains spawned per second. Sparse and countable at the bottom, a continuous cloud at the top. It is not a volume knob - the engine divides out the overlap |
 | **Shape**   | 0 - 100 %      | Grain envelope lean: `0` soft, a long fade-in with the energy spread the whole grain; `100` plucky, a click of an attack with the energy up front. The engine divides the envelope's own energy back out, so this does not double as a volume knob |
+| **Shape Family** | Triangle, Gaussian, Sinc, Spike | The window Shape morphs. Triangle (the default) is the asymmetric fade-in-then-decay above; the other three are symmetric windows with no transient of their own - Gaussian a plain bell, Sinc a windowed sinc (audible side-lobes at Shape's plucky end), Spike a two-sided exponential point. All four are level-matched, so switching does not jump the volume |
+| **Wide**    | 0 - 100 %      | How far off centre a grain lands - but only while Random's Spray is fully closed; Spray takes over panning outright the moment it is above `0` (see Random below), and Wide is ignored. With Spray closed, `0` is mono - every grain dead centre - and above `0` grains hard-alternate left/right/left/right at this reach, a ping-pong cloud rather than a random one |
 
 **Pitch** - Low/Unison/High are weights against each other, not positions on a
 scale; the Scale block underneath colours which notes High lands on, and
@@ -723,7 +725,7 @@ from.
 | ------------ | -------------- | ---------------------------------------------------------------------- |
 | **Reverse**  | 0 - 100 %      | Share of grains that play backwards. Forward-only is much more legible; past halfway the phrase stops being followable at all |
 | **Scatter**  | 0 - 100 %      | One knob over all the timing randomness: how much the gap between grains wanders, and how much each grain's length strays from Size. `0` is a metronome spraying identical grains; wound up the cloud stops repeating |
-| **Stereo**   | 0 - 100 %      | Width of the random pan placement. `0` centres every grain, `100` throws them hard left and right. Equal-power, so the middle does not dip |
+| **Stereo**   | 0 - 100 %      | Random pan placement - a random side and a random distance from centre, per grain. Takes over panning outright the moment it is above `0`, whatever the Grain section's Wide knob is set to. `0` hands panning back to Wide, which pans deterministically instead - see Wide above |
 
 **Reverb** - a plate behind the cloud, plus a button (top right of the
 section) for what feeds it:
@@ -760,13 +762,14 @@ shifting pitch, because each grain still plays at rate 1. A loud enough input
 retriggers: the engine grabs a fresh `Time` window and re-freezes, so the loop
 starts again on the new sound.
 
-**Mono / Stereo** sits beside it. Mono leaves the grain cloud as
-the engine made it (Random's **Stereo** knob still pans individual grains).
-Stereo adds full Haas width to the cloud: the side channel gets the mid back
-6.83 ms late, so the left channel hears the cloud plus that echo and the right
-hears it minus the echo. It reads as wide, and it cancels exactly when the
-output is folded to mono, so nothing is lost on a mono system. The dry signal
-never goes through it.
+**Wide** sits beside it, in the Grain section, and only has a say while
+Random's **Stereo** knob is fully closed - the moment Stereo is above `0` it
+takes over panning outright, drawing its usual random side and random
+distance from centre exactly as it always has, and Wide is ignored. With
+Stereo closed, Wide decides instead: `0` is mono - every grain lands dead
+centre - and above `0` grains hard-pan left, right, left, right, each
+successive one on the opposite side from the last, out to Wide's own reach.
+The dry signal is never panned by either knob.
 
 **Grid** is always on: whenever the host transport is rolling, grains read from
 whole sixteenth notes. There is no switch. With the transport stopped, or in the
@@ -809,6 +812,17 @@ backwards - a Hann window fades a grain in over its entire first half, which
 throws away the transient and leaves a swell the ear reads as reverse playback.
 Both ends still reach exactly zero, which is what stops a grain clicking whatever
 its content. **Shape** morphs between the two ends the tuning header names.
+
+**Shape Family**, the dropdown under the Shape knob, picks a different window
+outright rather than a different lean on this one: Gaussian, Sinc or Spike,
+each a plain symmetric function of the grain's own position rather than the
+asymmetric fade-in-then-decay above - so none of them keeps the transient the
+way Triangle (the default, and the one described above) does on purpose. Shape
+still controls each one's own steepness or width. Every family closes to exactly
+zero at both ends whatever Shape is set to, and every family is level-matched
+against the others (`Grainer::familyEnvelopeRms`, the same energy correction
+Shape's own closed form gets), so neither the knob nor the dropdown ever doubles
+as a volume control.
 
 The feedback path means the engine can, in principle, latch a non-finite value
 or build without bound. Four things stop it: Feedback is capped below unity, the

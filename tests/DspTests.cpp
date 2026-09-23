@@ -3532,7 +3532,8 @@ struct GrainerRun
     `source` is called per sample; return silence to measure a tail. */
 template <typename Source>
 GrainerRun runGrainer (float sizeMs, float densityHz, float timeMs, float pitch, double seconds, Source&& source,
-                       float feedback = 0.0f, bool freeze = false, float stretch = 1.0f)
+                       float feedback = 0.0f, bool freeze = false, float stretch = 1.0f,
+                       int shapeFamily = ee::dsp::Grainer::kShapeTriangle, float shape = -1.0f)
 {
     ee::dsp::Grainer grainer;
     grainer.prepare (kSampleRate);
@@ -3543,6 +3544,9 @@ GrainerRun runGrainer (float sizeMs, float densityHz, float timeMs, float pitch,
     grainer.setFeedback (feedback);
     grainer.setStretch (stretch);
     grainer.setFreeze (freeze);
+    grainer.setShapeFamily (shapeFamily);
+    if (shape >= 0.0f)
+        grainer.setShape (shape);
 
     // The helper keeps one `pitch` axis for brevity: -1 is the low group only,
     // 0 unison, +1 the high group only.
@@ -3636,6 +3640,201 @@ void testGrainerFiniteUnderSweep()
     check (finite, "grain sweep produced NaN or Inf");
     check (worstPeak < 4.0f, "grain sweep ran away (peak " + juce::String (worstPeak, 2) + ")");
     check (worstActive <= ee::dsp::config::kMaxGrains, "the grain pool overflowed");
+}
+
+/** The same sweep as testGrainerFiniteUnderSweep, over the three Shape Family
+    windows testGrainerFiniteUnderSweep never touches (it runs the Triangle
+    default throughout). Each is evaluated per sample rather than stepped by a
+    multiply (see Grainer::envelopeOf), so this is exactly the coverage that
+    would catch one of them going non-finite or unbounded somewhere across
+    Shape's own travel - a bad exponent in Gaussian or Spike, a divide by
+    zero at Sinc's centre. */
+void testGrainerShapeFamiliesAreFiniteUnderSweep()
+{
+    std::printf ("Grainer: the three Shape Family windows, swept under full-scale noise:\n");
+
+    std::mt19937 rng (2025);
+    std::uniform_real_distribution<float> noise (-1.0f, 1.0f);
+
+    const int families[] = { ee::dsp::Grainer::kShapeGaussian, ee::dsp::Grainer::kShapeSinc,
+                             ee::dsp::Grainer::kShapeSpike };
+    const float shapes[] = { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f };
+    const float sizes[] = { 20.0f, 120.0f, 500.0f };
+    const float densities[] = { 2.0f, 12.0f, 30.0f };
+
+    static const char* const names[] = { "Gaussian", "Sinc", "Spike" };
+
+    for (int f = 0; f < 3; ++f)
+    {
+        bool finite = true;
+        float worstPeak = 0.0f;
+
+        for (float shape : shapes)
+            for (float size : sizes)
+                for (float density : densities)
+                {
+                    const auto run = runGrainer (size, density, 300.0f, 0.0f, 0.5,
+                                                 [&rng, &noise] (int) { return noise (rng); },
+                                                 0.0f, false, 1.0f, families[f], shape);
+
+                    finite = finite && run.finite;
+                    worstPeak = juce::jmax (worstPeak, run.peak);
+                }
+
+        std::printf ("  %-9s worst peak %.3g\n", names[f], worstPeak);
+        check (finite, juce::String (names[f]) + " produced NaN or Inf somewhere across Shape");
+
+        // A ceiling checking for runaway, not for loudness: familyEnvelopeRms
+        // level-matches every family by its RMS, on purpose - Spike's whole
+        // character is the same average energy concentrated into a much
+        // narrower instant, so a higher crest factor here is the shape doing
+        // its job, not a bug. 8x (+18 dB) is still nowhere near indicating an
+        // actual runaway (unbounded growth, not a loud transient), and this is
+        // the raw engine - BitBitGrainProcessor::outputLimiter is what a real
+        // signal path has downstream of exactly this.
+        check (worstPeak < 8.0f, juce::String (names[f]) + " ran away (peak " + juce::String (worstPeak, 2) + ")");
+    }
+}
+
+/** Every Shape Family window is defined to reach exactly 0 at a grain's first
+    and last sample (see Grainer::familyEnvelope's own note) - what stops a
+    Family switch from clicking. Checked here directly rather than through a
+    click-detector on the summed cloud, because with more than one grain
+    active the edges of one are covered by the middle of another; one grain at
+    a time, sized to outlast the block, isolates each edge instead. */
+void testGrainerShapeFamiliesCloseToZero()
+{
+    std::printf ("Grainer: every Shape Family window opens and closes at zero:\n");
+
+    const int families[] = { ee::dsp::Grainer::kShapeGaussian, ee::dsp::Grainer::kShapeSinc,
+                             ee::dsp::Grainer::kShapeSpike };
+    static const char* const names[] = { "Gaussian", "Sinc", "Spike" };
+
+    for (int f = 0; f < 3; ++f)
+    {
+        for (float shape : { 0.0f, 0.5f, 1.0f })
+        {
+            ee::dsp::Grainer grainer;
+            grainer.prepare (kSampleRate);
+            grainer.reset();
+            grainer.setSizeMs (400.0f); // one grain comfortably outlasts one block
+            grainer.setDensityHz (1.0f);
+            grainer.setTimeMs (100.0f);
+            grainer.setShapeFamily (families[f]);
+            grainer.setShape (shape);
+
+            auto tuning = grainer.getTuning();
+            tuning.windowJitter = 0.0f; // isolate the family's own formula from the stray
+            grainer.setTuning (tuning);
+
+            std::vector<float> in (kBlock, 0.6f), l (kBlock), r (kBlock);
+            float firstSpawnSample = -1.0f;
+            float peak = 0.0f;
+            int sinceFirstActive = -1;
+
+            for (int b = 0; b < 200; ++b)
+            {
+                grainer.process (in.data(), in.data(), l.data(), r.data(), kBlock);
+
+                if (sinceFirstActive < 0 && grainer.getActiveGrains() > 0)
+                {
+                    firstSpawnSample = std::abs (l[0]);
+                    sinceFirstActive = 0;
+                }
+
+                for (int i = 0; i < kBlock; ++i)
+                    peak = juce::jmax (peak, std::abs (l[static_cast<size_t> (i)]));
+
+                if (sinceFirstActive >= 0)
+                    ++sinceFirstActive;
+
+                if (grainer.getActiveGrains() == 0 && sinceFirstActive > 0)
+                    break; // the one grain has run its course
+            }
+
+            std::printf ("  %-9s shape %.1f: first sample %.2e, peak %.3f\n", names[f], shape,
+                         firstSpawnSample, peak);
+            check (firstSpawnSample >= 0.0f && firstSpawnSample < 1.0e-3f,
+                   juce::String (names[f]) + " clicks on: its first sample is not silent");
+        }
+    }
+}
+
+/** The same failure testGrainerShapeChangeDoesNotJumpTheLevel guards for
+    Triangle, for the three windows it never touches: switching Shape Family -
+    the dropdown below the knob, not the knob itself - must not make grains
+    already sounding (or the next ones spawned) jump in level, because
+    familyEnvelopeRms corrects for it the same way the closed form does for
+    Triangle. Run at fixed Shape (0.5) so only Family is moving. */
+void testGrainerShapeFamilyChangeDoesNotJumpTheLevel()
+{
+    std::printf ("Grainer Shape Family: switching windows does not jump the level:\n");
+
+    const int families[] = { ee::dsp::Grainer::kShapeTriangle, ee::dsp::Grainer::kShapeGaussian,
+                             ee::dsp::Grainer::kShapeSinc, ee::dsp::Grainer::kShapeSpike };
+    static const char* const names[] = { "Triangle", "Gaussian", "Sinc", "Spike" };
+
+    auto steadyRms = [] (int family) -> double
+    {
+        ee::dsp::Grainer grainer;
+        grainer.prepare (kSampleRate);
+        grainer.reset();
+        grainer.setSizeMs (300.0f);
+        grainer.setDensityHz (8.0f);
+        grainer.setTimeMs (300.0f);
+        grainer.setShapeFamily (family);
+        grainer.setShape (0.5f);
+
+        std::vector<float> in (kBlock), l (kBlock), r (kBlock);
+        double sumSq = 0.0;
+        long long n = 0;
+        double phase = 0.0;
+        const double w = 2.0 * juce::MathConstants<double>::pi * 300.0 / kSampleRate;
+
+        // 6 s to reach a steady cloud, measure the last 2.
+        const int blocks = static_cast<int> (kSampleRate * 6.0 / kBlock);
+        const int measureFrom = static_cast<int> (kSampleRate * 4.0 / kBlock);
+
+        for (int b = 0; b < blocks; ++b)
+        {
+            for (int i = 0; i < kBlock; ++i)
+            {
+                in[static_cast<size_t> (i)] = 0.1f * static_cast<float> (std::sin (phase));
+                phase += w;
+            }
+
+            grainer.process (in.data(), in.data(), l.data(), r.data(), kBlock);
+
+            if (b >= measureFrom)
+                for (int i = 0; i < kBlock; ++i)
+                {
+                    sumSq += static_cast<double> (l[static_cast<size_t> (i)]) * l[static_cast<size_t> (i)];
+                    ++n;
+                }
+        }
+
+        return std::sqrt (sumSq / juce::jmax (1LL, n));
+    };
+
+    double rms[4];
+    for (int f = 0; f < 4; ++f)
+        rms[f] = steadyRms (families[f]);
+
+    const double loudest = *std::max_element (rms, rms + 4);
+    const double quietest = *std::min_element (rms, rms + 4);
+
+    for (int f = 0; f < 4; ++f)
+        std::printf ("  %-9s steady rms %.4f\n", names[f], rms[f]);
+
+    std::printf ("  spread: %+.1f dB (loudest against quietest)\n", 20.0 * std::log10 (loudest / quietest));
+
+    // A generous ceiling: familyEnvelopeRms corrects each family to the same
+    // reference, but the correction is Shape's own mean, not a per-grain
+    // guarantee, and the families are different enough in character (Sinc
+    // rings, Spike is spikier) that a little spread is real, not a bug. What
+    // this actually guards is a family with no compensation at all - which
+    // reads as several dB, not a fraction of one.
+    check (loudest < quietest * 2.0, "a Shape Family window is not level-matched against the others");
 }
 
 void testGrainerReadsStayBehindTheWriteHead()
@@ -4325,7 +4524,7 @@ void testGrainerStereoIsBalanced()
     grainer.setDensityHz (20.0f);
     grainer.setTimeMs (400.0f);
     grainer.setFeedback (0.0f);
-    grainer.setStereo (1.0f);
+    grainer.setStereo (1.0f); // Spray takes priority over Wide, left at its default of 0 here
 
     std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
 
@@ -4357,6 +4556,164 @@ void testGrainerStereoIsBalanced()
     // placement bug that starves one side, and that shows up as many decibels
     // rather than as a fraction of one.
     check (std::abs (balanceDb) < 1.5f, "the grain cloud is lopsided (" + juce::String (balanceDb, 2) + " dB)");
+}
+
+/** Wide at 0 with Spray also closed: nextPan() falls through to
+    panAlternateSign * width, which is zero either way, so the cloud folds to
+    mono - see Grainer::nextPan() and GrainerConfig.h's WIDE. */
+void testGrainerWideZeroIsMonoWhenSprayIsAlsoClosed()
+{
+    std::printf ("Grainer Wide at 0 with Spray closed:\n");
+
+    std::mt19937 rng (5);
+    std::uniform_real_distribution<float> noise (-0.7f, 0.7f);
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.reset();
+    grainer.setSizeMs (120.0f);
+    grainer.setDensityHz (20.0f);
+    grainer.setTimeMs (400.0f);
+    grainer.setFeedback (0.0f);
+    grainer.setStereo (0.0f); // Spray closed...
+    grainer.setWidth (0.0f);  // ...and Wide shut too: nothing left to pan with
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    double diffSquares = 0.0;
+    double sumSquares = 0.0;
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 6.0 / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+            inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = noise (rng);
+
+        grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+
+        for (int i = 0; i < kBlock; ++i)
+        {
+            const float l = outL[static_cast<size_t> (i)];
+            const float r = outR[static_cast<size_t> (i)];
+            diffSquares += static_cast<double> (l - r) * (l - r);
+            sumSquares += static_cast<double> (l) * l + static_cast<double> (r) * r;
+        }
+    }
+
+    const float diffDb = juce::Decibels::gainToDecibels (
+        static_cast<float> (std::sqrt (diffSquares / juce::jmax (1.0e-12, sumSquares))), -120.0f);
+
+    std::printf ("  L-R difference: %.1f dB below the signal\n", diffDb);
+
+    check (diffDb < -80.0f,
+           "Wide and Spray both at 0 should leave the cloud mono (L-R only " + juce::String (diffDb, 1) + " dB down)");
+}
+
+/** Spray closed (`stereo` 0) hands panning to Wide alone: grains hard-alternate
+    left/right/left/right at Wide's own reach rather than a random draw. */
+void testGrainerWideAlternatesSidesWhenSprayIsClosed()
+{
+    std::printf ("Grainer Wide alternation with Spray closed:\n");
+
+    std::mt19937 rng (7);
+    std::uniform_real_distribution<float> noise (-0.7f, 0.7f);
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.reset();
+    grainer.setSizeMs (60.0f);
+    grainer.setDensityHz (20.0f);
+    grainer.setTimeMs (400.0f);
+    grainer.setFeedback (0.0f);
+    grainer.setStereo (0.0f); // Spray fully closed - Wide alone decides pan
+    grainer.setWidth (1.0f);
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 4.0 / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+            inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = noise (rng);
+
+        grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+    }
+
+    const uint32_t count = grainer.grainEventCount();
+    const uint32_t seen = std::min<uint32_t> (count, ee::dsp::Grainer::kGrainEventRing);
+    check (seen >= 20, "not enough grains spawned to check alternation (" + juce::String (static_cast<int> (seen)) + ")");
+
+    // Attack-stack voices born together share one pan draw on purpose (they
+    // are one musical event, not several) - collapsing consecutive repeats
+    // before checking alternation is what tells those apart from a side
+    // genuinely repeating.
+    std::vector<float> flips;
+    for (uint32_t i = count - seen; i < count; ++i)
+    {
+        const float pan = grainer.grainEventAt (i).pan;
+        check (std::abs (std::abs (pan) - 1.0f) < 1.0e-4f,
+               "grain landed off Wide's extreme with Spray closed (pan " + juce::String (pan, 3) + ")");
+
+        if (flips.empty() || (pan > 0.0f) != (flips.back() > 0.0f))
+            flips.push_back (pan);
+    }
+
+    std::printf ("  %d side flips over %u grains\n", static_cast<int> (flips.size()) - 1, seen);
+
+    check (flips.size() > seen / 4,
+           "grains are not alternating left/right with Spray closed - one side keeps repeating");
+}
+
+/** Spray open, Wide shut: Spray takes priority the moment it is off zero and
+    draws exactly the random side/distance it always has, ignoring Wide
+    entirely - Wide at 0 must not clamp or silence it. */
+void testGrainerSprayOverridesWide()
+{
+    std::printf ("Grainer Spray overrides Wide:\n");
+
+    std::mt19937 rng (11);
+    std::uniform_real_distribution<float> noise (-0.7f, 0.7f);
+
+    ee::dsp::Grainer grainer;
+    grainer.prepare (kSampleRate);
+    grainer.reset();
+    grainer.setSizeMs (60.0f);
+    grainer.setDensityHz (20.0f);
+    grainer.setTimeMs (400.0f);
+    grainer.setFeedback (0.0f);
+    grainer.setStereo (1.0f); // Spray wide open...
+    grainer.setWidth (0.0f);  // ...and Wide shut, which should count for nothing here
+
+    std::vector<float> inL (kBlock), inR (kBlock), outL (kBlock), outR (kBlock);
+
+    for (int b = 0; b < static_cast<int> (kSampleRate * 4.0 / kBlock); ++b)
+    {
+        for (int i = 0; i < kBlock; ++i)
+            inL[static_cast<size_t> (i)] = inR[static_cast<size_t> (i)] = noise (rng);
+
+        grainer.process (inL.data(), inR.data(), outL.data(), outR.data(), kBlock);
+    }
+
+    const uint32_t count = grainer.grainEventCount();
+    const uint32_t seen = std::min<uint32_t> (count, ee::dsp::Grainer::kGrainEventRing);
+    check (seen >= 20, "not enough grains spawned to check Spray overriding Wide (" + juce::String (static_cast<int> (seen)) + ")");
+
+    float maxAbsPan = 0.0f;
+    bool sawLeft = false;
+    bool sawRight = false;
+
+    for (uint32_t i = count - seen; i < count; ++i)
+    {
+        const float pan = grainer.grainEventAt (i).pan;
+        maxAbsPan = std::max (maxAbsPan, std::abs (pan));
+        sawLeft |= pan < -0.3f;
+        sawRight |= pan > 0.3f;
+    }
+
+    std::printf ("  max |pan| over %u grains: %.3f (Wide = 0, Spray = 1)\n", seen, static_cast<double> (maxAbsPan));
+
+    check (maxAbsPan > 0.3f,
+           "Spray should ignore Wide entirely rather than being clamped by it (max |pan| only "
+               + juce::String (maxAbsPan, 3) + ")");
+    check (sawLeft && sawRight, "Spray should still draw both sides with Wide shut");
 }
 
 void testGrainerTailStops()
@@ -5755,6 +6112,10 @@ int main()
     std::printf ("\n");
     testGrainerFiniteUnderSweep();
     std::printf ("\n");
+    testGrainerShapeFamiliesAreFiniteUnderSweep();
+    std::printf ("\n");
+    testGrainerShapeFamiliesCloseToZero();
+    std::printf ("\n");
     testGrainerReadsStayBehindTheWriteHead();
     std::printf ("\n");
     testGrainerLevelHoldsAcrossDensity();
@@ -5774,9 +6135,17 @@ int main()
     testGrainerSmoothChangeDoesNotJumpTheLevel();
     testGrainerShapeChangeDoesNotJumpTheLevel();
     std::printf ("\n");
+    testGrainerShapeFamilyChangeDoesNotJumpTheLevel();
+    std::printf ("\n");
     testGrainerAttackLeadsWithOctaves();
     std::printf ("\n");
     testGrainerStereoIsBalanced();
+    std::printf ("\n");
+    testGrainerWideZeroIsMonoWhenSprayIsAlsoClosed();
+    std::printf ("\n");
+    testGrainerWideAlternatesSidesWhenSprayIsClosed();
+    std::printf ("\n");
+    testGrainerSprayOverridesWide();
     std::printf ("\n");
     testGrainerTailStops();
     std::printf ("\n");

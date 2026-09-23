@@ -35,7 +35,7 @@ namespace ee::dsp::config
 // the Time window still fits without being clamped back.
 constexpr float kGrainBufferSeconds = 10.5f;
 
-constexpr float kMinGrainSeconds = 0.020f;
+constexpr float kMinGrainSeconds = 0.030f;
 
 // Raised from 0.5 s: synced, the Size knob can select a tempo division far
 // longer than this, and every position past the cap produced the same grain -
@@ -165,6 +165,20 @@ constexpr float kDefaultStretchPct = 0.0f;
 constexpr float kDefaultShapePct = 55.0f;
 
 // ============================================================================
+// SHAPE FAMILY
+// ============================================================================
+// Which window Shape morphs. Triangle (index 0, the default) is GrainerTuning's
+// asymmetric pair above and everything else in this file that mentions Shape or
+// Smooth - the only one with a transient-preserving fade-in, and the only one
+// Smooth's swell blends against. The other three (Gaussian, Sinc, Spike -
+// GrainerTuning::shapeGauss*/shapeSinc*/shapeSpike*) are symmetric and have no
+// Smooth blend of their own. The enum itself is Grainer::ShapeFamily, the same
+// place ReverbModule::Engine lives rather than in a Config header - nothing
+// outside the engine needs the names, only the index BitBitGrainProcessor's
+// "shapefamily" AudioParameterChoice carries. Append only there, the same rule
+// as every other engine enum in this tree (CLAUDE.md).
+
+// ============================================================================
 // SMOOTH
 // ============================================================================
 // Morphs the grain window from Shape's - a millisecond or three of fade-in,
@@ -177,11 +191,32 @@ constexpr float kDefaultShapePct = 55.0f;
 // Grainer takes its untouched path for it), which is why the default is 0 and
 // not something "nicer".
 //
-// There is no Smooth knob or parameter: BitBitGrainProcessor drives it as
-// 1 - Shape, so Shape at its plucky end (100) is the engine's own window and at
-// its soft end (0) it is the full swell. This default is only what the engine
+// There is no Smooth knob or parameter: BitBitGrainProcessor drives it off the
+// Shape knob (smoothForShape below). This default is only what the engine
 // starts at before anything sets it.
 constexpr float kDefaultSmoothPct = 0.0f;
+
+// Where on the Shape travel the swell starts coming in. Shape and Smooth were
+// merged onto one knob as a straight Smooth = 1 - Shape, and that put a swell
+// on every setting but the very top: at the default Shape 55 the window was
+// 45 % held-and-cut, so a grain sat near full level for its whole length and
+// then stopped dead instead of decaying. Measured against a reference plugin
+// on the same part (198 ms grains, 1/8 spawn): its grains fall steadily from
+// -6 to -31 dB and end; ours stalled around -11 dB and cliffed. A decaying
+// grain is what makes a cloud read as rhythm rather than as a held texture,
+// and the decay exponents that read closest to the reference (shapeDecayShape*
+// around 2.5, i.e. Shape ~20 %) were exactly the part of the travel the swell
+// had swamped. So the swell now occupies only the bottom of the knob: Shape
+// above this is the engine's own window untouched, and the whole of it is
+// still reachable by turning Shape down to 0.
+constexpr float kSmoothShapeKnee = 0.25f;
+
+/** Smooth for a 0..1 Shape knob position - 0 above the knee, reaching 1 at
+    Shape 0. */
+constexpr float smoothForShape (float shape01) noexcept
+{
+    return shape01 >= kSmoothShapeKnee ? 0.0f : (kSmoothShapeKnee - shape01) / kSmoothShapeKnee;
+}
 
 // How long Smooth takes to glide to a new setting. Grains keep the window they
 // were born with, so a jump would stack grains of the new kind on top of long
@@ -283,19 +318,18 @@ constexpr float kMinRecaptureSeconds = 0.5f;
 constexpr float kFreezeLoopSeconds = 3.0f;
 
 // ============================================================================
-// WIDE  (Haas width on the grain cloud)
+// WIDE  (per-grain pan reach, Spray off only)
 // ============================================================================
-// The Wide knob on Grain's first row, 0..100 %. At 0 it leaves the cloud exactly
-// as the engine and Drive made it (Random's Spray knob - the `stereo` parameter
-// - still pans grains). Above 0 it runs the cloud through
-// ee::dsp::HaasWidener: the side channel gets the mid back 6.83 ms late, scaled
-// by the knob, which widens the image and cancels exactly in a mono fold-down.
-// Delay is the one measured on the reference grainer this was modelled on
-// (side gain ~0.9 there; 100 % here is full width, as asked for). Cloud only -
-// the dry path never reaches it.
-constexpr float kHaasDelayMs = 6.83f;
-constexpr float kHaasWidth = 1.0f;
-constexpr float kHaasRampMs = 20.0f;
+// The Wide knob on Grain's first row, 0..100 %, only gets a say when Random's
+// Spray knob (the `stereo` parameter) is fully closed - Spray takes priority
+// the moment it is off zero and draws exactly as it always has (a random side
+// and a random distance from centre), ignoring Wide entirely. See
+// Grainer::nextPan(). With Spray closed, Wide decides how far off centre a
+// grain lands: 0 is dead centre (the cloud is mono), 100 % is hard
+// left/right, and grains alternate left/right/left/right one to the next
+// rather than drawing at random - a ping-pong cloud. Because Spray defaults
+// to 85 % (kDefaultStereoPct), Wide is inert - and the cloud pans exactly as
+// it always did - until Spray is pulled down to 0.
 constexpr float kDefaultWidePct = 0.0f;
 
 // ============================================================================
@@ -574,10 +608,14 @@ constexpr float kDefaultGrainLevelPct = 65.0f;
 // They do quite different jobs, and only one of them is on the face.
 //
 // The lowpass IS the Filter knob: a plain cutoff, resting wide open at the
-// corner below and closing to kCloudLowpassMinHz. 6 dB/oct, no resonance -
-// gentle by choice, not a ladder. Even wide open it still takes the edge off
-// the extra high-frequency content a pitched-up or bit-crushed grain adds
-// that the source never had.
+// corner below and closing to kCloudLowpassMinHz. A 4-pole ladder
+// (LadderFilter.h), 24 dB/oct, flat until the Reso knob raises its feedback.
+// Even wide open it still takes the edge off the extra high-frequency content
+// a pitched-up or bit-crushed grain adds that the source never had.
+//
+// The Reso knob (Grainer::setCloudResonance) is that ladder's feedback and
+// nothing else - see Grainer::cloudFiltered for why this is one filter rather
+// than a one-pole with a ladder blended against it.
 //
 // The highpass is hidden and fixed: nothing on the face moves it. It bleeds
 // off the DC and rumble that a short grain envelope's asymmetry and the
@@ -594,11 +632,13 @@ constexpr float kCloudLowpassHz = 13000.0f;
 // kCloudLowpassHz above and the knob rests there, so a face that never
 // touches this sounds exactly as it did before the knob existed.
 //
-// Was 320 Hz - too polite fully closed, it still let most of the cloud's
-// body through. 150 keeps the kCloudHighpassHz corner (110 Hz) well clear
-// but takes noticeably more of the low end with it, so "min" actually reads
-// as a cut rather than a gentle darkening.
-constexpr float kCloudLowpassMinHz = 150.0f;
+// Was 320 Hz and then 150 Hz, both of which still let the cloud's body
+// through at the bottom of the travel. 20 Hz takes the corner under the fixed
+// kCloudHighpassHz trap (110 Hz), so the knob's last stretch closes the cloud
+// away rather than merely darkening it - a filter that shuts, the way a
+// hardware lowpass does. It is also onePoleCoeff's own floor, so nothing
+// below this would do anything anyway.
+constexpr float kCloudLowpassMinHz = 20.0f;
 
 // Both stages have their own state now, so the cloud can go on decaying for a
 // moment after the engine itself has stopped feeding them anything. The

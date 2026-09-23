@@ -623,3 +623,31 @@ foreach(pluginTarget IN LISTS eeReleaseTargets)
         PRIVATE ${pluginTarget} ee_shared
         PUBLIC juce::juce_recommended_config_flags)
 endforeach()
+
+# The long-running randomised driver release-plan.md 1.5 asks for: one binary
+# per shipping product, same duplicate-createPluginFilter() reason as the
+# golden and fuzz loops above. Not wired into scripts/dev-check.sh - it is
+# built to run for hours, not on every push. See SoakHarness.cpp.
+foreach(pluginTarget IN LISTS eeReleaseTargets)
+    set(soakApp ee_soak_${pluginTarget})
+
+    get_target_property(pluginDir ${pluginTarget} SOURCE_DIR)
+    get_target_property(pluginProduct ${pluginTarget} EE_PLUGIN_PRODUCT)
+
+    juce_add_console_app(${soakApp} PRODUCT_NAME "${soakApp}")
+
+    target_sources(${soakApp} PRIVATE SoakHarness.cpp)
+
+    target_compile_definitions(${soakApp} PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1
+        EE_SOAK_PROCESSOR=${pluginTarget}Processor
+        EE_SOAK_NAME="${pluginProduct}")
+
+    target_include_directories(${soakApp} PRIVATE ${pluginDir}/src)
+
+    target_link_libraries(${soakApp}
+        PRIVATE ${pluginTarget} ee_shared juce::juce_graphics juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
+endforeach()

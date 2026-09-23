@@ -234,7 +234,10 @@ void FdnReverb::prepare (double sampleRate)
         spreadR[i].setCoefficient (-spread);
     }
 
-    predelayLine.prepare (sampleRate, (config::kPredelayMaxMs + 20.0f) * 0.001f);
+    // Sized for whichever ceiling is larger - the decay-linked auto range or
+    // the Pre-delay knob's own, wider range - not the current value.
+    predelayLine.prepare (sampleRate,
+        (juce::jmax (config::kPredelayMaxMs, config::kUserPredelayMaxMs) + 20.0f) * 0.001f);
     predelaySmooth.reset (sampleRate, kDelayRampSeconds);
     outputScale.reset (sampleRate, kDelayRampSeconds);
     lowCutCoeff.reset (sampleRate, 0.05f);
@@ -346,6 +349,19 @@ void FdnReverb::setDecayTilt (float low, float high) noexcept
     dirty = true;
 }
 
+void FdnReverb::setDamping (float amount01) noexcept
+{
+    amount01 = juce::jlimit (0.0f, 1.0f, amount01);
+    highRatio = juce::jmap (amount01, 0.0f, 1.0f, config::kDampingMaxRatio, config::kDampingMinRatio);
+    dirty = true;
+}
+
+void FdnReverb::setPredelay (float ms) noexcept
+{
+    predelayOverrideMs = ms < 0.0f ? -1.0f : juce::jlimit (kMinPredelayMs, kMaxPredelayMs, ms);
+    dirty = true;
+}
+
 void FdnReverb::setShimmer (float amount01) noexcept
 {
     amount01 = juce::jlimit (0.0f, 1.0f, amount01);
@@ -394,8 +410,9 @@ void FdnReverb::updateDerived() noexcept
     // narrow band because a plate is dense at every setting; shrinking the
     // lines much further would push the modes up into audible pitches.
     const float roomSize = 0.55f + 0.45f * std::sqrt (norm);
-    const float predelayMs = config::kPredelayMinMs
+    const float autoPredelayMs = config::kPredelayMinMs
                              + (config::kPredelayMaxMs - config::kPredelayMinMs) * std::pow (norm, 0.7f);
+    const float predelayMs = predelayOverrideMs >= 0.0f ? predelayOverrideMs : autoPredelayMs;
 
     predelaySmooth.setTargetValue (static_cast<float> (predelayMs * 0.001 * sr));
     outputScale.setTargetValue (std::pow (kGainReferenceSeconds / decaySeconds, kGainExponent));

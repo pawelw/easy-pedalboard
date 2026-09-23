@@ -125,6 +125,12 @@ inline constexpr const char* revSpringDecay = "rev.spring.decay";
 inline constexpr const char* revSpringTension = "rev.spring.tension";
 inline constexpr const char* revSpringLoCut = "rev.spring.locut";
 
+// Appended at the very end of the layout, after chainOrder - not here in the
+// Space block - because AU addresses parameters by index. See the comment on
+// chainOrder in PluginProcessor.cpp.
+inline constexpr const char* revSpacePredelay = "rev.space.predelay";
+inline constexpr const char* revSpaceDamping = "rev.space.damping";
+
 // -------------------------------------------------------------------- chain
 // A Lehmer-code index into the 24 permutations of the four modules - see
 // ChainOrder.h. Index 0 is Artifact, Modulation, Delay, Reverb: today's order.

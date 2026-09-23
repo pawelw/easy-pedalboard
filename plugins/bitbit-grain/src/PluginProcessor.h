@@ -7,7 +7,6 @@
 #include "ee/dsp/BreakpointLfo.h"
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/GrainerConfig.h"
-#include "ee/dsp/HaasWidener.h"
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/BitBitLimiter.h"
@@ -130,6 +129,10 @@ public:
         block, decayed slowly enough that a 30 Hz reader never misses a hit. */
     float outputLevel() const noexcept { return visLevel.load (std::memory_order_relaxed); }
 
+    /** The same reading for the dry path, taken where the Dry fader has just
+        set it - so the face's two meters answer for their own fader. */
+    float dryOutputLevel() const noexcept { return visDryLevel.load (std::memory_order_relaxed); }
+
     /** The grain engine's current/default voicing, for the EE_GRAIN_TUNER dev
         panel - same reason as the readouts above, BitBitGrainWebEditor isn't a
         member of this class and needs a way to reach the engine. Unconditional
@@ -214,6 +217,7 @@ private:
 
     ee::dsp::Grainer grainer;
     std::atomic<float> visLevel { 0.0f };
+    std::atomic<float> visDryLevel { 0.0f };
     ee::dsp::TapeDelay delay;
     ee::dsp::FdnReverb reverb;
 
@@ -226,16 +230,16 @@ private:
     // fed audio coloured exactly like the cloud it was taken from. Idle
     // whenever GrainerTuning::pitchSendPerOctave is 0.
     ee::dsp::TubeDrive sendDrive;
-    ee::dsp::HaasWidener haas; // Wide: Haas width on the grain cloud
 
     /** The Mod tab's LFO. Not routed to anything yet - Stage 3 adds the
         drag-and-drop modulation targets; this stage only ticks its phase and
         exposes it for the live playhead marker. */
     ee::dsp::BreakpointLfo modLfo;
 
-    /** Which of Grain/Pitch/Random's knobs the Mod LFO is currently wired
-        into, and how deep - see modulatedValue(). Delay, Reverb and the
-        Mixer are not modulation targets (scope cut for this feature). */
+    /** Which of Grain/Pitch/Random's knobs, or the Mixer's Filter/Reso/
+        Drive/Bit, the Mod LFO is currently wired into, and how deep - see
+        modulatedValue(). Delay and Reverb are not modulation targets (scope
+        cut for this feature). */
     ee::plugin::ModRouter modRouter;
 
     /** Message-thread cache of the breakpoints currently installed into
@@ -269,8 +273,9 @@ private:
     std::atomic<float>* feedbackParam = nullptr;
     std::atomic<float>* stretchParam = nullptr;
     std::atomic<float>* freezeParam = nullptr;
-    std::atomic<float>* widthParam = nullptr; // width (Wide, 0..100 %): Haas on the grain cloud
+    std::atomic<float>* widthParam = nullptr; // width (Wide, 0..100 %): per-grain pan reach, see GrainerConfig.h's WIDE
     std::atomic<float>* shapeParam = nullptr;
+    std::atomic<float>* shapeFamilyParam = nullptr;
     std::atomic<float>* scatterParam = nullptr;
     std::atomic<float>* reverseParam = nullptr;
     std::atomic<float>* stereoParam = nullptr;
@@ -295,7 +300,8 @@ private:
     std::atomic<float>* dryLevelParam = nullptr;
     std::atomic<float>* grainLevelParam = nullptr;
     std::atomic<float>* mixLinkParam = nullptr; // mlink: locks the two mixer faders together
-    std::atomic<float>* filterParam = nullptr;  // bipolar: -100 sweeps the cloud LP down, +100 the HP up
+    std::atomic<float>* filterParam = nullptr;  // unipolar: the cloud lowpass cutoff, 0 shut .. 100 wide open
+    std::atomic<float>* resoParam = nullptr;    // how much of that cutoff runs through the ladder
     std::atomic<float>* driveParam = nullptr;   // grain-cloud-only tube drive, same engine as Artifact's amp.drive
     std::atomic<float>* onParam = nullptr;
 

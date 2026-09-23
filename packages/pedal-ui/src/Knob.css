@@ -171,6 +171,15 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
   margin-top: 2px;
 }
 
+/* Knob captions read better lowercase and 1px larger than the shared
+   .pui-caption default (toggles, dropdowns, sliders keep both) - overridden
+   here with matching specificity so import order can't flip it back. */
+.pui-caption.pui-knob__caption {
+  text-transform: none;
+  font-size: 11px;
+  font-weight: 400;
+}
+
 /* ==========================================================================
    variant="scale" - tick ring + needle, used by the onyx Delay layout
    (COMPONENTS.md). The collar variant above is untouched; everything below

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Logo, JucePresetBar, PowerToggle, Readout, VerticalTabs, Pill } from "@synthpeak/pedal-ui";
+import { Logo, JucePresetBar, PowerToggle, Readout, VerticalTabs, Pill, EngineStepper } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceFader,
@@ -7,6 +7,7 @@ import {
   JuceChoicePill,
   useJuceToggleValue,
   useJuceSliderValue,
+  useJuceChoiceValue,
   useParamId,
   useFormattedText,
 } from "@synthpeak/pedal-ui/juce";
@@ -14,7 +15,6 @@ import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } fro
 import ModTab from "./ModTab.jsx";
 import ModdableKnob from "./ModdableKnob.jsx";
 import Cosmos from "./Cosmos.jsx";
-import GrainShapeIcon from "./GrainShapeIcon.jsx";
 import "./GrainFace.css";
 
 const FACE_TABS = [
@@ -79,25 +79,50 @@ function TimeRow({ side, parameterId }) {
   );
 }
 
-/** The Shape knob's own cap glyph: the real (uninverted) parameter value,
-    read straight off the parameter rather than off the icon callback's own
-    `v` - the knob is `invert`ed below, so that `v` is the flipped drag
-    position, not Shape itself, and the glyph has to draw the sound Shape is
-    actually making regardless of which way the knob turns to get there. */
-function ShapeGlyph() {
-  const [shape01] = useJuceSliderValue("shape");
-  return <GrainShapeIcon shape01={shape01} size={20} />;
+// In the parameter's own index order - see PluginProcessor.cpp's "shapefamily"
+// AudioParameterChoice and ee::dsp::Grainer::ShapeFamily, which this has to
+// keep in step with by hand the same way JuceChoicePill's callers already do
+// for "dtype" and "scale" elsewhere in this file. Abbreviated where the host's
+// own name does not fit the stepper - the index is what is stored, not this.
+const SHAPE_FAMILY_LABELS = ["Trian", "Gaus", "Sinc", "Spike"];
+
+/** Which of the four windows the Shape knob morphs - the stepper under the
+    knob itself, the same "id" a real hardware granulator's shape selector
+    would carry. The same EngineStepper BitBit Alpine's Filter section steps
+    its wave with: four is few enough to click through, and a well with an
+    arrow either side sits on this face where a menu popping over it did not.
+    `index`/`select` come from GrainSection's own useJuceChoiceValue. */
+function ShapeFamilyStepper({ index, select }) {
+  return (
+    <div className="pg-grain__shapefamily">
+      <EngineStepper
+        engines={SHAPE_FAMILY_LABELS}
+        value={SHAPE_FAMILY_LABELS[index] ?? SHAPE_FAMILY_LABELS[0]}
+        label="Shape family"
+        onChange={(next) => select(SHAPE_FAMILY_LABELS.indexOf(next))}
+      />
+    </div>
+  );
 }
 
 function GrainSection() {
+  // Read once here rather than separately in the display and the stepper -
+  // both draw off the same "shapefamily" index, and a single subscription is
+  // what guarantees the envelope and the stepper that sets it can never
+  // disagree for even one render.
+  const [family, setFamily] = useJuceChoiceValue("shapefamily", SHAPE_FAMILY_LABELS.length);
+
   return (
     <section className="pg-section pg-section--grain" style={{ "--pui-accent": GRAIN, "--pui-soft-lit": KNOB_LIT }}>
       <div className="pg-section__head">
         <span className="pg-section__name">Grain</span>
         <span className="pg-section__spacer" />
+        <div className="pg-section__head-right">
+          <SegmentSwitch parameterId="freeze" offLabel="Live" onLabel="Freeze" />
+        </div>
       </div>
       <div className="pg-section__display">
-        <GrainEnvelope accent={RANDOM} />
+        <GrainEnvelope accent={RANDOM} family={family} />
       </div>
       <div className="pg-section__knobs">
         <ModdableKnob parameterId="density" caption="Destiny" variant="flat" size={30} />
@@ -108,31 +133,19 @@ function GrainSection() {
       </div>
       <div className="pg-section__knobs">
         <ModdableKnob parameterId="feedback" caption="Fback" variant="flat" size={30} />
-        {/* invert: the knob's position is mirrored - turned to what reads as
-            "max" now sets Shape to its actual minimum, and vice versa. The
-            parameter itself, its readout text and its presets are untouched;
-            see JuceKnob's own note on the prop.
-            icon/pointer: the cap draws the envelope Shape is actually making
-            (ShapeGlyph, off the real parameter, not the flipped knob
-            position) instead of the plain white dot every other knob shows -
-            same idea as BitBit Wah's own Shape knob (WaveIcon). `pointer={false}`
-            clears that dot so the glyph has the cap to itself. */}
-        <ModdableKnob
-          parameterId="shape"
-          caption="Shape"
-          variant="flat"
-          size={30}
-          invert
-          pointer={false}
-          icon={() => <ShapeGlyph />}
-        />
-      </div>
-      {/* Live/Freeze, moved down here from the header - same slot Pitch's own
-          Root/Scale pills moved into (see .pg-pitch__divider's own note),
-          under this section's last knob row rather than crowding the header
-          row. */}
-      <div className="pg-grain__live">
-        <SegmentSwitch parameterId="freeze" offLabel="Live" onLabel="Freeze" />
+        {/* Shape and its Family stepper, stacked - the stepper sits right
+            under the knob it belongs to rather than in its own row, so the
+            two read as one control (knob = how far into the window, stepper
+            = which window) the way a hardware granulator's shape section
+            would group them. */}
+        <div className="pg-grain__shape-stack">
+          {/* invert: the knob's position is mirrored - turned to what reads as
+              "max" now sets Shape to its actual minimum, and vice versa. The
+              parameter itself, its readout text and its presets are untouched;
+              see JuceKnob's own note on the prop. */}
+          <ModdableKnob parameterId="shape" caption="Shape" variant="flat" size={30} invert />
+          <ShapeFamilyStepper index={family} select={setFamily} />
+        </div>
       </div>
     </section>
   );
@@ -212,7 +225,17 @@ function MixerSection() {
         <span className="pg-section__spacer" />
       </div>
       <div className="pg-mixer__faders">
-        <JuceFader parameterId="dry" label="Dry" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
+        {/* Each fader carries its own dB ladder on its inner side (no live
+            level bar riding along it any more - that used to overlap its own
+            tick numbers with the value readout below the thumb), so the two
+            ladders face each other across the link button. `height` matches
+            the fader's `length`, and the strip aligns them on their shared
+            bottom edge - the fader's label sits above its track, so bottom is
+            the one edge that lines up without measuring anything. */}
+        <div className="pg-mixer__strip">
+          <JuceFader parameterId="dry" label="Dry" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
+          <MixerMeter side="right" height={110} />
+        </div>
         <div className="pg-mixer__link">
           <JucePill parameterId="mlink" icon={<LinkGlyph />} />
         </div>
@@ -223,7 +246,10 @@ function MixerSection() {
             which reads as -3 dB on double-click; unity matches Dry's own
             reset and reads as "off", the neutral double-click has everywhere
             else. */}
-        <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
+        <div className="pg-mixer__strip">
+          <MixerMeter side="left" height={110} />
+          <JuceFader parameterId="grains" label="Grains" orientation="vertical" length={110} resetTo={75} thumbSize={18} />
+        </div>
       </div>
       {/* Tube Drive on the grain cloud alone, same engine and default as BitBit
           Artifact's amp.drive - see PluginProcessor.cpp's driveStage. Bit
@@ -240,22 +266,28 @@ function MixerSection() {
       </div>
       <div className="pg-mixer__filter">
         <FilterCurve accent={MIXER} />
-        {/* No value on the knob at all: the scope above it already shows what
-            the filter is doing, so swapping the caption for a percentage
-            mid-drag would only say the same thing worse. */}
-        {/* badgeStyle: this knob sits at the plate's own right edge, so the
-            shared top-right badge anchor (.pui-knob__badge, Knob.css) needs
-            pushing further right than any other knob's - see Knob.jsx's own
-            note on the prop. */}
-        <ModdableKnob
-          parameterId="filter"
-          caption="Filter"
-          variant="scale"
-          size={52}
-          scaleFrom="max"
-          showValueLabel={false}
-          badgeStyle={{ right: "-24px" }}
-        />
+        <div className="pg-mixer__filter-knobs">
+          {/* No value on the knob at all: the scope above it already shows
+              what the filter is doing, so swapping the caption for a
+              percentage mid-drag would only say the same thing worse. Its
+              badge uses the shared default anchor (.pui-knob__badge,
+              Knob.css) - Reso sits flush to its right now, so Filter is no
+              longer the row's own edge control. */}
+          <ModdableKnob parameterId="filter" caption="Filter" variant="flat" size={36} scaleFrom="max" showValueLabel={false} />
+          {/* 0 is silent: crossfades the same cutoff toward the resonant
+              ladder (Grainer::setCloudResonance) only once turned up.
+              badgeStyle: this knob sits at the plate's own right edge now,
+              so the shared top-right badge anchor needs pushing further
+              right than any other knob's - see Knob.jsx's own note on the
+              prop. */}
+          <ModdableKnob
+            parameterId="reso"
+            caption="Reso"
+            variant="flat"
+            size={36}
+            badgeStyle={{ right: "-24px" }}
+          />
+        </div>
       </div>
     </section>
   );
@@ -278,11 +310,12 @@ function DelaySection() {
       <div className="pg-delay__body">
         <div className="pg-delay__leads">
           {/* Same look as BitBit Delay's footer knobs (StageControl): concave,
-              value swapped in for the caption only while dragging. 30% up
-              from that footer's own 38px - these are Delay's own lead
-              knobs, not footer-sized ones. */}
-          <JuceKnob parameterId="dmix" caption="Mix" variant="concave" size={49} />
-          <JuceKnob parameterId="dfb" caption="Feedback" variant="concave" size={49} />
+              value swapped in for the caption only while dragging. Sized to
+              the 42px the face's other large knobs (Drive, Bit, Filter, Reso)
+              render at - concave draws to its own `size`, the flat ones to
+              `size` plus their arc, which is why the numbers differ. */}
+          <JuceKnob parameterId="dmix" caption="Mix" variant="concave" size={42} />
+          <JuceKnob parameterId="dfb" caption="Feedback" variant="concave" size={42} />
         </div>
         <div className="pg-delay__times">
           <TimeRow side="L" parameterId="ltime" />
@@ -348,9 +381,13 @@ function SegmentSwitch({ parameterId, offLabel, onLabel, className }) {
   return <Pill label={on ? onLabel : offLabel} pressed={on} onClick={() => setOn(!on)} className={className} />;
 }
 
-function Header() {
-  const [on, setOn] = useJuceToggleValue("on", true);
-
+/** `on`/`onToggle` are handed down rather than read here, the way Alpine's
+    HostControls takes them from App.jsx: the plate below reads the same "on"
+    parameter to dim itself, and two independent useJuceToggleValue calls would
+    hold two separate copies of it - fine once a relay echoes a host's own
+    change back, but outside a real host (the gallery, a stale render) there is
+    no echo, so the ring could read on over an already-dimmed plate. */
+function Header({ on, onToggle }) {
   return (
     <div className="pg-header">
       <div className="pg-header__row">
@@ -365,7 +402,7 @@ function Header() {
           <div className="pg-header__level">
             <JuceFader parameterId="level" label="LEVEL" resetTo={0} length={88} />
           </div>
-          <PowerToggle on={on} onToggle={setOn} ariaLabel="Bypass" />
+          <PowerToggle on={on} onToggle={onToggle} ariaLabel="Bypass" />
         </div>
       </div>
     </div>
@@ -374,11 +411,19 @@ function Header() {
 
 export default function GrainFace() {
   const [tab, setTab] = useState("effects");
+  const [on, setOn] = useJuceToggleValue("on", true);
 
   return (
     <>
-      <Header />
-      <div className="pg-plate">
+      <Header on={on} onToggle={setOn} />
+      {/* Bypassed dims the plate as one object, the way Alpine's module row
+          does (pa-modules--bypassed) and ModulePanel does for a single module -
+          the sections keep saying what they individually are (including their
+          own on/off dimming), the plate says none of it is running. The plate's
+          own border/shadow stays lit, same reasoning as ModulePanel.css: an
+          opacity on the whole thing would fade the enclosure along with the
+          controls, so only the plate's *children* dim (see GrainFace.css). */}
+      <div className="pg-plate" data-off={!on || undefined}>
         <div className="pg-plate__main">
           <div className="pg-row">
             <GrainSection />
