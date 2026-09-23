@@ -198,7 +198,13 @@ void BitBitSpringProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
 
             if (outR != nullptr)
             {
-                const float dryR = outR[i];
+                // Not outR[i]: with a mono input and a stereo output bus,
+                // channel 1 was cleared to silence up top (numIn < numOut), so
+                // reading it back here would make the dry signal left-only
+                // while the tank's wet tail comes out properly on both sides.
+                // inR already carries the right dry sample either way - the
+                // real channel 1 in stereo, or inL's mono duplicated in.
+                const float dryR = inR[i];
                 outL[i] = dryL * dg + wetL[i] * wg;
                 outR[i] = dryR * dg + wetR[i] * wg;
             }
