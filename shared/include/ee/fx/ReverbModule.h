@@ -31,12 +31,15 @@ public:
 
     // -------------------------------------------------------------- the knobs
 
-    void setSpace (float decaySeconds, float shimmer01, float lowCutHz, float resonance01) noexcept
+    void setSpace (float decaySeconds, float shimmer01, float lowCutHz, float resonance01,
+                   float predelayMs, float damping01) noexcept
     {
         space.setDecayTime (decaySeconds);
         space.setShimmer (shimmer01);
         space.setLowCut (lowCutHz);
         space.setResonance (resonance01);
+        space.setPredelay (predelayMs);
+        space.setDamping (damping01);
     }
 
     /** Three, not four: a spring tank has no resonance to expose. What Space

@@ -1,4 +1,7 @@
-/* The mixer's two level meters - see MixerMeter.jsx. Narrow on purpose: this
+/* The mixer's two dB ladders - see MixerMeter.jsx. No live level bar any
+   more (it used to ride beside the ladder here and, together with the
+   ladder's own tick numbers, overlap the value readout below the fader's
+   thumb) - the numbers alone are the reference now. Narrow on purpose: this
    sits inside the fader row's own width, between the fader and the link
    button, so it has to read as a ladder beside the control rather than as a
    panel of its own. */
@@ -6,7 +9,6 @@
 .pg-meter {
   display: flex;
   align-items: stretch;
-  gap: 3px;
   flex: none;
   /* Into the fader's own box, which is mostly the thumb's clearance either
      side of a 4px rail: the ticks start just off the rail and pass under the
@@ -20,28 +22,6 @@
   flex-direction: row-reverse;
   margin-left: 0;
   margin-right: -3px;
-}
-
-/* No track. An empty slot beside each fader reads as two black columns down
-   the middle of the strip - most of the panel's weight, for something that is
-   silent most of the time. The ladder beside it is the reference the eye
-   needs, so the bar only exists when there is signal in it. */
-.pg-meter__bar {
-  position: relative;
-  width: 3px;
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-/* Scaled rather than resized: a transform is the one property that moves
-   every frame here without laying the page out again. */
-.pg-meter__fill {
-  position: absolute;
-  inset: 0;
-  transform-origin: 50% 100%;
-  transform: scaleY(0);
-  border-radius: 2px;
-  background: linear-gradient(to top, #4f9e6a 0%, #7fd08c 62%, #d8c766 88%, #d88a66 100%);
 }
 
 .pg-meter__scale {

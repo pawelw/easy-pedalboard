@@ -83,7 +83,7 @@ void setModulationDefaults (ee::fx::ModulationModule& m)
 
 void setReverbDefaults (ee::fx::ReverbModule& m)
 {
-    m.setSpace (2.0f, 0.2f, 100.0f, 0.5f);
+    m.setSpace (2.0f, 0.2f, 100.0f, 0.5f, 13.0f, 0.5f);
     m.setSpring (2.0f, 0.5f, 60.0f);
 }
 
@@ -342,7 +342,7 @@ void sweepReverb()
                     module.setLevel (1.0f);
                     module.setEngaged (true);
 
-                    module.setSpace (decay, a, 20.0f + a * 780.0f, a);
+                    module.setSpace (decay, a, 20.0f + a * 780.0f, a, a * 60.0f, a);
                     module.setSpring (decay, a, 20.0f + a * 780.0f);
 
                     juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate));

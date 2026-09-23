@@ -11,4 +11,6 @@
   <PARAM id="spring.decay" value="1.8"/>
   <PARAM id="spring.tension" value="50"/>
   <PARAM id="spring.locut" value="60"/>
+  <PARAM id="space.predelay" value="13"/>
+  <PARAM id="space.damping" value="50"/>
 </PARAMETERS>

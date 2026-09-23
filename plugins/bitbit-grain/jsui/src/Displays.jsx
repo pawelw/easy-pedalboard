@@ -290,14 +290,14 @@ const RANDOM_DOTS = [
   { left: "88%", top: 64, size: 3, opacity: 0.65 },
 ];
 
-/** L/R stereo field: a centre line and a scatter of grains either side, each
-    now driven by this section's own three knobs plus the Grain section's
-    Wide. Stereo scales every grain's distance from the centre line (0
-    collapses the whole field onto it, 1 is the full spread above) and, above
-    its own 0, is the only thing that does - it takes priority over Wide
-    outright, the same as Grainer::nextPan() does for the real audio. Only
-    with Stereo fully closed does Wide take over that scaling instead, so the
-    field collapses to the centre line only when both are at 0. Scatter sets
+/** L/R stereo field: a centre line and a scatter of grains either side,
+    driven by this section's own knobs alone - the Grain section's Wide also
+    scales this spread in the real audio (Grainer::nextPan(), while Stereo
+    sits at 0), but is deliberately left out of this display: Wide belongs to
+    Grain's own panel, and turning it used to redraw Random's field too,
+    which read as a display bug rather than the intended cross-talk. Stereo
+    scales every grain's distance from the centre line (0 collapses the whole
+    field onto it, 1 is the full spread above). Scatter sets
     how far and how fast the grains jitter - it is exactly the engine's own
     per-grain timing/position jitter, so 0 holds them still. Reverse is not
     drawn: a reversed grain looks and drifts like any other. Each grain is
@@ -316,26 +316,16 @@ const RANDOM_DOTS = [
 export function RandomField({ accent }) {
   const [stereo] = useJuceSliderValue("stereo");
   const [scatter] = useJuceSliderValue("scatter");
-  // Wide is not a modulation target (see GrainFace's own note on the "width"
-  // knob), so this is the one plain, non-modulated read in the section.
-  const [width] = useJuceSliderValue("width");
 
   const stereoA = useModAssignment("stereo");
   const scatterA = useModAssignment("scatter");
 
   if (stereoA || scatterA)
     return (
-      <RandomFieldLive
-        accent={accent}
-        stereo={stereo}
-        stereoA={stereoA}
-        scatter={scatter}
-        scatterA={scatterA}
-        width={width}
-      />
+      <RandomFieldLive accent={accent} stereo={stereo} stereoA={stereoA} scatter={scatter} scatterA={scatterA} />
     );
 
-  return <RandomFieldBody accent={accent} stereo={stereo} scatter={scatter} width={width} />;
+  return <RandomFieldBody accent={accent} stereo={stereo} scatter={scatter} />;
 }
 
 /** RandomField's own live subscription to the LFO's per-frame output - see
@@ -345,7 +335,7 @@ export function RandomField({ accent }) {
     re-resolves the two knob-derived numbers the jitter loop and the layout
     below already read every frame; it does not touch how the jitter itself
     moves. */
-function RandomFieldLive({ accent, stereo, stereoA, scatter, scatterA, width }) {
+function RandomFieldLive({ accent, stereo, stereoA, scatter, scatterA }) {
   const lfoValue = useLfoValue();
 
   return (
@@ -353,12 +343,11 @@ function RandomFieldLive({ accent, stereo, stereoA, scatter, scatterA, width }) 
       accent={accent}
       stereo={resolveModulated(stereo, stereoA, lfoValue)}
       scatter={resolveModulated(scatter, scatterA, lfoValue)}
-      width={width}
     />
   );
 }
 
-function RandomFieldBody({ accent, stereo, scatter, width }) {
+function RandomFieldBody({ accent, stereo, scatter }) {
   const n = RANDOM_DOTS.length;
   const liveRef = useRef({ scatter });
   liveRef.current = { scatter };
@@ -397,10 +386,7 @@ function RandomFieldBody({ accent, stereo, scatter, width }) {
       <span className="pg-field__side pg-field__side--l">L</span>
       <span className="pg-field__side pg-field__side--r">R</span>
       {RANDOM_DOTS.map((d, i) => {
-        // Stereo takes priority the moment it is off 0, same as nextPan():
-        // Wide only gets to scale the spread while Stereo is fully closed.
-        const spread = stereo > 0 ? stereo : width;
-        const top = 50 + (d.top - 50) * spread;
+        const top = 50 + (d.top - 50) * stereo;
         const w = d.size * 2.6;
         const h = d.size * 1.5;
         return (
@@ -506,34 +492,50 @@ function curveY(db) {
 }
 
 /** FilterCurve's own live subscription to the LFO's per-frame output - split
-    out so it only ever mounts while `filter` actually has an assignment (see
-    FilterCurve below), the same reason ModdableKnob.jsx's ModulatedKnob is a
-    separate component from ModdableKnob itself: useLfoValue() re-renders its
-    subscriber every animation frame, and an unmodulated Filter knob (the
-    common case) should not pay for that. Mirrors PluginProcessor.cpp's own
-    modulatedValue() exactly - base01 + depth * lfoValue, clamped - so the
-    curve drawn here is the filter the DSP is actually running, not a
-    separate UI-only approximation of it. */
-function ModulatedFilterCurve({ accent, filter, reso, assignment }) {
+    out so it only ever mounts while `filter` or `reso` actually has an
+    assignment (see FilterCurve below), the same reason ModdableKnob.jsx's
+    ModulatedKnob is a separate component from ModdableKnob itself:
+    useLfoValue() re-renders its subscriber every animation frame, and an
+    unmodulated pair (the common case) should not pay for that. Mirrors
+    PluginProcessor.cpp's own modulatedValue() exactly - base01 + depth *
+    lfoValue, clamped, applied independently to each - so the curve drawn
+    here is the filter the DSP is actually running, not a separate UI-only
+    approximation of it. */
+function ModulatedFilterCurve({ accent, filter, filterAssignment, reso, resoAssignment }) {
   const lfoValue = useLfoValue();
-  return <FilterCurveBody accent={accent} openness={resolveModulated(filter, assignment, lfoValue)} reso={reso} />;
+  return (
+    <FilterCurveBody
+      accent={accent}
+      openness={resolveModulated(filter, filterAssignment, lfoValue)}
+      reso={resolveModulated(reso, resoAssignment, lfoValue)}
+    />
+  );
 }
 
 /** The Mixer's Filter response, in place of a printed value. Reads `filter`
     and `reso` live and redraws, so the line moves with both knobs: wide open
     it is flat to 13 kHz, winding Filter down walks the corner to 20 Hz, and
     Reso raises the peak sitting on that corner. While the Mod tab has an LFO
-    assigned to Filter, it instead redraws every frame from the live modulated
-    value (ModulatedFilterCurve above) - the curve *is* this knob's value
+    assigned to either, it instead redraws every frame from the live modulated
+    value (ModulatedFilterCurve above) - the curve *is* these knobs' value
     readout, so it is the one place a moving LFO assignment has to show up for
-    the display to keep meaning what it says. Reso takes no LFO (see
-    PluginProcessor.h's note on resoParam), so it needs no such path. */
+    the display to keep meaning what it says. */
 export function FilterCurve({ accent }) {
   const [filter] = useJuceSliderValue("filter");
   const [reso] = useJuceSliderValue("reso");
-  const assignment = useModAssignment("filter");
+  const filterAssignment = useModAssignment("filter");
+  const resoAssignment = useModAssignment("reso");
 
-  if (assignment) return <ModulatedFilterCurve accent={accent} filter={filter} reso={reso} assignment={assignment} />;
+  if (filterAssignment || resoAssignment)
+    return (
+      <ModulatedFilterCurve
+        accent={accent}
+        filter={filter}
+        filterAssignment={filterAssignment}
+        reso={reso}
+        resoAssignment={resoAssignment}
+      />
+    );
   return <FilterCurveBody accent={accent} openness={filter} reso={reso} />;
 }
 

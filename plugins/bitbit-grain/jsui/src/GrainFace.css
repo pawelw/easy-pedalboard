@@ -203,13 +203,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 6px;
   padding: 6px 0 2px;
 }
 
-/* Fader plus its own meter. Bottom-aligned, which is the one edge the two
+/* Fader plus its own dB ladder. Bottom-aligned, which is the one edge the two
    share without measuring: the fader's label sits above its track, so the
-   track's floor and the meter's are the same line. */
+   track's floor and the ladder's are the same line. */
 .pg-mixer__strip {
   display: flex;
   align-items: flex-end;
@@ -217,8 +217,8 @@
   flex: none;
 }
 
-/* Over the ladder the meter pulls under it - the thumb is the control and has
-   to stay legible where the two cross. */
+/* Over the ladder's ticks pulled under it (MixerMeter.jsx's own -3px), the
+   thumb is the control and has to stay legible where the two cross. */
 .pg-mixer__strip .pui-fader {
   position: relative;
   z-index: 1;
@@ -232,7 +232,7 @@
    edge for the button to land equidistant from both.
 
    Narrowed from 40 to bring each rail up against its own ladder and to make
-   room for the meters inside the row's own width; the label is allowed past
+   room for the ladders inside the row's own width; the label is allowed past
    the box (it is above the track, so it overhangs nothing) rather than
    wrapping "Grains" onto two lines. */
 .pg-mixer__faders .pui-fader {

@@ -180,11 +180,31 @@ public:
         ampCrusher.setAntiAlias (false);
         ampCrusher.setLowpassHz (holdN > 1 ? kAmpCrushImageHz : ee::dsp::bitcrush::kLpMaxHz);
 
+        // setAmp runs every block (pushSettings does, whether or not the knob
+        // moved), and Coefficients<float>::makePeakFilter allocates a new
+        // Coefficients object every call - real-time-unsafe on the audio
+        // thread, and exactly what ee_soak_BitBitArtifact's allocation guard
+        // caught. ArrayCoefficients does the identical maths into a
+        // stack-returned std::array with no allocation at all; assigning it
+        // onto an *existing* Coefficients object reuses that object's array
+        // storage (Coefficients::assignImpl clearQuick()s and
+        // ensureStorageAllocated()s rather than reallocating) once it has
+        // been sized once. Only the first call, before ampMidsCoeffs exists,
+        // still goes through the allocating factory.
         const float midsGain = juce::Decibels::decibelsToGain (mids01 * kAmpMidsMaxDb);
-        ampMidsCoeffs =
-            juce::dsp::IIR::Coefficients<float>::makePeakFilter (ampSampleRate, kAmpMidsFreqHz, kAmpMidsQ, midsGain);
-        for (auto& f : ampMids)
-            f.coefficients = ampMidsCoeffs;
+
+        if (ampMidsCoeffs == nullptr)
+        {
+            ampMidsCoeffs = juce::dsp::IIR::Coefficients<float>::makePeakFilter (ampSampleRate, kAmpMidsFreqHz,
+                                                                                 kAmpMidsQ, midsGain);
+            for (auto& f : ampMids)
+                f.coefficients = ampMidsCoeffs;
+        }
+        else
+        {
+            *ampMidsCoeffs = juce::dsp::IIR::ArrayCoefficients<float>::makePeakFilter (ampSampleRate, kAmpMidsFreqHz,
+                                                                                       kAmpMidsQ, midsGain);
+        }
 
         // Exactly centred is flat and bypassed; a hair off it is not, so there
         // is no dead band around the middle. The knob snaps onto the centre in

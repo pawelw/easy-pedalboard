@@ -113,6 +113,13 @@ juce::String hertzToText (float value, int)
                             : juce::String (juce::roundToInt (value)) + " Hz";
 }
 
+/** "13 ms" - Reverb's Pre-delay never reaches a second, so no unit switch is
+    needed, unlike secondsToText above. */
+juce::String msToText (float value, int)
+{
+    return juce::String (juce::roundToInt (value)) + " ms";
+}
+
 juce::String gainDbToText (float value, int)
 {
     return (value > 0.0f ? "+" : "") + juce::String (value, 1) + " dB";
@@ -547,6 +554,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::chainOrder, 1 }, "Chain Order",
                                                               chainOrderLabels(), 0));
 
+    // Also appended, for the same index-safety reason as chainOrder above.
+    auto revSpacePredelay =
+        juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinPredelayMs, ee::dsp::FdnReverb::kMaxPredelayMs);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::revSpacePredelay, 1 },
+                                                             "Space Pre-delay", revSpacePredelay, 13.0f,
+                                                             withText (msToText)));
+    addPercent (layout, id::revSpaceDamping, "Space Damping", 50.0f);
+
     return layout;
 }
 
@@ -701,7 +716,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
     reverb.setMix01 (pct (id::revMix));
 
     reverb.setSpace (raw (id::revSpaceDecay), pct (id::revSpaceShimmer), raw (id::revSpaceLoCut),
-                     pct (id::revSpaceReso));
+                     pct (id::revSpaceReso), raw (id::revSpacePredelay), pct (id::revSpaceDamping));
     reverb.setSpring (raw (id::revSpringDecay), pct (id::revSpringTension), raw (id::revSpringLoCut));
 }
 

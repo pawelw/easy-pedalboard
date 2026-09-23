@@ -11,7 +11,7 @@ import "./ModdableKnob.css";
     knob actually has an assignment, so an unassigned knob never subscribes
     to the LFO's live output (useLfoValue re-renders its subscriber at
     animation-frame rate; with up to 8 simultaneous assignments out of
-    Grain's 15 targets, most knobs at any moment pay nothing for this).
+    Grain's 16 targets, most knobs at any moment pay nothing for this).
     Mirrors PluginProcessor.cpp's own modulatedValue() exactly - base01 +
     depth * lfoValue, clamped to 0..1 - so the tick shown here tracks the
     real audio modulation rather than a separate UI-only approximation of
@@ -26,7 +26,7 @@ function ModulatedKnob({ parameterId, depth, ...knobProps }) {
 }
 
 /** A JuceKnob that also accepts the Mod tab's LFO chip being dropped onto it -
-    used on Grain/Pitch/Random's own knobs and the Mixer's Filter/Drive/Bit -
+    used on Grain/Pitch/Random's own knobs and the Mixer's Filter/Reso/Drive/Bit -
     every modulation target this pedal has (Delay/Reverb are out of scope,
     see PluginProcessor.cpp's own note on kModChunk). Kept local to BitBit
     Grain rather than folded into the shared JuceKnob so this pedal's

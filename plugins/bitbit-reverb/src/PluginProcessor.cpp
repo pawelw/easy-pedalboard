@@ -28,6 +28,12 @@ juce::String hertzToText (float value, int)
                             : juce::String (juce::roundToInt (value)) + " Hz";
 }
 
+/** "13 ms" - Pre-delay never reaches a second, so no unit switch is needed. */
+juce::String msToText (float value, int)
+{
+    return juce::String (juce::roundToInt (value)) + " ms";
+}
+
 using Attributes = juce::AudioParameterFloatAttributes;
 
 Attributes withText (juce::String (*fn) (float, int))
@@ -100,6 +106,15 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitReverbProcessor::creat
                                                              springLoCut, ee::dsp::spring::kOutputLowCutHz,
                                                              withText (hertzToText)));
 
+    // Appended after Spring rather than slotted into the Space block above -
+    // see the comment on these two ids in Params.h.
+    auto spacePredelay =
+        juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinPredelayMs, ee::dsp::FdnReverb::kMaxPredelayMs);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::spacePredelay, 1 },
+                                                             "Space Pre-delay", spacePredelay, 13.0f,
+                                                             withText (msToText)));
+    addPercent (layout, id::spaceDamping, "Space Damping", 50.0f);
+
     return layout;
 }
 
@@ -112,7 +127,8 @@ void BitBitReverbProcessor::pushSettings() noexcept
     module.setEngaged (raw (id::on) > 0.5f);
     module.setMix01 (pct (id::mix));
 
-    module.setSpace (raw (id::spaceDecay), pct (id::spaceShimmer), raw (id::spaceLoCut), pct (id::spaceReso));
+    module.setSpace (raw (id::spaceDecay), pct (id::spaceShimmer), raw (id::spaceLoCut), pct (id::spaceReso),
+                     raw (id::spacePredelay), pct (id::spaceDamping));
     module.setSpring (raw (id::springDecay), pct (id::springTension), raw (id::springLoCut));
 }
 
