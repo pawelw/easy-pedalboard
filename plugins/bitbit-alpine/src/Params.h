@@ -116,6 +116,8 @@ inline constexpr const char* revEngine = "rev.engine";
 inline constexpr const char* revLevel = "rev.level";
 inline constexpr const char* revMix = "rev.mix";
 
+// The Shimmer engine - still `space.`, the name it had until Modern arrived
+// beside it, so a saved session keeps its settings.
 inline constexpr const char* revSpaceDecay = "rev.space.decay";
 inline constexpr const char* revSpaceShimmer = "rev.space.shimmer";
 inline constexpr const char* revSpaceLoCut = "rev.space.locut";
@@ -126,10 +128,18 @@ inline constexpr const char* revSpringTension = "rev.spring.tension";
 inline constexpr const char* revSpringLoCut = "rev.spring.locut";
 
 // Appended at the very end of the layout, after chainOrder - not here in the
-// Space block - because AU addresses parameters by index. See the comment on
+// Shimmer block - because AU addresses parameters by index. See the comment on
 // chainOrder in PluginProcessor.cpp.
 inline constexpr const char* revSpacePredelay = "rev.space.predelay";
 inline constexpr const char* revSpaceDamping = "rev.space.damping";
+
+// The Modern engine (ee::dsp::SpaceReverb), appended after those for the same
+// reason, in the order its knobs sit on the face.
+inline constexpr const char* revModernDecay = "rev.modern.decay";
+inline constexpr const char* revModernPredelay = "rev.modern.predelay";
+inline constexpr const char* revModernDamping = "rev.modern.damping";
+inline constexpr const char* revModernLoCut = "rev.modern.locut";
+inline constexpr const char* revModernHiCut = "rev.modern.hicut";
 
 // -------------------------------------------------------------------- chain
 // A Lehmer-code index into the 24 permutations of the four modules - see

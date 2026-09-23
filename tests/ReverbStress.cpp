@@ -1,9 +1,11 @@
-// Hammers the FDN reverb with adverse input and extreme settings, watching for
-// a non-finite or runaway wet output - the "exploding tail" bug. The reverb is
-// a feedback network, so a single NaN/Inf that gets in is stored in the delay
-// lines and roars until a reset; this guards the scrub-and-recover path that
-// stops that.
+// Hammers both reverb networks - FdnReverb (the Shimmer engine, and BitBit
+// Grain's) and SpaceReverb (the Modern engine) - with adverse input and extreme
+// settings, watching for a non-finite or runaway wet output: the "exploding
+// tail" bug. A reverb is a feedback network, so a single NaN/Inf that gets in is
+// stored in the delay lines and roars until a reset; this guards the
+// scrub-and-recover path that stops that.
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SpaceReverb.h"
 
 #include <cmath>
 #include <cstdio>
@@ -148,9 +150,131 @@ namespace
     }
 }
 
+namespace
+{
+    // ------------------------------------------------------------ SpaceReverb
+    // The same seven inputs, fed as true stereo (the right side a different
+    // signal, so the two input paths are both exercised), with Damping and both
+    // cuts in play and every knob moved mid-run.
+    Result runSpaceCase (double sampleRate, int blockSize, float decay, float damping,
+                         float lowCut, float highCut, int inputKind, int blocks)
+    {
+        ee::dsp::SpaceReverb reverb;
+        reverb.prepare (sampleRate);
+        reverb.setDecayTime (decay);
+        reverb.setDamping (damping);
+        reverb.setLowCut (lowCut);
+        reverb.setHighCut (highCut);
+
+        std::vector<float> inL (static_cast<size_t> (blockSize)), inR (static_cast<size_t> (blockSize));
+        std::vector<float> wetL (static_cast<size_t> (blockSize)), wetR (static_cast<size_t> (blockSize));
+
+        Result r;
+        double phase = 0.0;
+        const double inc = 3.14159265358979 * 2.0 * 220.0 / sampleRate;
+
+        for (int b = 0; b < blocks; ++b)
+        {
+            for (int i = 0; i < blockSize; ++i)
+            {
+                float s = 0.0f;
+                switch (inputKind)
+                {
+                    case 0: s = 0.9f * (float) std::sin (phase); break;
+                    case 1: s = (i == 0 && b == 0) ? 1.0f : 0.0f; break;
+                    case 2: s = 1.0f; break;
+                    case 3: s = (b % 5 == 0) ? 4.0f : 0.2f * (float) std::sin (phase); break;
+                    case 4: s = 0.0f; break;
+                    case 5:
+                        if (b == 1)
+                            s = (i % 2 == 0) ? std::numeric_limits<float>::quiet_NaN()
+                                             : std::numeric_limits<float>::infinity();
+                        else
+                            s = 0.6f * (float) std::sin (phase);
+                        break;
+                    case 6:
+                        s = (b == blocks / 2 && i == 3) ? std::numeric_limits<float>::quiet_NaN()
+                                                        : 0.5f * (float) std::sin (phase);
+                        break;
+                }
+                inL[static_cast<size_t> (i)] = s;
+                inR[static_cast<size_t> (i)] = inputKind == 4 ? 0.0f : 0.7f * (float) std::sin (phase * 1.37) + 0.3f * s;
+                phase += inc;
+            }
+
+            if (b == blocks / 4)       reverb.setPredelay (ee::dsp::SpaceReverb::kMaxPredelayMs);
+            if (b == blocks / 2)       reverb.setDamping (damping > 0.5f ? 0.0f : 1.0f);
+            if (b == (2 * blocks) / 3) reverb.setDecayTime (ee::dsp::SpaceReverb::kMaxDecay);
+            if (b == (2 * blocks) / 3) reverb.setHighCut (ee::dsp::SpaceReverb::kMinHighCutHz);
+
+            reverb.process (inL.data(), inR.data(), wetL.data(), wetR.data(), blockSize);
+
+            if (b < (3 * blocks) / 4)
+                continue;
+
+            for (int i = 0; i < blockSize; ++i)
+                for (const float v : { wetL[static_cast<size_t> (i)], wetR[static_cast<size_t> (i)] })
+                {
+                    if (! std::isfinite (v)) r.nonFinite = true;
+                    r.peak = std::fmax (r.peak, std::fabs (v));
+                }
+        }
+
+        return r;
+    }
+
+    GrowthResult runSpaceDecayGrowth (double sampleRate, int blockSize, float decay, float damping,
+                                      float exciteSeconds, float tailSeconds)
+    {
+        ee::dsp::SpaceReverb reverb;
+        reverb.prepare (sampleRate);
+        reverb.setDecayTime (decay);
+        reverb.setDamping (damping);
+
+        std::vector<float> inL (static_cast<size_t> (blockSize)), inR (static_cast<size_t> (blockSize));
+        std::vector<float> wetL (static_cast<size_t> (blockSize)), wetR (static_cast<size_t> (blockSize));
+
+        const int exciteBlocks = static_cast<int> (exciteSeconds * sampleRate / blockSize);
+        const int tailBlocks   = static_cast<int> (tailSeconds   * sampleRate / blockSize);
+        const int settledFrom  = exciteBlocks + (4 * tailBlocks) / 5;
+
+        GrowthResult g;
+        double phase = 0.0;
+        const double inc = 3.14159265358979 * 2.0 * 180.0 / sampleRate;
+
+        for (int b = 0; b < exciteBlocks + tailBlocks; ++b)
+        {
+            const bool exciting = b < exciteBlocks;
+            for (int i = 0; i < blockSize; ++i)
+            {
+                inL[static_cast<size_t> (i)] = exciting ? 0.5f * (float) std::sin (phase) : 0.0f;
+                inR[static_cast<size_t> (i)] = exciting ? 0.5f * (float) std::sin (phase * 1.5) : 0.0f;
+                phase += inc;
+            }
+
+            reverb.process (inL.data(), inR.data(), wetL.data(), wetR.data(), blockSize);
+
+            if (exciting)
+                continue;
+
+            for (int i = 0; i < blockSize; ++i)
+                for (const float v : { wetL[static_cast<size_t> (i)], wetR[static_cast<size_t> (i)] })
+                {
+                    if (! std::isfinite (v)) g.nonFinite = true;
+                    const float a = std::fabs (v);
+                    g.peak = std::fmax (g.peak, a);
+                    if (b >= settledFrom)
+                        g.settledPeak = std::fmax (g.settledPeak, a);
+                }
+        }
+
+        return g;
+    }
+}
+
 int main()
 {
-    std::printf ("=== FDN reverb stress ===\n");
+    std::printf ("=== FDN reverb stress (the Shimmer engine, BitBit Grain's) ===\n");
 
     int cases = 0, bad = 0;
     float worstPeak = 0.0f;
@@ -212,6 +336,48 @@ int main()
                              decay, res, g.settledPeak, g.peak);
             }
         }
+
+    std::printf ("\n%d cases, worst tail peak %.3f, %d flagged\n", cases, worstPeak, bad);
+
+    // ---- SpaceReverb ---------------------------------------------------------
+    std::printf ("\n=== Space reverb stress (the Modern engine) ===\n");
+
+    using Space = ee::dsp::SpaceReverb;
+    const float spaceDecays[] = { Space::kMinDecay, 2.0f, Space::kMaxDecay };
+    const float cutPairs[][2] = { { Space::kMinLowCutHz, Space::kMaxHighCutHz }, { 400.0f, 3000.0f } };
+
+    for (double sr : rates)
+      for (int blk : blocks)
+        for (float decay : spaceDecays)
+          for (float damp : amounts)
+              for (const auto& cuts : cutPairs)
+                for (int in = 0; in < 7; ++in)
+                {
+                    const auto r = runSpaceCase (sr, blk, decay, damp, cuts[0], cuts[1], in, 40);
+                    ++cases;
+                    worstPeak = std::fmax (worstPeak, r.peak);
+                    if (r.nonFinite || r.peak > 16.0f)
+                    {
+                        ++bad;
+                        std::printf ("  !!! peak=%.3f nonFinite=%d  (sr=%.0f blk=%d decay=%.2f damp=%.2f cuts=%.0f/%.0f in=%d)\n",
+                                     r.peak, (int) r.nonFinite, sr, blk, decay, damp, cuts[0], cuts[1], in);
+                    }
+                }
+
+    // Silence after a burst must die, at the longest decay and least damping -
+    // the highest loop gain the knobs can reach.
+    for (float damp : { 0.0f, 1.0f })
+    {
+        const auto g = runSpaceDecayGrowth (48000.0, 512, Space::kMaxDecay, damp, 0.5f, 180.0f);
+        ++cases;
+        worstPeak = std::fmax (worstPeak, g.peak);
+        const bool alive = g.settledPeak > 1.0e-4f;
+        const bool ok = ! (g.nonFinite || alive || g.peak > 16.0f);
+        if (! ok)
+            ++bad;
+        std::printf ("  %s decay=%.1f damp=%.1f  settledPeak=%.3e peak=%.3f\n", ok ? "ok  " : "!!!",
+                     Space::kMaxDecay, damp, g.settledPeak, g.peak);
+    }
 
     std::printf ("\n%d cases, worst tail peak %.3f, %d flagged\n", cases, worstPeak, bad);
     std::printf ("%s\n", bad == 0 ? "OK - nothing exploded" : "FAIL - see flagged cases above");

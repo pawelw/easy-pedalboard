@@ -57,12 +57,15 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_bit_check_artefacts/Release/ee_bit_check [outDir] [dry.wav]  # Amp's Bit calibration and Drive's dB
 ./build/tests/ee_alpine_host_artefacts/Release/ee_alpine_host        # drives the real BitBit Alpine processor
 ./build/tests/ee_modulation_host_artefacts/Release/ee_modulation_host  # the real BitBit Modulation, checksum per engine
-./build/tests/ee_reverb_host_artefacts/Release/ee_reverb_host      # the real BitBit Reverb, both engines
+./build/tests/ee_reverb_host_artefacts/Release/ee_reverb_host      # the real BitBit Reverb, all three engines
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
 ./build/tests/ee_grain_host_artefacts/Release/ee_grain_host        # drives the real processor like a host
 ./build/tests/ee_au_host_artefacts/Release/ee_au_host              # runs an *installed* AU, by identifier
+./build/tests/ee_plugin_render_artefacts/Release/ee_plugin_render 'AudioUnit:Effects/aufx,Ni$Q,-NI-' --set Decay=2 --in dry.wav --out ref.wav  # renders through any installed AU at knob values set by their text
+./build/tests/ee_space_fit_artefacts/Release/ee_space_fit --decay 2 --damp 0.25 --out ir.wav [field=value ...]  # SpaceReverb (the Modern engine) alone, any voicing field overridden
+./build/tests/ee_reverb_match_artefacts/Release/ee_reverb_match dry.wav out.wav 2 20 [damp] [predelay] [locut] [hicut]  # the real BitBit Reverb processor, Modern engine
 ./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp # renders every face to PNG
 ./build/tests/ee_sympathy_regress_artefacts/Release/ee_sympathy_regress  # BitBit Sympathy, checksum per pass
 ./build/tests/ee_sympathy_stress_artefacts/Release/ee_sympathy_stress    # resonator bank runaway / non-finite hunt
@@ -98,6 +101,24 @@ One binary per product rather than one that knows about them all: every pedal's
 `PluginProcessor.cpp` defines `createPluginFilter()`, and that is the same
 object file that defines the processor, so two of them in one link is a
 duplicate symbol.
+
+**Matching a third-party reference: host it, don't deconvolve it.**
+`ee_plugin_render` loads an installed AU the way `ee_au_host` does, sets its
+parameters by their *displayed* value (`--set Decay=2.5` bisects until the
+plugin prints 2.5; `n:0.4` sets the normalised value) and renders a file or a
+unit impulse. Every `--set` is applied twice, because some plugins move one
+knob when another is set (Raum resets Mix when Decay changes). BitBit Reverb's
+Modern engine (`ee::dsp::SpaceReverb`) was fitted to NI Raum this way:
+impulse responses over a Decay x Damp grid, octave-band T20 and per-octave
+energy, then `ee_space_fit` renders of the engine measured with the same
+analysis. `SpaceConfig.h` records what was measured and how. Match per octave,
+not broadband: a white impulse's energy is mostly its top octave, and a
+broadband level match once hid a tail 1-2 dB thin everywhere a mix lives.
+Match the build-up too, not just decay, tone and level: a network can hit all
+three and still bounce - check echo density over the first 150 ms and the
+tail's autocorrelation per octave (a peak at one line's length is a repeat you
+can hear). Deconvolving a bounced drum loop was tried first and is useless -
+the loop does not pin the response down.
 
 `auval -v aufx <CODE> BtBt` runs Apple's AU validation; the four-letter codes are
 in each plugin's `CMakeLists.txt` (`PLUGIN_CODE`).
@@ -258,7 +279,7 @@ instance now has its own generator, seeded in `Init()`, and every member is set
 there. The flutter (`ShimmerTuning::flutter`, 0.25) is **not** zero, so this was
 audible modulation, not inaudible as an earlier version of this file said. The
 voicing is unchanged; only the random sequence differs from the old shared one.
-It affects BitBit Reverb and BitBit Alpine's Space engine. A `*_regress` battery
+It affects BitBit Reverb and BitBit Alpine's Shimmer engine. A `*_regress` battery
 can now leave Shimmer above zero.
 
 ## Formatting
@@ -280,11 +301,12 @@ Never reformat a file you are not otherwise changing.
 
 ```
 shared/include/ee/dsp/    DSP primitives and engines (mostly header-only) -
-                          Chorus, Phaser, Tremolo, TapeMachine, FdnReverb,
-                          SpringReverb, TapeDelay. A pedal is one of these plus
+                          Chorus, Phaser, Tremolo, TapeMachine, FdnReverb
+                          (the Shimmer reverb, and BitBit Grain's), SpaceReverb
+                          (the Modern reverb), SpringReverb, TapeDelay. A pedal is one of these plus
                           its parameters; nothing owns its own copy of the maths.
 shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knobs
-shared/src/dsp/           FdnReverb, SpringReverb + TapeDelay implementations
+shared/src/dsp/           FdnReverb, SpaceReverb, SpringReverb + TapeDelay implementations
 shared/include/ee/ui/     the pedal UI framework (PedalSpec, PedalEditor, Knob…)
 shared/src/ui/            its implementation
 shared/include/ee/fx/     compositions of engines with an opinion about their

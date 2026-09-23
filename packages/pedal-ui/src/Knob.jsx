@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./Knob.css";
+import StableDigits from "./StableDigits.jsx";
 
 const MIN_ANGLE = -135;
 const MAX_ANGLE = 135;
@@ -775,14 +776,22 @@ export default function Knob({
           appearing as a second line below it - a second line meant the row's
           height (and everything below it in the grid) changed the instant
           you touched a knob. */}
-      {!bare && <div className="pui-caption pui-knob__caption">{dragging && valueLabel ? valueLabel : caption}</div>}
+      {!bare && (
+        <div className="pui-caption pui-knob__caption">
+          {dragging && valueLabel ? <StableDigits>{valueLabel}</StableDigits> : caption}
+        </div>
+      )}
 
       {/* Unlike valueLabel above, this is a second, permanent line - Mix/
           Feedback show their value here at all times, not only mid-drag
           (COMPONENTS.md: "value line 4px under the caption"). Only rendered
           when a caller actually passes one, so every other knob's layout is
           untouched. */}
-      {!bare && subLabel && <div className="pui-knob__sublabel">{subLabel}</div>}
+      {!bare && subLabel && (
+        <div className="pui-knob__sublabel">
+          <StableDigits>{subLabel}</StableDigits>
+        </div>
+      )}
     </div>
   );
 }

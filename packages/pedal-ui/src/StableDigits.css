@@ -1,0 +1,7 @@
+/* One digit's cell: Urbanist's widest figure ("0") is 0.595em at 400 and
+   0.605em at 700, so this fits every weight the readouts use. */
+.pui-digit {
+  display: inline-block;
+  width: 0.61em;
+  text-align: center;
+}

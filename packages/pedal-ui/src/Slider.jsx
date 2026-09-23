@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./Slider.css";
+import StableDigits from "./StableDigits.jsx";
 
 // The full-size fader: the tick ladder and moulded thumb BitBit EQ's bands are
 // built from.
@@ -247,7 +248,11 @@ export default function Slider({
         />
       </div>
 
-      {valueLabel && <span className="pui-fader__value">{valueLabel}</span>}
+      {valueLabel && (
+        <span className="pui-fader__value">
+          <StableDigits>{valueLabel}</StableDigits>
+        </span>
+      )}
       {caption && <div className="pui-caption pui-fader__caption">{caption}</div>}
     </div>
   );

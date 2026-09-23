@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.reverb
   categories   "Fx Reverb"
 
-parameters 12
+parameters 17
 0 on
     name       "On"
     default    1
@@ -19,11 +19,11 @@ parameters 12
     choices    2: "Off" "On"
 1 engine
     name       "Engine"
-    default    0
+    default    1
     version    1
-    steps      2 discrete automatable
-    range      0 1 interval 1 skew 1
-    choices    2: "Space" "Spring"
+    steps      3 discrete automatable
+    range      0 2 interval 1 skew 1
+    choices    3: "Spring" "Shimmer" "Modern"
 2 mix
     name       "Mix"
     default    0.300000012
@@ -31,25 +31,25 @@ parameters 12
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
 3 space.decay
-    name       "Space Decay"
+    name       "Shimmer Decay"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0.5 8 interval 0 skew 0.43067655
 4 space.shimmer
-    name       "Space Shimmer"
+    name       "Shimmer Amount"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
 5 space.locut
-    name       "Space Low Cut"
+    name       "Shimmer Low Cut"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
 6 space.reso
-    name       "Space Reso"
+    name       "Shimmer Reso"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
@@ -73,14 +73,44 @@ parameters 12
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
 10 space.predelay
-    name       "Space Pre-delay"
+    name       "Shimmer Pre-delay"
     default    0.216666669
     version    1
     steps      2147483647 continuous automatable
     range      0 60 interval 0 skew 1
 11 space.damping
-    name       "Space Damping"
+    name       "Shimmer Damping"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
+12 modern.decay
+    name       "Modern Decay"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0.5 8 interval 0 skew 0.43067655
+13 modern.predelay
+    name       "Modern Pre-delay"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 60 interval 0 skew 1
+14 modern.damping
+    name       "Modern Damping"
+    default    0.25
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+15 modern.locut
+    name       "Modern Low Cut"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      20 800 interval 0 skew 0.437559754
+16 modern.hicut
+    name       "Modern Hi Cut"
+    default    1
+    version    1
+    steps      2147483647 continuous automatable
+    range      1000 20000 interval 0 skew 0.519210994

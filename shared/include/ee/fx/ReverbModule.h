@@ -1,21 +1,33 @@
 #pragma once
 
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/SpringReverb.h"
 #include "ee/fx/MultiEngineModule.h"
 
 namespace ee::fx
 {
 
-/** BitBit Alpine's Reverb module: two engines, one at a time.
+/** BitBit Reverb's engines, and BitBit Alpine's Reverb module: three, one at a
+ * time.
  *
- * Space is BitBit Reverb's FDN, Spring is BitBit Spring's tank - the same two
- * engines those pedals run, so neither can drift from its own pedal.
+ *   - Spring is BitBit Spring's tank, the same engine that pedal runs.
+ *   - Shimmer is FdnReverb - the engine this module was called Space for, with
+ *     its octave feedback, Reso and all. Its parameters kept the `space.` ids,
+ *     so a session saved before Modern existed opens on the same sound.
+ *   - Modern is SpaceReverb, voiced against NI Raum (see SpaceConfig.h). No
+ *     shimmer of its own; that is what the engine beside it is for.
  *
- * Both are mono in, stereo out, which is what a reverb is: a room does not have
- * a left and a right input. The module sums the incoming stereo before the send
- * exactly as those two pedals do, so a signal already wide does not arrive as
- * two uncorrelated rooms.
+ * Spring and Shimmer are mono in, stereo out - a tank has one input, and the
+ * FDN was voiced that way - so the module sums the incoming stereo for them
+ * exactly as their pedals did. Modern is true stereo in: each input side has
+ * its own echoes and its own way into the network, as the reference does, so a
+ * wide source stays wide.
+ *
+ * Modern's Mix law is the reference's too, not the plugin-wide equal-power one
+ * the other two keep: dry held at unity up to 50 % and then faded out, wet
+ * rising as (2 x Mix)^1.5 to full at 50 %. Measured off Raum; a Mix of 20 %
+ * there is dry 1.0 / wet 0.25, which equal power (0.95 / 0.31) is audibly not.
  */
 class ReverbModule final : public MultiEngineModule
 {
@@ -24,27 +36,34 @@ public:
         owner's choice parameter. */
     enum Engine
     {
-        Space = 0,
-        Spring,
+        Spring = 0,
+        Shimmer,
+        Modern,
         NumEngines
     };
 
     // -------------------------------------------------------------- the knobs
 
-    void setSpace (float decaySeconds, float shimmer01, float lowCutHz, float resonance01,
-                   float predelayMs, float damping01) noexcept
+    void setShimmer (float decaySeconds, float shimmer01, float lowCutHz, float resonance01, float predelayMs,
+                     float damping01) noexcept
     {
-        space.setDecayTime (decaySeconds);
-        space.setShimmer (shimmer01);
-        space.setLowCut (lowCutHz);
-        space.setResonance (resonance01);
-        space.setPredelay (predelayMs);
-        space.setDamping (damping01);
+        shimmer.setDecayTime (decaySeconds);
+        shimmer.setShimmer (shimmer01);
+        shimmer.setLowCut (lowCutHz);
+        shimmer.setResonance (resonance01);
+        shimmer.setPredelay (predelayMs);
+        shimmer.setDamping (damping01);
     }
 
-    /** Three, not four: a spring tank has no resonance to expose. What Space
-        calls Reso is how hard its network is allowed to ring, and a tank's
-        equivalent of that is its decay. */
+    void setModern (float decaySeconds, float predelayMs, float damping01, float lowCutHz, float highCutHz) noexcept
+    {
+        modern.setDecayTime (decaySeconds);
+        modern.setPredelay (predelayMs);
+        modern.setDamping (damping01);
+        modern.setLowCut (lowCutHz);
+        modern.setHighCut (highCutHz);
+    }
+
     void setSpring (float decaySeconds, float tension01, float lowCutHz) noexcept
     {
         spring.setDecayTime (decaySeconds);
@@ -53,20 +72,35 @@ public:
     }
 
     /** How long the selected engine rings for, so the owner can answer a host's
-        getTailLengthSeconds. Mid-switch it is the longer of the two, because
-        both really are still ringing. */
+        getTailLengthSeconds. */
     double tailSeconds() const noexcept
     {
-        return currentEngine() == Spring ? static_cast<double> (spring.getTailSeconds())
-                                         : static_cast<double> (space.getTailSeconds());
+        switch (currentEngine())
+        {
+            case Spring:  return static_cast<double> (spring.getTailSeconds());
+            case Shimmer: return static_cast<double> (shimmer.getTailSeconds());
+            default:      return static_cast<double> (modern.getTailSeconds());
+        }
     }
 
 protected:
     int engineCount() const noexcept override { return NumEngines; }
 
+    float dryGainFor (int index, float mix01) const noexcept override
+    {
+        return index == Modern ? juce::jmin (1.0f, 2.0f * (1.0f - mix01))
+                               : MultiEngineModule::dryGainFor (index, mix01);
+    }
+    float wetGainFor (int index, float mix01) const noexcept override
+    {
+        return index == Modern ? std::pow (juce::jmin (1.0f, 2.0f * mix01), 1.5f)
+                               : MultiEngineModule::wetGainFor (index, mix01);
+    }
+
     void prepareEngines (double sampleRate, int maxBlockSize) override
     {
-        space.prepare (sampleRate);
+        shimmer.prepare (sampleRate);
+        modern.prepare (sampleRate);
         spring.prepare (sampleRate);
 
         monoBuffer.assign (static_cast<size_t> (juce::jmax (1, maxBlockSize)), 0.0f);
@@ -80,52 +114,60 @@ protected:
     void renderEngine (int index, const juce::AudioBuffer<float>& dry, juce::AudioBuffer<float>& wet,
                        int numChannels, int numSamples) noexcept override
     {
-        if (static_cast<int> (monoBuffer.size()) < numSamples)
-            monoBuffer.assign (static_cast<size_t> (numSamples), 0.0f);
-
-        float* mono = monoBuffer.data();
-
-        if (numChannels > 1)
-            for (int i = 0; i < numSamples; ++i)
-                mono[i] = 0.5f * (dry.getReadPointer (0)[i] + dry.getReadPointer (1)[i]);
-        else
-            for (int i = 0; i < numSamples; ++i)
-                mono[i] = dry.getReadPointer (0)[i];
-
         // Always two out, whatever the host's bus is - see ModulationModule's
         // note. Handing the same pointer in twice would have the tank's right
         // side write over its left.
         float* outL = wet.getWritePointer (0);
         float* outR = wet.getWritePointer (1);
 
+        const float* inL = dry.getReadPointer (0);
+        const float* inR = dry.getReadPointer (numChannels > 1 ? 1 : 0);
+
+        if (index == Modern)
+        {
+            modern.process (inL, inR, outL, outR, numSamples);
+            return;
+        }
+
+        if (static_cast<int> (monoBuffer.size()) < numSamples)
+            monoBuffer.assign (static_cast<size_t> (numSamples), 0.0f);
+
+        float* mono = monoBuffer.data();
+        for (int i = 0; i < numSamples; ++i)
+            mono[i] = numChannels > 1 ? 0.5f * (inL[i] + inR[i]) : inL[i];
+
         if (index == Spring)
             spring.process (mono, outL, outR, numSamples);
         else
-            space.process (mono, outL, outR, numSamples);
+            shimmer.process (mono, outL, outR, numSamples);
     }
 
     /** The one module that does not keep its engines warm. Two reasons, and
-        both have to hold: a 16-line FDN and a three-spring tank running at once
-        is the heaviest thing in the plugin, and neither of them clicks cold -
-        a reverb's output *is* a gradual build from silence, so there is no dry
-        path in it to arrive abruptly the way a chorus's delayed signal does.
-        ee_module_stress measures the second claim rather than assuming it. */
+        both have to hold: three reverbs running at once is the heaviest thing
+        in the plugin, and none of them clicks cold. The tank's and the FDN's
+        output is a gradual build from silence; Modern's first sound is a
+        discrete echo, a delayed copy of the input, so it ramps its input in
+        after a reset rather than starting that copy mid-waveform.
+        ee_module_stress measures the claim rather than assuming it. */
     bool enginesRunWarm() const noexcept override { return false; }
 
     void resetEngine (int index) noexcept override
     {
-        if (index == Spring)
-            spring.reset();
-        else
-            space.reset();
+        switch (index)
+        {
+            case Spring:  spring.reset(); break;
+            case Shimmer: shimmer.reset(); break;
+            default:      modern.reset(); break;
+        }
     }
 
 private:
-    ee::dsp::FdnReverb space;
+    ee::dsp::FdnReverb shimmer;
+    ee::dsp::SpaceReverb modern;
     ee::dsp::SpringReverb spring;
 
-    /** The send. A reverb takes one signal, so the two sides are summed here
-        rather than each being given a room of its own. */
+    /** The mono engines' send: a tank takes one signal, so the two sides are
+        summed. */
     std::vector<float> monoBuffer;
 };
 

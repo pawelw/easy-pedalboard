@@ -409,6 +409,38 @@ target_link_libraries(ee_au_host
     PRIVATE juce::juce_audio_processors juce::juce_audio_utils
     PUBLIC juce::juce_recommended_config_flags)
 
+# Renders SpaceReverb alone with any voicing field overridden - the fitting side
+# of the Space engine's match against its reference (SpaceConfig.h).
+juce_add_console_app(ee_space_fit PRODUCT_NAME "ee_space_fit")
+
+target_sources(ee_space_fit PRIVATE SpaceFit.cpp)
+
+target_compile_definitions(ee_space_fit PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_space_fit
+    PRIVATE ee_dsp juce::juce_audio_formats
+    PUBLIC juce::juce_recommended_config_flags)
+
+# Renders a file or an impulse through any installed Audio Unit at parameter
+# values set by their displayed text - the reference side of a *_match A/B.
+juce_add_console_app(ee_plugin_render PRODUCT_NAME "ee_plugin_render")
+
+target_sources(ee_plugin_render PRIVATE PluginRender.cpp)
+
+target_compile_definitions(ee_plugin_render PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_PLUGINHOST_AU=1
+    JUCE_MODAL_LOOPS_PERMITTED=1
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_plugin_render
+    PRIVATE juce::juce_audio_processors juce::juce_audio_utils juce::juce_audio_formats
+    PUBLIC juce::juce_recommended_config_flags)
+
 if(TARGET BitBitSpring)
     # The A/B for a change to the spring tank that is meant to leave BitBit Spring
     # exactly as it is - Tension and Low Cut are additive, and this is what says

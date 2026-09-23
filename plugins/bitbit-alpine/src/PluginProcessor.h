@@ -36,7 +36,7 @@
  * Artifact (Ring Mod / Bit Crush / Filter / Rust / Amp - `ee::fx::ArtifactModule`,
  * which is what BitBit Artifact runs), then Modulation (Tape / Tremolo / Chorus / Phaser),
  * then Delay - which is BitBit Delay's entire chain, the same `ee::fx::DelayModule`
- * that pedal runs - then Reverb (Space / Spring). Every engine in here is the
+ * that pedal runs - then Reverb (Spring / Shimmer / Modern). Every engine in here is the
  * engine its own pedal uses, so nothing can drift from the pedal it came from
  * and a fix lands in both.
  *

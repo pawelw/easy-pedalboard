@@ -382,6 +382,20 @@ protected:
         what every engine that is not a delay line answers. */
     virtual int engineLatencySamples (int) const noexcept { return 0; }
 
+    /** The Mix law for engine `index`, as dry and wet gains for a 0..1 Mix. By
+        default the same equal-power law the delay's Mix uses, so a Mix knob
+        means the same thing across the modules; an engine voiced against a
+        reference whose Mix behaves differently overrides both (ReverbModule's
+        Modern). Switching engines moves the gains on the usual Mix ramp. */
+    virtual float dryGainFor (int /*index*/, float mix01) const noexcept
+    {
+        return std::cos (mix01 * juce::MathConstants<float>::halfPi);
+    }
+    virtual float wetGainFor (int /*index*/, float mix01) const noexcept
+    {
+        return std::sin (mix01 * juce::MathConstants<float>::halfPi);
+    }
+
     double sr = 44100.0;
     int maxBlock = 512;
 
@@ -393,10 +407,8 @@ private:
             engineAlign[static_cast<size_t> (index)].process (buffer, numChannels, numSamples);
     }
 
-    /** The same equal-power law the delay's Mix uses, so a Mix knob means the
-        same thing everywhere in the plugin. */
-    float dryTarget() const noexcept { return std::cos (mix * juce::MathConstants<float>::halfPi); }
-    float wetTarget() const noexcept { return std::sin (mix * juce::MathConstants<float>::halfPi); }
+    float dryTarget() const noexcept { return dryGainFor (engine, mix); }
+    float wetTarget() const noexcept { return wetGainFor (engine, mix); }
 
     int engine = 0;
     int outgoingEngine = -1;

@@ -2,6 +2,7 @@ import {
   FilterIcon,
   ModIcon,
   PhaserIcon,
+  ShimmerIcon,
   SpaceIcon,
   SpringIcon,
   TapeIcon,
@@ -24,10 +25,11 @@ import {
  * `knobs` is a flat list, laid out two per row. Two rows is the norm; Tape is
  * the one engine that runs to three, because it is the whole of BitBit Tape and
  * that pedal has five knobs plus a switch. `centre` is a single knob on a row
- * of its own under the pairs (Tape's bipolar Tone); `toggle` is a Mono/Stereo
- * switch pinned to the bottom of the body, just above the footer. Both are
- * Tape-only for now - an engine that wants either needs a look at the layout,
- * not just a line here.
+ * of its own under the pairs (Tape's bipolar Tone), `lead` one on a row of its
+ * own above them (Modern reverb's Decay); `toggle` is a Mono/Stereo
+ * switch pinned to the bottom of the body, just above the footer. Each is
+ * used by one engine so far - an engine that wants one needs a look at the
+ * layout, not just a line here.
  *
  * `body: "filter"` swaps the knob grid for SideModule's FilterBody - Filter's
  * controls carry a wave picker and a Sync pill under two of its knobs, which a
@@ -168,12 +170,38 @@ export const FILTER_WAVES = [
   { name: "Square", shape01: 1.0 },
 ];
 
-// Both reverbs show the decay display: what a reverb does is a tail, and the
-// Decay knob is the one control whose effect is worth drawing.
+// Every reverb shows the decay display: what a reverb does is a tail, and the
+// Decay knob is the one control whose effect is worth drawing. In the order of
+// the owner's `engine` choice - Spring, Shimmer, Modern.
 export const REVERB_ENGINES = [
   {
-    name: "Space",
-    icon: <SpaceIcon size={22} />,
+    name: "Spring",
+    icon: <SpringIcon size={22} />,
+    prefix: "spring.",
+    display: "decay",
+    decayId: "spring.decay",
+    // Three, not four: a spring tank has no resonance control to expose. What
+    // Shimmer calls Reso is how hard its FDN is allowed to ring, and a tank's
+    // equivalent is its decay - so a fourth knob here would have been a second
+    // name for the first one.
+    knobs: [
+      ["decay", "Decay"],
+      ["tension", "Tension"],
+      ["locut", "Low Cut"],
+    ],
+    easy: {
+      name: "Boing",
+      targets: [
+        { id: "decay", min: 0.2, max: 0.85 },
+        { id: "tension", min: 0.35, max: 0.7 },
+      ],
+    },
+  },
+  {
+    // The FDN this module was called Space for, and still bound to its
+    // `space.` ids so a saved session keeps its settings.
+    name: "Shimmer",
+    icon: <ShimmerIcon size={22} />,
     prefix: "space.",
     display: "decay",
     decayId: "space.decay",
@@ -197,25 +225,28 @@ export const REVERB_ENGINES = [
     },
   },
   {
-    name: "Spring",
-    icon: <SpringIcon size={22} />,
-    prefix: "spring.",
+    // ee::dsp::SpaceReverb, voiced against NI Raum. Decay on its own at the
+    // top, then the tail's shape in time and colour (Pre-delay, Damping), then
+    // the two cuts on the finished wet.
+    name: "Modern",
+    icon: <SpaceIcon size={22} />,
+    prefix: "modern.",
     display: "decay",
-    decayId: "spring.decay",
-    // Three, not four: a spring tank has no resonance control to expose. What
-    // Space calls Reso is how hard its FDN is allowed to ring, and a tank's
-    // equivalent is its decay - so a fourth knob here would have been a second
-    // name for the first one.
+    decayId: "modern.decay",
+    lead: ["decay", "Decay"],
     knobs: [
-      ["decay", "Decay"],
-      ["tension", "Tension"],
+      ["predelay", "Pre-delay"],
+      ["damping", "Damping"],
       ["locut", "Low Cut"],
+      ["hicut", "Hi Cut"],
     ],
+    // A bigger space is a longer tail that arrives a little later.
     easy: {
-      name: "Boing",
+      name: "Size",
       targets: [
-        { id: "decay", min: 0.2, max: 0.85 },
-        { id: "tension", min: 0.35, max: 0.7 },
+        { id: "decay", min: 0.25, max: 0.9 },
+        { id: "predelay", min: 0.0, max: 0.3 },
+        { id: "locut", min: 0.1, max: 0.35 },
       ],
     },
   },

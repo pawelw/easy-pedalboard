@@ -1,8 +1,11 @@
+/* Side padding and the icon gap are as tight as they look right at: a
+   168px module leaves the name ~59px, and SHIMMER / TREMOLO need 57-58px of
+   it - at 6px / 9px both truncated. */
 .pui-stepper {
   display: flex;
   align-items: center;
   gap: 2px;
-  padding: 5px 6px;
+  padding: 5px 4px;
   border-radius: 9px;
   background: var(--pui-recess);
   box-shadow: var(--pui-well-shadow);
@@ -40,7 +43,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 9px;
+  gap: 5px;
 }
 
 .pui-stepper__icon {

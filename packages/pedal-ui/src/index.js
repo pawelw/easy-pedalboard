@@ -61,6 +61,7 @@ export { default as CrushIcon } from "./CrushIcon.jsx";
 export { default as RustIcon } from "./RustIcon.jsx";
 export { default as BitIcon } from "./BitIcon.jsx";
 export { default as SpaceIcon } from "./SpaceIcon.jsx";
+export { default as ShimmerIcon } from "./ShimmerIcon.jsx";
 export { default as SpringIcon } from "./SpringIcon.jsx";
 export { default as PowerIcon } from "./PowerIcon.jsx";
 export { default as SaveIcon } from "./SaveIcon.jsx";

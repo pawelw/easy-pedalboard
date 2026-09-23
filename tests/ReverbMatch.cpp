@@ -7,17 +7,20 @@
 
 /** Offline renderer used to A/B the plugin against a reference recording.
 
-    Runs a dry file through the real BitBitReverbProcessor's Space engine, so the
+    Runs a dry file through the real BitBitReverbProcessor's Modern engine, so the
     module's mix law and parameter smoothing are exercised rather than
     reimplemented.
 
-        ee_reverb_match in.wav out.wav <decaySeconds> <mixPercent> <lowCutHz> [midCutPercent]
+        ee_reverb_match in.wav out.wav <decaySeconds> <mixPercent> [dampingPercent] [predelayMs] [lowCutHz] [hiCutHz]
+
+    Always the Modern engine - the one voiced against a reference.
 */
 int main (int argc, char** argv)
 {
-    if (argc < 6)
+    if (argc < 5)
     {
-        std::printf ("usage: %s in.wav out.wav decaySeconds mixPercent highCutHz\n", argv[0]);
+        std::printf ("usage: %s in.wav out.wav decaySeconds mixPercent [dampingPercent] [predelayMs] [lowCutHz] "
+                     "[hiCutHz]\n", argv[0]);
         return 2;
     }
 
@@ -25,8 +28,12 @@ int main (int argc, char** argv)
     const juce::File outFile (juce::File::getCurrentWorkingDirectory().getChildFile (argv[2]));
     const auto decay = static_cast<float> (juce::String (argv[3]).getDoubleValue());
     const auto mix = static_cast<float> (juce::String (argv[4]).getDoubleValue());
-    const auto highCut = static_cast<float> (juce::String (argv[5]).getDoubleValue());
-    const auto midCut = argc > 6 ? static_cast<float> (juce::String (argv[6]).getDoubleValue()) : 0.0f;
+    const auto arg = [argc, argv] (int i, float fallback)
+    { return argc > i ? static_cast<float> (juce::String (argv[i]).getDoubleValue()) : fallback; };
+    const auto damping = arg (5, 25.0f);
+    const auto predelay = arg (6, 0.0f);
+    const auto lowCut = arg (7, 20.0f);
+    const auto hiCut = arg (8, 20000.0f);
 
     juce::AudioFormatManager formats;
     formats.registerBasicFormats();
@@ -60,11 +67,13 @@ int main (int argc, char** argv)
             p->setValueNotifyingHost (p->convertTo0to1 (value));
     };
 
-    set ("engine", 0.0f); // Space
-    set ("space.decay", decay);
+    set ("engine", 2.0f); // Modern
+    set ("modern.decay", decay);
     set ("mix", mix);
-    set ("space.locut", highCut);
-    set ("space.reso", midCut);
+    set ("modern.damping", damping);
+    set ("modern.predelay", predelay);
+    set ("modern.locut", lowCut);
+    set ("modern.hicut", hiCut);
     set ("on", 1.0f);
 
     juce::MidiBuffer midi;
@@ -98,9 +107,9 @@ int main (int argc, char** argv)
     writer->writeFromAudioSampleBuffer (buffer, 0, total);
     writer.reset();
 
-    std::printf ("rendered %s -> %s  (decay %.2f s, mix %.0f %%, high cut %.0f Hz)\n",
-                 inFile.getFileName().toRawUTF8(),
-                 outFile.getFileName().toRawUTF8(),
-                 decay, mix, highCut);
+    std::printf ("rendered %s -> %s  (decay %.2f s, mix %.0f %%, damping %.0f %%, predelay %.1f ms, "
+                 "low cut %.0f Hz, hi cut %.0f Hz)\n",
+                 inFile.getFileName().toRawUTF8(), outFile.getFileName().toRawUTF8(), decay, mix, damping, predelay,
+                 lowCut, hiCut);
     return 0;
 }

@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.alpine
   categories   "Fx Delay Modulation Reverb"
 
-parameters 81
+parameters 86
 0 ingain
     name       "Input"
     default    0.666666687
@@ -439,11 +439,11 @@ parameters 81
     choices    2: "Off" "On"
 68 rev.engine
     name       "Reverb Engine"
-    default    0
+    default    1
     version    1
-    steps      2 discrete automatable
-    range      0 1 interval 1 skew 1
-    choices    2: "Space" "Spring"
+    steps      3 discrete automatable
+    range      0 2 interval 1 skew 1
+    choices    3: "Spring" "Shimmer" "Modern"
 69 rev.level
     name       "Reverb Level"
     default    0.5
@@ -457,25 +457,25 @@ parameters 81
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
 71 rev.space.decay
-    name       "Space Decay"
+    name       "Shimmer Decay"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0.5 8 interval 0 skew 0.43067655
 72 rev.space.shimmer
-    name       "Space Shimmer"
+    name       "Shimmer Amount"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
 73 rev.space.locut
-    name       "Space Low Cut"
+    name       "Shimmer Low Cut"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
 74 rev.space.reso
-    name       "Space Reso"
+    name       "Shimmer Reso"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
@@ -506,14 +506,44 @@ parameters 81
     range      0 23 interval 1 skew 1
     choices    24: "Art-Mod-Dly-Rev" "Art-Mod-Rev-Dly" "Art-Dly-Mod-Rev" "Art-Dly-Rev-Mod" "Art-Rev-Mod-Dly" "Art-Rev-Dly-Mod" "Mod-Art-Dly-Rev" "Mod-Art-Rev-Dly" "Mod-Dly-Art-Rev" "Mod-Dly-Rev-Art" "Mod-Rev-Art-Dly" "Mod-Rev-Dly-Art" "Dly-Art-Mod-Rev" "Dly-Art-Rev-Mod" "Dly-Mod-Art-Rev" "Dly-Mod-Rev-Art" "Dly-Rev-Art-Mod" "Dly-Rev-Mod-Art" "Rev-Art-Mod-Dly" "Rev-Art-Dly-Mod" "Rev-Mod-Art-Dly" "Rev-Mod-Dly-Art" "Rev-Dly-Art-Mod" "Rev-Dly-Mod-Art"
 79 rev.space.predelay
-    name       "Space Pre-delay"
+    name       "Shimmer Pre-delay"
     default    0.216666669
     version    1
     steps      2147483647 continuous automatable
     range      0 60 interval 0 skew 1
 80 rev.space.damping
-    name       "Space Damping"
+    name       "Shimmer Damping"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
+81 rev.modern.decay
+    name       "Modern Decay"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0.5 8 interval 0 skew 0.43067655
+82 rev.modern.predelay
+    name       "Modern Pre-delay"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 60 interval 0 skew 1
+83 rev.modern.damping
+    name       "Modern Damping"
+    default    0.25
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+84 rev.modern.locut
+    name       "Modern Low Cut"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      20 800 interval 0 skew 0.437559754
+85 rev.modern.hicut
+    name       "Modern Hi Cut"
+    default    1
+    version    1
+    steps      2147483647 continuous automatable
+    range      1000 20000 interval 0 skew 0.519210994

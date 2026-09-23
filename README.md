@@ -10,24 +10,46 @@ Builds as **VST3**, **AU** and a **Standalone** app.
 ### BitBit Reverb
 
 BitBit Alpine's **Reverb** module as a pedal of its own, drawn the way BitBit
-Artifact is: one narrow compartment, a `<>` stepper between two engines -
-**Space** and **Spring** - and a **Mix** knob in the footer. Mono in (a stereo
-input is summed before the send - a room has no left and right input), stereo
-out. It is the same `ee::fx::ReverbModule` BitBit Alpine runs, behind the same
+Artifact is: one narrow compartment, a `<>` stepper between three engines -
+**Spring**, **Shimmer** and **Modern** - and a **Mix** knob in the footer.
+Stereo out on all three. Spring and Shimmer sum a stereo input before the send
+(a tank has one input); Modern is true stereo in, each side with its own echoes
+and its own way into the tail, so a wide source stays wide. It is the same
+`ee::fx::ReverbModule` BitBit Alpine runs, behind the same
 face (`ReverbFace`, `packages/module-face`), so the pedal and the Alpine module
 cannot drift apart. The face uses the onyx theme with the reverb module's cyan
 accent, and a bar display above the knobs draws the tail falling away as Decay
 moves.
 
-**Space** is the modulated feedback delay network - the whole of what this
-pedal used to be:
+**Shimmer** (`ee::dsp::FdnReverb`) is the modulated feedback delay network - the
+whole of what this pedal used to be, and the engine that was called **Space**
+until Modern arrived beside it on 2026-09-23. Its parameters kept their `space.`
+ids, so a session saved before then opens on the same sound:
 
-| Knob        | Range       | What it does                                                                 |
-| ----------- | ----------- | ---------------------------------------------------------------------------- |
-| **Decay**   | 0.5 - 8 s   | Sets the tail length, and derives room size and predelay from it behind the scenes |
-| **Shimmer** | 0 - 100 %   | Feeds an octave-up copy of the tail back into the reverb. 0 % is off; up high each pass stacks another octave into a rising pad |
-| **Low Cut** | 20 - 800 Hz | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
-| **Reso**    | 0 - 100 %   | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
+| Knob          | Range       | What it does                                                                 |
+| ------------- | ----------- | ---------------------------------------------------------------------------- |
+| **Decay**     | 0.5 - 8 s   | Sets the tail length, and derives room size from it behind the scenes        |
+| **Shimmer**   | 0 - 100 %   | Feeds an octave-up copy of the tail back into the reverb. 0 % is off; up high each pass stacks another octave into a rising pad |
+| **Low Cut**   | 20 - 800 Hz | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
+| **Reso**      | 0 - 100 %   | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
+| **Pre-delay** | 0 - 60 ms   | The gap before the tail starts                                               |
+| **Damping**   | 0 - 100 %   | How fast the top end dies against the Decay. 50 % is the engine's original fixed voicing |
+
+**Modern** (`ee::dsp::SpaceReverb`) is voiced against NI Raum's Airy mode, and
+measured rather than eyeballed: at the same Decay, Damp and Mix it lands within
+the difference between two renders of Raum itself. Two discrete early echoes
+per input, then a sixteen-line network whose tail thickens over the first
+~150 ms - clean and upfront rather than a wash. No shimmer: that is the engine
+beside it. `shared/include/ee/dsp/SpaceConfig.h` has the measurements and how
+they were taken.
+
+| Knob          | Range           | What it does                                                                 |
+| ------------- | --------------- | ---------------------------------------------------------------------------- |
+| **Decay**     | 0.5 - 8 s       | The tail's RT60 in the low mids - literally: 2 s is gone 60 dB down in 2 s   |
+| **Pre-delay** | 0 - 60 ms       | Added ahead of everything, the early echoes included. The engine's own first echo is ~18 ms after the note at 0 |
+| **Damping**   | 0 - 100 %       | How much faster than Decay the top end dies. Even 0 % loses the very top a little sooner, as a real space does; 25 % is the default |
+| **Low Cut**   | 20 - 800 Hz     | 12 dB/oct highpass on the finished wet; 20 Hz is off                         |
+| **Hi Cut**    | 1 - 20 kHz      | 12 dB/oct lowpass on the finished wet; 20 kHz is off                         |
 
 **Spring** is BitBit Spring's dispersive tank with its stereo pair always on, plus
 the two controls that pedal leaves off its own face:
@@ -38,10 +60,14 @@ the two controls that pedal leaves off its own face:
 | **Tension** | 0 - 100 %   | A slack spring disperses gently and boings low and soft; a taut one chirps hard and sweeps. 50 % is BitBit Spring's own voicing |
 | **Low Cut** | 20 - 800 Hz | Highpass on the finished tank output, resting at 60 Hz                        |
 
-**Mix** (0 - 100 %, equal power) is shared by both engines. Each engine keeps
-its own settings, so stepping away and back restores them.
+**Mix** (0 - 100 %) is shared by all three engines. On Spring and Shimmer it is
+equal power; on Modern it follows Raum's law: the dry stays at full level up to
+50 % while the wet rises as (2 x Mix)^1.5, then the dry fades out to nothing at
+100 %, so 20 % is the dry untouched with the reverb a quarter of full level
+under it. Each engine keeps its own settings, so stepping away and back
+restores them.
 
-**Shimmer** is a stereo pair of time-domain pitch shifters (DaisySP's), fed a
+The **Shimmer** knob is a stereo pair of time-domain pitch shifters (DaisySP's), fed a
 tap of the wet output through a predelay that grows with the decay knob, so the
 octave blooms behind the note rather than piling onto it. The two shifters read
 the predelay a Haas offset apart and their internal random modulation
@@ -57,8 +83,8 @@ unity. At 0 % neither shifter runs and the reverb is exactly what it was.
 The full shimmer voicing lives in `shared/include/ee/dsp/ShimmerTuning.h`; the
 defaults there are a tuned setting.
 
-High and low frequency decay rates are fixed internally (lows ring slightly
-longer, highs die faster) so the tail sits behind a guitar without getting fizzy.
+On the Shimmer engine the low band's decay rate is fixed internally (lows ring
+slightly longer), so the tail sits behind a guitar without getting muddy.
 
 **It replaced the native BitBit Reverb** - the silver-knob face on a sky
 background - on 2026-09-14. The plugin code is still `Prvb`, so a host loads
@@ -88,7 +114,7 @@ what to use if the mix has to fold down. **Stereo** runs a second tank whose
 springs differ by about three per cent and crosses the two into each other, which
 opens the tail out without either side sounding detuned or hollow in mono.
 
-Where BitBit Reverb's Space engine models a plate, this models the steel box bolted into the
+Where BitBit Reverb's Shimmer engine models a plate, this models the steel box bolted into the
 bottom of an amp. Three springs run in parallel, each a short delay loop with a
 cascade of stretched all-pass sections *inside* the feedback path. Those
 sections are flat in magnitude but not in group delay, so the top of the
@@ -838,7 +864,7 @@ a side panel that drives all of it live. `GrainerConfig.h` keeps the structural
 side: the knob ranges, the recording buffer and the voice count.
 
 Behind the cloud is `ee::dsp::FdnReverb`, the same sixteen-line network as BitBit
-Reverb, run plain: no shimmer, and its resonance and low cut pinned in the
+Reverb's Shimmer engine, run plain: no shimmer, and its resonance and low cut pinned in the
 tuning header rather than put on the face. It is fed the grains and nothing
 else. Bypass leaves the wet path open, so the cloud and its tail ring out
 instead of being chopped off.

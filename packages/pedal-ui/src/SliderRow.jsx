@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import "./SliderRow.css";
+import StableDigits from "./StableDigits.jsx";
 
 /**
  * A horizontal slider - Delay's Tape/Mod stage strip. A different shape
@@ -80,7 +81,11 @@ export default function SliderRow({ name, value, onChange, onDragStart, onDragEn
         />
       </div>
 
-      {valueLabel && <span className="pui-slider-row__value">{valueLabel}</span>}
+      {valueLabel && (
+        <span className="pui-slider-row__value">
+          <StableDigits>{valueLabel}</StableDigits>
+        </span>
+      )}
     </div>
   );
 }

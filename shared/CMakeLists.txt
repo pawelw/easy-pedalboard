@@ -17,6 +17,7 @@
 
 add_library(ee_dsp STATIC
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/FdnReverb.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/SpaceReverb.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/SpringReverb.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/src/dsp/TapeDelay.cpp)
 target_include_directories(ee_dsp PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)

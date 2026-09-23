@@ -11,12 +11,13 @@
 #endif
 
 /**
- * BitBit Reverb: BitBit Alpine's Reverb module - Space / Spring - as a pedal of its
- * own, the way BitBit Artifact is Alpine's first module.
+ * BitBit Reverb: BitBit Alpine's Reverb module - Spring / Shimmer / Modern - as a
+ * pedal of its own, the way BitBit Artifact is Alpine's first module.
  *
- * Space is the FDN this pedal used to be on its own, Spring is BitBit Spring's
- * tank; both run inside ee::fx::ReverbModule, the same object Alpine runs, so
- * the same knob position sounds the same in both. The processor is parameters
+ * Spring is BitBit Spring's tank, Shimmer the FDN this pedal used to be on its
+ * own, Modern the reverb voiced against NI Raum; all three run inside
+ * ee::fx::ReverbModule, the same object Alpine runs, so the same knob position
+ * sounds the same in both. The processor is parameters
  * and plumbing: it reads the knobs and hands the module a global bypass.
  */
 class BitBitReverbProcessor : public juce::AudioProcessor

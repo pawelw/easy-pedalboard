@@ -186,6 +186,19 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
       ) : (
         <>
           <div className="sm-knobs">
+            {/* One knob on a row of its own, centred above the pairs - the
+                Modern reverb's Decay. */}
+            {engine.lead && (
+              <div className="sm-knob-row sm-knob-row--centre" key={engine.prefix + engine.lead[0]}>
+                <JuceKnob
+                  parameterId={engine.prefix + engine.lead[0]}
+                  caption={engine.lead[1]}
+                  variant={knobVariant}
+                  size={36}
+                />
+              </div>
+            )}
+
             {knobRows(engine.knobs).map((row) => (
               /* Keyed by the engine-qualified id rather than the leaf name:
                  two engines can put a knob called "decay" in the same place,

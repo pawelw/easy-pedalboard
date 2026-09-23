@@ -2,7 +2,7 @@
 
 <PARAMETERS stateVersion="1">
   <PARAM id="on" value="1"/>
-  <PARAM id="engine" value="0"/>
+  <PARAM id="engine" value="2"/>
   <PARAM id="mix" value="30"/>
   <PARAM id="space.decay" value="2"/>
   <PARAM id="space.shimmer" value="0"/>
@@ -13,4 +13,9 @@
   <PARAM id="spring.locut" value="60"/>
   <PARAM id="space.predelay" value="13"/>
   <PARAM id="space.damping" value="50"/>
+  <PARAM id="modern.decay" value="2"/>
+  <PARAM id="modern.predelay" value="0"/>
+  <PARAM id="modern.damping" value="25"/>
+  <PARAM id="modern.locut" value="20"/>
+  <PARAM id="modern.hicut" value="20000"/>
 </PARAMETERS>

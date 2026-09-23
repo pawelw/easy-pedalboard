@@ -109,7 +109,7 @@ int main()
         BitBitReverbProcessor probe;
         probe.setPlayConfigDetails (2, 2, kSampleRate, 1024);
         probe.prepareToPlay (kSampleRate, 1024);
-        check (probe.getLatencySamples() == 0, "both engines are latency-free, and it says so");
+        check (probe.getLatencySamples() == 0, "all three engines are latency-free, and it says so");
         check (probe.getTailLengthSeconds() > 1.0, "...and it reports a tail for the host to render");
     }
 
@@ -137,7 +137,7 @@ int main()
     }
 
     std::printf ("\nEngines:\n");
-    static constexpr const char* names[] = { "Space", "Spring" };
+    static constexpr const char* names[] = { "Spring", "Shimmer", "Modern" };
 
     for (int engine = 0; engine < ee::fx::ReverbModule::NumEngines; ++engine)
     {

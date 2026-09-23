@@ -83,7 +83,10 @@ void setModulationDefaults (ee::fx::ModulationModule& m)
 
 void setReverbDefaults (ee::fx::ReverbModule& m)
 {
-    m.setSpace (2.0f, 0.2f, 100.0f, 0.5f, 13.0f, 0.5f);
+    // decay, shimmer01, lowCutHz, reso01, predelayMs, damping01
+    m.setShimmer (2.0f, 0.2f, 100.0f, 0.5f, 13.0f, 0.5f);
+    // decay, predelayMs, damping01, lowCutHz, highCutHz
+    m.setModern (2.0f, 0.0f, 0.25f, 100.0f, 20000.0f);
     m.setSpring (2.0f, 0.5f, 60.0f);
 }
 
@@ -118,8 +121,9 @@ bool matchesDelayedInput (Module& module,
 }
 
 /** Mix at 0 with Level at 1 must return the input untouched, bit for bit. Not
-    "close": the mix law is cos/sin, cos(0) is exactly 1 and sin(0) exactly 0,
-    so any drift here is a bug in the mix rather than a rounding cost. Bit for
+    "close": every engine's mix law is exactly dry 1, wet 0 at Mix 0 (cos/sin, or
+    Modern's held-dry law), so any drift here is a bug in the mix rather
+    than a rounding cost. Bit for
     bit *at the module's own latency* - the alignment delay is a whole number of
     samples copied through a buffer, which does not change a value. */
 template <typename Module> void checkMixZeroIsDry (Module& module, const char* name)
@@ -342,7 +346,8 @@ void sweepReverb()
                     module.setLevel (1.0f);
                     module.setEngaged (true);
 
-                    module.setSpace (decay, a, 20.0f + a * 780.0f, a, a * 60.0f, a);
+                    module.setShimmer (decay, a, 20.0f + a * 780.0f, a, a * 60.0f, a);
+                    module.setModern (decay, a * 60.0f, a, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f);
                     module.setSpring (decay, a, 20.0f + a * 780.0f);
 
                     juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate));
@@ -573,18 +578,23 @@ int main()
         checkSwitchDoesNotClick (module, pair[0], pair[1], what);
     }
 
-    {
-        ee::fx::ReverbModule module;
-        module.prepare (kSampleRate, 512);
-        setReverbDefaults (module);
-        checkSwitchDoesNotClick (module, 0, 1, "Reverb Space -> Spring");
-    }
-    {
-        ee::fx::ReverbModule module;
-        module.prepare (kSampleRate, 512);
-        setReverbDefaults (module);
-        checkSwitchDoesNotClick (module, 1, 0, "Reverb Spring -> Space");
-    }
+    // Every ordered Reverb pair: none of them runs warm, so each switch is a
+    // cold engine coming in against a ringing one.
+    for (int from = 0; from < ee::fx::ReverbModule::NumEngines; ++from)
+        for (int to = 0; to < ee::fx::ReverbModule::NumEngines; ++to)
+        {
+            if (from == to)
+                continue;
+
+            static constexpr const char* names[] = { "Spring", "Shimmer", "Modern" };
+            ee::fx::ReverbModule module;
+            module.prepare (kSampleRate, 512);
+            setReverbDefaults (module);
+
+            char what[64];
+            std::snprintf (what, sizeof (what), "Reverb %s -> %s", names[from], names[to]);
+            checkSwitchDoesNotClick (module, from, to, what);
+        }
 
     // Every neighbouring Artifact pair plus the wrap - Ring Mod, Bit Crush,
     // Rust, Amp - since a crossfade between two engines that voice the signal

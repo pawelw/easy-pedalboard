@@ -108,7 +108,7 @@ void filterSynced (juce::AudioProcessorValueTreeState& s)
     setPercent (s, modMix, 60.0f);
 }
 
-/** Every module doing something at once, including the Space reverb's Shimmer.
+/** Every module doing something at once, including the Shimmer reverb's octave.
 
     Shimmer used to make this case non-reproducible: DaisySP's PitchShifter drew
     its modulation from one process-wide static generator and left several members
@@ -126,6 +126,7 @@ void everything (juce::AudioProcessorValueTreeState& s)
     setPercent (s, dlyDrift, 40.0f);
     setPercent (s, dlyPhaser, 40.0f);
     setPercent (s, revMix, 60.0f);
+    setChoice (s, revEngine, ee::fx::ReverbModule::Shimmer);
     setPercent (s, revSpaceShimmer, 40.0f);
 }
 
@@ -360,7 +361,7 @@ int main (int argc, char* argv[])
     juce::WavAudioFormat wav;
 
     for (int mod = 0; mod < ee::fx::ModulationModule::NumEngines; ++mod)
-        for (int rev = 0; rev < 2; ++rev)
+        for (int rev = 0; rev < ee::fx::ReverbModule::NumEngines; ++rev)
         {
             juce::AudioBuffer<float> out (2, kLength);
             out.makeCopyOf (input);
