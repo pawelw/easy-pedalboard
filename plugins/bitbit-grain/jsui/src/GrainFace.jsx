@@ -15,7 +15,6 @@ import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } fro
 import ModTab from "./ModTab.jsx";
 import ModdableKnob from "./ModdableKnob.jsx";
 import Cosmos from "./Cosmos.jsx";
-import MixerMeter from "./MixerMeter.jsx";
 import "./GrainFace.css";
 
 const FACE_TABS = [
