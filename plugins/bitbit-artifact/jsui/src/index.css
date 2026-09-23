@@ -80,10 +80,10 @@
   display: none;
 }
 
-/* Steppers hidden (JucePresetBar showSteppers={false}) and joined to Save and
-   the dice (no gap, shared 1px borders) - the name field is sized so the three
-   together still land on the module's own 168px width below: 168 - 28 (Save)
-   - 28 (dice) + 2 (the two shared borders) = 114. */
+/* Steppers and the dice both hidden (JucePresetBar showSteppers={false}
+   showDice={false}) and joined to Save (no gap, one shared 1px border) - the
+   name field is sized so the two together still take the module's own full
+   168px width below: 168 - 28 (Save) + 1 (the shared border) = 141. */
 .af-card .pui-presetbar--separated .pui-dropdown__input {
-  width: 114px;
+  width: 141px;
 }

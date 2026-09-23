@@ -36,7 +36,7 @@ void SpringReverb::prepare (double sampleRate)
 
     inputHighCutCoeff = onePoleCoeff (spring::kInputHighCutHz, sr);
     inputLowCutCoeff = onePoleCoeff (spring::kInputLowCutHz, sr);
-    outputHighCutCoeff = onePoleCoeff (spring::kOutputHighCutHz, sr);
+    outputHighCutCoeff = onePoleCoeff (highCutHz, sr);
     outputLowCutCoeff = onePoleCoeff (lowCutHz, sr);
     wetShelfCoeff = onePoleCoeff (spring::kWetLowShelfHz, sr);
 
@@ -137,6 +137,16 @@ void SpringReverb::setLowCut (float hz) noexcept
 
     lowCutHz = clamped;
     outputLowCutCoeff = onePoleCoeff (lowCutHz, sr);
+}
+
+void SpringReverb::setHighCut (float hz) noexcept
+{
+    const float clamped = std::clamp (hz, spring::kMinHighCutHz, spring::kMaxHighCutHz);
+    if (clamped == highCutHz)
+        return;
+
+    highCutHz = clamped;
+    outputHighCutCoeff = onePoleCoeff (highCutHz, sr);
 }
 
 void SpringReverb::updateFeedback() noexcept

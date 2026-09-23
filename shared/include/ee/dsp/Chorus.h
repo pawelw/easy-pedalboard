@@ -3,6 +3,7 @@
 #include "ChorusConfig.h"
 #include "ModDelayLine.h"
 
+#include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_core/juce_core.h>
 
 #include <array>
@@ -49,6 +50,11 @@ public:
         hpCoeff = onePoleCoeff (config::kWetHighPassHz);
         lpCoeff = onePoleCoeff (config::kWetLowPassHz);
 
+        rateHzSmooth.reset (sampleRate, config::kSmoothingSeconds);
+        depthMsSmooth.reset (sampleRate, config::kSmoothingSeconds);
+        phaseOffsetSmooth.reset (sampleRate, config::kSmoothingSeconds);
+        mixSmooth.reset (sampleRate, config::kSmoothingSeconds);
+
         reset();
     }
 
@@ -61,6 +67,12 @@ public:
         lfoPhase = 0.0;
         hpZ.fill (0.0f);
         lpZ.fill (0.0f);
+
+        // Whatever the setters are called with before the next process() call
+        // should take effect immediately rather than fading in from whatever
+        // was set before the reset - only a knob move *during* playback should
+        // ramp.
+        needsSnap = true;
     }
 
     void setRateHz (float hz) noexcept
@@ -98,10 +110,29 @@ public:
 
         const int voices = juce::jlimit (1, config::kMaxChorusVoices,
                                          config::kVoicesPerChannel);
-        const double phaseInc = static_cast<double> (rateHz) / sampleRate;
-        const float depthSamples =
-            depthMs * 1.0e-3f * static_cast<float> (sampleRate);
         const float voiceNorm = 1.0f / std::sqrt (static_cast<float> (voices));
+
+        // Rate/Depth/Phase/Mix are read once per block by the caller, so a knob
+        // move would otherwise step the delay-tap read position (Depth, Phase)
+        // or the dry/wet balance (Mix) instantly - audible as a click. Smoothed
+        // per sample instead; only the un-modulated base delays and the LFO's
+        // own spread are fixed. The first block after prepare()/reset() snaps
+        // straight to whatever was set, so a fresh setup does not fade in.
+        if (needsSnap)
+        {
+            rateHzSmooth.setCurrentAndTargetValue (rateHz);
+            depthMsSmooth.setCurrentAndTargetValue (depthMs);
+            phaseOffsetSmooth.setCurrentAndTargetValue (phaseOffsetCycles);
+            mixSmooth.setCurrentAndTargetValue (mix);
+            needsSnap = false;
+        }
+        else
+        {
+            rateHzSmooth.setTargetValue (rateHz);
+            depthMsSmooth.setTargetValue (depthMs);
+            phaseOffsetSmooth.setTargetValue (phaseOffsetCycles);
+            mixSmooth.setTargetValue (mix);
+        }
 
         float baseL[config::kMaxChorusVoices];
         float baseR[config::kMaxChorusVoices];
@@ -115,8 +146,6 @@ public:
                              * config::kVoicePhaseSpreadCycles;
         }
 
-        const float dryGain = 1.0f - mix;
-        const float wetGain = mix;
         constexpr float twoPi = juce::MathConstants<float>::twoPi;
 
         for (int n = 0; n < numSamples; ++n)
@@ -124,6 +153,14 @@ public:
             const float dryL = inL[n];
             const float dryR = inR != nullptr ? inR[n] : inL[n];
             const float mono = 0.5f * (dryL + dryR);
+
+            const float curRateHz = rateHzSmooth.getNextValue();
+            const float curDepthSamples =
+                depthMsSmooth.getNextValue() * 1.0e-3f * static_cast<float> (sampleRate);
+            const float curPhaseOffsetCycles = phaseOffsetSmooth.getNextValue();
+            const float curMix = mixSmooth.getNextValue();
+            const float dryGain = 1.0f - curMix;
+            const float wetGain = curMix;
 
             const float phase = static_cast<float> (lfoPhase);
             float wetL = 0.0f;
@@ -133,7 +170,7 @@ public:
             {
                 const float modL = std::sin ((phase + voiceOffset[v]) * twoPi);
                 const float modR = std::sin ((phase + voiceOffset[v]
-                                              + phaseOffsetCycles) * twoPi);
+                                              + curPhaseOffsetCycles) * twoPi);
 
                 auto& lineL = lines[0][static_cast<size_t> (v)];
                 auto& lineR = lines[1][static_cast<size_t> (v)];
@@ -141,8 +178,8 @@ public:
                 lineL.write (mono);
                 lineR.write (mono);
 
-                wetL += lineL.read (baseL[v] + depthSamples * modL);
-                wetR += lineR.read (baseR[v] + depthSamples * modR);
+                wetL += lineL.read (baseL[v] + curDepthSamples * modL);
+                wetR += lineR.read (baseR[v] + curDepthSamples * modR);
 
                 lineL.advance();
                 lineR.advance();
@@ -160,7 +197,7 @@ public:
             outL[n] = dryL * dryGain + wetL * wetGain;
             outR[n] = dryR * dryGain + wetR * wetGain;
 
-            lfoPhase += phaseInc;
+            lfoPhase += static_cast<double> (curRateHz) / sampleRate;
             if (lfoPhase >= 1.0)
                 lfoPhase -= std::floor (lfoPhase);
         }
@@ -181,6 +218,12 @@ private:
     float phaseOffsetCycles =
         (config::kDefaultPhaseDeg / config::kMaxPhaseDeg) * config::kPhaseSpanCycles;
     float mix     = config::kDefaultMixPct * 0.01f;
+
+    juce::SmoothedValue<float> rateHzSmooth;
+    juce::SmoothedValue<float> depthMsSmooth;
+    juce::SmoothedValue<float> phaseOffsetSmooth;
+    juce::SmoothedValue<float> mixSmooth;
+    bool needsSnap = true;
 
     float hpCoeff = 0.01f;
     float lpCoeff = 0.5f;

@@ -23,6 +23,13 @@ namespace ee::dsp
 
     Decay time is the only size control exposed. Room size and predelay are
     derived from it so the space stays plausible across the whole sweep.
+
+    Every knob here is available to a caller that wants the plain plate (BitBit
+    Grain's own instance runs it that way, with Shimmer at 0). BitBit Reverb's
+    Shimmer engine (ee::fx::ReverbModule) is a narrower, fixed voicing of the
+    same class: Decay pinned at kMaxDecay and Shimmer at 1.0 rather than knobs,
+    so what the face exposes is only setOctave, setLowCut/setHighCut and
+    setDamping - see ReverbModule::setShimmer.
 */
 class FdnReverb
 {
@@ -37,6 +44,8 @@ public:
     static constexpr float kMaxDecay = 8.0f;
     static constexpr float kMinLowCutHz = 20.0f;
     static constexpr float kMaxLowCutHz = 800.0f;
+    static constexpr float kMinHighCutHz = 1000.0f;
+    static constexpr float kMaxHighCutHz = 20000.0f;
     static constexpr float kMinPredelayMs = config::kUserPredelayMinMs;
     static constexpr float kMaxPredelayMs = config::kUserPredelayMaxMs;
 
@@ -50,6 +59,9 @@ public:
 
     /** Two-pole highpass across the wet output. kMinLowCutHz is effectively off. */
     void setLowCut (float hz) noexcept;
+
+    /** Two-pole lowpass across the wet output. kMaxHighCutHz is effectively off. */
+    void setHighCut (float hz) noexcept;
 
     /** Scoops the midrange out of the wet output. 0 leaves it flat. */
     /** How much the tail is allowed to ring: 0 is fully smeared, 1 rings hardest.
@@ -82,6 +94,15 @@ public:
         exactly the reverb with no shimmer path running at all; turning it up
         stacks an octave on the tail on every pass round the loop. */
     void setShimmer (float amount01) noexcept;
+
+    /** -1, 0 or +1 octaves on the shimmer's pitch shift (-12/0/+12 semitones),
+        clamped to that range. This is the runtime control; ShimmerTuning::
+        semitones is left as the struct's own documented reference default and
+        is not read for this any more. Default +1 (an octave up), the original
+        fixed voicing. Safe to call while playing - the transposition change
+        is not smoothed, the same as a live retune through setShimmerTuning,
+        and the shifter's own crossfading grains keep it from clicking. */
+    void setOctave (int octaves) noexcept;
 
     /** The full shimmer voicing. Safe to call while playing - the development
         tuning panel drives it live. */
@@ -123,6 +144,8 @@ private:
     // predelay line a Haas offset apart. Held behind pointers so the DaisySP
     // header stays out of this one.
     float shimmerAmount = 0.0f;
+    // +1 octave, the original fixed voicing - see setOctave.
+    float pitchSemitones = 12.0f;
     ShimmerTuning shimmerTuning;
     std::unique_ptr<ShimmerPitchShifter> shimmerShifterL;
     std::unique_ptr<ShimmerPitchShifter> shimmerShifterR;
@@ -167,6 +190,9 @@ private:
     juce::SmoothedValue<float> outputScale;
     juce::SmoothedValue<float> lowCutCoeff;
     std::array<float, 4> lowCutState {};
+    float highCutHz = kMaxHighCutHz;
+    juce::SmoothedValue<float> highCutCoeff;
+    std::array<float, 4> highCutState {};
 
     // Low shelf on the finished wet output, for body. Outside every feedback
     // path, so it only ever colours what you hear.

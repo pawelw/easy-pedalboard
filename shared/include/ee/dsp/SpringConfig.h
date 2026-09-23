@@ -167,6 +167,20 @@ constexpr float kOutputHighCutHz = 6000.0f;
 constexpr float kMinLowCutHz = 20.0f;
 constexpr float kMaxLowCutHz = 800.0f;
 
+// ============================================================================
+// HI CUT
+// ============================================================================
+// Travel of the exposed Hi Cut control, which moves kOutputHighCutHz - the
+// pickup's own low-pass, previously fixed. Outside the loop like Low Cut, so
+// it thins the tail without touching how fast it dies either.
+//
+// The same range FdnReverb's and SpaceReverb's own Hi Cut have, for the same
+// reason Low Cut's range matches theirs: one label, one meaning, across every
+// reverb engine a Hi Cut knob sits on. kOutputHighCutHz (6000) sits inside it
+// already, so the knob rests exactly where the fixed voicing used to leave it.
+constexpr float kMinHighCutHz = 1000.0f;
+constexpr float kMaxHighCutHz = 20000.0f;
+
 // Body, as a shelf on that finished output. The reference tank carries far
 // more weight under 250 Hz than the loop alone can account for, but its low
 // end still dies quickly - so this lifts the level without touching the decay,

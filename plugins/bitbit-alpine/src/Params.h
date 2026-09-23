@@ -117,21 +117,19 @@ inline constexpr const char* revLevel = "rev.level";
 inline constexpr const char* revMix = "rev.mix";
 
 // The Shimmer engine - still `space.`, the name it had until Modern arrived
-// beside it, so a saved session keeps its settings.
-inline constexpr const char* revSpaceDecay = "rev.space.decay";
-inline constexpr const char* revSpaceShimmer = "rev.space.shimmer";
+// beside it, so a saved session keeps its settings. Decay, the FDN's own
+// Shimmer feedback and Reso are fixed inside ee::fx::ReverbModule::setShimmer
+// - not knobs any more (see its doc comment) - so what is left is which
+// octave the feedback stacks at, the two cuts, and Damping.
+inline constexpr const char* revSpaceOctave = "rev.space.octave";
 inline constexpr const char* revSpaceLoCut = "rev.space.locut";
-inline constexpr const char* revSpaceReso = "rev.space.reso";
+inline constexpr const char* revSpaceHiCut = "rev.space.hicut";
+inline constexpr const char* revSpaceDamping = "rev.space.damping";
 
 inline constexpr const char* revSpringDecay = "rev.spring.decay";
 inline constexpr const char* revSpringTension = "rev.spring.tension";
 inline constexpr const char* revSpringLoCut = "rev.spring.locut";
-
-// Appended at the very end of the layout, after chainOrder - not here in the
-// Shimmer block - because AU addresses parameters by index. See the comment on
-// chainOrder in PluginProcessor.cpp.
-inline constexpr const char* revSpacePredelay = "rev.space.predelay";
-inline constexpr const char* revSpaceDamping = "rev.space.damping";
+inline constexpr const char* revSpringHiCut = "rev.spring.hicut";
 
 // The Modern engine (ee::dsp::SpaceReverb), appended after those for the same
 // reason, in the order its knobs sit on the face.

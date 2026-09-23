@@ -13,6 +13,7 @@ import {
 } from "@synthpeak/pedal-ui/juce";
 import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } from "./Displays.jsx";
 import ModTab from "./ModTab.jsx";
+import MixerMeter from "./MixerMeter.jsx";
 import ModdableKnob from "./ModdableKnob.jsx";
 import Cosmos from "./Cosmos.jsx";
 import "./GrainFace.css";

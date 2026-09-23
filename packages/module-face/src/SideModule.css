@@ -65,6 +65,14 @@
   justify-content: center;
 }
 
+/* A picker stepper (the Shimmer engine's octave), below its knob grid on the
+   same 16px lead the sync pill above uses. No fixed slot height of its own -
+   a well sizes to its own content, the way the module's own engine stepper
+   at the top of the body does. */
+.sm-picker {
+  margin-top: 16px;
+}
+
 /* The Filter engine's response scope. FilterScope reads the --pui-scope-*
    group, which onyx leaves on the light-theme values, so the well is pointed
    at the same recess the bar displays sit in and the curves at the module's

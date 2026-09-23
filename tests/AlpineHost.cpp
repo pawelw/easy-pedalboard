@@ -127,7 +127,7 @@ void everything (juce::AudioProcessorValueTreeState& s)
     setPercent (s, dlyPhaser, 40.0f);
     setPercent (s, revMix, 60.0f);
     setChoice (s, revEngine, ee::fx::ReverbModule::Shimmer);
-    setPercent (s, revSpaceShimmer, 40.0f);
+    setChoice (s, revSpaceOctave, 0); // -1 Oct, away from the default
 }
 
 /** Where an impulse actually comes out, against what the plugin tells the host

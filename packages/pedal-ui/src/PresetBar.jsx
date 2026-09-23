@@ -80,6 +80,12 @@ function ChevronRightIcon() {
  * `showSteppers` (default on) hides the prev/next arrows for a face too narrow
  * to carry them - BitBit Artifact's single-module card - leaving just the name
  * picker and Save.
+ *
+ * `showDice` (default on) hides the randomise button. Off for every pedal that
+ * is a single Alpine module split out on its own (BitBit Artifact, BitBit
+ * Modulation, BitBit Reverb) and for BitBit Delay - dice stays only on BitBit
+ * Alpine and BitBit Grain, where a whole instrument's worth of knobs makes a
+ * random start worth having.
  */
 export default function PresetBar({
   factory = DEMO_FACTORY,
@@ -88,6 +94,7 @@ export default function PresetBar({
   canAuthor = false,
   variant = "joined",
   showSteppers = true,
+  showDice = true,
   onLoad,
   onStep,
   onSave,
@@ -113,7 +120,7 @@ export default function PresetBar({
 
   return (
     <div
-      className={`pui-reset pui-presetbar pui-presetbar--${variant}${showSteppers ? "" : " pui-presetbar--no-steppers"}`}
+      className={`pui-reset pui-presetbar pui-presetbar--${variant}${showSteppers ? "" : " pui-presetbar--no-steppers"}${showDice ? "" : " pui-presetbar--no-dice"}`}
     >
       <div className="pui-presetbar__group">
         {showSteppers && (
@@ -149,14 +156,16 @@ export default function PresetBar({
         <SaveIcon size={separated ? 14 : 13} variant={separated ? "chrome" : "default"} />
       </Button>
 
-      <Button
-        onClick={() => onRandomize?.()}
-        aria-label="Randomise knobs"
-        title="Randomise knobs"
-        className="pui-presetbar__dice"
-      >
-        <DiceIcon size={separated ? 14 : 13} />
-      </Button>
+      {showDice && (
+        <Button
+          onClick={() => onRandomize?.()}
+          aria-label="Randomise knobs"
+          title="Randomise knobs"
+          className="pui-presetbar__dice"
+        >
+          <DiceIcon size={separated ? 14 : 13} />
+        </Button>
+      )}
 
       <PresetSaveDialog
         open={dialogOpen}

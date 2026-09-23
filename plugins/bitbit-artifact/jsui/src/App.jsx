@@ -17,11 +17,11 @@ export default function App() {
     <div className="page">
       <Card
         showLogo={false}
-        headerCenter={<JucePresetBar variant="separated" showSteppers={false} />}
+        headerCenter={<JucePresetBar variant="separated" showSteppers={false} showDice={false} />}
         headerCenterPlacement="below"
         className="af-card"
       >
-        <ArtifactFace />
+        <ArtifactFace knobVariant="flat" />
       </Card>
     </div>
   );

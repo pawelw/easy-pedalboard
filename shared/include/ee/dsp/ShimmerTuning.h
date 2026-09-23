@@ -18,8 +18,12 @@ namespace ee::dsp
 */
 struct ShimmerTuning
 {
-    // Interval both shifters centre on (+12 = one octave), and how far either
-    // side of it they sit.
+    // The reference interval (+12 = one octave). Not read at runtime any more
+    // - FdnReverb::setOctave overrides it per instance, so BitBit Reverb's
+    // octave selector can switch without retuning the whole struct - but it
+    // stays here as the documented default and for the tuning panel's own
+    // table below. detuneSemis, how far either side of the live transposition
+    // the two shifters sit, is still read live.
     float semitones = 12.0f;
     float detuneSemis = 0.0f;
 

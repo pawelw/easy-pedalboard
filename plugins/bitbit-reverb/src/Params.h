@@ -19,22 +19,20 @@ inline constexpr const char* mix = "mix";       // footer dry/wet
 // The Shimmer engine: BitBit Reverb's FDN, which this pedal was on its own
 // before it became a module. Still `space.`, the name it had until Modern
 // arrived beside it - a saved session keys on the id, so renaming it would
-// have lost every setting anyone made on it.
-inline constexpr const char* spaceDecay = "space.decay";
-inline constexpr const char* spaceShimmer = "space.shimmer";
+// have lost every setting anyone made on it. Decay, the FDN's own Shimmer
+// feedback and Reso are fixed inside ee::fx::ReverbModule::setShimmer - not
+// knobs any more (see its doc comment) - so what is left is which octave the
+// feedback stacks at, the two cuts, and Damping.
+inline constexpr const char* spaceOctave = "space.octave";
 inline constexpr const char* spaceLoCut = "space.locut";
-inline constexpr const char* spaceReso = "space.reso";
+inline constexpr const char* spaceHiCut = "space.hicut";
+inline constexpr const char* spaceDamping = "space.damping";
 
 // BitBit Spring's tank.
 inline constexpr const char* springDecay = "spring.decay";
 inline constexpr const char* springTension = "spring.tension";
 inline constexpr const char* springLoCut = "spring.locut";
-
-// Appended after Spring, not slotted into the Shimmer block above: AU addresses
-// parameters by index, and BitBit Reverb has shipped, so an existing param's
-// index cannot move. See createParameterLayout().
-inline constexpr const char* spacePredelay = "space.predelay";
-inline constexpr const char* spaceDamping = "space.damping";
+inline constexpr const char* springHiCut = "spring.hicut";
 
 // The Modern engine (ee::dsp::SpaceReverb), appended last for the same reason,
 // in the order its knobs sit on the face.

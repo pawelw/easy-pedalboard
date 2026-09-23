@@ -280,7 +280,9 @@ there. The flutter (`ShimmerTuning::flutter`, 0.25) is **not** zero, so this was
 audible modulation, not inaudible as an earlier version of this file said. The
 voicing is unchanged; only the random sequence differs from the old shared one.
 It affects BitBit Reverb and BitBit Alpine's Shimmer engine. A `*_regress` battery
-can now leave Shimmer above zero.
+can now leave Shimmer above zero (the module's own Shimmer engine has run it at
+its maximum, unconditionally, since 2026-09-23 - see `ee::fx::ReverbModule::
+setShimmer` - so this now matters on every render of it, not just some).
 
 ## Formatting
 

@@ -282,7 +282,7 @@ function RingBody({ knobVariant }) {
           <JuceKnob parameterId="ring.tweak" caption="Tweak" variant={knobVariant} size={36} />
         </div>
         <div className="af-knob-row">
-          <JuceKnob parameterId="ring.lp" caption="Filter" variant={knobVariant} size={36} />
+          <JuceKnob parameterId="ring.lp" caption="HiCut" variant={knobVariant} size={36} />
           {/* Bipolar: a plain sine carrier dead centre, so its arc grows out
               from twelve o'clock in whichever direction it is folded. */}
           <JuceKnob

@@ -25,6 +25,11 @@ namespace
         reverb.setResonance (resonance);
         reverb.setShimmer (shimmer);
         reverb.setLowCut (lowCut);
+        // Reuses the existing lowCut/shimmer sweep rather than adding new grid
+        // dimensions - just enough to exercise setHighCut and setOctave too.
+        reverb.setHighCut (lowCut > ee::dsp::FdnReverb::kMinLowCutHz ? ee::dsp::FdnReverb::kMinHighCutHz
+                                                                      : ee::dsp::FdnReverb::kMaxHighCutHz);
+        reverb.setOctave (shimmer > 0.5f ? 1 : -1);
 
         std::vector<float> mono (static_cast<size_t> (blockSize));
         std::vector<float> wetL (static_cast<size_t> (blockSize));
@@ -67,9 +72,11 @@ namespace
             }
 
             // Move the knobs mid-run: parameter changes re-derive the loop gains.
+            if (b == blocks / 6)      reverb.setOctave (0);
             if (b == blocks / 3)      reverb.setShimmer (shimmer > 0.5f ? 0.0f : 1.0f);
             if (b == blocks / 2)      reverb.setResonance (resonance > 0.5f ? 0.0f : 1.0f);
             if (b == (2 * blocks) / 3) reverb.setDecayTime (ee::dsp::FdnReverb::kMaxDecay);
+            if (b == (5 * blocks) / 6) reverb.setHighCut (ee::dsp::FdnReverb::kMaxHighCutHz);
 
             reverb.process (mono.data(), wetL.data(), wetR.data(), blockSize);
 

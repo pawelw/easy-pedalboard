@@ -24,16 +24,18 @@ moves.
 **Shimmer** (`ee::dsp::FdnReverb`) is the modulated feedback delay network - the
 whole of what this pedal used to be, and the engine that was called **Space**
 until Modern arrived beside it on 2026-09-23. Its parameters kept their `space.`
-ids, so a session saved before then opens on the same sound:
+ids, so a session saved before then opens on the same sound. Simplified on
+2026-09-23 to a single always-on shimmer wash: Decay, its own feedback amount
+and Reso are fixed internally rather than knobs (Decay maxed, feedback at full,
+Reso at the engine's own default), so what is left on the face is which octave
+the feedback stacks at and how the tail is shaped:
 
-| Knob          | Range       | What it does                                                                 |
-| ------------- | ----------- | ---------------------------------------------------------------------------- |
-| **Decay**     | 0.5 - 8 s   | Sets the tail length, and derives room size from it behind the scenes        |
-| **Shimmer**   | 0 - 100 %   | Feeds an octave-up copy of the tail back into the reverb. 0 % is off; up high each pass stacks another octave into a rising pad |
-| **Low Cut**   | 20 - 800 Hz | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
-| **Reso**      | 0 - 100 %   | Fully open is a still, lush tail. Backing it off sets the delay lines moving, which smears the modes but is heard as movement |
-| **Pre-delay** | 0 - 60 ms   | The gap before the tail starts                                               |
-| **Damping**   | 0 - 100 %   | How fast the top end dies against the Decay. 50 % is the engine's original fixed voicing |
+| Control       | Range           | What it does                                                                 |
+| ------------- | --------------- | ---------------------------------------------------------------------------- |
+| **Octave**    | -1 / 0 / +1     | The feedback's pitch shift - down an octave, unison (a plain regenerating delay with no transposition), or up. `<>` stepper, defaults to +1 |
+| **Low Cut**   | 20 - 800 Hz     | Highpass across the wet tail, for keeping the bottom end out of the reverb    |
+| **Hi Cut**    | 1 - 20 kHz      | Lowpass across the wet tail; 20 kHz is off                                   |
+| **Damping**   | 0 - 100 %       | How fast the top end dies against the (now fixed) Decay. 50 % is the engine's original fixed voicing |
 
 **Modern** (`ee::dsp::SpaceReverb`) is voiced against NI Raum's Airy mode, and
 measured rather than eyeballed: at the same Decay, Damp and Mix it lands within
@@ -67,18 +69,20 @@ equal power; on Modern it follows Raum's law: the dry stays at full level up to
 under it. Each engine keeps its own settings, so stepping away and back
 restores them.
 
-The **Shimmer** knob is a stereo pair of time-domain pitch shifters (DaisySP's), fed a
-tap of the wet output through a predelay that grows with the decay knob, so the
-octave blooms behind the note rather than piling onto it. The two shifters read
-the predelay a Haas offset apart and their internal random modulation
-decorrelates them, so the octave comes back wide rather than as a mono point.
-Each side is band-limited — a highpass keeps the stack from growing a sub rumble
-as the shifter's tracking drifts flat, a lowpass keeps stacked octaves from
-piling into hiss — with an optional high shelf for sparkle, then soft-clipped
-through a `tanh` so no setting can let it run away. It re-enters the network as a
-correlated centre plus an L/R difference scaled by `width`, so it spreads without
-gutting a mono sum. The knob is the feedback gain, tapered and capped below
-unity. At 0 % neither shifter runs and the reverb is exactly what it was.
+The Shimmer engine's feedback is a stereo pair of time-domain pitch shifters
+(DaisySP's), fed a tap of the wet output through a predelay that grows with the
+(now fixed, maxed) decay, so the octave blooms behind the note rather than
+piling onto it. The two shifters read the predelay a Haas offset apart and
+their internal random modulation decorrelates them, so the shift comes back
+wide rather than as a mono point. Each side is band-limited — a highpass keeps
+the stack from growing a sub rumble as the shifter's tracking drifts flat, a
+lowpass keeps it from piling into hiss — with an optional high shelf for
+sparkle, then soft-clipped through a `tanh` so no setting can let it run away.
+It re-enters the network as a correlated centre plus an L/R difference scaled
+by `width`, so it spreads without gutting a mono sum. **Octave** only ever
+moves the two shifters' transposition (-12/0/+12 semitones); the feedback gain
+itself is fixed at the top of its tapered, capped-below-unity range, so the
+path always runs.
 
 The full shimmer voicing lives in `shared/include/ee/dsp/ShimmerTuning.h`; the
 defaults there are a tuned setting.

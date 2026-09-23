@@ -76,12 +76,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitReverbProcessor::creat
                                                               juce::StringArray { "Spring", "Shimmer", "Modern" }, 2));
     addPercent (layout, id::mix, "Mix", 30.0f);
 
-    // Shimmer (the `space.` ids - see Params.h).
-    auto spaceDecay = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
-    spaceDecay.setSkewForCentre (2.0f);
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::spaceDecay, 1 }, "Shimmer Decay",
-                                                             spaceDecay, 2.0f, withText (secondsToText)));
-    addPercent (layout, id::spaceShimmer, "Shimmer Amount", 0.0f);
+    // Shimmer (the `space.` ids - see Params.h). Decay, its own feedback
+    // amount and Reso are fixed inside ee::fx::ReverbModule::setShimmer.
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { id::spaceOctave, 1 }, "Shimmer Octave", juce::StringArray { "-1 Oct", "0", "+1 Oct" }, 2));
 
     auto spaceLoCut =
         juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz, ee::dsp::FdnReverb::kMaxLowCutHz);
@@ -89,7 +87,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitReverbProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::spaceLoCut, 1 }, "Shimmer Low Cut",
                                                              spaceLoCut, ee::dsp::FdnReverb::kMinLowCutHz,
                                                              withText (hertzToText)));
-    addPercent (layout, id::spaceReso, "Shimmer Reso", 50.0f);
+
+    auto spaceHiCut =
+        juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinHighCutHz, ee::dsp::FdnReverb::kMaxHighCutHz);
+    spaceHiCut.setSkewForCentre (6000.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::spaceHiCut, 1 }, "Shimmer Hi Cut",
+                                                             spaceHiCut, ee::dsp::FdnReverb::kMaxHighCutHz,
+                                                             withText (hertzToText)));
+    addPercent (layout, id::spaceDamping, "Shimmer Damping", 50.0f);
 
     // Spring. BitBit Spring's ranges and defaults.
     auto springDecay =
@@ -107,13 +112,14 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitReverbProcessor::creat
                                                              springLoCut, ee::dsp::spring::kOutputLowCutHz,
                                                              withText (hertzToText)));
 
-    // Appended after Spring rather than slotted into the Shimmer block above -
-    // see the comment on these two ids in Params.h.
-    auto spacePredelay =
-        juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinPredelayMs, ee::dsp::FdnReverb::kMaxPredelayMs);
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { id::spacePredelay, 1 }, "Shimmer Pre-delay", spacePredelay, 13.0f, withText (msToText)));
-    addPercent (layout, id::spaceDamping, "Shimmer Damping", 50.0f);
+    // Used to be fixed voicing (SpringConfig.h's kOutputHighCutHz); the same
+    // travel the other two engines' Hi Cut has, for the same reason Low Cut's
+    // does. Defaults to that old fixed value, so an untouched tank is unchanged.
+    auto springHiCut = juce::NormalisableRange<float> (ee::dsp::spring::kMinHighCutHz, ee::dsp::spring::kMaxHighCutHz);
+    springHiCut.setSkewForCentre (6000.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::springHiCut, 1 }, "Spring Hi Cut",
+                                                             springHiCut, ee::dsp::spring::kOutputHighCutHz,
+                                                             withText (hertzToText)));
 
     // Modern, appended last. Decay is the RT60 of the low mids and Damping the
     // reference's Damp, one for one - see SpaceConfig.h. Pre-delay adds to the
@@ -152,11 +158,13 @@ void BitBitReverbProcessor::pushSettings() noexcept
     module.setEngaged (raw (id::on) > 0.5f);
     module.setMix01 (pct (id::mix));
 
-    module.setShimmer (raw (id::spaceDecay), pct (id::spaceShimmer), raw (id::spaceLoCut), pct (id::spaceReso),
-                       raw (id::spacePredelay), pct (id::spaceDamping));
+    // The octave choice's raw value is its index (0/1/2), not the -1/0/+1 the
+    // engine wants.
+    module.setShimmer (static_cast<int> (raw (id::spaceOctave)) - 1, raw (id::spaceLoCut), raw (id::spaceHiCut),
+                       pct (id::spaceDamping));
     module.setModern (raw (id::modernDecay), raw (id::modernPredelay), pct (id::modernDamping), raw (id::modernLoCut),
                       raw (id::modernHiCut));
-    module.setSpring (raw (id::springDecay), pct (id::springTension), raw (id::springLoCut));
+    module.setSpring (raw (id::springDecay), pct (id::springTension), raw (id::springLoCut), raw (id::springHiCut));
 }
 
 void BitBitReverbProcessor::installState (const juce::ValueTree& tree)

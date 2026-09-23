@@ -78,14 +78,15 @@ bool runPass (const Pass& pass, const juce::AudioBuffer<float>& input, juce::Aud
 
     return allFinite (output);
 }
-/** The two controls BitBit Spring does not have, driven on the engine directly.
-    Three things are being asked here, and the pedal battery above can answer
-    none of them because that pedal never touches either control:
+/** The three controls BitBit Spring does not have, driven on the engine
+    directly. Three things are being asked here, and the pedal battery above
+    can answer none of them because that pedal never touches any of them:
 
       1. that the defaults really are inert - an engine told
-         setTension01(kDefaultTension01) and setLowCut(kOutputLowCutHz) must
-         checksum identically to one told nothing at all, or "BitBit Spring is
-         untouched" is only true by accident of it not calling them;
+         setTension01(kDefaultTension01), setLowCut(kOutputLowCutHz) and
+         setHighCut(kOutputHighCutHz) must checksum identically to one told
+         nothing at all, or "BitBit Spring is untouched" is only true by
+         accident of it not calling them;
       2. that they actually do something - every other row must differ;
       3. that nothing at either extreme rings away or goes non-finite.
 
@@ -108,17 +109,21 @@ bool engineSweep()
         float decaySeconds;
         float tension01; // < 0 means "never set it"
         float lowCutHz;  // < 0 means "never set it"
+        float highCutHz; // < 0 means "never set it"
     };
 
     const Row rows[] = {
-        { "engine: untouched", 2.0f, -1.0f, -1.0f },
-        { "engine: defaults set", 2.0f, ee::dsp::spring::kDefaultTension01, ee::dsp::spring::kOutputLowCutHz },
-        { "engine: tension 0 (slack)", 2.0f, 0.0f, -1.0f },
-        { "engine: tension 1 (taut)", 2.0f, 1.0f, -1.0f },
-        { "engine: low cut min", 2.0f, -1.0f, ee::dsp::spring::kMinLowCutHz },
-        { "engine: low cut max", 2.0f, -1.0f, ee::dsp::spring::kMaxLowCutHz },
-        { "engine: both extreme, long decay", ee::dsp::SpringReverb::kMaxDecay, 1.0f,
-          ee::dsp::spring::kMaxLowCutHz },
+        { "engine: untouched", 2.0f, -1.0f, -1.0f, -1.0f },
+        { "engine: defaults set", 2.0f, ee::dsp::spring::kDefaultTension01, ee::dsp::spring::kOutputLowCutHz,
+          ee::dsp::spring::kOutputHighCutHz },
+        { "engine: tension 0 (slack)", 2.0f, 0.0f, -1.0f, -1.0f },
+        { "engine: tension 1 (taut)", 2.0f, 1.0f, -1.0f, -1.0f },
+        { "engine: low cut min", 2.0f, -1.0f, ee::dsp::spring::kMinLowCutHz, -1.0f },
+        { "engine: low cut max", 2.0f, -1.0f, ee::dsp::spring::kMaxLowCutHz, -1.0f },
+        { "engine: hi cut min", 2.0f, -1.0f, -1.0f, ee::dsp::spring::kMinHighCutHz },
+        { "engine: hi cut max", 2.0f, -1.0f, -1.0f, ee::dsp::spring::kMaxHighCutHz },
+        { "engine: all extreme, long decay", ee::dsp::SpringReverb::kMaxDecay, 1.0f,
+          ee::dsp::spring::kMaxLowCutHz, ee::dsp::spring::kMinHighCutHz },
     };
 
     juce::AudioBuffer<float> out (2, kSweepLength);
@@ -139,6 +144,8 @@ bool engineSweep()
             tank.setTension01 (row.tension01);
         if (row.lowCutHz >= 0.0f)
             tank.setLowCut (row.lowCutHz);
+        if (row.highCutHz >= 0.0f)
+            tank.setHighCut (row.highCutHz);
 
         out.clear();
 

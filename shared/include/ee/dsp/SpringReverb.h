@@ -109,8 +109,9 @@ private:
 
     Three springs in parallel, each a delay loop with a dispersion chain inside
     it, band-limited on the way in and damped on every pass - a model of an
-    Accutronics-style tank rather than a room. Decay time is the only control;
-    everything else is voicing, in SpringConfig.h.
+    Accutronics-style tank rather than a room. Decay, Tension and the pickup's
+    two cuts are the exposed controls; everything else is voicing, in
+    SpringConfig.h.
 
     The stereo image is two tanks whose springs differ by a few per cent. A real
     tank is mono, but two of them a hair apart open the tail up without either
@@ -121,6 +122,8 @@ class SpringReverb
 public:
     static constexpr float kMinDecay = spring::kMinDecaySeconds;
     static constexpr float kMaxDecay = spring::kMaxDecaySeconds;
+    static constexpr float kMinHighCutHz = spring::kMinHighCutHz;
+    static constexpr float kMaxHighCutHz = spring::kMaxHighCutHz;
 
     void prepare (double sampleRate);
     void reset() noexcept;
@@ -146,6 +149,13 @@ public:
         the one thing a filter inside the loop could not do. Clamped to
         spring::kMinLowCutHz..kMaxLowCutHz, and rests at kOutputLowCutHz. */
     void setLowCut (float hz) noexcept;
+
+    /** The pickup's low-pass, on the wet output only - same placement as
+        setLowCut, and the same reason. Used to be fixed at
+        spring::kOutputHighCutHz; exposing it as a control only moves what was
+        already a knob's worth of voicing onto a knob. Clamped to
+        spring::kMinHighCutHz..kMaxHighCutHz, and rests at kOutputHighCutHz. */
+    void setHighCut (float hz) noexcept;
 
     /** @param monoIn  the tank's drive signal
         @param outL    wet only - the caller owns the dry/wet mix */
@@ -185,6 +195,7 @@ private:
         untouched tank is the tank that was here before these were exposed. */
     float chirpCoefficient = spring::kChirpCoefficient;
     float lowCutHz = spring::kOutputLowCutHz;
+    float highCutHz = spring::kOutputHighCutHz;
 
     std::array<std::array<Spring, spring::kSprings>, kTanks> tanks;
 

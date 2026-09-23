@@ -177,6 +177,14 @@
   margin-left: -11px;
 }
 
+/* showDice=false: Save has nothing joining it on the right any more, so it
+   closes its own corner there instead of leaving the square edge the dice
+   used to cover. Higher specificity than the left-only rule above (one more
+   class), so it wins without needing source order to do the work. */
+.pui-presetbar--separated.pui-presetbar--no-dice > .pui-presetbar__save {
+  border-radius: 8px;
+}
+
 /* showSteppers=false: no arrow buttons to its left, so the field joins Save
    and the dice into one control instead of standing apart across the wider
    gap - there is nothing else in the bar to read as separate from. */
@@ -197,6 +205,14 @@
 /* Save is the middle of the three there, square on both sides. */
 .pui-presetbar--separated.pui-presetbar--no-steppers > .pui-presetbar__save {
   border-radius: 0;
+}
+
+/* showDice=false on top of that: Save is now the pill's own last object
+   (field - Save, not field - Save - dice), so its right corner closes the
+   pill instead of staying square. Three classes beats the two-class rule
+   above it. */
+.pui-presetbar--separated.pui-presetbar--no-steppers.pui-presetbar--no-dice > .pui-presetbar__save {
+  border-radius: 0 8px 8px 0;
 }
 
 /* The field's mark is a double chevron, not the single down-arrow a select

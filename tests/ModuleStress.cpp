@@ -83,11 +83,11 @@ void setModulationDefaults (ee::fx::ModulationModule& m)
 
 void setReverbDefaults (ee::fx::ReverbModule& m)
 {
-    // decay, shimmer01, lowCutHz, reso01, predelayMs, damping01
-    m.setShimmer (2.0f, 0.2f, 100.0f, 0.5f, 13.0f, 0.5f);
+    // octave (-1/0/+1), lowCutHz, highCutHz, damping01
+    m.setShimmer (1, 100.0f, 8000.0f, 0.5f);
     // decay, predelayMs, damping01, lowCutHz, highCutHz
     m.setModern (2.0f, 0.0f, 0.25f, 100.0f, 20000.0f);
-    m.setSpring (2.0f, 0.5f, 60.0f);
+    m.setSpring (2.0f, 0.5f, 60.0f, 8000.0f);
 }
 
 void setArtifactDefaults (ee::fx::ArtifactModule& m)
@@ -346,9 +346,9 @@ void sweepReverb()
                     module.setLevel (1.0f);
                     module.setEngaged (true);
 
-                    module.setShimmer (decay, a, 20.0f + a * 780.0f, a, a * 60.0f, a);
+                    module.setShimmer (a > 0.5f ? 1 : -1, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f, a);
                     module.setModern (decay, a * 60.0f, a, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f);
-                    module.setSpring (decay, a, 20.0f + a * 780.0f);
+                    module.setSpring (decay, a, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f);
 
                     juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate));
                     fillTestSignal (buffer, kSampleRate);

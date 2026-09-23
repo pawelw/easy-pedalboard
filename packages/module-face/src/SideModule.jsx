@@ -207,13 +207,17 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
                  survive that now (see useJuceSliderValue), but the identity
                  should be honest. */
               <div className="sm-knob-row" key={engine.prefix + row[0][0]}>
-                {row.map(([id, caption]) => (
+                {row.map(([id, caption, scaleFrom]) => (
                   <JuceKnob
                     key={engine.prefix + id}
                     parameterId={engine.prefix + id}
                     caption={caption}
                     variant={knobVariant}
-                    size={36}
+                    // A cut is a supporting knob, not a lead one - 4px
+                    // smaller than the rest of the row reads that as a
+                    // deliberate size, not a rendering mistake.
+                    size={id === "locut" || id === "hicut" ? 32 : 36}
+                    scaleFrom={scaleFrom}
                   />
                 ))}
               </div>
@@ -234,6 +238,11 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
               </div>
             )}
           </div>
+
+          {/* Below the knob grid rather than above it - the Shimmer engine's
+              octave. A picker above read as a second engine stepper; here it
+              reads as one more row of "what this engine is doing". */}
+          {engine.picker && <PickerStepper prefix={engine.prefix} {...engine.picker} />}
 
           {/* The Tremolo engine's tempo-sync pill, centred under the knob grid.
               `trem.sync`'s own sense is already "synced to tempo", so it lights
@@ -303,6 +312,26 @@ function DecayDisplay({ parameterId }) {
   return (
     <div className="sm-display">
       <BarDisplay heights={decayBars(decay)} align="bottom" ariaLabel="Reverb decay" />
+    </div>
+  );
+}
+
+/** A discrete choice above the knob grid, drawn with the same well-and-arrows
+    `EngineStepper` the module's own engine picker uses (the Shimmer engine's
+    octave). `options` is read/written by index, like `ShapeFamilyStepper`
+    (BitBit Grain) and the module's own engine stepper above - see engines.jsx's
+    `picker` field. */
+function PickerStepper({ prefix, paramId, options, label }) {
+  const [index, select] = useJuceChoiceValue(`${prefix}${paramId}`, options.length);
+
+  return (
+    <div className="sm-picker">
+      <EngineStepper
+        engines={options}
+        value={options[index] ?? options[0]}
+        label={label}
+        onChange={(next) => select(options.indexOf(next))}
+      />
     </div>
   );
 }

@@ -78,6 +78,13 @@ namespace
         return onePoleCoeff (hz, sampleRate);
     }
 
+    inline float highCutCoeffFor (float hz, double sampleRate) noexcept
+    {
+        if (hz >= FdnReverb::kMaxHighCutHz)
+            return 0.0f; // exact pass-through, so "off" really is off
+        return onePoleCoeff (hz, sampleRate);
+    }
+
     /** Knob amount to shimmer feedback gain, tapered so the musical low end of
         the range is not crammed into the first part of the travel. */
     inline float shimmerGainFor (float amount01, float skew, float maxFeedback) noexcept
@@ -243,6 +250,9 @@ void FdnReverb::prepare (double sampleRate)
     lowCutCoeff.reset (sampleRate, 0.05f);
     lowCutCoeff.setCurrentAndTargetValue (lowCutCoeffFor (lowCutHz, sampleRate));
     lowCutState.fill (0.0f);
+    highCutCoeff.reset (sampleRate, 0.05f);
+    highCutCoeff.setCurrentAndTargetValue (highCutCoeffFor (highCutHz, sampleRate));
+    highCutState.fill (0.0f);
 
     wetLowShelfCoeff = onePoleCoeff (config::kWetLowShelfHz, sampleRate);
     wetLowShelfState.fill (0.0f);
@@ -291,6 +301,7 @@ void FdnReverb::reset()
     for (auto& a : spreadR)   a.reset();
     predelayLine.reset();
     lowCutState.fill (0.0f);
+    highCutState.fill (0.0f);
     wetLowShelfState.fill (0.0f);
 
     if (shimmerShifterL != nullptr)
@@ -323,6 +334,12 @@ void FdnReverb::setLowCut (float hz) noexcept
 {
     lowCutHz = juce::jlimit (kMinLowCutHz, kMaxLowCutHz, hz);
     lowCutCoeff.setTargetValue (lowCutCoeffFor (lowCutHz, sr));
+}
+
+void FdnReverb::setHighCut (float hz) noexcept
+{
+    highCutHz = juce::jlimit (kMinHighCutHz, kMaxHighCutHz, hz);
+    highCutCoeff.setTargetValue (highCutCoeffFor (highCutHz, sr));
 }
 
 void FdnReverb::setResonance (float amount01) noexcept
@@ -373,6 +390,16 @@ void FdnReverb::setShimmer (float amount01) noexcept
         shimmerGainFor (amount01, shimmerTuning.skew, shimmerTuning.maxFeedback));
 }
 
+void FdnReverb::setOctave (int octaves) noexcept
+{
+    const float semis = static_cast<float> (juce::jlimit (-1, 1, octaves)) * 12.0f;
+    if (juce::approximatelyEqual (semis, pitchSemitones))
+        return;
+
+    pitchSemitones = semis;
+    updateShimmerDerived();
+}
+
 void FdnReverb::updateShimmerDerived() noexcept
 {
     shimmerLowCutCoeff  = onePoleCoeff (shimmerTuning.lowCutHz,  sr);
@@ -385,8 +412,8 @@ void FdnReverb::updateShimmerDerived() noexcept
     {
         for (auto* shifter : { shimmerShifterL.get(), shimmerShifterR.get() })
             shifter->SetFun (shimmerTuning.flutter);
-        shimmerShifterL->SetTransposition (shimmerTuning.semitones - shimmerTuning.detuneSemis);
-        shimmerShifterR->SetTransposition (shimmerTuning.semitones + shimmerTuning.detuneSemis);
+        shimmerShifterL->SetTransposition (pitchSemitones - shimmerTuning.detuneSemis);
+        shimmerShifterR->SetTransposition (pitchSemitones + shimmerTuning.detuneSemis);
     }
 
     shimmerGain.setTargetValue (
@@ -579,6 +606,22 @@ void FdnReverb::process (const float* monoIn, float* outL, float* outR, int numS
             const float hpR = outR[s] - lowCutState[2];
             lowCutState[3] += lc * (hpR - lowCutState[3]);
             outR[s] = hpR - lowCutState[3];
+        }
+
+        // Two one-pole lowpasses in series, the same shape as the highpass
+        // above but without the subtract.
+        const float hc = highCutCoeff.getNextValue();
+        if (hc > 0.0f)
+        {
+            highCutState[0] += hc * (outL[s] - highCutState[0]);
+            outL[s] = highCutState[0];
+            highCutState[1] += hc * (outL[s] - highCutState[1]);
+            outL[s] = highCutState[1];
+
+            highCutState[2] += hc * (outR[s] - highCutState[2]);
+            outR[s] = highCutState[2];
+            highCutState[3] += hc * (outR[s] - highCutState[3]);
+            outR[s] = highCutState[3];
         }
 
         // Widening is done last so it acts on the finished wet image.

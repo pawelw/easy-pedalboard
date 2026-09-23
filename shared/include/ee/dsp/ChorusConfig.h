@@ -90,4 +90,12 @@ constexpr float kDefaultDepthPct = 45.0f;
 constexpr float kDefaultPhaseDeg = 110.0f;
 constexpr float kDefaultMixPct   = 50.0f;
 
+// ============================================================================
+// SMOOTHING
+// ============================================================================
+// Rate/Depth/Phase/Mix are read once per block; without smoothing, a knob move
+// steps the delay-tap read position (Depth, Phase) or the dry/wet balance
+// (Mix) instantly, which clicks. Same time constant as Tremolo's.
+constexpr float kSmoothingSeconds = 0.02f;
+
 } // namespace ee::dsp::config

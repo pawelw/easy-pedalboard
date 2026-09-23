@@ -12,9 +12,13 @@ namespace ee::fx
  * time.
  *
  *   - Spring is BitBit Spring's tank, the same engine that pedal runs.
- *   - Shimmer is FdnReverb - the engine this module was called Space for, with
- *     its octave feedback, Reso and all. Its parameters kept the `space.` ids,
- *     so a session saved before Modern existed opens on the same sound.
+ *   - Shimmer is FdnReverb - the engine this module was called Space for -
+ *     pinned to a fixed, always-on voicing: Decay at FdnReverb::kMaxDecay,
+ *     its own Shimmer feedback at 1.0 and Reso at FdnReverb's own default
+ *     (0.5), none of them knobs any more. What the face offers is which
+ *     octave the feedback stacks at (setOctave), the two cuts and Damping.
+ *     Its parameters kept the `space.` ids, so a session saved before Modern
+ *     existed opens on the same Low Cut/Damping.
  *   - Modern is SpaceReverb, voiced against NI Raum (see SpaceConfig.h). No
  *     shimmer of its own; that is what the engine beside it is for.
  *
@@ -44,14 +48,18 @@ public:
 
     // -------------------------------------------------------------- the knobs
 
-    void setShimmer (float decaySeconds, float shimmer01, float lowCutHz, float resonance01, float predelayMs,
-                     float damping01) noexcept
+    /** octave is -1/0/+1 (see FdnReverb::setOctave). Decay, the FDN's own
+        Shimmer feedback and Reso are not exposed here any more - see the
+        class note - so this only ever moves the four things still on the
+        face. Pre-delay stays on its decay-linked auto amount, which is fixed
+        too now that Decay itself is. */
+    void setShimmer (int octave, float lowCutHz, float highCutHz, float damping01) noexcept
     {
-        shimmer.setDecayTime (decaySeconds);
-        shimmer.setShimmer (shimmer01);
+        shimmer.setDecayTime (ee::dsp::FdnReverb::kMaxDecay);
+        shimmer.setShimmer (1.0f);
+        shimmer.setOctave (octave);
         shimmer.setLowCut (lowCutHz);
-        shimmer.setResonance (resonance01);
-        shimmer.setPredelay (predelayMs);
+        shimmer.setHighCut (highCutHz);
         shimmer.setDamping (damping01);
     }
 
@@ -64,11 +72,12 @@ public:
         modern.setHighCut (highCutHz);
     }
 
-    void setSpring (float decaySeconds, float tension01, float lowCutHz) noexcept
+    void setSpring (float decaySeconds, float tension01, float lowCutHz, float highCutHz) noexcept
     {
         spring.setDecayTime (decaySeconds);
         spring.setTension01 (tension01);
         spring.setLowCut (lowCutHz);
+        spring.setHighCut (highCutHz);
     }
 
     /** How long the selected engine rings for, so the owner can answer a host's

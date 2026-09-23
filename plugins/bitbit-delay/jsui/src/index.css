@@ -40,21 +40,17 @@
   --pd-bleed-bottom: 24px;
 }
 
-/* The header's three slots - title, preset bar, level faders - have to fit on
-   one 528px line, so the gap between them is tighter than Card's own. */
+/* Two slots now, not three - the level faders that used to be the header's
+   third moved to Alpine (see App.jsx). Left to Card's own flex:1/flex:1
+   balance, the title's slot would still claim half the row and shove the
+   preset bar hard against the right edge; sized to its own text instead, the
+   two read as a plain title-left, controls-right header. */
 .pd-card .pui-card__header {
   padding-bottom: 20px;
-  gap: 12px;
+}
+.pd-card .pui-card__header-left {
+  flex: none;
 }
 .pd-card .pui-card__title {
   font-size: 19px;
-}
-
-/* The two level faders, stacked rather than side by side: side by side they
-   are as wide as the preset bar and push it off the card's centre line, and
-   In sitting directly above Out is how a pair of trims reads anyway. */
-.pd-levels {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
 }

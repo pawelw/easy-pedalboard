@@ -22,8 +22,13 @@ import {
  * owning its own parameters rather than sharing a pool. There is no state to
  * keep here; the APVTS is the store.
  *
- * `knobs` is a flat list, laid out two per row. Two rows is the norm; Tape is
- * the one engine that runs to three, because it is the whole of BitBit Tape and
+ * `knobs` is a flat list of `[id, caption]` pairs, or `[id, caption,
+ * scaleFrom]` when a knob doesn't read from its own minimum - a Hi Cut rests
+ * open at the top of its travel and counts down, the same "max" distinction
+ * BitBit Delay's own Hi Cut draws (see Knob's `scaleFrom` doc); every knob a
+ * reverb engine's `hicut` id names wants it. Laid out two per row. Two rows
+ * is the norm; Tape is the one engine that runs to three, because it is the
+ * whole of BitBit Tape and
  * that pedal has five knobs plus a switch. `centre` is a single knob on a row
  * of its own under the pairs (Tape's bipolar Tone), `lead` one on a row of its
  * own above them (Modern reverb's Decay); `toggle` is a Mono/Stereo
@@ -40,6 +45,14 @@ import {
  * normalised `min`/`max` it spans as the macro goes 0..1. The macro has no
  * parameter of its own yet (see `JuceMacroKnob`) - it just drives these. Only
  * read when the host turns `easyTab` on (BitBit Alpine does).
+ *
+ * `picker` is a discrete choice control above the knob grid, for a setting
+ * that steps rather than turns (the Shimmer engine's octave): `{ paramId,
+ * options, label }`, where `options` is the ordered list of display strings -
+ * the choice parameter's own value is the index into it, so this must list
+ * them in the same order the processor's `AudioParameterChoice` does. Drawn
+ * with the same `EngineStepper` the module's own engine picker is, one below
+ * the other, since a run of "what and how" wells reads as one family.
  */
 
 // Chorus is ModIcon, not a glyph of its own - the mark the design draws for it
@@ -180,14 +193,15 @@ export const REVERB_ENGINES = [
     prefix: "spring.",
     display: "decay",
     decayId: "spring.decay",
-    // Three, not four: a spring tank has no resonance control to expose. What
-    // Shimmer calls Reso is how hard its FDN is allowed to ring, and a tank's
-    // equivalent is its decay - so a fourth knob here would have been a second
-    // name for the first one.
+    // No Reso: a spring tank has no resonance control to expose. What Shimmer
+    // calls Reso is how hard its FDN is allowed to ring, and a tank's
+    // equivalent is its decay - so a knob for it here would have been a
+    // second name for the first one.
     knobs: [
       ["decay", "Decay"],
       ["tension", "Tension"],
       ["locut", "Low Cut"],
+      ["hicut", "Hi Cut", "max"],
     ],
     easy: {
       name: "Boing",
@@ -199,30 +213,20 @@ export const REVERB_ENGINES = [
   },
   {
     // The FDN this module was called Space for, and still bound to its
-    // `space.` ids so a saved session keeps its settings.
+    // `space.` ids so a saved session keeps its settings. Decay, its own
+    // Shimmer feedback and Reso are fixed inside ee::fx::ReverbModule::
+    // setShimmer - always maxed - rather than knobs, so this reads as one
+    // simple "always-on" shimmer wash: what pitch it stacks at, how open it
+    // is, and how fast the top decays.
     name: "Shimmer",
     icon: <ShimmerIcon size={22} />,
     prefix: "space.",
-    display: "decay",
-    decayId: "space.decay",
+    picker: { paramId: "octave", options: ["-1 Oct", "0", "+1 Oct"], label: "Shimmer octave" },
     knobs: [
-      ["decay", "Decay"],
-      ["shimmer", "Shimmer"],
       ["locut", "Low Cut"],
-      ["reso", "Reso"],
-      ["predelay", "Pre-delay"],
+      ["hicut", "Hi Cut", "max"],
       ["damping", "Damping"],
     ],
-    // Shimmer is left out - it is a taste control, and not bit-reproducible
-    // (see CLAUDE.md), so a macro should not be nudging it under the player.
-    easy: {
-      name: "Size",
-      targets: [
-        { id: "decay", min: 0.25, max: 0.9 },
-        { id: "reso", min: 0.3, max: 0.65 },
-        { id: "locut", min: 0.1, max: 0.35 },
-      ],
-    },
   },
   {
     // ee::dsp::SpaceReverb, voiced against NI Raum. Decay on its own at the
@@ -238,7 +242,7 @@ export const REVERB_ENGINES = [
       ["predelay", "Pre-delay"],
       ["damping", "Damping"],
       ["locut", "Low Cut"],
-      ["hicut", "Hi Cut"],
+      ["hicut", "Hi Cut", "max"],
     ],
     // A bigger space is a longer tail that arrives a little later.
     easy: {

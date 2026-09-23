@@ -1,26 +1,16 @@
 import { useEffect } from "react";
 import { Card, JucePresetBar } from "@synthpeak/pedal-ui";
-import { JuceFader, installResizableFace } from "@synthpeak/pedal-ui/juce";
+import { installResizableFace } from "@synthpeak/pedal-ui/juce";
 import { DelayFace } from "@synthpeak/delay-face";
 import "./index.css";
-
-/** The two level faders, stacked in the header's right-hand slot. They
-    replaced a line of text that repeated what the face already said twice
-    over - "STEREO · 1/8 · 1/8T", the same two readouts that sit beside the
-    Time knobs - with the one pair of controls the pedal was missing. */
-function HeaderLevels() {
-  return (
-    <div className="pd-levels">
-      <JuceFader parameterId="ingain" label="In" />
-      <JuceFader parameterId="outgain" label="Out" />
-    </div>
-  );
-}
 
 /**
  * BitBit Delay's enclosure. The controls themselves are `DelayFace`, the
  * component BitBit Alpine's Delay module renders too - so this file is only
- * what is *this pedal's*: its card, its title, its preset bar and its trims.
+ * what is *this pedal's*: its card, its title and its preset bar. The In/Out
+ * level faders that used to sit in the header's right-hand slot are Alpine's
+ * chrome now - the whole-instrument trim, not this pedal's to repeat - so
+ * there is no headerRight here any more (see .pd-card's header-left override).
  *
  * The parameters are unprefixed here (`mix`, `ltime`), which is DelayFace's
  * default, so nothing is passed.
@@ -36,8 +26,7 @@ export default function App() {
       {/* 568 + the link bracket's own column - see --pd-link-col. */}
       <Card
         title="BitBit Delay"
-        headerCenter={<JucePresetBar variant="separated" />}
-        headerRight={<HeaderLevels />}
+        headerCenter={<JucePresetBar variant="separated" showDice={false} />}
         className="pd-card"
         width={548}
       >
