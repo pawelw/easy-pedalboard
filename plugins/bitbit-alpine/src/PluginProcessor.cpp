@@ -834,11 +834,18 @@ void BitBitAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpecte
     // section. They are in series, so they add. The Artifact module's engines
     // are all latency-free, so it contributes zero - added for the day one is
     // not.
-    setLatencySamples (artifact.latencySamples() + modulation.latencySamples() + delay.latencySamples());
+    const int latency = artifact.latencySamples() + modulation.latencySamples() + delay.latencySamples();
+    setLatencySamples (latency);
+
+    // The global bypass's reference is held back by the same figure, so a
+    // bypassed plugin is the input *as the host is compensating for it* and
+    // not the input 12 ms ahead of where the rest of the session is.
+    bypassAlign.prepare (kMaxChannels, latency);
 }
 
 void BitBitAlpineProcessor::releaseResources()
 {
+    bypassAlign.reset();
     artifact.reset();
     modulation.reset();
     delay.reset();
@@ -905,9 +912,11 @@ void BitBitAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
     for (int ch = 0; ch < numCh; ++ch)
         dryBuffer.copyFrom (ch, 0, buffer, ch, 0, numSamples);
 
+    bypassAlign.process (dryBuffer, numCh, numSamples);
+
     inGain.setTargetValue (juce::Decibels::decibelsToGain (apvts.getRawParameterValue (id::inGain)->load()));
     outGain.setTargetValue (juce::Decibels::decibelsToGain (apvts.getRawParameterValue (id::outGain)->load()));
-    engageGain.setTargetValue (apvts.getRawParameterValue (id::on)->load() > 0.5f ? 1.0f : 0.0f);
+    engageGain.setTargetValue (apvts.getRawParameterValue (id::on)->load() > 0.5f && ! hostBypassed ? 1.0f : 0.0f);
 
     for (int i = 0; i < numSamples; ++i)
     {
@@ -1064,6 +1073,15 @@ BitBitAlpineProcessor::sanitizeOutput (juce::AudioBuffer<float>& buffer, int num
     }
 
     return verdict;
+}
+
+void BitBitAlpineProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+{
+    // Audio thread only, so no atomic: it is set and cleared around the one
+    // call that reads it.
+    hostBypassed = true;
+    processBlock (buffer, midi);
+    hostBypassed = false;
 }
 
 juce::AudioProcessorEditor* BitBitAlpineProcessor::createEditor()

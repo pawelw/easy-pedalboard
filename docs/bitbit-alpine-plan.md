@@ -832,17 +832,16 @@ Two things follow, and one of them is a real gap:
   copy (`ee::dsp::ShimmerPitchShifter`) with a generator per instance. Found
   while bisecting a moving checksum that turned out to be nothing to do with the
   change under test. See CLAUDE.md's *Sanitizers* section.
-- **Bypassing the Delay module drops the real latency to 288 while the plugin
-  goes on reporting 576**, so a compensating host pulls everything 6 ms early.
-  `ee::fx::DelayModule` crossfades back to the caller's untouched buffer rather
-  than to a copy delayed to match — the same thing the global bypass does, and
-  the reason a bypassed plugin lands early too. The Modulation module does *not*
-  have this problem: its engage crossfade reads the aligned dry. The fix is to
-  give the delay's bypass reference and the plugin's own an `AlignDelay` each;
-  it would change "bypassed is bit-exact the input" to "bit-exact the input,
-  delayed", which is what makes it line up. Printed by the ledger, deliberately
-  not asserted, until that is decided.
-The fix, if it is worth one, is to delay the bypass path's dry copy too.
+- **Bypassing used to drop the real latency while the plugin went on reporting
+  it** - the Delay module fell back to 288 samples and the global bypass (and
+  the host's own bypass button, via JUCE's default `processBlockBypassed`) to
+  none, so a compensating host pulled the signal 6-12 ms early. Closed under G5.3
+  of `docs/release-plan.md`: the plugin's own bypass reference is held back by an
+  `AlignDelay`, `processBlockBypassed` runs the ordinary block with the global
+  power forced off, and (in a later change the same day) the Delay module lost its
+  dry-path tape altogether, so there is no Delay latency left to drop. "Bypassed is
+  the input, bit for bit" is now "bit for bit the input, delayed by the reported
+  latency", and the ledger asserts it for every module and for the whole plugin.
 
 **Every build tree installs into the same `~/Library/Audio/Plug-Ins`.** A
 `build-fast/` iteration on bitbit-alpine does not install, but a `dev` build of

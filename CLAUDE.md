@@ -73,6 +73,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_param_golden_BitBitDelay_artefacts/Release/ee_param_golden_BitBitDelay  # the frozen parameter contract, one per product
 ./build/tests/ee_preset_fuzz_BitBitDelay_artefacts/Release/ee_preset_fuzz_BitBitDelay [--seed N] [--iterations N]  # hostile state/preset input, one per product
 ./build/tests/ee_soak_BitBitDelay_artefacts/Release/ee_soak_BitBitDelay [--hours 8] [--instances 32] [--editor-cycles]  # the overnight harness (release-plan.md 1.5), one per product - not in dev-check.sh
+./build/tests/ee_latency_audit_BitBitDelay_artefacts/Release/ee_latency_audit_BitBitDelay [--rate HZ] [--verbose]  # does the dry path land on getLatencySamples(), every rate, every discrete state, host bypass (G5.3), one per product
 ```
 
 **`tests/golden/*.txt` is the frozen parameter contract**, one file per
@@ -535,6 +536,15 @@ installed before anything else:
 lipo -archs ~/Library/Audio/Plug-Ins/Components/"BitBit Grain.component"/Contents/MacOS/"BitBit Grain"
 ```
 
+
+**A pedal that reports latency must override `processBlockBypassed`.** JUCE's
+default is a pass-through with no delay, so a host's own bypass button pulls the
+signal ahead of the figure it just compensated for (Debug builds assert on it).
+Delay, Modulation and Alpine do it by running the ordinary block with power forced
+off (`hostBypassed`), which keeps the aligned crossfade and the tails. The same
+rule holds inside a plugin: whatever a bypass falls back to must be held back by
+the reported latency (`ee::fx::AlignDelay`). `ee_latency_audit_<Target>` finds
+both, and finds them for a new product without being told about it.
 
 **`tests/UiSnapshot.cpp` duplicates every pedal's parameter layout and PedalSpec.**
 It builds throwaway processors so faces can be rendered without a host. If you

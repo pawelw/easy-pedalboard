@@ -35,6 +35,15 @@ public:
     void releaseResources() override;
     bool isBusesLayoutSupported (const BusesLayout&) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    /** The host's own bypass button. JUCE's default for it is a straight
+        pass-through with no delay, which pulls the signal ahead of the latency
+        this plugin reports - a host that has just compensated for it. So it is
+        the ordinary block with the plugin's power forced off instead: the same
+        crossfade to a dry path held back by the reported latency, and none of
+        the clicks a hard switch between two code paths would make. The DSP
+        keeps running while bypassed, which is what lets the tails ring out and
+        the switch back in be seamless. */
+    void processBlockBypassed (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
@@ -102,6 +111,9 @@ private:
     static constexpr int kMaxChannels = 2;
 
     ee::fx::ModulationModule module;
+
+    /** True only for the duration of processBlockBypassed - see there. */
+    bool hostBypassed = false;
     ee::fx::modulation::HostSync hostSync;
 
     double sampleRate = 44100.0;

@@ -216,7 +216,7 @@ void BitBitModulationProcessor::pushSettings (double blockBpm) noexcept
     const auto flag = [&raw] (const char* pid) { return raw (pid) > 0.5f; };
 
     module.setEngine (static_cast<int> (raw (id::engine)));
-    module.setEngaged (flag (id::on));
+    module.setEngaged (flag (id::on) && ! hostBypassed);
     module.setMix01 (pct (id::mix));
 
     // Tone is a bipolar -100..100 knob and the engine takes -1..1; Stereo is
@@ -337,6 +337,15 @@ void BitBitModulationProcessor::processBlock (juce::AudioBuffer<float>& buffer, 
 
     filterModL.store (module.filterModL(), std::memory_order_relaxed);
     filterModR.store (module.filterModR(), std::memory_order_relaxed);
+}
+
+void BitBitModulationProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+{
+    // Audio thread only, so no atomic: it is set and cleared around the one
+    // call that reads it.
+    hostBypassed = true;
+    processBlock (buffer, midi);
+    hostBypassed = false;
 }
 
 juce::AudioProcessorEditor* BitBitModulationProcessor::createEditor()

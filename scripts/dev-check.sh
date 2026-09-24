@@ -83,6 +83,13 @@ for product in BitBitAlpine BitBitGrain BitBitArtifact BitBitModulation BitBitDe
     run "ee_param_golden_$product"
 done
 
+# Does the dry path land where getLatencySamples() says, at every sample rate, in
+# every discrete state, and under the host's own bypass? release-plan.md G5.3.
+# See tests/LatencyAudit.cpp.
+for product in BitBitAlpine BitBitGrain BitBitArtifact BitBitModulation BitBitDelay BitBitReverb; do
+    run "ee_latency_audit_$product"
+done
+
 if [[ $status -eq 0 ]]; then
     echo "==> OK"
 else

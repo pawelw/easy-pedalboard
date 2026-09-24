@@ -684,6 +684,33 @@ foreach(pluginTarget IN LISTS eeReleaseTargets)
         PUBLIC juce::juce_recommended_config_flags)
 endforeach()
 
+# Does the dry path land where getLatencySamples() says it does (G5.3)? One
+# binary per shipping product, same duplicate-createPluginFilter() reason as
+# above. See LatencyAudit.cpp.
+foreach(pluginTarget IN LISTS eeReleaseTargets)
+    set(latApp ee_latency_audit_${pluginTarget})
+
+    get_target_property(pluginDir ${pluginTarget} SOURCE_DIR)
+    get_target_property(pluginProduct ${pluginTarget} EE_PLUGIN_PRODUCT)
+
+    juce_add_console_app(${latApp} PRODUCT_NAME "${latApp}")
+
+    target_sources(${latApp} PRIVATE LatencyAudit.cpp)
+
+    target_compile_definitions(${latApp} PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1
+        EE_LAT_PROCESSOR=${pluginTarget}Processor
+        EE_LAT_NAME="${pluginProduct}")
+
+    target_include_directories(${latApp} PRIVATE ${pluginDir}/src)
+
+    target_link_libraries(${latApp}
+        PRIVATE ${pluginTarget} ee_shared
+        PUBLIC juce::juce_recommended_config_flags)
+endforeach()
+
 # TEMP-PROBE
 juce_add_console_app(ee_filter_probe PRODUCT_NAME "ee_filter_probe")
 target_sources(ee_filter_probe PRIVATE _FilterProbe.cpp)
