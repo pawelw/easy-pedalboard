@@ -73,7 +73,8 @@ void run (Module& module, juce::AudioBuffer<float>& buffer, int switchTo = -1, i
 
 void setModulationDefaults (ee::fx::ModulationModule& m)
 {
-    m.setTape (0.5f, 0.4f, 0.5f, 0.2f, 0.3f, 1.0f);
+    m.setTape (0.5f, 0.4f, 0.5f, 0.2f, 1.0f);
+    m.setTone (0.3f);
     m.setTremolo (0.7f, 0.25f, 0.5f, 0.3f);
     m.setChorus (0.6f, 0.5f, 90.0f);
     m.setPhaser (0.4f, 0.6f);
@@ -87,6 +88,7 @@ void setReverbDefaults (ee::fx::ReverbModule& m)
     m.setShimmer (8.0f, 1, 100.0f, 8000.0f, 0.5f);
     // decay, predelayMs, damping01, lowCutHz, highCutHz, sizeScale
     m.setStudio (2.0f, 0.0f, 0.25f, 100.0f, 20000.0f, 1.0f);
+    m.setSimple (0.4f);
     m.setSpring (2.0f, 0.5f, 60.0f, 8000.0f);
 }
 
@@ -94,8 +96,9 @@ void setArtifactDefaults (ee::fx::ArtifactModule& m)
 {
     // freq01, tweak01, lp01, rectify (-1..1), mode (0 = Earworm)
     m.setRing (0.4f, 0.0f, 0.6f, 0.0f, 0);
-    // grind01, tone01, mode (0 = Oxide)
-    m.setRust (0.5f, 0.65f, 0);
+    // grind01, mode (0 = Oxide)
+    m.setRust (0.5f, 0);
+    m.setTone (-0.3f);
 }
 
 // ---------------------------------------------------------------- the checks
@@ -161,7 +164,7 @@ void checkTapeAtRestIsDry()
         ee::fx::ModulationModule module;
         module.prepare (kSampleRate, 512);
         module.setEngine (ee::fx::ModulationModule::Tape);
-        module.setTape (0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+        module.setTape (0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
         module.setMix01 (mix);
         module.setLevel (1.0f);
         module.setEngaged (true);
@@ -192,7 +195,8 @@ void checkTapeIgnoresMix()
         ee::fx::ModulationModule module;
         module.prepare (kSampleRate, 512);
         module.setEngine (ee::fx::ModulationModule::Tape);
-        module.setTape (0.6f, 0.9f, 0.5f, 0.0f, 0.4f, 1.0f); // Flutter high; Noise off (it is random)
+        module.setTape (0.6f, 0.9f, 0.5f, 0.0f, 1.0f); // Flutter high; Noise off (it is random)
+        module.setTone (0.4f);
         module.setMix01 (mix);
         module.setLevel (1.0f);
         module.setEngaged (true);
@@ -306,7 +310,8 @@ void sweepModulation()
                     module.setLevel (1.0f);
                     module.setEngaged (true);
 
-                    module.setTape (a, b, a, b, a, b);
+                    module.setTape (a, b, a, b, b);
+                    module.setTone (a * 2.0f - 1.0f);
                     module.setTremolo (a, 0.01f + b * 1.5f, a, b);
                     module.setChorus (0.05f + a * 8.0f, b, a * 180.0f);
                     module.setPhaser (0.05f + a * 8.0f, b);
@@ -350,6 +355,7 @@ void sweepReverb()
                     module.setStudio (decay, a * 60.0f, a, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f,
                                       juce::jmap (a, ee::dsp::SpaceReverb::kMinSize, ee::dsp::SpaceReverb::kMaxSize));
                     module.setSpring (decay, a, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f);
+                    module.setSimple (a);
 
                     juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate));
                     fillTestSignal (buffer, kSampleRate);
@@ -454,11 +460,11 @@ void sweepArtifact()
                             clean = allFinite (buffer) && clean;
                         }
 
-    // Rust's own knob space - Grind and Tone at each end and the middle, both
-    // modes, each Mix position. Wear and its recovery are fixed inside the
+    // Rust's own knob space - Grind, and the footer Tone, at each end and the
+    // middle, both modes, each Mix position. Wear and its recovery are fixed inside the
     // engine; Grind at 1 is the worst case for level.
     for (float grind : { 0.0f, 0.5f, 1.0f })
-        for (float tone : { 0.0f, 0.5f, 1.0f })
+        for (float tone : { -1.0f, 0.0f, 1.0f })
             for (int mode : { 0, 1 })
                 for (float mix : { 0.0f, 0.5f, 1.0f })
                 {
@@ -469,7 +475,8 @@ void sweepArtifact()
                     module.setLevel (1.0f);
                     module.setEngaged (true);
 
-                    module.setRust (grind, tone, mode);
+                    module.setRust (grind, mode);
+                    module.setTone (tone);
 
                     juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
                     fillTestSignal (buffer, kSampleRate);
@@ -586,7 +593,7 @@ int main()
             if (from == to)
                 continue;
 
-            static constexpr const char* names[] = { "Spring", "Shimmer", "Studio" };
+            static constexpr const char* names[] = { "Spring", "Shimmer", "Studio", "Simple" };
             ee::fx::ReverbModule module;
             module.prepare (kSampleRate, 512);
             setReverbDefaults (module);

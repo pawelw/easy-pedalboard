@@ -4,6 +4,7 @@
 #include "BitBitReverbWebEditor.h"
 
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SimpleReverbConfig.h"
 #include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/SpringConfig.h"
 #include "ee/plugin/OutputSafety.h"
@@ -44,6 +45,18 @@ juce::String sizeToText (float value, int)
     return juce::String (juce::roundToInt (value * 100.0f)) + " %";
 }
 
+/** The footer Tone's readout: bipolar, rests at 0, the sign carries the
+    direction. Kept in step with plugins/bitbit-tape's own toneToText. */
+juce::String toneToText (float value, int)
+{
+    const int rounded = juce::roundToInt (value);
+
+    if (rounded == 0)
+        return "0 %";
+
+    return (rounded > 0 ? "+" : "") + juce::String (rounded) + " %";
+}
+
 using Attributes = juce::AudioParameterFloatAttributes;
 
 Attributes withText (juce::String (*fn) (float, int))
@@ -81,8 +94,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitReverbProcessor::creat
     // Every id, range and default is BitBit Alpine's Reverb module's, minus the
     // `rev.` - the same module, so the same knob position sounds the same.
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::on, 1 }, "On", true));
-    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::engine, 1 }, "Engine",
-                                                              juce::StringArray { "Spring", "Shimmer", "Studio" }, 2));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { id::engine, 1 }, "Engine", juce::StringArray { "Spring", "Shimmer", "Studio", "Simple" },
+        2));
     addPercent (layout, id::mix, "Mix", 30.0f);
 
     // Shimmer (the `space.` ids - see Params.h). Its own feedback amount and
@@ -168,6 +182,17 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitReverbProcessor::creat
                                                              studioHiCut, Studio::kMaxHighCutHz,
                                                              withText (hertzToText)));
 
+    // The footer Tone, beside Mix and like it the module's rather than an
+    // engine's: -100 dark, 0 flat and bypassed, +100 bright. Appended so every
+    // other parameter keeps its index.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::tone, 1 }, "Tone",
+                                                             juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+                                                             0.0f, withText (toneToText)));
+
+    // Simple, appended after Tone for the same reason: the Studio engine behind
+    // one Amount knob (see ee/dsp/SimpleReverbConfig.h).
+    addPercent (layout, id::simpleAmount, "Simple Amount", ee::dsp::simple::kDefaultAmountPct);
+
     return layout;
 }
 
@@ -179,6 +204,7 @@ void BitBitReverbProcessor::pushSettings() noexcept
     module.setEngine (static_cast<int> (raw (id::engine)));
     module.setEngaged (raw (id::on) > 0.5f);
     module.setMix01 (pct (id::mix));
+    module.setTone (raw (id::tone) * 0.01f);
 
     // The octave choice's raw value is its index (0/1/2), not the -1/0/+1 the
     // engine wants.
@@ -186,6 +212,7 @@ void BitBitReverbProcessor::pushSettings() noexcept
                        raw (id::spaceHiCut), pct (id::spaceDamping));
     module.setStudio (raw (id::studioDecay), raw (id::studioPredelay), pct (id::studioDamping), raw (id::studioLoCut),
                       raw (id::studioHiCut), raw (id::studioSize));
+    module.setSimple (pct (id::simpleAmount));
     module.setSpring (raw (id::springDecay), pct (id::springTension), raw (id::springLoCut), raw (id::springHiCut));
 }
 

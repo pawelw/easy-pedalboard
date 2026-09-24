@@ -11,6 +11,7 @@
 #include "ee/dsp/RateMap.h"
 #include "ee/dsp/RingModulatorConfig.h"
 #include "ee/dsp/RustConfig.h"
+#include "ee/dsp/SimpleReverbConfig.h"
 #include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/SpringConfig.h"
 #include "ee/dsp/TapeMachineConfig.h"
@@ -69,18 +70,6 @@ juce::String artRingLpToText (float pct, int)
 {
     const float hz = ee::dsp::ringmod::lpHzFor (pct * 0.01f);
     if (hz >= ee::dsp::ringmod::kLpBypassHz)
-        return "Off";
-    return artHzToText (hz, 0);
-}
-
-/** The Artifact Rust engine's Tone readout, off the ee::dsp::rust map
-    ee::fx::ArtifactModule reads - a bare rounded "Hz" (this file's house style),
-    "Off" past the bypass point. Grind stays a plain percent. This is the Oxide
-    reading; Contact scales the knob down before the map, darker than shown. */
-juce::String artRustToneToText (float pct, int)
-{
-    const float hz = ee::dsp::rust::toneHzFor (pct * 0.01f);
-    if (hz >= ee::dsp::rust::kToneBypassHz)
         return "Off";
     return artHzToText (hz, 0);
 }
@@ -353,13 +342,10 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artRingMode, 1 }, "Artifact Mode",
                                                               juce::StringArray { "Wobble", "Octave" }, 0));
 
-    // Rust. Two knobs - Grind (plain percent) and Tone (real units off the
-    // ee::dsp::rust map). Wear and its recovery are fixed inside the engine.
-    // Blend is Artifact Mix, not a knob of its own.
+    // Rust. One knob - Grind, a plain percent. Wear, its recovery and the post
+    // low-pass are fixed inside the engine. Blend is Artifact Mix and tone is
+    // Artifact Tone, not knobs of its own.
     addPercent (layout, id::artRustGrind, "Artifact Grind", ee::dsp::rust::kDefaultGrindPct);
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { id::artRustTone, 1 }, "Artifact Rust Tone", percent, ee::dsp::rust::kDefaultTonePct,
-        withText (artRustToneToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { id::artRustMode, 1 }, "Artifact Rust Mode", juce::StringArray { "Oxide", "Contact" }, 0));
 
@@ -391,14 +377,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
     addPercent (layout, id::modTapeWear, "Tape Wear", ee::dsp::tape::kDefaultWearPct);
     addPercent (layout, id::modTapeNoise, "Tape Noise", ee::dsp::tape::kDefaultNoisePct);
 
-    // Tone and Stereo, the two Tape controls the first cut of the face left at
-    // their defaults - now on it, so this engine is the whole of BitBit Tape.
-    // Tone is the same bipolar tilt: -100 dark, 0 flat and bypassed, +100
-    // bright, resting in the middle.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::modTapeTone, 1 }, "Tape Tone",
-                                                             juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
-                                                             ee::dsp::tape::kDefaultTonePct, withText (toneToText)));
-
+    // Tape's own Tone is gone: the module's footer Tone (below, appended) does
+    // it for every engine.
+    //
     // Mono is one transport under both channels; Stereo opens them onto
     // different points of a slow modulation. On by default, as BitBit Tape's is.
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modTapeStereo, 1 }, "Tape Stereo",
@@ -513,8 +494,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
 
     // ----------------------------------------------------------------- reverb
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::revOn, 1 }, "Reverb On", true));
-    layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::revEngine, 1 }, "Reverb Engine",
-                                                              juce::StringArray { "Spring", "Shimmer", "Studio" }, 2));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { id::revEngine, 1 }, "Reverb Engine",
+        juce::StringArray { "Spring", "Shimmer", "Studio", "Simple" }, 2));
     addTrimDb (layout, id::revLevel, "Reverb Level");
     addPercent (layout, id::revMix, "Reverb Mix", 30.0f);
 
@@ -609,6 +591,31 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
                                                              "Studio Hi Cut", studioHiCut, Studio::kMaxHighCutHz,
                                                              withText (hertzToText)));
 
+    // The three switchable modules' footer Tone, beside each one's Mix and like
+    // it the module's rather than an engine's: -100 dark, 0 flat and bypassed,
+    // +100 bright. BitBit Artifact's, Modulation's and Reverb's `tone`, id for
+    // id. Appended, for the same AU-index reason Chain Order is.
+    for (const auto& [pid, name] : { std::pair { id::artTone, "Artifact Tone" },
+                                     std::pair { id::modTone, "Modulation Tone" },
+                                     std::pair { id::revTone, "Reverb Tone" } })
+        layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { pid, 1 }, name,
+                                                                 juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+                                                                 0.0f, withText (toneToText)));
+
+    // The Reverb module's Simple engine, appended last - BitBit Reverb's
+    // `simple.amount`, id for id.
+    addPercent (layout, id::revSimpleAmount, "Reverb Simple Amount", ee::dsp::simple::kDefaultAmountPct);
+
+    // Tremolo Attack: the per-note swell (ee::dsp::Tremolo, TremoloConfig.h's
+    // ATTACK). 0 is off - the tremolo as it always was - up to 4 s, with the
+    // middle of the knob at 0.5 s. Appended so every other parameter keeps its
+    // index.
+    auto tremAttack = juce::NormalisableRange<float> (0.0f, ee::dsp::tremolo::kAttackMaxSeconds);
+    tremAttack.setSkewForCentre (ee::dsp::tremolo::kAttackSkewCentreSeconds);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::modTremAttack, 1 },
+                                                             "Tremolo Attack", tremAttack, 0.0f,
+                                                             withText (secondsToText)));
+
     return layout;
 }
 
@@ -687,13 +694,14 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
     artifact.setEngaged (flag (id::artOn));
     artifact.setLevel (juce::Decibels::decibelsToGain (raw (id::artLevel)));
     artifact.setMix01 (pct (id::artMix));
+    artifact.setTone (raw (id::artTone) * 0.01f);
 
     artifact.setCrush (pct (id::artCrushBits), pct (id::artCrushRate), pct (id::artCrushLp), pct (id::artCrushJitter));
 
     artifact.setRing (pct (id::artRingFreq), pct (id::artRingTweak), pct (id::artRingLp), raw (id::artRingRect) * 0.01f,
                       static_cast<int> (raw (id::artRingMode)));
 
-    artifact.setRust (pct (id::artRustGrind), pct (id::artRustTone), static_cast<int> (raw (id::artRustMode)));
+    artifact.setRust (pct (id::artRustGrind), static_cast<int> (raw (id::artRustMode)));
 
     artifact.setAmp (pct (id::artAmpDrive), pct (id::artAmpMids), pct (id::artAmpBit), raw (id::artAmpTone) * 0.01f);
 
@@ -702,11 +710,11 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
     modulation.setEngaged (flag (id::modOn));
     modulation.setLevel (juce::Decibels::decibelsToGain (raw (id::modLevel)));
     modulation.setMix01 (pct (id::modMix));
+    modulation.setTone (raw (id::modTone) * 0.01f);
 
-    // Tone is a bipolar -100..100 knob and the engine takes -1..1; Stereo is
-    // the machine's mono/stereo switch.
+    // Stereo is the machine's mono/stereo switch.
     modulation.setTape (pct (id::modTapeSat), pct (id::modTapeFlutter), pct (id::modTapeWear), pct (id::modTapeNoise),
-                        raw (id::modTapeTone) * 0.01f, flag (id::modTapeStereo) ? 1.0f : 0.0f);
+                        flag (id::modTapeStereo) ? 1.0f : 0.0f);
 
     // The Rate knob is a position, not a rate: what it means is this face's
     // map, set by the Tremolo Sync switch - a free period in ms, or a
@@ -715,6 +723,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
     const bool tremSynced = flag (id::modTremSync);
     const float tremPeriodSeconds = kTremRateMap.rateToPeriodSeconds (raw (id::modTremRate), tremSynced, bpm);
     modulation.setTremolo (pct (id::modTremAmount), tremPeriodSeconds, pct (id::modTremShape), pct (id::modTremTube));
+    modulation.setTremoloAttack (raw (id::modTremAttack));
 
     modulation.setChorus (raw (id::modChorusRate), pct (id::modChorusDepth), raw (id::modChorusPhase));
     modulation.setPhaser (raw (id::modPhaseRate), pct (id::modPhaseDepth));
@@ -759,6 +768,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
     reverb.setEngaged (flag (id::revOn));
     reverb.setLevel (juce::Decibels::decibelsToGain (raw (id::revLevel)));
     reverb.setMix01 (pct (id::revMix));
+    reverb.setTone (raw (id::revTone) * 0.01f);
 
     // The octave choice's raw value is its index (0/1/2), not the -1/0/+1 the
     // engine wants.
@@ -766,6 +776,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
                        raw (id::revSpaceHiCut), pct (id::revSpaceDamping));
     reverb.setStudio (raw (id::revStudioDecay), raw (id::revStudioPredelay), pct (id::revStudioDamping),
                       raw (id::revStudioLoCut), raw (id::revStudioHiCut), raw (id::revStudioSize));
+    reverb.setSimple (pct (id::revSimpleAmount));
     reverb.setSpring (raw (id::revSpringDecay), pct (id::revSpringTension), raw (id::revSpringLoCut),
                       raw (id::revSpringHiCut));
 }

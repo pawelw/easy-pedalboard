@@ -1,7 +1,8 @@
+import { lfoValue } from "./lfo.js";
 import "./ModScope.css";
 
 /**
- * The Chorus and Phaser engines' displays: what each engine's LFO is doing to
+ * The Modulation module's displays - Tape, Tremolo, Chorus and Phaser: what each engine's LFO is doing to
  * the signal, drawn over time across the well, from the same constants the
  * audio path reads. Neither is a live meter - like BarDisplay, both are drawn
  * from the knob positions, so nothing here animates on its own.
@@ -171,6 +172,106 @@ export function PhaserScope({ rate01 = 0.5, depth01 = 0.5 }) {
       {left.map((d, i) => (
         <path key={`l${i}`} className="pui-modscope__trace" d={d} />
       ))}
+    </Well>
+  );
+}
+
+/**
+ * The tremolo's LFO as one line: the shaped wave the gain rides
+ * (ee::dsp::Tremolo: LFO at +1 is unity, at -1 is 1 - Amount), traced from
+ * `lfoValue`, the same shaped LFO the audio path runs. Amount is how far it
+ * swings about the centre line - at 0 it lies flat, which is exactly what the
+ * tremolo is doing - and Shape morphs it through the engine's anchors, decay
+ * to ramp to triangle to square. Rate sets how many cycles the well spans,
+ * following the knob's own travel - up is faster in free and synced mode
+ * alike (ee::dsp::RateMap), so up draws more, shorter waves. The range is
+ * wider at the bottom than Chorus's and Phaser's: a tremolo shape needs at
+ * least one whole cycle in view to read as a shape.
+ *
+ * Attack is the per-note swell (ee::dsp::Tremolo's setAttackSeconds): the well
+ * reads as the start of a note, so with Attack up the wave begins flat and
+ * grows to full depth, over up to TREM_ATTACK_SPAN of the well at the top of
+ * the knob. Like Rate it follows the knob's travel rather than a time axis.
+ */
+const TREM_ATTACK_SPAN = 0.8;
+const TREM_MIN_CYCLES = 1;
+const TREM_MAX_CYCLES = 8;
+
+export function TremoloScope({ amount01 = 0.5, shape01 = 0.5, rate01 = 0.5, attack01 = 0 }) {
+  const amount = clamp01(amount01);
+  const shape = clamp01(shape01);
+  const mid = VIEW_H / 2;
+  const reach = VIEW_H / 2 - PAD_Y;
+  const cycles = TREM_MIN_CYCLES + (TREM_MAX_CYCLES - TREM_MIN_CYCLES) * clamp01(rate01);
+
+  const swellSpan = TREM_ATTACK_SPAN * clamp01(attack01);
+  const swell = (t) => (swellSpan > 0 ? Math.min(1, t / swellSpan) : 1);
+
+  const wave = tracePath((t) => mid - reach * amount * swell(t) * lfoValue(t * cycles, shape));
+
+  return (
+    <Well ariaLabel="Tremolo LFO">
+      <path className="pui-modscope__trace" d={wave} />
+    </Well>
+  );
+}
+
+// A small deterministic hash in [-1, 1], so the Noise fuzz is the same picture
+// on every render rather than a trace that shimmers whenever a knob moves.
+function hashNoise(i, seed) {
+  const x = Math.sin((i + 1) * 12.9898 + seed * 78.233) * 43758.5453;
+  return 2 * (x - Math.floor(x)) - 1;
+}
+
+/**
+ * A test tone after the tape machine - an illustration of what each knob does
+ * to it, not a render of ee::dsp::TapeMachine. Flutter bends the tone's timing
+ * (a slow wow plus a faster flutter, so the cycles bunch and stretch),
+ * Saturation rounds its peaks towards a squashed square, Wear takes the edge
+ * off and lets the level sag, and Noise lays a fuzz over the whole trace.
+ * With Stereo on, the right channel's transport wanders on its own, drawn
+ * faint behind the left - the width the switch opens up. Everything at zero is
+ * a clean sine, which is the machine at rest.
+ */
+export function TapeScope({ saturation01 = 0, flutter01 = 0, wear01 = 0, noise01 = 0, stereo = false }) {
+  const sat = clamp01(saturation01);
+  const flutter = clamp01(flutter01);
+  const wear = clamp01(wear01);
+  const noise = clamp01(noise01);
+  const mid = VIEW_H / 2;
+  const reach = VIEW_H / 2 - PAD_Y;
+  const cycles = 3;
+
+  const drive = 1 + sat * 5;
+  const shapeCurve = (x) => Math.tanh(drive * x) / Math.tanh(drive);
+
+  const channel = (wowPhase, seed) => {
+    const warp = (t) =>
+      flutter * (0.09 * Math.sin(2 * Math.PI * (1.2 * t + wowPhase)) + 0.015 * Math.sin(2 * Math.PI * (9 * t + wowPhase)));
+    const sag = (t) => 1 - wear * 0.3 * (0.5 + 0.5 * Math.sin(2 * Math.PI * (0.8 * t + wowPhase + 0.3)));
+
+    // Wear as a gentle low-pass: the tone's own third harmonic, which the
+    // saturation puts there, is what it takes away first.
+    let prev = null;
+    const smoothing = wear * 0.55;
+    return tracePath((t) => {
+      const i = Math.round(t * STEPS);
+      const x = Math.sin(2 * Math.PI * (t * cycles + warp(t)));
+      let y = shapeCurve(x);
+      prev = prev === null ? y : prev + (1 - smoothing) * (y - prev);
+      y = prev * sag(t) + noise * 0.14 * hashNoise(i, seed);
+      return mid - reach * 0.9 * Math.max(-1.1, Math.min(1.1, y));
+    });
+  };
+
+  const left = channel(0, 1);
+  const right = stereo ? channel(0.37, 2) : null;
+
+  return (
+    <Well ariaLabel="Tape machine">
+      <line className="pui-modscope__grid" x1="0" x2={VIEW_W} y1={mid} y2={mid} />
+      {right && <path className="pui-modscope__trace pui-modscope__trace--r" d={right} />}
+      <path className="pui-modscope__trace" d={left} />
     </Well>
   );
 }

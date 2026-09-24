@@ -1,7 +1,7 @@
 import "./ModScope.css";
 
 /**
- * One display for all three reverb engines, in the Modulation module's line
+ * One display for all four reverb engines, in the Modulation module's line
  * style: the tail drawn as a plain sine dying away along a centre line, from
  * each engine's own decay model. What moves it:
  *
@@ -26,6 +26,9 @@ import "./ModScope.css";
  *            room (earlySameMs and the rest), so a bigger room starts later
  *            and swings slower and wider. It does not change the decay - the
  *            engine holds RT60 on the Decay knob at any Size.
+ *   Simple   Studio's model at the Decay, Damping and Low Cut its one Amount
+ *            knob sets (ee/dsp/SimpleReverbConfig.h); Size, Pre-delay and Hi
+ *            Cut at rest.
  *
  * Every number is a hand copy of the engine's own. The wave is a picture of
  * the tail's motion, not its real pitch. Props are the knobs' normalised 0..1
@@ -45,6 +48,14 @@ function lerp(a, b, t) {
   return a + (b - a) * t;
 }
 
+/** fromNormalised's inverse: real to normalised. */
+function toNormalised(v, min, max, centre) {
+  const t = clamp((v - min) / (max - min), 0, 1);
+  if (centre === undefined) return t;
+  const skew = Math.log(0.5) / Math.log((centre - min) / (max - min));
+  return Math.pow(t, skew);
+}
+
 /** A JUCE NormalisableRange with setSkewForCentre, from normalised to real. */
 function fromNormalised(v01, min, max, centre) {
   const v = clamp(v01, 0, 1);
@@ -61,6 +72,11 @@ const DECAY_RANGE = {
 };
 const STUDIO_SIZE = [0.5, 1.5];
 const STUDIO_PREDELAY_MS = [0, 60];
+
+// ee/dsp/SimpleReverbConfig.h - Amount's ends for each knob it turns.
+const SIMPLE_DECAY = [0.8, 5.0];
+const SIMPLE_DAMPING = [0.15, 0.45];
+const SIMPLE_LOW_CUT = [20, 220];
 
 // ------------------------------------------------------------------ axes
 
@@ -238,7 +254,24 @@ function studioModel({ decay01, damping01, lowCut01, highCut01, size01, predelay
   };
 }
 
-const MODELS = { spring: springModel, shimmer: shimmerModel, studio: studioModel };
+/* Studio behind one knob: the three settings Amount turns (exponential for
+   Decay and Low Cut, linear for Damping - as SimpleReverbConfig.h's
+   voicingFor), handed to Studio's own model as knob positions. */
+function simpleModel({ amount01 }) {
+  const a = clamp(amount01, 0, 1);
+  const expo = ([lo, hi]) => lo * Math.pow(hi / lo, a);
+
+  return studioModel({
+    decay01: toNormalised(expo(SIMPLE_DECAY), ...DECAY_RANGE.studio),
+    damping01: lerp(SIMPLE_DAMPING[0], SIMPLE_DAMPING[1], a),
+    lowCut01: toNormalised(expo(SIMPLE_LOW_CUT), ...CUT_RANGE.lo),
+    highCut01: 1,
+    size01: 0.5,
+    predelay01: 0,
+  });
+}
+
+const MODELS = { spring: springModel, shimmer: shimmerModel, studio: studioModel, simple: simpleModel };
 
 // ------------------------------------------------------------------ drawing
 

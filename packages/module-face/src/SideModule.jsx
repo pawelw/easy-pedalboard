@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  BarDisplay,
   ChorusScope,
   EngineStepper,
   FilterScope,
@@ -8,10 +7,11 @@ import {
   ModuleTabs,
   PhaserScope,
   ReverbScope,
+  TapeScope,
   Toggle,
+  TremoloScope,
   WaveIcon,
   freqHzFor01,
-  lfoValue,
 } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
@@ -26,48 +26,20 @@ import {
 import { FILTER_WAVES, knobRows } from "./engines.jsx";
 import "./SideModule.css";
 
-// The display wells are 63px tall and their bars run 8px to 34px, which is the
-// range the handoff specifies for both. Named because two unrelated formulas
-// below have to land in the same window or the two modules stop matching.
-const BAR_MIN = 8;
-const BAR_SPAN = 26;
-
 // The Filter scope fills the display slot, like every other well (see
 // ModulePanel.css's slot ladder). It used to be cut to 53px to keep its body
 // from growing the module; the slot is fixed now, so the height it draws at is
 // only about how the scope reads.
 const FILTER_SCOPE_HEIGHT = 64;
 
-const TREM_BARS = 26;
-
 // The Easy / Adv strip is hidden for now and every module opens on Adv. The
 // Easy path below is kept whole so flipping this back is the only change.
 const SHOW_EASY_TABS = false;
 
-/** The tremolo's own envelope, traced from the same shaped-LFO the audio path
-    uses (`lfoValue`, a hand-kept port of ee/dsp/Lfo.h) rather than from a
-    stand-in curve - a picture drawn from a different formula than the engine
-    is a picture of the wrong wave.
- *
- * Two cycles across the well, so the shape reads as something repeating rather
- * than as one hump, and scaled by Amount: at Amount 0 the display flattens to
- * a line, which is exactly what the tremolo is doing.
- *
- * The handoff draws this statically as `8 + 26·|sin(2π·i/25)|`. That is this
- * curve at full Amount and a sine-ish Shape; the deviation is deliberate,
- * because a fixed picture on a live control is a decoration rather than a
- * readout. */
-function tremBars(amount01, shape01) {
-  return Array.from({ length: TREM_BARS }, (_, i) => {
-    const phase = (i / (TREM_BARS - 1)) * 2;
-    return BAR_MIN + BAR_SPAN * amount01 * Math.abs(lfoValue(phase, shape01));
-  });
-}
-
 /**
  * One narrow switchable module - Modulation or Reverb. They are the same object
  * at two settings: a power toggle and a name in the header, an engine stepper
- * over that engine's parameter rows, and a Mix knob in the footer. Only the
+ * over that engine's parameter rows, and Mix and Tone knobs in the footer. Only the
  * engine list differs, so they are one component rather than two files that
  * would drift. `ModulationFace` and `ReverbFace` are this with their list.
  *
@@ -131,15 +103,16 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
       onToggle={setOn}
       headerRight={headerRight}
       className="sm-module"
-      /* Tape runs fully wet and is not offered a Mix (see engines.jsx) - the
-         footer strip stays for the module to keep its shape, held to height in
-         CSS, but empty. */
+      /* Mix and Tone are the module's, not the engine's, so they stay put
+         when the engine changes. Tone is a bipolar tilt resting dead centre;
+         `scaleFrom="centre"` draws its arc out from twelve o'clock. Tape runs
+         fully wet and is not offered a Mix (see engines.jsx), so its footer
+         carries Tone alone. */
       footer={
-        engine.hideMix ? (
-          <div className="sm-footer-empty" aria-hidden="true" />
-        ) : (
-          <JuceKnob parameterId="mix" variant={knobVariant} size={38} caption="Mix" />
-        )
+        <>
+          {! engine.hideMix && <JuceKnob parameterId="mix" variant={knobVariant} size={38} caption="Mix" />}
+          <JuceKnob parameterId="tone" variant={knobVariant} size={28} caption="Tone" scaleFrom="centre" />
+        </>
       }
     >
       <EngineStepper
@@ -150,10 +123,12 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
         onChange={(next) => setEngine(engines.findIndex((e) => e.name === next))}
       />
 
+      {engine.display === "tape" && <TapeDisplay prefix={engine.prefix} />}
       {engine.display === "tremolo" && <TremoloDisplay prefix={engine.prefix} />}
       {engine.display === "reverb" && engine.reverb === "spring" && <SpringDisplay prefix={engine.prefix} />}
       {engine.display === "reverb" && engine.reverb === "shimmer" && <ShimmerDisplay prefix={engine.prefix} />}
       {engine.display === "reverb" && engine.reverb === "studio" && <StudioDisplay prefix={engine.prefix} />}
+      {engine.display === "reverb" && engine.reverb === "simple" && <SimpleDisplay prefix={engine.prefix} />}
       {engine.display === "filter" && <FilterDisplay prefix={engine.prefix} />}
       {engine.display === "chorus" && <ChorusDisplay prefix={engine.prefix} />}
       {engine.display === "phaser" && <PhaserDisplay prefix={engine.prefix} />}
@@ -219,18 +194,23 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
               </div>
             ))}
 
-            {/* One knob on a row of its own, centred under the pairs - Tape's
-                Tone. `scaleFrom="centre"` draws its arc out from twelve o'clock,
-                the way the bipolar tilt reads. */}
-            {engine.centre && (
-              <div className="sm-knob-row sm-knob-row--centre" key={engine.prefix + engine.centre[0]}>
-                <JuceKnob
-                  parameterId={engine.prefix + engine.centre[0]}
-                  caption={engine.centre[1]}
-                  variant={knobVariant}
-                  size={36}
-                  scaleFrom="centre"
-                />
+            {/* Tremolo's last row: a small Attack knob under the left column
+                and the Sync pill under the right, centred on the Attack dial.
+                Both sit in cells a knob wide, so they land under the columns
+                above rather than wherever their own widths would put them. */}
+            {engine.attack && (
+              <div className="sm-knob-row sm-attack-row">
+                <div className="sm-attack-row__cell">
+                  <JuceKnob
+                    parameterId={engine.prefix + engine.attack}
+                    caption="Attack"
+                    variant={knobVariant}
+                    size={28}
+                  />
+                </div>
+                <div className="sm-attack-row__cell sm-attack-row__cell--pill">
+                  {engine.sync && <JucePill parameterId={engine.sync} label="Sync" />}
+                </div>
               </div>
             )}
           </div>
@@ -245,7 +225,7 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
               when on with no invert - the same as the Filter engine's Sync pill.
               The Rate knob's mid-drag readout re-fetches off its own value, so it
               picks the new unit up on the next turn. */}
-          {engine.sync && (
+          {engine.sync && ! engine.attack && (
             <div className="sm-sync-row">
               <JucePill parameterId={engine.sync} label="Sync" />
             </div>
@@ -291,13 +271,32 @@ function TapeSwitch({ parameterId, labelOff, labelOn, defaultOn = true, owner = 
    the engine that is actually showing one - a hook in SideModuleBody would have
    to subscribe to a parameter that the selected engine may not have. */
 
-function TremoloDisplay({ prefix }) {
-  const [amount] = useJuceSliderValue(`${prefix}amount`);
-  const [shape] = useJuceSliderValue(`${prefix}shape`);
+/* Tape's machine, drawn from its four knobs and the Mono/Stereo switch. */
+function TapeDisplay({ prefix }) {
+  const [sat] = useJuceSliderValue(`${prefix}sat`);
+  const [flutter] = useJuceSliderValue(`${prefix}flutter`);
+  const [wear] = useJuceSliderValue(`${prefix}wear`);
+  const [noise] = useJuceSliderValue(`${prefix}noise`);
+  const [stereo] = useJuceToggleValue(`${prefix}stereo`, true);
 
   return (
     <div className="sm-display">
-      <BarDisplay heights={tremBars(amount, shape)} ariaLabel="Tremolo envelope" />
+      <TapeScope saturation01={sat} flutter01={flutter} wear01={wear} noise01={noise} stereo={stereo} />
+    </div>
+  );
+}
+
+/* The tremolo's gain envelope, traced from the same shaped LFO the audio path
+   uses (see TremoloScope) - the same well-and-trace as Chorus and Phaser. */
+function TremoloDisplay({ prefix }) {
+  const [amount] = useJuceSliderValue(`${prefix}amount`);
+  const [shape] = useJuceSliderValue(`${prefix}shape`);
+  const [rate] = useJuceSliderValue(`${prefix}rate`);
+  const [attack] = useJuceSliderValue(`${prefix}attack`);
+
+  return (
+    <div className="sm-display">
+      <TremoloScope amount01={amount} shape01={shape} rate01={rate} attack01={attack} />
     </div>
   );
 }
@@ -328,7 +327,7 @@ function PhaserDisplay({ prefix }) {
   );
 }
 
-/* The three reverbs share one display (ReverbScope) and differ only in which
+/* The four reverbs share one display (ReverbScope) and differ only in which
    knobs feed its model - one component each so each subscribes to the
    parameters its engine actually has. */
 function SpringDisplay({ prefix }) {
@@ -393,6 +392,16 @@ function StudioDisplay({ prefix }) {
         highCut01={hicut}
         ariaLabel="Studio reverb decay"
       />
+    </div>
+  );
+}
+
+function SimpleDisplay({ prefix }) {
+  const [amount] = useJuceSliderValue(`${prefix}amount`);
+
+  return (
+    <div className="sm-display">
+      <ReverbScope engine="simple" amount01={amount} ariaLabel="Simple reverb decay" />
     </div>
   );
 }

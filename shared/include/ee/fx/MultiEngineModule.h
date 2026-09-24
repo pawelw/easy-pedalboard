@@ -2,6 +2,7 @@
 
 #include <juce_audio_basics/juce_audio_basics.h>
 
+#include <array>
 #include <cmath>
 #include <vector>
 
@@ -13,8 +14,8 @@ namespace ee::fx
 /** The chrome a switchable effect module has, without the effects.
  *
  * BitBit Alpine's Modulation and Reverb modules are the same object at two
- * settings: a list of engines with one selected, a dry/wet Mix, an output
- * Level, and a power toggle. Only the engine list differs, so only the engine
+ * settings: a list of engines with one selected, a dry/wet Mix, a Tone, an
+ * output Level, and a power toggle. Only the engine list differs, so only the engine
  * list is written twice - everything below is written once, and in particular
  * both modules crossfade between engines identically because there is one
  * crossfade rather than two that were meant to match.
@@ -42,6 +43,11 @@ namespace ee::fx
  * compensate and nothing inside it is fighting a copy of itself. A module whose
  * engines are all latency-free (ReverbModule) pays nothing: every line is zero
  * samples long and `process` skips it.
+ *
+ * **Tone is the module's, not an engine's.** It sits beside Mix in the footer
+ * and, like Mix, stays put when the engine changes: a tilt EQ on the wet side,
+ * after the engine crossfade and before the dry is summed back in, so it colours
+ * the effect and never the dry. See kTonePivotHz.
  *
  * A subclass supplies `renderEngine` and `resetEngine`. One virtual call per
  * engine per block is nothing; per sample it would not be, which is why the
@@ -71,6 +77,22 @@ public:
         ~+36 dBFS, well clear of any legitimate wet-plus-level peak. */
     static constexpr float kRunawayCeiling = 64.0f;
 
+    /** The footer Tone: a first-order tilt around kTonePivotHz on a bipolar knob
+        that rests dead centre. -1 leans dark, +1 bright, and each end is
+        kToneTiltDb of shelf either side of the pivot - BitBit Tape's own Tone
+        extremes (0.52x and 1.90x, `ee::dsp::tape::kTone*`), so the knob reads
+        the same as the one it replaced on the Tape engine. Unlike Tape's, the
+        gains move in dB rather than linearly, so the middle of the travel is
+        unity rather than a flat +1.7 dB step the moment it leaves centre.
+
+        Centred is bypassed exactly, which is what keeps a module with Tone at
+        rest bit-identical to one without it. kToneCentreEpsilon is the same
+        dead-band as tape::kToneCentreEpsilon, for the same reason: a centred
+        knob through APVTS reads a few millionths off zero. */
+    static constexpr float kTonePivotHz = 700.0f;
+    static constexpr float kToneTiltDb = 5.62f;
+    static constexpr float kToneCentreEpsilon = 1.0e-4f;
+
     void prepare (double sampleRate, int maximumExpectedSamplesPerBlock)
     {
         sr = sampleRate > 0.0 ? sampleRate : 44100.0;
@@ -85,12 +107,20 @@ public:
         wetGain.reset (sr, kGainRampSeconds);
         levelGain.reset (sr, kGainRampSeconds);
         engageGain.reset (sr, kGainRampSeconds);
+        toneAmount.reset (sr, kGainRampSeconds);
 
         const bool usesMix = engineUsesMix (engine);
         dryGain.setCurrentAndTargetValue (usesMix ? dryTarget() : 0.0f);
         wetGain.setCurrentAndTargetValue (usesMix ? wetTarget() : 1.0f);
         levelGain.setCurrentAndTargetValue (level);
         engageGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
+        toneAmount.setCurrentAndTargetValue (tone);
+
+        toneCoeff = juce::jlimit (0.0f, 1.0f,
+                                  1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi * kTonePivotHz
+                                                   / static_cast<float> (sr)));
+        toneLp.fill (0.0f);
+        setToneGains (tone);
 
         fadeSamplesLeft = 0;
         outgoingEngine = -1;
@@ -126,6 +156,8 @@ public:
         for (auto& align : engineAlign)
             align.reset();
 
+        toneLp.fill (0.0f);
+
         fadeSamplesLeft = 0;
         outgoingEngine = -1;
     }
@@ -153,6 +185,10 @@ public:
     void setLevel (float linear) noexcept { level = juce::jmax (0.0f, linear); }
     void setEngaged (bool v) noexcept { engaged = v; }
 
+    /** The footer Tone, bipolar -1..1, flat and bypassed at 0. Every engine
+        gets the same one - see kTonePivotHz. */
+    void setTone (float bipolar) noexcept { tone = juce::jlimit (-1.0f, 1.0f, bipolar); }
+
     /** Wet, in place. The caller's buffer is read as the dry signal and written
         with the finished one. */
     void process (juce::AudioBuffer<float>& buffer, int numChannels, int numSamples) noexcept
@@ -176,6 +212,7 @@ public:
         wetGain.setTargetValue (usesMix ? wetTarget() : 1.0f);
         levelGain.setTargetValue (level);
         engageGain.setTargetValue (engaged ? 1.0f : 0.0f);
+        toneAmount.setTargetValue (tone);
 
         for (int offset = 0; offset < numSamples; offset += maxBlock)
         {
@@ -254,6 +291,8 @@ public:
                     fadeSamplesLeft = 0;
                 }
             }
+
+            applyTone (numCh, chunk);
 
             for (int i = 0; i < chunk; ++i)
             {
@@ -347,6 +386,48 @@ private:
             engineAlign[static_cast<size_t> (index)].process (buffer, numChannels, numSamples);
     }
 
+    /** The footer Tone over `wetBuffer`, in place. The low-pass that splits the
+        signal runs whether or not the tilt is engaged, so leaving centre picks up
+        a filter that is already tracking the signal rather than one starting
+        from zero. While the knob is moving the gains follow it sample by
+        sample; at rest they are worked out once. */
+    void applyTone (int numChannels, int numSamples) noexcept
+    {
+        const bool moving = toneAmount.isSmoothing();
+
+        if (! moving)
+            setToneGains (toneAmount.getCurrentValue());
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            if (moving)
+                setToneGains (toneAmount.getNextValue());
+
+            for (int ch = 0; ch < numChannels; ++ch)
+            {
+                float* w = wetBuffer.getWritePointer (ch);
+                float& lp = toneLp[static_cast<size_t> (ch)];
+                lp += toneCoeff * (w[i] - lp);
+
+                if (toneEngaged)
+                    w[i] = lp * toneLowGain + (w[i] - lp) * toneHighGain;
+            }
+        }
+
+        // A runaway upstream must not live on in the tone filter after the
+        // module output has been scrubbed of it.
+        for (auto& lp : toneLp)
+            if (! std::isfinite (lp))
+                lp = 0.0f;
+    }
+
+    void setToneGains (float amount) noexcept
+    {
+        toneEngaged = std::abs (amount) > kToneCentreEpsilon;
+        toneHighGain = juce::Decibels::decibelsToGain (amount * kToneTiltDb);
+        toneLowGain = 1.0f / toneHighGain;
+    }
+
     float dryTarget() const noexcept { return dryGainFor (engine, mix); }
     float wetTarget() const noexcept { return wetGainFor (engine, mix); }
 
@@ -357,11 +438,19 @@ private:
     float mix = 0.0f;
     float level = 1.0f;
     bool engaged = true;
+    float tone = 0.0f;
 
     juce::SmoothedValue<float> dryGain;
     juce::SmoothedValue<float> wetGain;
     juce::SmoothedValue<float> levelGain;
     juce::SmoothedValue<float> engageGain;
+    juce::SmoothedValue<float> toneAmount;
+
+    float toneCoeff = 0.0f;
+    bool toneEngaged = false;
+    float toneLowGain = 1.0f;
+    float toneHighGain = 1.0f;
+    std::array<float, kMaxChannels> toneLp {};
 
     juce::AudioBuffer<float> dryBuffer;
     juce::AudioBuffer<float> wetBuffer;

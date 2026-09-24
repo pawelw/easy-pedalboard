@@ -24,7 +24,7 @@ export { default as AmpScope } from "./AmpScope.jsx";
 export { default as RingScope } from "./RingScope.jsx";
 export { default as RustScope } from "./RustScope.jsx";
 // The Modulation module's Chorus and Phaser displays, drawn from the engines' own constants.
-export { ChorusScope, PhaserScope } from "./ModScope.jsx";
+export { ChorusScope, PhaserScope, TapeScope, TremoloScope } from "./ModScope.jsx";
 // The Reverb module's display, one for all three engines.
 export { default as ReverbScope } from "./ReverbScope.jsx";
 export { freqHzFor01 } from "./autowah.js";

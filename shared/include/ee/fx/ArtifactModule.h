@@ -228,14 +228,15 @@ public:
         ring.setMode (mode);
     }
 
-    /** Every Rust control in one call. `grind01` and `tone01` are raw 0..1 knob
-        positions; `mode` is 0 = Oxide, 1 = Contact. Wear and its recovery are
-        fixed inside the engine - there is no knob for them. The dry/wet is the
+    /** Every Rust control in one call. `grind01` is the raw 0..1 knob
+        position; `mode` is 0 = Oxide, 1 = Contact. Wear and its recovery are
+        fixed inside the engine - there is no knob for them - and so is its post
+        low-pass, at `ee::dsp::rust::kDefaultTonePct` (see prepareEngines): the
+        module's footer Tone does that job for every engine. The dry/wet is the
         module's footer Mix. */
-    void setRust (float grind01, float tone01, int mode) noexcept
+    void setRust (float grind01, int mode) noexcept
     {
         rust.setGrind01 (grind01);
-        rust.setTone01 (tone01);
         rust.setMode (mode);
     }
 
@@ -251,6 +252,12 @@ protected:
     {
         crusher.prepare (sampleRate);
         ring.prepare (sampleRate);
+
+        // Where Rust's own Tone knob rested before it was taken off the face,
+        // so an untouched Rust sounds exactly as it did. It tames the grit's
+        // fizz; the footer Tone is the knob for anything more. Before prepare,
+        // which snaps the filter to it rather than gliding down from open.
+        rust.setTone01 (ee::dsp::rust::kDefaultTonePct * 0.01f);
         rust.prepare (sampleRate);
 
         ampSampleRate = sampleRate;

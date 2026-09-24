@@ -29,7 +29,6 @@ export const ARTIFACT_EASY = {
     name: "Decay",
     targets: [
       { id: "rust.grind", min: 0.15, max: 0.9 },
-      { id: "rust.tone", min: 0.35, max: 0.9 },
     ],
   },
   Amp: {

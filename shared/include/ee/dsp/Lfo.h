@@ -19,9 +19,17 @@ namespace ee::dsp
             it never steps between two levels in a single sample and so never
             clicks
 
-    In between it linearly crossfades one anchor into the next. The ramp-type
-    anchors fly back over a short window rather than a vertical edge, for the
-    same anti-click reason. Both the audio path and the on-screen preview call
+    In between it linearly crossfades one anchor into the next - except between
+    the ramp and the triangle, whose troughs sit in different places (the end of
+    the cycle and the middle of it): a crossfade there averages two waves that
+    disagree about where the bottom is and grows a notch half way down the
+    fall. That segment morphs the shape instead - the trough slides from the
+    middle to the start of the flyback, the fall lengthening and the rise
+    shortening, so every step between is a skewed triangle (`skewedRamp`). The
+    ramp-to-decay segment needs no such thing: both fall over the same window
+    and rise over the same flyback, so the crossfade already bends one line into
+    the other curve. The ramp-type anchors fly back over a short window rather
+    than a vertical edge, for the same anti-click reason. Both the audio path and the on-screen preview call
     `lfoValue`, so the drawing is literally a picture of the wave that is heard.
 */
 namespace lfo_detail
@@ -55,6 +63,23 @@ namespace lfo_detail
             return 1.0f - 2.0f * (p / body);
 
         return easeUp ((p - body) / kFlyback);
+    }
+
+    /** Ramp (t = 0) to triangle (t = 1) as one shape rather than a crossfade:
+        falls from +1 to -1 over [0, trough), rises back over [trough, 1). The
+        trough slides from the ramp's (1 - kFlyback) to the triangle's 0.5, and
+        the rise eases from the ramp's flyback curve to the triangle's straight
+        line, so both ends are those anchors exactly. */
+    inline float skewedRamp (float p, float t) noexcept
+    {
+        const float trough = (1.0f - kFlyback) + (0.5f - (1.0f - kFlyback)) * t;
+
+        if (p < trough)
+            return 1.0f - 2.0f * (p / trough);
+
+        const float x = (p - trough) / (1.0f - trough);
+        const float straight = -1.0f + 2.0f * x;
+        return easeUp (x) + (straight - easeUp (x)) * t;
     }
 
     inline float triangle (float p) noexcept
@@ -91,6 +116,10 @@ inline float lfoValue (float phase, float shape) noexcept
     const float seg = s * 4.0f;
     const int i = juce::jlimit (0, 3, static_cast<int> (seg));
     const float t = seg - static_cast<float> (i);
+
+    // Ramp to triangle is a morph, not a crossfade - see the note above.
+    if (i == 1)
+        return lfo_detail::skewedRamp (p, t);
 
     const float lo = lfo_detail::anchor (i, p);
     const float hi = lfo_detail::anchor (i + 1, p);

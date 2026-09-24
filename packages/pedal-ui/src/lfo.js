@@ -25,6 +25,17 @@ function ramp(p) {
   return easeUp((p - body) / FLYBACK);
 }
 
+// Ramp (t = 0) to triangle (t = 1) as one shape rather than a crossfade - see
+// Lfo.h's skewedRamp. The trough slides from the ramp's to the triangle's and
+// the rise straightens, so both ends are those anchors exactly.
+function skewedRamp(p, t) {
+  const trough = 1 - FLYBACK + (0.5 - (1 - FLYBACK)) * t;
+  if (p < trough) return 1 - 2 * (p / trough);
+  const x = (p - trough) / (1 - trough);
+  const eased = easeUp(x);
+  return eased + (-1 + 2 * x - eased) * t;
+}
+
 function triangle(p) {
   return p < 0.5 ? 1 - 4 * p : 4 * p - 3;
 }
@@ -58,6 +69,9 @@ export function lfoValue(phase, shape) {
   const seg = s * 4;
   const i = Math.max(0, Math.min(3, Math.floor(seg)));
   const t = seg - i;
+
+  // Ramp to triangle is a morph, not a crossfade - see Lfo.h.
+  if (i === 1) return skewedRamp(p, t);
 
   const lo = anchor(i, p);
   const hi = anchor(i + 1, p);

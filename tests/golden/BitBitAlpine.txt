@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.alpine
   categories   "Fx Delay Modulation Reverb"
 
-parameters 85
+parameters 88
 0 ingain
     name       "Input"
     default    0.666666687
@@ -116,427 +116,445 @@ parameters 85
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-17 art.rust.tone
-    name       "Artifact Rust Tone"
-    default    0.649999976
-    version    1
-    steps      2147483647 continuous automatable
-    range      0 100 interval 0.100000001 skew 1
-18 art.rust.mode
+17 art.rust.mode
     name       "Artifact Rust Mode"
     default    0
     version    1
     steps      2 discrete automatable
     range      0 1 interval 1 skew 1
     choices    2: "Oxide" "Contact"
-19 art.amp.drive
+18 art.amp.drive
     name       "Artifact Amp Drive"
     default    0.349999994
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-20 art.amp.mids
+19 art.amp.mids
     name       "Artifact Amp Mids"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-21 art.amp.bit
+20 art.amp.bit
     name       "Artifact Amp Bit"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-22 art.amp.tone
+21 art.amp.tone
     name       "Artifact Amp Tone"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      -100 100 interval 0.100000001 skew 1
-23 mod.on
+22 mod.on
     name       "Modulation On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-24 mod.engine
+23 mod.engine
     name       "Modulation Engine"
     default    0.25
     version    1
     steps      5 discrete automatable
     range      0 4 interval 1 skew 1
     choices    5: "Tape" "Tremolo" "Chorus" "Phaser" "Filter"
-25 mod.level
+24 mod.level
     name       "Modulation Level"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      -12 12 interval 0.100000001 skew 1
-26 mod.mix
+25 mod.mix
     name       "Modulation Mix"
     default    0.400000006
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-27 mod.tape.sat
+26 mod.tape.sat
     name       "Tape Saturation"
     default    0.349999994
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-28 mod.tape.flutter
+27 mod.tape.flutter
     name       "Tape Flutter"
     default    0.25
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-29 mod.tape.wear
+28 mod.tape.wear
     name       "Tape Wear"
     default    0.300000012
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-30 mod.tape.noise
+29 mod.tape.noise
     name       "Tape Noise"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-31 mod.tape.tone
-    name       "Tape Tone"
-    default    0.5
-    version    1
-    steps      2147483647 continuous automatable
-    range      -100 100 interval 0.100000001 skew 1
-32 mod.tape.stereo
+30 mod.tape.stereo
     name       "Tape Stereo"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-33 mod.trem.amount
+31 mod.trem.amount
     name       "Tremolo Amount"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-34 mod.trem.rate
+32 mod.trem.rate
     name       "Tremolo Rate"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 1 interval 0 skew 1
-35 mod.trem.sync
+33 mod.trem.sync
     name       "Tremolo Sync"
     default    0
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-36 mod.trem.shape
+34 mod.trem.shape
     name       "Tremolo Shape"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-37 mod.trem.tube
+35 mod.trem.tube
     name       "Tremolo Tube"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-38 mod.chorus.rate
+36 mod.chorus.rate
     name       "Chorus Rate"
     default    0.418337196
     version    1
     steps      2147483647 continuous automatable
     range      0.0500000007 8 interval 0 skew 0.326269031
-39 mod.chorus.depth
+37 mod.chorus.depth
     name       "Chorus Depth"
     default    0.449999988
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-40 mod.chorus.phase
+38 mod.chorus.phase
     name       "Chorus Phase"
     default    0.611111104
     version    1
     steps      2147483647 continuous automatable
     range      0 180 interval 1 skew 1
-41 mod.phase.rate
+39 mod.phase.rate
     name       "Phaser Rate"
     default    0.347108126
     version    1
     steps      2147483647 continuous automatable
     range      0.0299999993 8 interval 0 skew 0.329107255
-42 mod.phase.depth
+40 mod.phase.depth
     name       "Phaser Depth"
     default    0.75
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-43 mod.filter.freq
+41 mod.filter.freq
     name       "Filter Freq"
     default    0.487000018
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-44 mod.filter.q
+42 mod.filter.q
     name       "Filter Q"
     default    0.579999983
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-45 mod.filter.range
+43 mod.filter.range
     name       "Filter Range"
     default    0.610000014
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-46 mod.filter.time
+44 mod.filter.time
     name       "Filter Time"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 1 interval 9.99999975e-05 skew 1
-47 mod.filter.sync
+45 mod.filter.sync
     name       "Filter Sync"
     default    0
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-48 mod.filter.wave
+46 mod.filter.wave
     name       "Filter Wave"
     default    0
     version    1
     steps      3 discrete automatable
     range      0 2 interval 1 skew 1
     choices    3: "Triangle" "Ramp" "Square"
-49 mod.filter.stereo
+47 mod.filter.stereo
     name       "Filter Stereo"
     default    0
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-50 dly.on
+48 dly.on
     name       "Delay On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-51 dly.ltime
+49 dly.ltime
     name       "Left Time"
     default    0.357142866
     version    1
     steps      2147483647 continuous automatable meta
     range      0 1 interval 0 skew 1
-52 dly.rtime
+50 dly.rtime
     name       "Right Time"
     default    0.357142866
     version    1
     steps      2147483647 continuous automatable meta
     range      0 1 interval 0 skew 1
-53 dly.sync
+51 dly.sync
     name       "Sync L/R"
     default    1
     version    1
     steps      2 discrete boolean automatable meta
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-54 dly.timeunit
+52 dly.timeunit
     name       "Time Unit"
     default    0
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-55 dly.dtype
+53 dly.dtype
     name       "Delay Type"
     default    0
     version    1
     steps      3 discrete automatable
     range      0 2 interval 1 skew 1
     choices    3: "Normal" "Wide" "Ping Pong"
-56 dly.fb
+54 dly.fb
     name       "Feedback"
     default    0.349999994
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-57 dly.level
+55 dly.level
     name       "Delay Level"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      -12 12 interval 0.100000001 skew 1
-58 dly.mix
+56 dly.mix
     name       "Delay Mix"
     default    0.349999994
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-59 dly.tape
+57 dly.tape
     name       "Delay Wear"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-60 dly.flutter
+58 dly.flutter
     name       "Delay Flutter"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-61 dly.mod
+59 dly.mod
     name       "Drift"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-62 dly.phaser
+60 dly.phaser
     name       "Delay Phaser"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-63 dly.locut
+61 dly.locut
     name       "Delay Low Cut"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      20 1200 interval 0 skew 0.280842483
-64 dly.hicut
+62 dly.hicut
     name       "Delay High Cut"
     default    1
     version    1
     steps      2147483647 continuous automatable
     range      1200 20000 interval 0 skew 0.364002496
-65 rev.on
+63 rev.on
     name       "Reverb On"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-66 rev.engine
+64 rev.engine
     name       "Reverb Engine"
-    default    1
+    default    0.666666687
     version    1
-    steps      3 discrete automatable
-    range      0 2 interval 1 skew 1
-    choices    3: "Spring" "Shimmer" "Studio"
-67 rev.level
+    steps      4 discrete automatable
+    range      0 3 interval 1 skew 1
+    choices    4: "Spring" "Shimmer" "Studio" "Simple"
+65 rev.level
     name       "Reverb Level"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      -12 12 interval 0.100000001 skew 1
-68 rev.mix
+66 rev.mix
     name       "Reverb Mix"
     default    0.300000012
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-69 rev.space.decay
+67 rev.space.decay
     name       "Shimmer Decay"
     default    0.666666687
     version    1
     steps      2147483647 continuous automatable
     range      4 10 interval 0 skew 1
-70 rev.space.octave
+68 rev.space.octave
     name       "Shimmer Octave"
     default    1
     version    1
     steps      3 discrete automatable
     range      0 2 interval 1 skew 1
     choices    3: "-1 Oct" "0" "+1 Oct"
-71 rev.space.locut
+69 rev.space.locut
     name       "Shimmer Low Cut"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
-72 rev.space.hicut
+70 rev.space.hicut
     name       "Shimmer Hi Cut"
     default    1
     version    1
     steps      2147483647 continuous automatable
     range      1000 20000 interval 0 skew 0.519210994
-73 rev.space.damping
+71 rev.space.damping
     name       "Shimmer Damping"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-74 rev.spring.decay
+72 rev.spring.decay
     name       "Spring Decay"
     default    0.443043411
     version    1
     steps      2147483647 continuous automatable
     range      0.400000006 8 interval 0 skew 0.481231391
-75 rev.spring.tension
+73 rev.spring.tension
     name       "Spring Tension"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-76 rev.spring.locut
+74 rev.spring.locut
     name       "Spring Low Cut"
     default    0.272604346
     version    1
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
-77 rev.spring.hicut
+75 rev.spring.hicut
     name       "Spring Hi Cut"
     default    0.49999997
     version    1
     steps      2147483647 continuous automatable
     range      1000 20000 interval 0 skew 0.519210994
-78 chain.order
+76 chain.order
     name       "Chain Order"
     default    0
     version    1
     steps      24 discrete automatable
     range      0 23 interval 1 skew 1
     choices    24: "Art-Mod-Dly-Rev" "Art-Mod-Rev-Dly" "Art-Dly-Mod-Rev" "Art-Dly-Rev-Mod" "Art-Rev-Mod-Dly" "Art-Rev-Dly-Mod" "Mod-Art-Dly-Rev" "Mod-Art-Rev-Dly" "Mod-Dly-Art-Rev" "Mod-Dly-Rev-Art" "Mod-Rev-Art-Dly" "Mod-Rev-Dly-Art" "Dly-Art-Mod-Rev" "Dly-Art-Rev-Mod" "Dly-Mod-Art-Rev" "Dly-Mod-Rev-Art" "Dly-Rev-Art-Mod" "Dly-Rev-Mod-Art" "Rev-Art-Mod-Dly" "Rev-Art-Dly-Mod" "Rev-Mod-Art-Dly" "Rev-Mod-Dly-Art" "Rev-Dly-Art-Mod" "Rev-Dly-Mod-Art"
-79 rev.studio.decay
+77 rev.studio.decay
     name       "Studio Decay"
     default    0.623038769
     version    1
     steps      2147483647 continuous automatable
     range      0.5 8 interval 0 skew 0.43067655
-80 rev.studio.size
+78 rev.studio.size
     name       "Studio Size"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0.5 1.5 interval 0 skew 1
-81 rev.studio.predelay
+79 rev.studio.predelay
     name       "Studio Pre-delay"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 60 interval 0 skew 1
-82 rev.studio.damping
+80 rev.studio.damping
     name       "Studio Damping"
     default    0.25
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-83 rev.studio.locut
+81 rev.studio.locut
     name       "Studio Low Cut"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
-84 rev.studio.hicut
+82 rev.studio.hicut
     name       "Studio Hi Cut"
     default    1
     version    1
     steps      2147483647 continuous automatable
     range      1000 20000 interval 0 skew 0.519210994
+83 art.tone
+    name       "Artifact Tone"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      -100 100 interval 0.100000001 skew 1
+84 mod.tone
+    name       "Modulation Tone"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      -100 100 interval 0.100000001 skew 1
+85 rev.tone
+    name       "Reverb Tone"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      -100 100 interval 0.100000001 skew 1
+86 rev.simple.amount
+    name       "Reverb Simple Amount"
+    default    0.400000006
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 100 interval 0.100000001 skew 1
+87 mod.trem.attack
+    name       "Tremolo Attack"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 4 interval 0 skew 0.333333343

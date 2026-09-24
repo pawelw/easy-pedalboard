@@ -6,13 +6,6 @@
    are `af-`: this face now renders inside more than one host, and a host's own
    stylesheet is not its to share a namespace with. */
 
-/* Tape has no Mix (it runs fully wet) and renders this in the footer's place.
-   The strip keeps its height from `.pui-module__footer`'s own floor, so a
-   module's footer border lands on its neighbours' whatever is in it. */
-.sm-footer-empty {
-  height: 0;
-}
-
 /* A module's parameter rows, on the shared slot ladder (ModulePanel.css). */
 .sm-knobs {
   display: flex;
@@ -59,6 +52,21 @@
 /* The Tremolo engine's tempo-sync pill, on a centred row under the knob grid.
    16px clears the second knob row's captions; the pill flips the Rate knob's
    readout between a period in ms and a note division. */
+/* Tremolo's Attack + Sync row. Each cell is one knob cell wide (a 36px knob's
+   64px), so the pair sits under the two columns above; the pill's cell is
+   held to the Attack dial's height so the pill centres on the dial rather
+   than on dial-plus-caption. */
+.sm-attack-row__cell {
+  width: 64px;
+  display: flex;
+  justify-content: center;
+}
+
+.sm-attack-row__cell--pill {
+  align-items: center;
+  height: var(--sm-attack-dial, 34px);
+}
+
 .sm-sync-row {
   margin-top: 16px;
   display: flex;

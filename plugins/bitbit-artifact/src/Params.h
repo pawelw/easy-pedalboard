@@ -15,6 +15,7 @@ namespace ee::artifact::id
 inline constexpr const char* on = "on";         // module power
 inline constexpr const char* engine = "engine"; // Ring Mod / Bit Crush / Rust / Amp
 inline constexpr const char* mix = "mix";       // footer dry/wet
+inline constexpr const char* tone = "tone";     // footer tilt, every engine, flat at 0
 
 inline constexpr const char* crushBits = "crush.bits";     // word length, 24..1 bit
 inline constexpr const char* crushRate = "crush.rate";     // sample-and-hold rate
@@ -28,7 +29,6 @@ inline constexpr const char* ringRect = "ring.rect";   // carrier rectify, bipol
 inline constexpr const char* ringMode = "ring.mode";   // Wobble / Octave (Earworm / Green Lantern in the DSP)
 
 inline constexpr const char* rustGrind = "rust.grind"; // corrosion character, grime -> breakup
-inline constexpr const char* rustTone = "rust.tone";   // post low-pass, up = open (darker in Contact)
 inline constexpr const char* rustMode = "rust.mode";   // Oxide / Contact
 
 inline constexpr const char* ampDrive = "amp.drive";   // tube-style analog drive, ahead of the crush

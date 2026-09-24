@@ -49,6 +49,7 @@ const REVERB_ENGINE_ICONS = {
   Spring: <SpringIcon size={26} />,
   Shimmer: <ShimmerIcon size={26} />,
   Studio: <SpaceIcon size={26} />,
+  Simple: <SpaceIcon size={26} />,
 };
 
 // One cycle of a tremolo's envelope, as BarDisplay wants it: plain pixel
@@ -270,7 +271,7 @@ function Showcase() {
           </span>
           <span style={{ "--pui-accent": "var(--pui-accent-reverb)" }}>
             <EngineStepper
-              engines={["Spring", "Shimmer", "Studio"]}
+              engines={["Spring", "Shimmer", "Studio", "Simple"]}
               value={reverbEngine}
               icon={REVERB_ENGINE_ICONS[reverbEngine]}
               onChange={setReverbEngine}

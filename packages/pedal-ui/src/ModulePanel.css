@@ -118,16 +118,27 @@
 
 .pui-module__footer {
   display: flex;
-  align-items: center;
+  /* Bottom, not centre: Tone is a size down from Mix, and centring the two
+     would leave its caption higher than Mix's. Aligned at the foot, the
+     captions share a baseline. */
+  align-items: flex-end;
   justify-content: center;
+  /* Mix and Tone side by side, in the switchable modules. */
+  gap: 22px;
   padding: 16px 12px 8px;
   border-top: 1px solid var(--pui-module-divider);
-  /* The height a 38px knob with its caption takes, held whether or not there
-     is one in there - Tape's footer is empty (it runs fully wet) and without a
-     floor it would collapse to its padding, putting its top border, and every
-     bottom-pinned switch above it, a few pixels off its neighbours'. */
+  /* The height a 38px knob with its caption takes, held whatever is in there
+     - the wide Delay module's footer is its own, and a footer that collapsed to
+     its padding would put its top border, and every bottom-pinned switch above
+     it, a few pixels off its neighbours'. */
   box-sizing: border-box;
   min-height: 92px;
+}
+
+/* One face colour for every footer knob, whichever variant (see tokens.css). */
+.pui-module__footer .pui-knob__soft-cap,
+.pui-module__footer .pui-knob__concave-face {
+  background: var(--pui-footer-knob-face);
 }
 
 .pui-module--wide .pui-module__footer {

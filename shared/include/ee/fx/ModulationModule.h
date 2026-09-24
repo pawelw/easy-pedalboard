@@ -45,13 +45,14 @@ public:
 
     // -------------------------------------------------------------- the knobs
 
-    void setTape (float saturation01, float flutter01, float wear01, float noise01, float tone, float stereo01) noexcept
+    /** No Tone here: the machine's own tilt is pinned flat (see prepareEngines)
+        and the module's footer Tone, which every engine shares, does the job. */
+    void setTape (float saturation01, float flutter01, float wear01, float noise01, float stereo01) noexcept
     {
         tape.setSaturation01 (saturation01);
         tape.setFlutter01 (flutter01);
         tape.setWear01 (wear01);
         tape.setNoise01 (noise01);
-        tape.setTone (tone);
         tape.setStereo01 (stereo01);
     }
 
@@ -78,6 +79,9 @@ public:
     }
 
     void setTremoloTransport (const ee::dsp::Tremolo::Transport& t) noexcept { transport = t; }
+
+    /** The tremolo's per-note swell, 0 (off) to 4 s - see ee::dsp::Tremolo. */
+    void setTremoloAttack (float seconds) noexcept { tremolo.setAttackSeconds (seconds); }
 
     void setChorus (float rateHz, float depth01, float phaseDegrees) noexcept
     {
@@ -140,6 +144,10 @@ protected:
         // tape::kLowLatencyNominalDelayMs.
         tape.setLowLatency (true);
         tape.prepare (sampleRate);
+
+        // Flat and bypassed for good. Tone is the module's footer knob now,
+        // shared by every engine, rather than one of Tape's own.
+        tape.setTone (0.0f);
         tremolo.prepare (sampleRate, maxBlockSize);
         chorus.prepare (sampleRate);
         phaser.prepare (sampleRate);

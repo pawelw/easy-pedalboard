@@ -26,17 +26,15 @@ import {
  * scaleFrom]` when a knob doesn't read from its own minimum - a Hi Cut rests
  * open at the top of its travel and counts down, the same "max" distinction
  * BitBit Delay's own Hi Cut draws (see Knob's `scaleFrom` doc); every knob a
- * reverb engine's `hicut` id names wants it. Laid out two per row. Two rows
- * is the norm; Tape is the one engine that runs to three, because it is the
- * whole of BitBit Tape and
- * that pedal has five knobs plus a switch. `centre` is a single knob on a row
- * of its own under the pairs (Tape's bipolar Tone), `lead` a list of one or
- * more `[id, caption]` pairs on a row of its own above them, centred as a
- * group (Studio reverb's Decay and Size, Shimmer's Decay and Damping);
- * `toggle` is a Mono/Stereo
- * switch pinned to the bottom of the body, just above the footer. `centre`
- * and `toggle` are each used by one engine so far - an engine that wants one
- * needs a look at the layout, not just a line here.
+ * reverb engine's `hicut` id names wants it. Laid out two per row, two rows.
+ * `lead` is a list of one or more `[id, caption]` pairs on a row of its own
+ * above them, centred as a group (Studio reverb's Decay and Size, Shimmer's
+ * Decay and Damping); `toggle` is a Mono/Stereo switch pinned to the bottom of
+ * the body, just above the footer. `toggle` is used by one engine so far - an
+ * engine that wants one needs a look at the layout, not just a line here.
+ *
+ * Tone is not an engine's: it is the module's footer knob beside Mix (Tape's
+ * own Tone moved there), so no engine here lists one.
  *
  * `body: "filter"` swaps the knob grid for SideModule's FilterBody - Filter's
  * controls carry a wave picker and a Sync pill under two of its knobs, which a
@@ -64,20 +62,20 @@ export const MOD_ENGINES = [
     name: "Tape",
     icon: <TapeIcon size={22} />,
     prefix: "tape.",
+    // A test tone through the machine - every knob and the switch show in it.
+    display: "tape",
     knobs: [
       ["sat", "Saturation"],
       ["flutter", "Flutter"],
       ["wear", "Wear"],
       ["noise", "Noise"],
     ],
-    // A bipolar tilt that rests dead centre - its own row under the four.
-    centre: ["tone", "Tone"],
     // The machine's mono/stereo switch, pinned to the bottom of the body.
     toggle: ["stereo", "Mono", "Stereo"],
     // No Mix: the tape transport's wow makes the wet path wander, so any
     // partial blend against the dry combs and is heard as tremolo. It runs
     // fully wet, like BitBit Tape - the module's power toggle is its dry/wet.
-    // The footer strip stays (its height is fixed in CSS); only the knob goes.
+    // The footer keeps its Tone; only the Mix knob goes.
     hideMix: true,
     // The Easy tab's macro: one knob that opens saturation, flutter and wear
     // together - the "more tape" move. Starting ranges; the maxed-out target
@@ -108,6 +106,9 @@ export const MOD_ENGINES = [
     // Flips the Rate knob between a free period in ms and a tempo-locked note
     // division - the same control the Delay module and BitBit Trem & Pan carry.
     sync: "trem.sync",
+    // A small knob under the grid: the per-note swell, 0 ms (off) to 4 s. Its
+    // row carries the Sync pill too, on the right, centred on this knob.
+    attack: "attack",
     // Rate is left out on purpose - the tempo feel is the player's to set.
     easy: {
       name: "Depth",
@@ -190,7 +191,7 @@ export const FILTER_WAVES = [
 // Every reverb shows the same display - its tail as a time x frequency map,
 // drawn from that engine's own decay model (pedal-ui's ReverbScope), so every
 // knob on the engine shows up in it. `display` names the model. In the order
-// of the owner's `engine` choice - Spring, Shimmer, Studio.
+// of the owner's `engine` choice - Spring, Shimmer, Studio, Simple.
 export const REVERB_ENGINES = [
   {
     name: "Spring",
@@ -271,6 +272,25 @@ export const REVERB_ENGINES = [
         { id: "predelay", min: 0.0, max: 0.3 },
         { id: "locut", min: 0.1, max: 0.35 },
       ],
+    },
+  },
+  {
+    // Studio's reverb behind one knob. Amount turns Decay, Damping and Low Cut
+    // together (ee/dsp/SimpleReverbConfig.h) - a longer room that darkens and
+    // loses its bottom a little as it grows. Studio's glyph, because it is
+    // Studio's engine. Appended last, so a saved engine index keeps its
+    // meaning.
+    name: "Simple",
+    icon: <SpaceIcon size={22} />,
+    prefix: "simple.",
+    display: "reverb",
+    reverb: "simple",
+    lead: [["amount", "Amount"]],
+    knobs: [],
+    // Already one knob; the macro just rides it end to end.
+    easy: {
+      name: "Amount",
+      targets: [{ id: "amount", min: 0.0, max: 1.0 }],
     },
   },
 ];

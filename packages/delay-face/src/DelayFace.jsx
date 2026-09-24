@@ -11,7 +11,6 @@ import {
   JuceKnob,
   JucePill,
   JuceChoicePill,
-  JuceStageKnob,
   ParamScope,
 } from "@synthpeak/pedal-ui/juce";
 import { useDelayMeter, useDelayTimesMs } from "./juceBindings.jsx";
@@ -42,9 +41,11 @@ import "./DelayFace.css";
  * second layout box between the card's padding and the content that has been
  * measured against it since the face was written.
  *
- * `stageKnobSize` is the footer knobs' dial. BitBit Delay's own 38px is the
- * default; BitBit Alpine passes 36, the size every other small knob on that
- * panel is. All six footer knobs, Low Cut and High Cut included, are this size.
+ * `stageKnobSize` is the footer knobs' dial, 38px - the size of the Mix and
+ * Tone knobs in every other module's footer. The footer knobs are the same
+ * `JuceKnob` those footers draw, in the same `knobVariant` ("flat" in every
+ * host today), so a row of modules has one kind of footer knob. All six, Low
+ * Cut and High Cut included, are this size.
  *
  * `mainKnobSize` is Mix and Feedback. 76px is what BitBit Delay's original
  * 528px card was laid out around; its 415px card passes 50 and BitBit Alpine's
@@ -57,7 +58,8 @@ import "./DelayFace.css";
  */
 export default function DelayFace({
   prefix = "",
-  stageKnobSize,
+  stageKnobSize = 38,
+  knobVariant = "flat",
   mainKnobSize = 76,
   scopeHeight = 110,
 }) {
@@ -65,6 +67,7 @@ export default function DelayFace({
     <ParamScope prefix={prefix}>
       <DelayFaceBody
         stageKnobSize={stageKnobSize}
+        knobVariant={knobVariant}
         mainKnobSize={mainKnobSize}
         scopeHeight={scopeHeight}
       />
@@ -74,7 +77,7 @@ export default function DelayFace({
 
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     DelayFace itself would read the enclosing scope, not the one it declares. */
-function DelayFaceBody({ stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) {
+function DelayFaceBody({ stageKnobSize, knobVariant, mainKnobSize = 76, scopeHeight = 110 }) {
   const [leftMs, rightMs] = useDelayTimesMs();
   const [feedback01] = useJuceSliderValue("fb");
   const [mix01] = useJuceSliderValue("mix");
@@ -185,8 +188,8 @@ function DelayFaceBody({ stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) 
               <StageHeader icon={<TapeIcon size={24} />} name="Tape" accent="var(--pui-stage-tape)" />
             }
           >
-            <JuceStageKnob parameterId="tape" name="Wear" size={stageKnobSize} />
-            <JuceStageKnob parameterId="flutter" name="Flutter" size={stageKnobSize} />
+            <JuceKnob parameterId="tape" caption="Wear" variant={knobVariant} size={stageKnobSize} />
+            <JuceKnob parameterId="flutter" caption="Flutter" variant={knobVariant} size={stageKnobSize} />
           </StageGroup>
         </div>
 
@@ -194,8 +197,8 @@ function DelayFaceBody({ stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) 
           <StageGroup
             header={<StageHeader icon={<ModIcon size={30} />} name="Mod" accent="var(--pui-stage-mod)" />}
           >
-            <JuceStageKnob parameterId="mod" name="Drift" size={stageKnobSize} />
-            <JuceStageKnob parameterId="phaser" name="Phaser" size={stageKnobSize} />
+            <JuceKnob parameterId="mod" caption="Drift" variant={knobVariant} size={stageKnobSize} />
+            <JuceKnob parameterId="phaser" caption="Phaser" variant={knobVariant} size={stageKnobSize} />
           </StageGroup>
         </div>
 
@@ -212,8 +215,8 @@ function DelayFaceBody({ stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) 
           <StageGroup
             header={<StageHeader icon={<FilterIcon size={30} />} name="Filter" accent="var(--pui-stage-filter)" />}
           >
-            <JuceStageKnob parameterId="locut" name="Low Cut" size={stageKnobSize} />
-            <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" size={stageKnobSize} />
+            <JuceKnob parameterId="locut" caption="Low Cut" variant={knobVariant} size={stageKnobSize} />
+            <JuceKnob parameterId="hicut" caption="High Cut" scaleFrom="max" variant={knobVariant} size={stageKnobSize} />
           </StageGroup>
         </div>
       </div>

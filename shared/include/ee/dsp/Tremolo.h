@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "Lfo.h"
+#include "OnsetGate.h"
 #include "TremoloConfig.h"
 
 namespace ee::dsp
@@ -84,6 +85,18 @@ public:
 
         bias.reset (newSampleRate, tremolo::kSmoothingSeconds);
         bias.setCurrentAndTargetValue (bias01);
+
+        const float fs = static_cast<float> (sr);
+        const auto coeff = [fs] (float ms) { return 1.0f - std::exp (-1.0f / (fs * ms * 0.001f)); };
+        attackHpCoeff = juce::jlimit (0.0f, 1.0f,
+                                      1.0f - std::exp (-2.0f * juce::MathConstants<float>::pi
+                                                       * tremolo::kAttackHighpassHz / fs));
+        attackFollowUp = coeff (tremolo::kAttackFollowAttackMs);
+        attackFollowDown = coeff (tremolo::kAttackFollowReleaseMs);
+        attackRestartStep = 1.0f / (fs * tremolo::kAttackRestartMs * 0.001f);
+        onsetGate.prepare (fs, tremolo::kOnsetEnvDecayMs, tremolo::kOnsetAttackWidthMs, tremolo::kOnsetRiseRatioOn,
+                           tremolo::kOnsetRiseRatioOff, tremolo::kOnsetMinRise, tremolo::kOnsetLockoutMs);
+        swellBuffer.assign (static_cast<size_t> (maxBlock), 1.0f);
     }
 
     void reset() noexcept
@@ -97,12 +110,27 @@ public:
 
         for (auto& s : biasDcState)
             s = 0.0f;
+
+        // Full depth until the first note says otherwise, so turning Attack up
+        // mid-phrase does not drop the tremolo out.
+        swell = 1.0f;
+        restarting = false;
+        attackHpZ = 0.0f;
+        attackFollow = 0.0f;
+        onsetGate.reset();
     }
 
     void setAmount01 (float v) noexcept { amount01 = juce::jlimit (0.0f, 1.0f, v); }
     void setShape01 (float v) noexcept { shape01 = juce::jlimit (0.0f, 1.0f, v); }
     void setBias01 (float v) noexcept { bias01 = juce::jlimit (0.0f, 1.0f, v); }
     void setPanning (bool shouldPan) noexcept { panning = shouldPan; }
+
+    /** The per-note swell - see TremoloConfig.h's ATTACK. 0 is off, and exactly
+        the engine it was before; up to kAttackMaxSeconds. */
+    void setAttackSeconds (float seconds) noexcept
+    {
+        attackSeconds = juce::jlimit (0.0f, tremolo::kAttackMaxSeconds, std::isfinite (seconds) ? seconds : 0.0f);
+    }
 
     /** One LFO cycle's length. The caller works this out from its own Rate knob
         and, when synced, the host tempo. */
@@ -153,6 +181,11 @@ public:
 
         if (numSamples > static_cast<int> (modBuffer.size()))
             modBuffer.assign (static_cast<size_t> (numSamples), 0.0f);
+
+        // Read the input before either law below writes over it.
+        swelling = attackSeconds > 0.0f;
+        if (swelling)
+            runSwell (buffer, numChannels, numSamples);
 
         // One shaped LFO value per sample, slew-limited so nothing steps the
         // gain in a single sample. Same helper the UI preview uses, so the
@@ -224,6 +257,50 @@ private:
         wasPlaying = transport.playing;
     }
 
+    float swellAt (int i) const noexcept { return swelling ? swellBuffer[static_cast<size_t> (i)] : 1.0f; }
+
+    /** The Attack swell for this block, one value per sample into swellBuffer.
+        A new note (OnsetGate on a follower of the high-passed, noise-floored
+        input) sends the swell back to 0 over kAttackRestartMs - a fall, not a
+        jump, since the gain it scales is already mid-throb - and from there it
+        climbs to 1 in a straight line over the Attack time. */
+    void runSwell (const juce::AudioBuffer<float>& buffer, int numChannels, int numSamples) noexcept
+    {
+        if (numSamples > static_cast<int> (swellBuffer.size()))
+            swellBuffer.assign (static_cast<size_t> (numSamples), 1.0f);
+
+        const float riseStep = 1.0f / (attackSeconds * static_cast<float> (sr));
+        const float* left = buffer.getReadPointer (0);
+        const float* right = buffer.getReadPointer (numChannels > 1 ? 1 : 0);
+
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const float mono = 0.5f * (left[i] + right[i]);
+            attackHpZ += attackHpCoeff * (mono - attackHpZ);
+            const float rect = juce::jmax (0.0f, std::abs (mono - attackHpZ) - tremolo::kAttackNoiseFloor);
+            attackFollow += (rect > attackFollow ? attackFollowUp : attackFollowDown) * (rect - attackFollow);
+
+            if (onsetGate (attackFollow))
+                restarting = true;
+
+            if (restarting)
+            {
+                swell -= attackRestartStep;
+                if (swell <= 0.0f)
+                {
+                    swell = 0.0f;
+                    restarting = false;
+                }
+            }
+            else
+            {
+                swell = juce::jmin (1.0f, swell + riseStep);
+            }
+
+            swellBuffer[static_cast<size_t> (i)] = swell;
+        }
+    }
+
     /** Self-heal if a bad host value ever slipped a non-finite into the state -
         otherwise a single NaN here would stick and roar. Every running state
         variable that feeds the next block has to be covered: the bias-tube DC
@@ -234,6 +311,12 @@ private:
             lfoPhase = 0.0;
         if (! std::isfinite (modZ1))
             modZ1 = 0.0f;
+        if (! std::isfinite (attackHpZ) || ! std::isfinite (attackFollow))
+        {
+            attackHpZ = 0.0f;
+            attackFollow = 0.0f;
+            onsetGate.reset();
+        }
         for (auto& s : biasDcState)
             if (! std::isfinite (s))
                 s = 0.0f;
@@ -252,7 +335,7 @@ private:
 
         for (int i = 0; i < numSamples; ++i)
         {
-            const float d = depth.getNextValue();
+            const float d = depth.getNextValue() * swellAt (i);
             const float pan = juce::jlimit (-1.0f, 1.0f, d * modBuffer[static_cast<size_t> (i)]);
             const float angle = (pan * 0.5f + 0.5f) * juce::MathConstants<float>::halfPi;
 
@@ -273,8 +356,13 @@ private:
     {
         for (int i = 0; i < numSamples; ++i)
         {
-            const float d = depth.getNextValue();
-            const float mk = makeup.getNextValue();
+            const float sw = swellAt (i);
+            const float d = depth.getNextValue() * sw;
+            // The make-up is for the depth actually heard, so it swells with it.
+            // Written out only while swelling: 1 + (mk - 1) * 1 is not always
+            // mk to the last bit, and Attack 0 has to be the old engine exactly.
+            const float mkFull = makeup.getNextValue();
+            const float mk = swelling ? 1.0f + (mkFull - 1.0f) * sw : mkFull;
             const float b01 = bias.getNextValue();
             const float rawDuck = 0.5f - 0.5f * modBuffer[static_cast<size_t> (i)]; // 0 loud .. 1 quiet
 
@@ -330,6 +418,17 @@ private:
     juce::SmoothedValue<float> bias;   // 0..1 - crossfade from opto to bias-tube tremolo
 
     std::vector<float> modBuffer; // shaped, slew-limited LFO, per sample
+
+    // Attack - see runSwell.
+    float attackSeconds = 0.0f;
+    bool swelling = false;
+    float swell = 1.0f;
+    bool restarting = false;
+    float attackHpCoeff = 0.0f, attackHpZ = 0.0f;
+    float attackFollowUp = 0.0f, attackFollowDown = 0.0f, attackFollow = 0.0f;
+    float attackRestartStep = 0.0f;
+    OnsetGate onsetGate;
+    std::vector<float> swellBuffer;
 
     // The LFO free-runs on this phase accumulator; when synced it is nudged
     // (or, on a transport jump, snapped) towards the host timeline so the same

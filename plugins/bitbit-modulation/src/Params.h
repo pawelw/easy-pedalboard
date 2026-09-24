@@ -15,12 +15,12 @@ namespace ee::modulation::id
 inline constexpr const char* on = "on";         // module power
 inline constexpr const char* engine = "engine"; // Tape / Tremolo / Chorus / Phaser / Filter
 inline constexpr const char* mix = "mix";       // footer dry/wet - Tape does not use it
+inline constexpr const char* tone = "tone";     // footer tilt, every engine, flat at 0
 
 inline constexpr const char* tapeSat = "tape.sat";
 inline constexpr const char* tapeFlutter = "tape.flutter";
 inline constexpr const char* tapeWear = "tape.wear";
 inline constexpr const char* tapeNoise = "tape.noise";
-inline constexpr const char* tapeTone = "tape.tone";     // bipolar tilt, flat at 0
 inline constexpr const char* tapeStereo = "tape.stereo"; // one transport or two
 
 inline constexpr const char* tremAmount = "trem.amount";
@@ -28,6 +28,7 @@ inline constexpr const char* tremRate = "trem.rate"; // meaning set by tremSync
 inline constexpr const char* tremSync = "trem.sync"; // false = ms, true = tempo
 inline constexpr const char* tremShape = "trem.shape";
 inline constexpr const char* tremTube = "trem.tube";
+inline constexpr const char* tremAttack = "trem.attack"; // per-note swell, ms, 0 = off
 
 inline constexpr const char* chorusRate = "chorus.rate";
 inline constexpr const char* chorusDepth = "chorus.depth";

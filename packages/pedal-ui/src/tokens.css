@@ -9,6 +9,10 @@
    scalloped-collar knobs, pill switches. One palette so a pedal reads as one
    family of modules rather than several pedals styled separately. */
 :root {
+  /* Every footer knob's face - the switchable modules' Mix and Tone and the
+     Delay's stage knobs - so the footers read as one strip across a row of
+     modules whatever variant each knob is. Not themed: it is the same in all. */
+  --pui-footer-knob-face: #1c252a;
   --pui-panel: #f3f2ed;
   --pui-panel-edge: #e8e6de;
   --pui-ink: #1c1c1a;

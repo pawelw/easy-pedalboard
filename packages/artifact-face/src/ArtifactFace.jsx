@@ -14,7 +14,7 @@ import "./ArtifactFace.css";
 /**
  * BitBit Artifact's face, minus its pedal enclosure: one switchable module drawn
  * as a `ModulePanel` - a power toggle and name in the header, an engine
- * stepper, and then the selected engine's body, with Mix in the footer. Bit
+ * stepper, and then the selected engine's body, with Mix and Tone in the footer. Bit
  * Crush has a stepped-wave display and two rows of knobs; Ring Mod has a
  * lattice display, its four knobs and a Wobble / Octave switch; Rust has a
  * corrosion display, one row of knobs and an Oxide / Contact switch; Amp has a
@@ -108,7 +108,15 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
       onToggle={setOn}
       headerRight={headerRight}
       className="af-module"
-      footer={<JuceKnob parameterId="mix" caption="Mix" variant={knobVariant} size={38} />}
+      /* Mix and Tone are the module's, not the engine's, so they stay put when
+         the engine changes. Tone is a bipolar tilt resting dead centre, and a
+         size down from Mix - a trim on the effect rather than its main knob. */
+      footer={
+        <>
+          <JuceKnob parameterId="mix" caption="Mix" variant={knobVariant} size={38} />
+          <JuceKnob parameterId="tone" caption="Tone" variant={knobVariant} size={28} scaleFrom="centre" />
+        </>
+      }
     >
       <EngineStepper
         engines={ENGINES.map((e) => e.name)}
@@ -326,8 +334,8 @@ function RingModeSwitch() {
   );
 }
 
-/* The Rust body: its corrosion display, one knob row (Grind / Tone) and the
-   mode switch. Wear and its recovery are fixed inside the engine, so there is
+/* The Rust body: its corrosion display, one knob (Grind) and the mode switch.
+   Tone is the module's, in the footer. Wear and its recovery are fixed inside the engine, so there is
    no knob for them. */
 function RustBody({ knobVariant }) {
   return (
@@ -339,7 +347,6 @@ function RustBody({ knobVariant }) {
       <div className="af-knobs">
         <div className="af-knob-row">
           <JuceKnob parameterId="rust.grind" caption="Grind" variant={knobVariant} size={36} />
-          <JuceKnob parameterId="rust.tone" caption="Tone" variant={knobVariant} size={36} />
         </div>
       </div>
 

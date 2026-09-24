@@ -157,10 +157,11 @@ void checkLatency()
     check (honest, "the dry path arrives where the reported latency says, whichever engine mixes");
 }
 /** Everything neutral, through the real parameters, is the input delayed - bit for
-    bit. The Tone is set the way a host or the face sets it, as a normalised 0.5,
-    which JUCE's interval rounding turns into 1.49e-6 rather than 0; that used to
-    switch the tilt on and run the whole engine +1.7 dB hot. Tape has no Mix, so
-    this is the only way to null-test it. */
+    bit. The footer Tone is set the way a host or the face sets it, as a
+    normalised 0.5, which JUCE's interval rounding turns into 1.49e-6 rather than
+    0; on Tape's own Tone (which the footer one replaced) that used to switch the
+    tilt on and run the whole engine +1.7 dB hot. Tape has no Mix, so this is the
+    only way to null-test it. */
 void checkTapeAtRestIsTransparent()
 {
     std::printf ("Tape at rest:\n");
@@ -172,7 +173,7 @@ void checkTapeAtRestIsTransparent()
     setPercent (p.apvts, id::tapeWear, 0.0f);
     setPercent (p.apvts, id::tapeNoise, 0.0f);
     setFlag (p.apvts, id::tapeStereo, false);
-    p.apvts.getParameter (id::tapeTone)->setValueNotifyingHost (0.5f);
+    p.apvts.getParameter (id::tone)->setValueNotifyingHost (0.5f);
 
     p.setPlayConfigDetails (2, 2, kSampleRate, 512);
     p.prepareToPlay (kSampleRate, 512);

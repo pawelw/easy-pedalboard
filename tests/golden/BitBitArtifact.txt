@@ -91,39 +91,39 @@ parameters 19
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-13 rust.tone
-    name       "Tone"
-    default    0.649999976
-    version    1
-    steps      2147483647 continuous automatable
-    range      0 100 interval 0.100000001 skew 1
-14 rust.mode
+13 rust.mode
     name       "Rust Mode"
     default    0
     version    1
     steps      2 discrete automatable
     range      0 1 interval 1 skew 1
     choices    2: "Oxide" "Contact"
-15 amp.drive
+14 amp.drive
     name       "Amp Drive"
     default    0.349999994
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-16 amp.mids
+15 amp.mids
     name       "Amp Mids"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-17 amp.bit
+16 amp.bit
     name       "Amp Bit"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-18 amp.tone
+17 amp.tone
     name       "Amp Tone"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      -100 100 interval 0.100000001 skew 1
+18 tone
+    name       "Tone"
     default    0.5
     version    1
     steps      2147483647 continuous automatable

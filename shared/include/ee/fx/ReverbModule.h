@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SimpleReverbConfig.h"
 #include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/SpringReverb.h"
 #include "ee/fx/MultiEngineModule.h"
@@ -8,7 +9,7 @@
 namespace ee::fx
 {
 
-/** BitBit Reverb's engines, and BitBit Alpine's Reverb module: three, one at a
+/** BitBit Reverb's engines, and BitBit Alpine's Reverb module: four, one at a
  * time.
  *
  *   - Spring is BitBit Spring's tank, the same engine that pedal runs.
@@ -23,14 +24,18 @@ namespace ee::fx
  *     the same Low Cut/Damping.
  *   - Studio is SpaceReverb, voiced against NI Raum (see SpaceConfig.h). No
  *     shimmer of its own; that is what the engine beside it is for.
+ *   - Simple is a second SpaceReverb behind one knob, Amount, which turns
+ *     Decay, Damping and Low Cut together (SimpleReverbConfig.h). Its own
+ *     instance rather than Studio's, so switching between the two is a
+ *     crossfade like any other and neither overwrites the other's settings.
  *
  * Spring and Shimmer are mono in, stereo out - a tank has one input, and the
  * FDN was voiced that way - so the module sums the incoming stereo for them
  * exactly as their pedals did. Studio is true stereo in: each input side has
  * its own echoes and its own way into the network, as the reference does, so a
- * wide source stays wide.
+ * wide source stays wide. Simple is Studio, so it is too.
  *
- * Studio's Mix law is the reference's too, not the plugin-wide equal-power one
+ * Studio's (and Simple's) Mix law is the reference's too, not the plugin-wide equal-power one
  * the other two keep: dry held at unity up to 50 % and then faded out, wet
  * rising as (2 x Mix)^1.5 to full at 50 %. Measured off Raum; a Mix of 20 %
  * there is dry 1.0 / wet 0.25, which equal power (0.95 / 0.31) is audibly not.
@@ -45,6 +50,7 @@ public:
         Spring = 0,
         Shimmer,
         Studio,
+        Simple,
         NumEngines
     };
 
@@ -82,6 +88,15 @@ public:
         studio.setSize (sizeScale);
     }
 
+    /** amount01 is the Simple engine's one knob - see SimpleReverbConfig.h. */
+    void setSimple (float amount01) noexcept
+    {
+        const auto v = ee::dsp::simple::voicingFor (amount01);
+        simple.setDecayTime (v.decaySeconds);
+        simple.setDamping (v.damping01);
+        simple.setLowCut (v.lowCutHz);
+    }
+
     void setSpring (float decaySeconds, float tension01, float lowCutHz, float highCutHz) noexcept
     {
         spring.setDecayTime (decaySeconds);
@@ -98,6 +113,7 @@ public:
         {
             case Spring:  return static_cast<double> (spring.getTailSeconds());
             case Shimmer: return static_cast<double> (shimmer.getTailSeconds());
+            case Simple:  return static_cast<double> (simple.getTailSeconds());
             default:      return static_cast<double> (studio.getTailSeconds());
         }
     }
@@ -107,12 +123,12 @@ protected:
 
     float dryGainFor (int index, float mix01) const noexcept override
     {
-        return index == Studio ? juce::jmin (1.0f, 2.0f * (1.0f - mix01))
+        return usesStudioMixLaw (index) ? juce::jmin (1.0f, 2.0f * (1.0f - mix01))
                                : MultiEngineModule::dryGainFor (index, mix01);
     }
     float wetGainFor (int index, float mix01) const noexcept override
     {
-        return index == Studio ? std::pow (juce::jmin (1.0f, 2.0f * mix01), 1.5f)
+        return usesStudioMixLaw (index) ? std::pow (juce::jmin (1.0f, 2.0f * mix01), 1.5f)
                                : MultiEngineModule::wetGainFor (index, mix01);
     }
 
@@ -120,6 +136,7 @@ protected:
     {
         shimmer.prepare (sampleRate);
         studio.prepare (sampleRate);
+        simple.prepare (sampleRate);
         spring.prepare (sampleRate);
 
         monoBuffer.assign (static_cast<size_t> (juce::jmax (1, maxBlockSize)), 0.0f);
@@ -142,9 +159,9 @@ protected:
         const float* inL = dry.getReadPointer (0);
         const float* inR = dry.getReadPointer (numChannels > 1 ? 1 : 0);
 
-        if (index == Studio)
+        if (index == Studio || index == Simple)
         {
-            studio.process (inL, inR, outL, outR, numSamples);
+            (index == Studio ? studio : simple).process (inL, inR, outL, outR, numSamples);
             return;
         }
 
@@ -162,7 +179,7 @@ protected:
     }
 
     /** The one module that does not keep its engines warm. Two reasons, and
-        both have to hold: three reverbs running at once is the heaviest thing
+        both have to hold: four reverbs running at once is the heaviest thing
         in the plugin, and none of them clicks cold. The tank's and the FDN's
         output is a gradual build from silence; Studio's first sound is a
         discrete echo, a delayed copy of the input, so it ramps its input in
@@ -176,13 +193,17 @@ protected:
         {
             case Spring:  spring.reset(); break;
             case Shimmer: shimmer.reset(); break;
+            case Simple:  simple.reset(); break;
             default:      studio.reset(); break;
         }
     }
 
 private:
+    static bool usesStudioMixLaw (int index) noexcept { return index == Studio || index == Simple; }
+
     ee::dsp::FdnReverb shimmer;
     ee::dsp::SpaceReverb studio;
+    ee::dsp::SpaceReverb simple;
     ee::dsp::SpringReverb spring;
 
     /** The mono engines' send: a tank takes one signal, so the two sides are

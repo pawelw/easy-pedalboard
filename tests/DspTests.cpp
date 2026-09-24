@@ -6010,6 +6010,90 @@ ee::dsp::Tremolo::Transport unsyncedLfoTransport()
     return t;
 }
 
+// Tremolo Attack (the per-note swell). A tremolo at full Amount and a fast
+// rate, fed half a second of silence and then a steady note: the throb should
+// start shallow and reach full depth once Attack has run.
+namespace
+{
+/** The tremolo's gain per sample, over a note that starts at `onset`. */
+std::vector<float> tremoloGainOverNote (float attackSeconds, bool touchAttack)
+{
+    constexpr double sr = 48000.0;
+    constexpr int block = 256;
+    const int onset = static_cast<int> (sr / 2);
+    const int total = onset + static_cast<int> (sr * 2.5);
+
+    ee::dsp::Tremolo trem;
+    trem.prepare (sr, block);
+    trem.setAmount01 (1.0f);
+    trem.setShape01 (0.5f);
+    trem.setPeriodSeconds (0.05f);
+    if (touchAttack)
+        trem.setAttackSeconds (attackSeconds);
+
+    juce::AudioBuffer<float> buf (2, total);
+    for (int i = 0; i < total; ++i)
+    {
+        const float x = i < onset ? 0.0f
+                                  : 0.5f * std::sin (2.0f * juce::MathConstants<float>::pi * 220.0f
+                                                     * static_cast<float> (i - onset) / static_cast<float> (sr));
+        buf.setSample (0, i, x);
+        buf.setSample (1, i, x);
+    }
+
+    juce::AudioBuffer<float> in;
+    in.makeCopyOf (buf);
+
+    for (int offset = 0; offset < total; offset += block)
+    {
+        juce::AudioBuffer<float> slice (buf.getArrayOfWritePointers(), 2, offset, juce::jmin (block, total - offset));
+        trem.process (slice, 2, slice.getNumSamples(), unsyncedLfoTransport());
+    }
+
+    std::vector<float> gain (static_cast<size_t> (total), 1.0f);
+    for (int i = 0; i < total; ++i)
+        if (std::abs (in.getSample (0, i)) > 0.1f)
+            gain[static_cast<size_t> (i)] = buf.getSample (0, i) / in.getSample (0, i);
+    return gain;
+}
+
+float lowestGain (const std::vector<float>& gain, double fromSeconds, double toSeconds)
+{
+    const auto from = static_cast<size_t> (fromSeconds * 48000.0);
+    const auto to = juce::jmin (gain.size(), static_cast<size_t> (toSeconds * 48000.0));
+    float lo = 10.0f;
+    for (auto i = from; i < to; ++i)
+        lo = juce::jmin (lo, gain[i]);
+    return lo;
+}
+} // namespace
+
+void testTremoloAttackOffIsUnchanged()
+{
+    std::printf ("Tremolo: Attack at 0 is the engine as it was, bit for bit:\n");
+
+    const auto untouched = tremoloGainOverNote (0.0f, false);
+    const auto zeroed = tremoloGainOverNote (0.0f, true);
+    check (untouched == zeroed, "Tremolo with Attack set to 0 differs from one never given an Attack");
+}
+
+void testTremoloAttackSwells()
+{
+    std::printf ("Tremolo: Attack swells the depth in after a new note:\n");
+
+    const auto gain = tremoloGainOverNote (1.0f, true);
+
+    // The note starts at 0.5 s. Its first 100 ms (after the 15 ms fall back to
+    // no depth) should barely throb; a second and a half in, it should reach
+    // the bottom of a full-depth tremolo.
+    const float early = lowestGain (gain, 0.52, 0.62);
+    const float late = lowestGain (gain, 2.0, 2.2);
+    std::printf ("  lowest gain early %.3f, late %.3f\n", early, late);
+
+    check (early > 0.8f, "Tremolo Attack: the throb is already deep straight after a new note");
+    check (late < 0.2f, "Tremolo Attack: the throb never reached full depth");
+}
+
 void testBreakpointLfoLinearSegment()
 {
     std::printf ("Breakpoint LFO: linear segment midpoint:\n");
@@ -6332,6 +6416,8 @@ int main()
     std::printf ("\n");
     testBitBitLimiterCapsAStackedPeak();
     std::printf ("\n");
+    testTremoloAttackOffIsUnchanged();
+    testTremoloAttackSwells();
     testBreakpointLfoLinearSegment();
     std::printf ("\n");
     testBreakpointLfoHoldSteps();

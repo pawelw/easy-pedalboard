@@ -19,4 +19,6 @@
   <PARAM id="studio.damping" value="25"/>
   <PARAM id="studio.locut" value="20"/>
   <PARAM id="studio.hicut" value="20000"/>
+  <PARAM id="tone" value="0"/>
+  <PARAM id="simple.amount" value="40"/>
 </PARAMETERS>

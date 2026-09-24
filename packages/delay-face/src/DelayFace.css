@@ -146,10 +146,11 @@
   flex: 1 1 0;
   min-width: 0;
   display: flex;
-  align-items: center;
-  /* The bottom pads against the knob captions, which sit below the tick rings
-     - see --pui-knob-reach-small. */
-  padding: 12px 14px;
+  /* At the foot, 8px off the bottom edge - the switchable modules' footer
+     (.pui-module__footer) does the same, so in BitBit Alpine the Delay's knob
+     captions sit on one line with the Mix and Tone captions beside it. */
+  align-items: flex-end;
+  padding: 12px 14px 8px;
 }
 
 /* A hairline wherever two sections meet, so the footer reads as three sections
@@ -164,25 +165,14 @@
   border-left: 1px solid var(--pui-divider);
 }
 
-/* The six footer knobs wear the same light cap as the effect knobs in BitBit
-   Grain's Delay and Reverb sections (GrainFace.css): a dark bezel, a pale dish
-   and a black tick. Scoped to the footer, and not in Knob.css, so every other
-   pedal's concave knobs keep their dark dish. */
-.pd-footer .pui-knob__body--concave {
-  background: #2e3539;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgb(255 255 255 / 9%);
-}
-
+/* The six footer knobs wear the footer knob face every module footer does
+   (--pui-footer-knob-face, pedal-ui's tokens.css), so a row of modules reads
+   as one footer strip. They used to take BitBit Grain's pale dish and black
+   tick instead. Scoped to the footer, and not in Knob.css, so every other
+   pedal's concave knobs keep their own dish. */
+.pd-footer .pui-knob__soft-cap,
 .pd-footer .pui-knob__concave-face {
-  inset: 5%;
-  background: #b5b5b5;
-}
-
-.pd-footer .pui-knob__pointer--concave {
-  top: 11%;
-  height: 20%;
-  background: #000000;
-  box-shadow: none;
+  background: var(--pui-footer-knob-face);
 }
 
 /* The footer knobs' value arc is the Delay green - the same colour as the

@@ -11,7 +11,7 @@ Builds as **VST3**, **AU** and a **Standalone** app.
 
 BitBit Alpine's **Reverb** module as a pedal of its own, drawn the way BitBit
 Artifact is: one narrow compartment, a `<>` stepper between three engines -
-**Spring**, **Shimmer** and **Studio** - and a **Mix** knob in the footer.
+**Spring**, **Shimmer** and **Studio** - and **Mix** and **Tone** knobs in the footer.
 Stereo out on all three. Spring and Shimmer sum a stereo input before the send
 (a tank has one input); Studio is true stereo in, each side with its own echoes
 and its own way into the tail, so a wide source stays wide. It is the same
@@ -612,6 +612,13 @@ Modulation side-module but in red. A `<>` stepper picks the engine.
 All four engines are voiced. The module keeps every engine warm, so switching
 between them never clicks.
 
+The footer carries **Mix** and a smaller **Tone** beside it. Both belong to the
+module, not the engine, so neither moves when you switch engines. Tone is a
+tilt EQ around 700 Hz on the wet side only (-100 % dark, +100 % bright, about
+±5.6 dB at the ends), flat and bypassed exactly at `0 %`. BitBit Modulation and
+BitBit Reverb have the same footer, and BitBit Alpine has it on all three of
+those modules (`art.tone`, `mod.tone`, `rev.tone`).
+
 Like the other pedals it has no on/off switch of its own - the `on` parameter
 crossfades to the dry signal so the host's device on/off never clicks. The face
 uses the onyx theme with a `#c00001` module accent.
@@ -626,18 +633,19 @@ when you stop, so a note rusts as it rings and the corrosion follows how hard
 you play. Wear drives a chain of tape-style warble, a grit stage, and bit-depth
 / sample-rate crumble, its depth scaled by **Grind**. Every stage shapes your
 sound - nothing is layered on top - so the output falls silent the instant you
-do. Wear and its recovery are fixed at the top of their range, so there are only
-two knobs. An **Oxide / Contact** switch picks the flavour: Oxide is a soft
-decaying magnetic coating (full warble, wear darkens the tone); Contact is
-harder and more electrical (little warble, wear squares the peaks with a hard
-clip and deepens the crumble) and much brighter, so its **Tone** knob is scaled
-darker - 75 % in Contact lands around where 50 % would in Oxide.
+do. Wear and its recovery are fixed at the top of their range, and so is the
+post low-pass (at where its old Tone knob rested, 65 %), so there is one knob;
+the footer Tone is the tone control. An **Oxide / Contact** switch picks the
+flavour: Oxide is a soft decaying magnetic coating (full warble, wear darkens
+the tone); Contact is harder and more electrical (little warble, wear squares
+the peaks with a hard clip and deepens the crumble), and its fixed low-pass sits
+darker to compensate.
 
 | Knob      | Range        | What it does                                                       |
 | --------- | ------------ | ---------------------------------------------------------------- |
 | **Grind** | 0 - 100 %    | Amount of crumble at full wear, from gentle grime to full breakup |
-| **Tone**  | 300 Hz - Off | Post low-pass; darker in Contact, and Oxide wear darkens it further |
 | **Mix**   | 0 - 100 %    | Dry / wet blend, in the footer                                    |
+| **Tone**  | -100 - 100 % | Tilt EQ on the wet, in the footer - the module's, every engine     |
 
 The voicing lives in `shared/include/ee/dsp/RustConfig.h`. The only RNG is the
 warble's slow random walk, fixed-seeded in `reset()`, so a render repeats bit
@@ -646,8 +654,8 @@ for bit and can be checksummed.
 ### BitBit Modulation
 
 BitBit Alpine's **Modulation** module as a pedal of its own, drawn the way BitBit
-Artifact is: one narrow compartment, a `<>` stepper through five engines, and a
-**Mix** knob in the footer. It is the same `ee::fx::ModulationModule` BitBit Alpine
+Artifact is: one narrow compartment, a `<>` stepper through five engines, and
+**Mix** and **Tone** knobs in the footer (see BitBit Artifact for Tone). It is the same `ee::fx::ModulationModule` BitBit Alpine
 runs, behind the same face (`ModulationFace`, `packages/module-face`) and the
 same knob maps and host sync (`shared/include/ee/fx/ModulationControls.h`), so a
 knob position sounds the same in both. The face uses the onyx theme with the
@@ -655,8 +663,8 @@ modulation module's amber accent.
 
 | Engine     | What it is                        | Controls                                                          |
 | ---------- | --------------------------------- | ----------------------------------------------------------------- |
-| **Tape**   | BitBit Tape's whole machine         | Saturation, Flutter, Wear, Noise, a bipolar Tone, Mono / Stereo    |
-| **Trem**   | BitBit Trem & Pan's tremolo         | Amount, Rate, Shape, Tube, and a **Sync** pill that locks Rate to the host tempo |
+| **Tape**   | BitBit Tape's machine               | Saturation, Flutter, Wear, Noise, Mono / Stereo (Tone is the footer's) |
+| **Trem**   | BitBit Trem & Pan's tremolo         | Amount, Rate, Shape, Tube, a small **Attack** (0 ms - 4 s: each new note starts clean and the throb swells in over this long; 0 is off), and a **Sync** pill that locks Rate to the host tempo |
 | **Chorus** | BitBit Chorus's engine              | Rate, Depth, Phase                                                |
 | **Phaser** | BitBit Phase's engine               | Rate, Depth                                                       |
 | **Filter** | BitBit Wah's engine as an LFO sweep | Freq, Q, Range, Time with **Sync**, a Wave picker, Mono / Stereo - below |
@@ -668,7 +676,7 @@ engine and its own dry path out to match and reports that one figure to the host
 (3.35 ms), whichever engine is selected. **Tape has no Mix**: its wow makes the wet
 path wander in time, and any partial blend against a still dry signal combs and
 is heard as tremolo - so it runs fully wet, as BitBit Tape does, and the power
-toggle is its dry/wet.
+toggle is its dry/wet. Its footer shows Tone alone.
 
 **The tape runs a short transport**: 1.85 ms rather than the 4.5 ms BitBit Tape's
 machine has, which is most of what would otherwise be 6 ms of latency - the module

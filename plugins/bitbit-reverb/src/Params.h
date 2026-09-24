@@ -13,8 +13,9 @@ namespace ee::reverb::id
  */
 
 inline constexpr const char* on = "on";         // module power
-inline constexpr const char* engine = "engine"; // Spring / Shimmer / Studio
+inline constexpr const char* engine = "engine"; // Spring / Shimmer / Studio / Simple
 inline constexpr const char* mix = "mix";       // footer dry/wet
+inline constexpr const char* tone = "tone";     // footer tilt, every engine, flat at 0
 
 // The Shimmer engine: BitBit Reverb's FDN, which this pedal was on its own
 // before it became a module. Still `space.`, the name it had until Studio
@@ -44,5 +45,9 @@ inline constexpr const char* studioPredelay = "studio.predelay";
 inline constexpr const char* studioDamping = "studio.damping";
 inline constexpr const char* studioLoCut = "studio.locut";
 inline constexpr const char* studioHiCut = "studio.hicut";
+
+// The Simple engine: Studio's reverb behind one knob, appended last. Amount
+// turns Decay, Damping and Low Cut together - see ee/dsp/SimpleReverbConfig.h.
+inline constexpr const char* simpleAmount = "simple.amount";
 
 } // namespace ee::reverb::id

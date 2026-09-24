@@ -8,7 +8,6 @@
   <PARAM id="tape.flutter" value="25"/>
   <PARAM id="tape.wear" value="30"/>
   <PARAM id="tape.noise" value="50"/>
-  <PARAM id="tape.tone" value="0"/>
   <PARAM id="tape.stereo" value="1"/>
   <PARAM id="trem.amount" value="50"/>
   <PARAM id="trem.rate" value="0.5"/>
@@ -27,4 +26,6 @@
   <PARAM id="filter.sync" value="0"/>
   <PARAM id="filter.wave" value="0"/>
   <PARAM id="filter.stereo" value="0"/>
+  <PARAM id="tone" value="0"/>
+  <PARAM id="trem.attack" value="0"/>
 </PARAMETERS>

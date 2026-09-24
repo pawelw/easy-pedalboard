@@ -67,8 +67,8 @@ juce::String ampBitToText (float pct, int)
 }
 
 /** A bipolar percent that rests in the middle and reads 0 there, with the sign
-    carrying the direction. Amp's Tone and Ring Mod's Rectify both print this
-    way. Kept in step with plugins/bitbit-tape's own toneToText. */
+    carrying the direction. The footer Tone, Amp's Tone and Ring Mod's Rectify
+    all print this way. Kept in step with plugins/bitbit-tape's own toneToText. */
 juce::String signedPctToText (float value, int)
 {
     const int rounded = juce::roundToInt (value);
@@ -91,18 +91,6 @@ juce::String ringLpToText (float pct, int)
 {
     const float hz = ee::dsp::ringmod::lpHzFor (pct * 0.01f);
     if (hz >= ee::dsp::ringmod::kLpBypassHz)
-        return "Off";
-    return freqText (hz);
-}
-
-// Rust's Tone readout, off the same ee::dsp::rust map ee::fx::ArtifactModule
-// reads. Grind stays a plain percent. The number here is the Oxide reading; in
-// Contact the engine scales the knob down before the map, so the effective
-// corner is lower than shown - noted on the face rather than folded in here.
-juce::String rustToneToText (float pct, int)
-{
-    const float hz = ee::dsp::rust::toneHzFor (pct * 0.01f);
-    if (hz >= ee::dsp::rust::kToneBypassHz)
         return "Off";
     return freqText (hz);
 }
@@ -176,14 +164,11 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitArtifactProcessor::cre
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::ringMode, 1 }, "Mode",
                                                               juce::StringArray { "Wobble", "Octave" }, 0));
 
-    // Rust. Two knobs only - Grind (a plain percent) and Tone (real units off
-    // the ee::dsp::rust map). Wear and its recovery are fixed inside the engine.
-    // Its dry/wet is the footer Mix, not a knob here.
+    // Rust. One knob - Grind, a plain percent. Wear, its recovery and the post
+    // low-pass are fixed inside the engine; the footer Tone and Mix are the
+    // module's.
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::rustGrind, 1 }, "Grind", percent,
                                                              ee::dsp::rust::kDefaultGrindPct, pctAttr));
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::rustTone, 1 }, "Tone", percent,
-                                                             ee::dsp::rust::kDefaultTonePct,
-                                                             withText (rustToneToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::rustMode, 1 }, "Rust Mode",
                                                               juce::StringArray { "Oxide", "Contact" }, 0));
 
@@ -204,6 +189,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitArtifactProcessor::cre
                                                              juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
                                                              0.0f, withText (signedPctToText)));
 
+    // The footer Tone, beside Mix and like it the module's rather than an
+    // engine's: -100 dark, 0 flat and bypassed, +100 bright. Appended so every
+    // other parameter keeps its index.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::tone, 1 }, "Tone",
+                                                             juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+                                                             0.0f, withText (signedPctToText)));
+
     return layout;
 }
 
@@ -216,13 +208,14 @@ void BitBitArtifactProcessor::pushSettings() noexcept
     module.setEngine (static_cast<int> (raw (id::engine)));
     module.setEngaged (flag (id::on));
     module.setMix01 (pct (id::mix));
+    module.setTone (raw (id::tone) * 0.01f);
 
     module.setCrush (pct (id::crushBits), pct (id::crushRate), pct (id::crushLp), pct (id::crushJitter));
 
     module.setRing (pct (id::ringFreq), pct (id::ringTweak), pct (id::ringLp), raw (id::ringRect) * 0.01f,
                     static_cast<int> (raw (id::ringMode)));
 
-    module.setRust (pct (id::rustGrind), pct (id::rustTone), static_cast<int> (raw (id::rustMode)));
+    module.setRust (pct (id::rustGrind), static_cast<int> (raw (id::rustMode)));
 
     module.setAmp (pct (id::ampDrive), pct (id::ampMids), pct (id::ampBit), raw (id::ampTone) * 0.01f);
 }

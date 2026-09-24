@@ -61,6 +61,37 @@ constexpr float kRateMaxPeriodMs  = 2000.0f;
 constexpr float kRateSkewCentreMs = 300.0f;
 
 // ============================================================================
+// ATTACK
+// ============================================================================
+// A swell on the depth, per note: each new note the depth falls back to none
+// and then rises to full over the Attack time, so a note starts clean and the
+// throb grows into it - the "delayed vibrato" of an organ or a synth. The LFO
+// itself keeps running; only how much of it is heard follows the swell.
+//
+// Attack 0 is off and costs nothing: the detector is not run and the depth is
+// exactly the Amount knob, so a patch at 0 is bit-identical to one from before
+// the knob existed.
+//
+// Notes are found with ee::dsp::OnsetGate on a follower of the input, with
+// BitBit Wah's retrigger voicing (ee::dsp::autowah::kOnset*, kDetectorHighpassHz,
+// kNoiseFloor, kAttackMs) restated here: a retrigger has to hear the same notes
+// in both places. The follower's release is the one thing that differs - Wah's
+// is its Decay knob, which this engine has no equivalent of.
+constexpr float kAttackMaxSeconds       = 4.0f;
+constexpr float kAttackSkewCentreSeconds = 0.5f;  // the knob's middle - short swells need the room
+constexpr float kAttackRestartMs        = 15.0f;  // how fast the depth falls back on a new note, click-free
+constexpr float kAttackHighpassHz       = 30.0f;
+constexpr float kAttackNoiseFloor       = 0.0016f; // ~ -56 dBFS
+constexpr float kAttackFollowAttackMs   = 3.0f;
+constexpr float kAttackFollowReleaseMs  = 120.0f;
+constexpr float kOnsetEnvDecayMs        = 120.0f;
+constexpr float kOnsetAttackWidthMs     = 15.0f;
+constexpr float kOnsetRiseRatioOn       = 0.55f;
+constexpr float kOnsetRiseRatioOff      = 0.15f;
+constexpr float kOnsetMinRise           = 0.005f;
+constexpr float kOnsetLockoutMs         = 90.0f;
+
+// ============================================================================
 // SMOOTHING
 // ============================================================================
 // One-pole slew on the modulation signal, so a phase snap or a division/mode

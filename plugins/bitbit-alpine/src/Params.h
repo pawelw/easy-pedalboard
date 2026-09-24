@@ -38,6 +38,7 @@ inline constexpr const char* artOn = "art.on";
 inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Rust / Amp
 inline constexpr const char* artLevel = "art.level";   // module chrome, not BitBit Artifact's
 inline constexpr const char* artMix = "art.mix";
+inline constexpr const char* artTone = "art.tone"; // footer tilt, every engine, flat at 0
 inline constexpr const char* artCrushBits = "art.crush.bits";
 inline constexpr const char* artCrushRate = "art.crush.rate";
 inline constexpr const char* artCrushLp = "art.crush.lp";
@@ -48,7 +49,6 @@ inline constexpr const char* artRingLp = "art.ring.lp";
 inline constexpr const char* artRingRect = "art.ring.rect"; // carrier rectify, bipolar, 0 = off
 inline constexpr const char* artRingMode = "art.ring.mode"; // Wobble / Octave (Earworm / Green Lantern in the DSP)
 inline constexpr const char* artRustGrind = "art.rust.grind";
-inline constexpr const char* artRustTone = "art.rust.tone";
 inline constexpr const char* artRustMode = "art.rust.mode"; // Oxide / Contact
 inline constexpr const char* artAmpDrive = "art.amp.drive";
 inline constexpr const char* artAmpMids = "art.amp.mids";
@@ -60,12 +60,12 @@ inline constexpr const char* modOn = "mod.on";
 inline constexpr const char* modEngine = "mod.engine"; // Tape / Tremolo / Chorus / Phaser / Filter
 inline constexpr const char* modLevel = "mod.level";
 inline constexpr const char* modMix = "mod.mix";
+inline constexpr const char* modTone = "mod.tone"; // footer tilt, every engine, flat at 0
 
 inline constexpr const char* modTapeSat = "mod.tape.sat";
 inline constexpr const char* modTapeFlutter = "mod.tape.flutter";
 inline constexpr const char* modTapeWear = "mod.tape.wear";
 inline constexpr const char* modTapeNoise = "mod.tape.noise";
-inline constexpr const char* modTapeTone = "mod.tape.tone";
 inline constexpr const char* modTapeStereo = "mod.tape.stereo";
 
 inline constexpr const char* modTremAmount = "mod.trem.amount";
@@ -73,6 +73,7 @@ inline constexpr const char* modTremRate = "mod.trem.rate"; // meaning set by mo
 inline constexpr const char* modTremSync = "mod.trem.sync"; // false = ms, true = tempo
 inline constexpr const char* modTremShape = "mod.trem.shape";
 inline constexpr const char* modTremTube = "mod.trem.tube";
+inline constexpr const char* modTremAttack = "mod.trem.attack"; // per-note swell, ms, 0 = off
 
 inline constexpr const char* modChorusRate = "mod.chorus.rate";
 inline constexpr const char* modChorusDepth = "mod.chorus.depth";
@@ -113,6 +114,7 @@ inline constexpr const char* revOn = "rev.on";
 inline constexpr const char* revEngine = "rev.engine";
 inline constexpr const char* revLevel = "rev.level";
 inline constexpr const char* revMix = "rev.mix";
+inline constexpr const char* revTone = "rev.tone"; // footer tilt, every engine, flat at 0
 
 // The Shimmer engine - still `space.`, the name it had until Studio arrived
 // beside it, so a saved session keeps its settings. Decay is a knob again,
@@ -139,6 +141,10 @@ inline constexpr const char* revStudioPredelay = "rev.studio.predelay";
 inline constexpr const char* revStudioDamping = "rev.studio.damping";
 inline constexpr const char* revStudioLoCut = "rev.studio.locut";
 inline constexpr const char* revStudioHiCut = "rev.studio.hicut";
+
+// The Simple engine: Studio's reverb behind one knob, appended last. Amount
+// turns Decay, Damping and Low Cut together - see ee/dsp/SimpleReverbConfig.h.
+inline constexpr const char* revSimpleAmount = "rev.simple.amount";
 
 // -------------------------------------------------------------------- chain
 // A Lehmer-code index into the 24 permutations of the four modules - see

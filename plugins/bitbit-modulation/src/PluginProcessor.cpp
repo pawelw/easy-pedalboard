@@ -31,6 +31,13 @@ juce::String filterFreqToText (float pct, int)
     return juce::String (juce::roundToInt (filterFreqHzFor (pct))) + " Hz";
 }
 
+/** "480 ms" under a second, "2.40 s" above - BitBit Alpine's own seconds
+    readout, for the Tremolo Attack. */
+juce::String secondsToText (float value, int)
+{
+    return value < 1.0f ? juce::String (juce::roundToInt (value * 1000.0f)) + " ms" : juce::String (value, 2) + " s";
+}
+
 juce::String degreesToText (float value, int)
 {
     return juce::String (juce::roundToInt (value)) + juce::String (juce::CharPointer_UTF8 ("\xc2\xb0"));
@@ -125,11 +132,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitModulationProcessor::c
     addPercent (layout, id::tapeWear, "Tape Wear", ee::dsp::tape::kDefaultWearPct);
     addPercent (layout, id::tapeNoise, "Tape Noise", ee::dsp::tape::kDefaultNoisePct);
 
-    // -100 dark, 0 flat and bypassed, +100 bright, resting in the middle.
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::tapeTone, 1 }, "Tape Tone",
-                                                             juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
-                                                             ee::dsp::tape::kDefaultTonePct, withText (toneToText)));
-
     // Mono is one transport under both channels; Stereo opens them onto
     // different points of a slow modulation. On by default, as BitBit Tape's is.
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::tapeStereo, 1 }, "Tape Stereo",
@@ -188,6 +190,22 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitModulationProcessor::c
     layout.add (
         std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::filterStereo, 1 }, "Filter Stereo", false));
 
+    // The footer Tone, beside Mix and like it the module's rather than an
+    // engine's: -100 dark, 0 flat and bypassed, +100 bright. Appended so every
+    // other parameter keeps its index.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::tone, 1 }, "Tone",
+                                                             juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
+                                                             0.0f, withText (toneToText)));
+
+    // Tremolo Attack: the per-note swell (ee::dsp::Tremolo, TremoloConfig.h's
+    // ATTACK). 0 is off - the tremolo as it always was - up to 4 s, with the
+    // middle of the knob at 0.5 s. Appended so every other parameter keeps its
+    // index.
+    auto tremAttack = juce::NormalisableRange<float> (0.0f, ee::dsp::tremolo::kAttackMaxSeconds);
+    tremAttack.setSkewForCentre (ee::dsp::tremolo::kAttackSkewCentreSeconds);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::tremAttack, 1 }, "Tremolo Attack",
+                                                             tremAttack, 0.0f, withText (secondsToText)));
+
     return layout;
 }
 
@@ -219,10 +237,12 @@ void BitBitModulationProcessor::pushSettings (double blockBpm) noexcept
     module.setEngaged (flag (id::on) && ! hostBypassed);
     module.setMix01 (pct (id::mix));
 
-    // Tone is a bipolar -100..100 knob and the engine takes -1..1; Stereo is
-    // the machine's mono/stereo switch.
+    // Tone is a bipolar -100..100 knob and the module takes -1..1.
+    module.setTone (raw (id::tone) * 0.01f);
+
+    // Stereo is the machine's mono/stereo switch.
     module.setTape (pct (id::tapeSat), pct (id::tapeFlutter), pct (id::tapeWear), pct (id::tapeNoise),
-                    raw (id::tapeTone) * 0.01f, flag (id::tapeStereo) ? 1.0f : 0.0f);
+                    flag (id::tapeStereo) ? 1.0f : 0.0f);
 
     // The Rate knob is a position, not a rate - see kTremRateMap. The transport
     // that aligns a synced LFO's phase to the host grid is handed over
@@ -230,6 +250,7 @@ void BitBitModulationProcessor::pushSettings (double blockBpm) noexcept
     const float tremPeriodSeconds =
         kTremRateMap.rateToPeriodSeconds (raw (id::tremRate), flag (id::tremSync), blockBpm);
     module.setTremolo (pct (id::tremAmount), tremPeriodSeconds, pct (id::tremShape), pct (id::tremTube));
+    module.setTremoloAttack (raw (id::tremAttack));
 
     module.setChorus (raw (id::chorusRate), pct (id::chorusDepth), raw (id::chorusPhase));
     module.setPhaser (raw (id::phaseRate), pct (id::phaseDepth));

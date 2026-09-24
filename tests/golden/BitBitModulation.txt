@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.modulation
   categories   "Fx Modulation"
 
-parameters 26
+parameters 27
 0 on
     name       "On"
     default    1
@@ -54,122 +54,128 @@ parameters 26
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-7 tape.tone
-    name       "Tape Tone"
-    default    0.5
-    version    1
-    steps      2147483647 continuous automatable
-    range      -100 100 interval 0.100000001 skew 1
-8 tape.stereo
+7 tape.stereo
     name       "Tape Stereo"
     default    1
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-9 trem.amount
+8 trem.amount
     name       "Tremolo Amount"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-10 trem.rate
+9 trem.rate
     name       "Tremolo Rate"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 1 interval 0 skew 1
-11 trem.sync
+10 trem.sync
     name       "Tremolo Sync"
     default    0
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-12 trem.shape
+11 trem.shape
     name       "Tremolo Shape"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-13 trem.tube
+12 trem.tube
     name       "Tremolo Tube"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-14 chorus.rate
+13 chorus.rate
     name       "Chorus Rate"
     default    0.418337196
     version    1
     steps      2147483647 continuous automatable
     range      0.0500000007 8 interval 0 skew 0.326269031
-15 chorus.depth
+14 chorus.depth
     name       "Chorus Depth"
     default    0.449999988
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-16 chorus.phase
+15 chorus.phase
     name       "Chorus Phase"
     default    0.611111104
     version    1
     steps      2147483647 continuous automatable
     range      0 180 interval 1 skew 1
-17 phase.rate
+16 phase.rate
     name       "Phaser Rate"
     default    0.347108126
     version    1
     steps      2147483647 continuous automatable
     range      0.0299999993 8 interval 0 skew 0.329107255
-18 phase.depth
+17 phase.depth
     name       "Phaser Depth"
     default    0.75
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-19 filter.freq
+18 filter.freq
     name       "Filter Freq"
     default    0.487000018
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-20 filter.q
+19 filter.q
     name       "Filter Q"
     default    0.579999983
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-21 filter.range
+20 filter.range
     name       "Filter Range"
     default    0.610000014
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-22 filter.time
+21 filter.time
     name       "Filter Time"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 1 interval 9.99999975e-05 skew 1
-23 filter.sync
+22 filter.sync
     name       "Filter Sync"
     default    0
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
-24 filter.wave
+23 filter.wave
     name       "Filter Wave"
     default    0
     version    1
     steps      3 discrete automatable
     range      0 2 interval 1 skew 1
     choices    3: "Triangle" "Ramp" "Square"
-25 filter.stereo
+24 filter.stereo
     name       "Filter Stereo"
     default    0
     version    1
     steps      2 discrete boolean automatable
     range      0 1 interval 1 skew 1
     choices    2: "Off" "On"
+25 tone
+    name       "Tone"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      -100 100 interval 0.100000001 skew 1
+26 trem.attack
+    name       "Tremolo Attack"
+    default    0
+    version    1
+    steps      2147483647 continuous automatable
+    range      0 4 interval 0 skew 0.333333343

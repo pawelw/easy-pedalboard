@@ -15,26 +15,26 @@ Artifact (latency 0):
   ok    bypassed is the input, whatever Mix and Level say
 
 Engine switches:
-  ok    Modulation 0 -> 1 (step across 0.02150, elsewhere 0.02240)
-  ok    Modulation 1 -> 2 (step across 0.01640, elsewhere 0.01668)
-  ok    Modulation 2 -> 3 (step across 0.01217, elsewhere 0.01326)
-  ok    Modulation 3 -> 4 (step across 0.04940, elsewhere 0.05087)
-  ok    Modulation 4 -> 0 (step across 0.02821, elsewhere 0.05105)
-  ok    Modulation 0 -> 2 (step across 0.02060, elsewhere 0.02240)
+  ok    Modulation 0 -> 1 (step across 0.01802, elsewhere 0.01886)
+  ok    Modulation 1 -> 2 (step across 0.01426, elsewhere 0.01446)
+  ok    Modulation 2 -> 3 (step across 0.01052, elsewhere 0.01146)
+  ok    Modulation 3 -> 4 (step across 0.04485, elsewhere 0.04621)
+  ok    Modulation 4 -> 0 (step across 0.02445, elsewhere 0.04640)
+  ok    Modulation 0 -> 2 (step across 0.01729, elsewhere 0.01886)
   ok    Reverb Spring -> Shimmer (step across 0.00825, elsewhere 0.00903)
   ok    Reverb Spring -> Studio (step across 0.00825, elsewhere 0.00917)
   ok    Reverb Shimmer -> Spring (step across 0.01052, elsewhere 0.00902)
   ok    Reverb Shimmer -> Studio (step across 0.00715, elsewhere 0.00917)
   ok    Reverb Studio -> Spring (step across 0.01061, elsewhere 0.00918)
   ok    Reverb Studio -> Shimmer (step across 0.00718, elsewhere 0.00918)
-  ok    Artifact 0 -> 1 (step across 0.01519, elsewhere 0.01157)
-  ok    Artifact 1 -> 2 (step across 0.01647, elsewhere 0.04393)
-  ok    Artifact 2 -> 3 (step across 0.01710, elsewhere 0.01811)
-  ok    Artifact 3 -> 0 (step across 0.01543, elsewhere 0.01217)
-  ok    Artifact 0 -> 2 (step across 0.01671, elsewhere 0.04393)
+  ok    Artifact 0 -> 1 (step across 0.01778, elsewhere 0.01370)
+  ok    Artifact 1 -> 2 (step across 0.01804, elsewhere 0.04523)
+  ok    Artifact 2 -> 3 (step across 0.01873, elsewhere 0.02021)
+  ok    Artifact 3 -> 0 (step across 0.01782, elsewhere 0.01414)
+  ok    Artifact 0 -> 2 (step across 0.01805, elsewhere 0.04523)
 
 Modulation sweep:
-  90 cases, worst peak 1.352
+  90 cases, worst peak 2.169
   ok    every Modulation case finite
   ok    nothing ran away
 
@@ -44,7 +44,7 @@ Reverb sweep:
   ok    nothing ran away
 
 Artifact sweep:
-  684 cases, worst peak 1.010
+  684 cases, worst peak 1.278
   ok    every Artifact case finite
   ok    nothing ran away
 
