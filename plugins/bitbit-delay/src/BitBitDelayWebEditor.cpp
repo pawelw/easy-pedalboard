@@ -73,7 +73,6 @@ BitBitDelayWebEditor::BitBitDelayWebEditor (BitBitDelayProcessor& p)
               .withOptionsFrom (typeRelay)
               .withOptionsFrom (syncRelay)
               .withOptionsFrom (timeUnitRelay)
-              .withOptionsFrom (tapePreRelay)
               .withOptionsFrom (onRelay)
               .withOptionsFrom (controlParameterIndexReceiver)
               // See installResizableFace: the page measures its own real
@@ -170,7 +169,6 @@ BitBitDelayWebEditor::BitBitDelayWebEditor (BitBitDelayProcessor& p)
       typeAttachment (*p.apvts.getParameter ("dtype"), typeRelay, p.apvts.undoManager),
       syncAttachment (*p.apvts.getParameter ("sync"), syncRelay, p.apvts.undoManager),
       timeUnitAttachment (*p.apvts.getParameter ("timeunit"), timeUnitRelay, p.apvts.undoManager),
-      tapePreAttachment (*p.apvts.getParameter ("tapepre"), tapePreRelay, p.apvts.undoManager),
       onAttachment (*p.apvts.getParameter ("on"), onRelay, p.apvts.undoManager)
 {
     addAndMakeVisible (webView);

@@ -375,8 +375,8 @@ look like it was designed by whoever designed these plugins. Send, at minimum:
 >   left and right times, free-running in milliseconds or locked to host tempo,
 >   with a chain-link that ties them together. The readouts show both at once —
 >   `L 1/4  698 ms`.
-> - **Tape placement: Pre or Post** — colour the input, or colour only the
->   repeats.
+> - The tape is on the repeats only (there is no Pre/Post placement any more) —
+>   the note you play stays clean, and the pedal adds no latency.
 > - The face groups its character controls into three captioned strips along the
 >   bottom, each with its own icon: **Tape** (Wear · Flutter), **Mod**
 >   (Drift · Phaser) and **Filter** (Low Cut · High Cut).

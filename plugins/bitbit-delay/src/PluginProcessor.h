@@ -24,6 +24,13 @@ public:
     void releaseResources() override;
     bool isBusesLayoutSupported (const BusesLayout&) const override;
     void processBlock (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
+    /** The host's own bypass button. JUCE's default for it is a hard pass-through,
+        which would cut the repeats off mid-ring. So it is the ordinary block with
+        the plugin's power forced off instead: the crossfade every other bypass
+        here uses, the repeats ringing out, and no click from a hard switch
+        between two code paths. (The plugin has no latency now, so - unlike
+        BitBit Modulation and BitBit Alpine's - timing is not what this is for.) */
+    void processBlockBypassed (juce::AudioBuffer<float>&, juce::MidiBuffer&) override;
 
     juce::AudioProcessorEditor* createEditor() override;
     bool hasEditor() const override { return true; }
@@ -129,15 +136,6 @@ private:
         falls back to the mode the pedal has always had. */
     ee::dsp::TapeDelay::Routing routing() const noexcept;
 
-    /** Where the Tape section sits relative to the delay line - the target
-        tapePlacement glides towards, not a decision the audio path branches on.
-
-        Only Tape has a router. Of the Mod section's two knobs, Drift is inside
-        the delay's own feedback loop - it is not before or after the delay, it
-        is part of it - so a Pre/Post control there would have governed only
-        half its own section. The Phaser is fixed on the repeats instead. */
-    bool tapeIsPost() const noexcept;
-
     /** Every setting the chain takes, read off the parameters in real units.
         Shared by prepareToPlay and processBlock, which both need the whole set. */
     void pushSettings (double bpm, bool synced) noexcept;
@@ -173,6 +171,9 @@ private:
         is why none of it is written out here any more - a fix lands in both. */
     ee::fx::DelayModule chain;
 
+    /** True only for the duration of processBlockBypassed - see there. */
+    bool hostBypassed = false;
+
     std::atomic<float>* leftTimeParam = nullptr;
     std::atomic<float>* rightTimeParam = nullptr;
     std::atomic<float>* syncParam = nullptr;
@@ -186,7 +187,6 @@ private:
     std::atomic<float>* flutterParam = nullptr;
     std::atomic<float>* loCutParam = nullptr;
     std::atomic<float>* hiCutParam = nullptr;
-    std::atomic<float>* tapePreParam = nullptr;
     std::atomic<float>* inGainParam = nullptr;
     std::atomic<float>* outGainParam = nullptr;
     std::atomic<float>* onParam = nullptr;

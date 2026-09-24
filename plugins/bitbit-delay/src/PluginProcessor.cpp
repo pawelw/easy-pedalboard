@@ -35,7 +35,6 @@ constexpr const char* kFlutterID = "flutter";
 
 // Where the Tape section sits in the chain. Only Tape has one - see
 // PluginProcessor.h's tapeIsPost().
-constexpr const char* kTapePreID = "tapepre";
 
 // The Filter section: the two cuts either end of the band, on the repeats.
 constexpr const char* kLoCutID = "locut";
@@ -120,7 +119,6 @@ BitBitDelayProcessor::BitBitDelayProcessor()
     flutterParam = apvts.getRawParameterValue (kFlutterID);
     loCutParam = apvts.getRawParameterValue (kLoCutID);
     hiCutParam = apvts.getRawParameterValue (kHiCutID);
-    tapePreParam = apvts.getRawParameterValue (kTapePreID);
     inGainParam = apvts.getRawParameterValue (kInGainID);
     outGainParam = apvts.getRawParameterValue (kOutGainID);
     onParam = apvts.getRawParameterValue (kOnID);
@@ -155,13 +153,6 @@ ee::dsp::TapeDelay::Routing BitBitDelayProcessor::routing() const noexcept
     default:
         return Routing::normal;
     }
-}
-
-bool BitBitDelayProcessor::tapeIsPost() const noexcept
-{
-    // The parameter reads "is the tape stage in front of the delay", so this is
-    // its inverse - named, like isSynced() above, for what processBlock asks.
-    return tapePreParam != nullptr && tapePreParam->load() < 0.5f;
 }
 
 juce::AudioProcessorValueTreeState::ParameterLayout BitBitDelayProcessor::createParameterLayout()
@@ -231,15 +222,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitDelayProcessor::create
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kHiCutID, 1 }, "High Cut", hiCutRange, kHiCutMaxHz,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (hiCutToText)));
-
-    // A boolean rather than a choice: two states, and the face's router just
-    // flips the flag. The host text reads Pre/Post, so the id's sense never
-    // shows up in a DAW. Defaults to Post: Pre colours the dry signal, so a
-    // fresh instance was audibly tape even at Mix 0.
-    layout.add (std::make_unique<juce::AudioParameterBool> (
-        juce::ParameterID { kTapePreID, 1 }, "Tape Placement", false,
-        juce::AudioParameterBoolAttributes().withStringFromValueFunction (
-            [] (bool pre, int) { return juce::String (pre ? "Pre" : "Post"); })));
 
     const auto gainRange = juce::NormalisableRange<float> (kMinGainDb, kMaxGainDb, 0.1f);
     const auto gainAttributes = juce::AudioParameterFloatAttributes().withStringFromValueFunction (gainDbToText);
@@ -421,13 +403,12 @@ void BitBitDelayProcessor::pushSettings (double bpm, bool synced) noexcept
                     ee::bitbitdelay::timeSeconds (rightTimeParam->load(), synced, bpm));
     chain.setFeedback01 (feedbackParam->load() * 0.01f);
     chain.setRouting (routing());
-    chain.setTapePost (tapeIsPost());
     chain.setTape (wearParam->load() * 0.01f, flutterParam->load() * 0.01f);
     chain.setDrift01 (driftParam->load() * 0.01f);
     chain.setPhaser01 (phaserParam->load() * 0.01f);
     chain.setFilter (loCutParam->load(), hiCutParam->load());
     chain.setMix01 (mixParam->load() * 0.01f);
-    chain.setEngaged (onParam->load() > 0.5f);
+    chain.setEngaged (onParam->load() > 0.5f && ! hostBypassed);
     chain.setTrims (juce::Decibels::decibelsToGain (inGainParam->load()),
                     juce::Decibels::decibelsToGain (outGainParam->load()));
 }
@@ -467,6 +448,15 @@ void BitBitDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     // catches a genuine explosion (+36 dBFS); this is the tighter check on
     // what actually reaches the host.
     ee::plugin::sanitizeOutput (buffer, numOut, numSamples);
+}
+
+void BitBitDelayProcessor::processBlockBypassed (juce::AudioBuffer<float>& buffer, juce::MidiBuffer& midi)
+{
+    // Audio thread only, so no atomic: it is set and cleared around the one
+    // call that reads it.
+    hostBypassed = true;
+    processBlock (buffer, midi);
+    hostBypassed = false;
 }
 
 juce::AudioProcessorEditor* BitBitDelayProcessor::createEditor()

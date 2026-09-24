@@ -151,13 +151,13 @@ void everything (juce::AudioProcessorValueTreeState& s)
     is printed, not asserted; the dry path under Tape is checked instead with
     the module bypassed, where the output is that padded dry.
 
-    The other is printed and not asserted: switching the **Delay** module off
-    takes its 288 samples out of the real path while the plugin goes on
-    reporting them, because `ee::fx::DelayModule` crossfades back to the
-    caller's untouched buffer rather than to a copy delayed to match. So a host
-    compensating the reported figure pulls the signal 6 ms early the moment that
-    module is bypassed. It is a known gap, not an accident - see
-    docs/bitbit-alpine-plan.md §7. */
+    The other used to be printed and not asserted: switching the **Delay** module
+    off took its 288 samples out of the real path while the plugin went on
+    reporting them, because the module crossfaded back to the caller's untouched
+    buffer rather than to a copy delayed to match, so a host compensating the
+    reported figure pulled the signal 6 ms early. The global bypass had the same
+    gap at 12 ms. Both references are held back by the reported latency now
+    (ee::fx::AlignDelay), and every bypass below is asserted to land on it. */
 void checkLatencyLedger()
 {
     auto arrival = [] (auto&& configure)
@@ -209,16 +209,23 @@ void checkLatencyLedger()
     std::printf ("  %-30s %4d samples   (reported %d)\n", "everything engaged", whole, reported);
     check (whole == reported, "the dry path arrives exactly where the host is told it will");
 
-    // Which module owns which half - and, on the Delay row, what a bypassed
-    // one does to a figure the host is still compensating.
+    // Bypassing any one module, or the whole plugin, must not move the figure
+    // the host is compensating.
     struct Off { const char* name; const char* id; };
+    bool bypassesAligned = true;
     for (const auto& off : { Off { "Artifact bypassed", ee::alpine::id::artOn },
                              Off { "Modulation bypassed", ee::alpine::id::modOn },
                              Off { "Delay bypassed", ee::alpine::id::dlyOn },
-                             Off { "Reverb bypassed", ee::alpine::id::revOn } })
-        std::printf ("  %-30s %4d samples\n", off.name,
-                     arrival ([&silent, &off] (juce::AudioProcessorValueTreeState& s)
-                              { silent (s); setFlag (s, off.id, false); }));
+                             Off { "Reverb bypassed", ee::alpine::id::revOn },
+                             Off { "Whole plugin bypassed", ee::alpine::id::on } })
+    {
+        const int at = arrival ([&silent, &off] (juce::AudioProcessorValueTreeState& s)
+                                { silent (s); setFlag (s, off.id, false); });
+        std::printf ("  %-30s %4d samples\n", off.name, at);
+        bypassesAligned = bypassesAligned && at == reported;
+    }
+
+    check (bypassesAligned, "...and no bypass, module or whole plugin, moves it");
 
     // The contract: one figure, whichever engine is selected. Every engine but
     // Tape mixes its wet against the dry, so at Mix 0 the impulse returns down the dry
@@ -340,20 +347,26 @@ int main (int argc, char* argv[])
         check (allFinite (out) && difference (out, plain) > 0.001f, c.name);
     }
 
-    // Bypassed is the input, and must be so whatever the trims say - they sit
-    // inside the crossfade. The first 100 ms is the engage ramp.
+    // Bypassed is the input, delayed by the reported latency - what the host is
+    // compensating for - and must be so whatever the trims say: they sit inside
+    // the crossfade. The first 100 ms is the engage ramp.
     {
         juce::AudioBuffer<float> out (2, kLength);
         out.makeCopyOf (input);
         render (out, bypassed);
 
+        BitBitAlpineProcessor probe;
+        probe.setPlayConfigDetails (2, 2, kSampleRate, 1024);
+        probe.prepareToPlay (kSampleRate, 1024);
+        const int latency = probe.getLatencySamples();
+
         const int settled = static_cast<int> (kSampleRate * 0.1);
         float worst = 0.0f;
         for (int ch = 0; ch < 2; ++ch)
             for (int i = settled; i < kLength; ++i)
-                worst = juce::jmax (worst, std::abs (out.getSample (ch, i) - input.getSample (ch, i)));
+                worst = juce::jmax (worst, std::abs (out.getSample (ch, i) - input.getSample (ch, i - latency)));
 
-        check (worst == 0.0f, "bypassed is the input, bit for bit");
+        check (worst == 0.0f, "bypassed is the input delayed by the reported latency, bit for bit");
     }
 
     // Every engine of both switchable modules, at a real mix.

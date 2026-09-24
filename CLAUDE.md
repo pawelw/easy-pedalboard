@@ -173,7 +173,7 @@ code at all, which is the code a refactor is most likely to break.
 
 `ee_trempan_regress` covers every LFO shape anchor, the bias stage in and out,
 the panning law, a synced pass with a transport jump, and the bypass crossfade.
-`ee_delay_regress` covers the three routings, both tape placements, the filter
+`ee_delay_regress` covers the three routings, the tape on the repeats, the filter
 pair off its resting points, the in-loop drift and the on-the-repeats phaser,
 free-running and synced times, uneven L/R, and both ends of the Mix law.
 `ee_spring_regress` covers the Decay knob end to end plus the mono tank, and

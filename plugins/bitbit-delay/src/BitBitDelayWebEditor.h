@@ -78,8 +78,8 @@ private:
     juce::WebSliderRelay rightTimeRelay { "rtime" };
     juce::WebSliderRelay feedbackRelay { "fb" };
     juce::WebSliderRelay mixRelay { "mix" };
-    // The footer's two stage sections: Tape (Wear + Flutter), with a router
-    // saying which side of the delay it sits on, and Mod (Drift + Phaser).
+    // The footer's two stage sections: Tape (Wear + Flutter, on the repeats) and
+    // Mod (Drift + Phaser).
     // "mod" and "tape" are the ids Drift and Wear kept from the single-knob
     // face - see PluginProcessor.cpp.
     juce::WebSliderRelay wearRelay { "tape" };
@@ -97,12 +97,11 @@ private:
 
     // The Delay Type button next to Sync. A combo relay rather than a toggle
     // one, because there are three positions rather than two; the page draws
-    // its own labels for them (App.jsx), the same way the Tape router does.
+    // its own labels for them (App.jsx).
     juce::WebComboBoxRelay typeRelay { "dtype" };
 
     juce::WebToggleButtonRelay syncRelay { "sync" };
     juce::WebToggleButtonRelay timeUnitRelay { "timeunit" };
-    juce::WebToggleButtonRelay tapePreRelay { "tapepre" };
     juce::WebToggleButtonRelay onRelay { "on" };
 
     juce::WebControlParameterIndexReceiver controlParameterIndexReceiver;
@@ -139,7 +138,6 @@ private:
 
     juce::WebToggleButtonParameterAttachment syncAttachment;
     juce::WebToggleButtonParameterAttachment timeUnitAttachment;
-    juce::WebToggleButtonParameterAttachment tapePreAttachment;
     juce::WebToggleButtonParameterAttachment onAttachment;
 
 #if EE_TAPE_TUNER

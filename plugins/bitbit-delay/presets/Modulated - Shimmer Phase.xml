@@ -14,7 +14,6 @@
   <PARAM id="phaser" value="100"/>
   <PARAM id="locut" value="40"/>
   <PARAM id="hicut" value="16000"/>
-  <PARAM id="tapepre" value="1"/>
   <PARAM id="ingain" value="0"/>
   <PARAM id="outgain" value="0"/>
   <PARAM id="on" value="1"/>

@@ -48,7 +48,6 @@ public:
         sr = sampleRate;
         maxBlock = juce::jmax (1, maximumExpectedSamplesPerBlock);
 
-        tapeIn.prepare (sampleRate);
         tapeOut.prepare (sampleRate);
         phaser.prepare (sampleRate);
         delay.prepare (sampleRate);
@@ -94,11 +93,10 @@ public:
         phaser.setRateHz (ee::dsp::phaser::kDefaultRateHz);
         phaser.setDepth01 (ee::dsp::phaser::kDefaultDepthPct * 0.01f);
 
-        // The post section sits between the delay and the output, so its
+        // The tape section sits between the delay and the output, so its
         // latency lands on the repeats and would push the first one late by
         // that much. Taken off the delay's own time instead, so the gap the
-        // Time knob names is the gap you hear - in either placement, since both
-        // are always in circuit.
+        // Time knob names is the gap you hear.
         postLatencySeconds = static_cast<float> (tapeOut.latencySamples() / sampleRate);
 
         stageBuffer.setSize (2, maxBlock, false, true, true);
@@ -114,10 +112,7 @@ public:
         inGain.reset (sampleRate, delaymodule::kGainRampSeconds);
         outGain.reset (sampleRate, delaymodule::kGainRampSeconds);
 
-        tapePlacement.reset (sampleRate, delaymodule::kPlacementSeconds);
-        tapePlacement.setCurrentAndTargetValue (tapePost ? 1.0f : 0.0f);
-        updateTapeAmounts (tapePlacement.getCurrentValue());
-        tapeIn.transport.snapSmoothing();
+        updateTapeAmounts();
         tapeOut.transport.snapSmoothing();
 
         delay.setRouting (routing);
@@ -135,7 +130,6 @@ public:
 
     void reset() noexcept
     {
-        tapeIn.reset();
         tapeOut.reset();
         phaser.reset();
         delay.reset();
@@ -161,9 +155,9 @@ public:
     void setFeedback01 (float v) noexcept { feedback01 = v; }
     void setRouting (ee::dsp::TapeDelay::Routing r) noexcept { routing = r; }
 
-    /** Where the tape section sits: false in front of the delay, true on its
-        repeats. A target, not a switch - the module glides between them. */
-    void setTapePost (bool post) noexcept { tapePost = post; }
+    /** Wear and Flutter, on the repeats. The tape is only ever there - see
+        TapeSection - so the dry note is never touched by it and the module adds
+        no latency of its own. */
     void setTape (float wear01In, float flutter01In) noexcept
     {
         wear01 = wear01In;
@@ -173,8 +167,8 @@ public:
     /** Drift: the delay line's own modulation, inside the feedback path so it
         compounds with every repeat rather than being applied once the way an
         insert would be. That compounding is the whole point of the knob, and it
-        is why there is no placement control for it - a stage inside the loop has
-        no side to be on. */
+        is why it has no placement to choose - a stage inside the loop has no side
+        to be on. */
     void setDrift01 (float v) noexcept { drift01 = v; }
 
     /** The phaser's blend, on the repeats only. At 0 the stage is skipped and
@@ -231,12 +225,10 @@ public:
         // than stepping.
         delay.setRouting (routing);
 
-        // Where the tape is, this block. Per block rather than per sample
-        // because what it feeds is the two sections' Wear and Flutter, and
-        // those are knob-rate settings with their own smoothing behind them -
-        // the same path a hand on the Wear knob takes.
-        tapePlacement.setTargetValue (tapePost ? 1.0f : 0.0f);
-        updateTapeAmounts (tapePlacement.skip (numSamples));
+        // Per block rather than per sample: Wear and Flutter are knob-rate
+        // settings with their own smoothing behind them - the same path a hand
+        // on the Wear knob takes.
+        updateTapeAmounts();
 
         updateFilters (false);
         delay.setModulation (drift01);
@@ -277,14 +269,8 @@ public:
                 preR[i] = inR[i] * ig;
             }
 
-            // The tape section in front of the delay. Always run, whatever the
-            // router says: on Post its Wear and Flutter are at zero, where both
-            // stages are bit-exact pass-through, so what it does then is supply
-            // the dry path's 6 ms and nothing else. In front it colours the dry
-            // signal as well as what goes on to be repeated - a pedal in front
-            // of a delay is in front of all of it.
-            tapeIn.process (preL, preR, chunk);
-
+            // Bypassed is the caller's untouched input, so the Input fader
+            // above is taken back out as the module goes off.
             for (int i = 0; i < chunk; ++i)
             {
                 preL[i] = inL[i] + (preL[i] - inL[i]) * engage[i];
@@ -304,12 +290,12 @@ public:
             float* wetR = wetBuffer.getWritePointer (1);
             delay.process (feedL, feedR, wetL, wetR, chunk);
 
-            // ...and the one on the repeats, on the same terms: always in
-            // circuit, silent until the router turns it up. Post puts the tape
-            // on the delay's output and nothing else, so the wear and the
+            // The tape, on the delay's output and nothing else: the wear and the
             // flutter are on the repeats and the note being played stays clean.
-            // It used to run on the finished mix, dry included, which made Post
-            // audible on a signal that had never been near the delay, at any
+            // Always in circuit, and bit-exact pass-through (bar its short
+            // fixed delay, taken off the delay time) while Wear and Flutter are
+            // at zero. It once ran on the finished mix, dry included, which made
+            // it audible on a signal that had never been near the delay, at any
             // Mix, even at zero.
             tapeOut.process (wetL, wetR, chunk);
 
@@ -318,8 +304,8 @@ public:
             runFilter (wetL, wetR, chunk);
 
             // ...and the Mod section's insert half, last of the wet stages. On
-            // the repeats and nothing else, for the same reason the tape's Post
-            // placement is: a stage on the finished mix is audible on a dry
+            // the repeats and nothing else, for the same reason the tape is: a
+            // stage on the finished mix is audible on a dry
             // signal that never went near the delay, at any Mix setting and
             // even at zero.
             runPhaser (wetL, wetR, chunk);
@@ -382,31 +368,34 @@ public:
 
     // ------------------------------------------------------------------ query
 
-    /** What the host has to compensate for: the dry path's latency, which runs
-        through the pre section and nothing else, whatever the router says.
-        Constant - both tape stages run exactly once per block on either side of
-        the delay, so this never moves. Drift is inside the delay line and the
-        phaser is a wet/dry blend, so neither adds any. */
-    int latencySamples() const noexcept { return tapeIn.latencySamples(); }
+    /** What the host has to compensate for. None: the dry note goes straight
+        through, and the tape is on the repeats, which are already late by
+        design - its own latency is taken off the delay time (`trimmed`) so the
+        first repeat lands where the Time knob says. Drift is inside the delay
+        line and the phaser is a wet/dry blend, so neither adds any. Kept as a
+        query, and reported, so a later stage that does delay the dry path has
+        one place to say so. */
+    int latencySamples() const noexcept { return 0; }
 
     double tailSeconds() const noexcept { return delay.getTailSeconds(); }
 
-    /** The tape machine's voicing, for a development tuning panel. Both
-        placements are the same machine and are tuned together; either one can
-        answer for the pair. */
-    const ee::dsp::TapeTuning& tapeTuning() const noexcept { return tapeIn.tape.getTuning(); }
-    void setTapeTuning (const ee::dsp::TapeTuning& t) noexcept
-    {
-        tapeIn.tape.setTuning (t);
-        tapeOut.tape.setTuning (t);
-    }
+    /** The tape machine's voicing, for a development tuning panel. */
+    const ee::dsp::TapeTuning& tapeTuning() const noexcept { return tapeOut.tape.getTuning(); }
+    void setTapeTuning (const ee::dsp::TapeTuning& t) noexcept { tapeOut.tape.setTuning (t); }
 
 private:
-    /** One tape machine in one place in the chain: the transport's wobble
-        (Flutter), then the tape itself (Wear), in the order a machine has them.
-        Both are the stages BitBit Tape's knobs of the same name drive - shared
-        engines, not second models of them, so the two pedals cannot drift
-        apart. */
+    /** The tape machine on the repeats: the transport's wobble (Flutter), then
+        the tape itself (Wear), in the order a machine has them. Both are the
+        stages BitBit Tape's knobs of the same name drive - shared engines, not
+        second models of them, so the two pedals cannot drift apart.
+
+        It used to have a twin in front of the delay as well, with a Pre/Post
+        router between them. That twin put the dry note through a 6 ms delay
+        line whether or not it was doing anything, which was the whole of this
+        module's latency, so it is gone: the tape is on the repeats and nothing
+        else, and the transport is the short low-latency one (see
+        tape::kLowLatencyNominalDelayMs) - the wobble here is mono, so its full
+        depth fits. */
     struct TapeSection
     {
         ee::dsp::TapeTransport transport;
@@ -414,6 +403,7 @@ private:
 
         void prepare (double sampleRate)
         {
+            transport.setLowLatency (true);
             transport.prepare (sampleRate);
             tape.prepare (sampleRate);
         }
@@ -465,9 +455,7 @@ private:
 
     float wetTarget() const noexcept { return std::sin (mix01 * juce::MathConstants<float>::halfPi); }
 
-    /** Splits Wear and Flutter between the two tape placements - all to the pre
-        section at 0, all to the post one at 1. */
-    void updateTapeAmounts (float placement) noexcept
+    void updateTapeAmounts() noexcept
     {
         // Wear is scaled back to half the stage's travel - see kWearScale.
         // Flutter is not: the transport's wobble is a movement rather than a
@@ -475,13 +463,7 @@ private:
         const float wear = juce::jlimit (0.0f, 1.0f, wear01) * delaymodule::kWearScale;
         const float flutter = juce::jlimit (0.0f, 1.0f, flutter01);
 
-        // The router is a fader between the two placements, not a switch. A
-        // straight linear split rather than equal power: at the halfway point
-        // the section really is half as driven in each place, which is what
-        // keeps the total colour roughly constant across the move - the two are
-        // the same stage in series, not two takes of one signal being summed.
-        tapeIn.setAmounts (wear * (1.0f - placement), flutter * (1.0f - placement));
-        tapeOut.setAmounts (wear * placement, flutter * placement);
+        tapeOut.setAmounts (wear, flutter);
     }
 
     /** Recomputes the cut coefficients when either knob has actually moved.
@@ -602,7 +584,6 @@ private:
     double sr = 44100.0;
     int maxBlock = 512;
 
-    TapeSection tapeIn;
     TapeSection tapeOut;
     ee::dsp::TapeDelay delay;
     ee::dsp::Phaser phaser;
@@ -627,7 +608,6 @@ private:
     float inGainLinear = 1.0f;
     float outGainLinear = 1.0f;
     bool engaged = true;
-    bool tapePost = false;
     ee::dsp::TapeDelay::Routing routing {};
 
     float pendingLoCutHz = 20.0f;
@@ -642,16 +622,9 @@ private:
     bool hiPassActive = false;
     bool loPassActive = false;
 
-    /** Where the Tape section is, as a number rather than a switch: 0 is
-        entirely in front of the delay, 1 entirely on its repeats, and the
-        router glides between them over kPlacementSeconds. Read once per block -
-        the two sections' own parameter smoothing carries it the rest of the
-        way, exactly as it does for a hand on the Wear knob. */
-    juce::SmoothedValue<float> tapePlacement;
-
-    /** What the post section's latency costs the repeats, taken back off the
+    /** What the tape section's latency costs the repeats, taken back off the
         delay's own time so the gap between the dry signal and its first repeat
-        is what the Time knob says in either placement. */
+        is what the Time knob says. */
     float postLatencySeconds = 0.0f;
 
     juce::SmoothedValue<float> dryGain;

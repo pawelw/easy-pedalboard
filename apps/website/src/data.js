@@ -109,13 +109,13 @@ export const MODULES = [
     tag: 'repeats, space in time',
     count: '3 ROUTINGS',
     headline: 'Echoes with a tape machine in the loop.',
-    desc: 'A flexible delay and repeat machine — clean digital echoes or tape-loop character, with switchable pre/post tape compression paths.',
-    long: 'One delay engine in three routings. Independent left and right times, tempo-synced or free, linked or deliberately apart, with a tape stage that can sit in front of the line or on the repeats themselves. Left clean it is a bit-exact digital delay; wound up it is a loop that drifts a little further from the source every time round.',
+    desc: 'A flexible delay and repeat machine — clean digital echoes or tape-loop character, with tape saturation and wobble on the repeats.',
+    long: 'One delay engine in three routings. Independent left and right times, tempo-synced or free, linked or deliberately apart, with a tape stage on the repeats themselves - the note you play stays clean, and the pedal adds no latency. Left clean it is a bit-exact digital delay; wound up it is a loop that drifts a little further from the source every time round.',
     engines: [
       {
         name: 'Normal',
         tag: 'Centered mono loop',
-        desc: 'One centred loop. Independent L/R tempo-synced times with tape placed pre or post.',
+        desc: 'One centred loop. Independent L/R tempo-synced times with tape on the repeats.',
         pills: ['Mix', 'Feedback', 'L Time', 'R Time', 'Link', 'Sync'],
         img: '/assets/delay-standalone.png',
       },

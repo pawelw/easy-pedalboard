@@ -108,7 +108,6 @@ inline constexpr const char* dlyDrift = "dly.mod";
 inline constexpr const char* dlyPhaser = "dly.phaser";
 inline constexpr const char* dlyLoCut = "dly.locut";
 inline constexpr const char* dlyHiCut = "dly.hicut";
-inline constexpr const char* dlyTapePre = "dly.tapepre";
 
 // ------------------------------------------------------------------- reverb
 inline constexpr const char* revOn = "rev.on";

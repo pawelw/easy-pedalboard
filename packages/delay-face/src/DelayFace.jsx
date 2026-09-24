@@ -12,7 +12,6 @@ import {
   JucePill,
   JuceChoicePill,
   JuceStageKnob,
-  JuceStageRouter,
   ParamScope,
 } from "@synthpeak/pedal-ui/juce";
 import { useDelayMeter, useDelayTimesMs } from "./juceBindings.jsx";
@@ -43,12 +42,6 @@ import "./DelayFace.css";
  * second layout box between the card's padding and the content that has been
  * measured against it since the face was written.
  *
- * `tapeRouter` is the Tape section's Pre/Post stepper. BitBit Delay keeps it;
- * BitBit Alpine hides it, because there the tape machine is a whole module of
- * its own and this second, smaller copy of "where does the tape sit" only
- * asked the question twice. Hidden it rests wherever the parameter defaults -
- * Post in BitBit Alpine.
- *
  * `stageKnobSize` is the footer knobs' dial. BitBit Delay's own 38px is the
  * default; BitBit Alpine passes 36, the size every other small knob on that
  * panel is. The Filter section's Low Cut/High Cut sit 8px under it - a cut is
@@ -65,7 +58,6 @@ import "./DelayFace.css";
  */
 export default function DelayFace({
   prefix = "",
-  tapeRouter = true,
   stageKnobSize,
   mainKnobSize = 76,
   scopeHeight = 110,
@@ -73,7 +65,6 @@ export default function DelayFace({
   return (
     <ParamScope prefix={prefix}>
       <DelayFaceBody
-        tapeRouter={tapeRouter}
         stageKnobSize={stageKnobSize}
         mainKnobSize={mainKnobSize}
         scopeHeight={scopeHeight}
@@ -84,7 +75,7 @@ export default function DelayFace({
 
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     DelayFace itself would read the enclosing scope, not the one it declares. */
-function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) {
+function DelayFaceBody({ stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) {
   const [leftMs, rightMs] = useDelayTimesMs();
   const [feedback01] = useJuceSliderValue("fb");
   const [mix01] = useJuceSliderValue("mix");
@@ -184,12 +175,12 @@ function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76, sc
           marks distinguish three sections, which is what the footer actually
           needs.
 
-          Only Tape carries a router, because it is the only section with a
-          choice to make. Mod's Drift is the delay line's own modulation,
+          None of them has a router. Tape used to carry a Pre/Post one; the tape
+          is on the repeats now and nowhere else, which is what took the delay's
+          latency to nothing. Mod's Drift is the delay line's own modulation,
           inside the feedback loop where it compounds with every repeat - it
-          is not before or after the delay, it is part of it, so a Pre/Post
-          there would have governed only half the section; the Phaser is fixed
-          on the repeats. Filter is fixed on the repeats too: the in-loop,
+          is not before or after the delay, it is part of it; the Phaser is
+          fixed on the repeats. Filter is fixed on the repeats too: the in-loop,
           compounding version of a tone control is Drift, and a second one
           would only have blurred the first. "tape"/"mod" are the parameter
           ids Wear and Drift kept from the single-knob face. */}
@@ -197,11 +188,7 @@ function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76, sc
         <div className="pd-footer__section">
           <StageGroup
             header={
-              <StageHeader icon={<TapeIcon size={24} />} name="Tape" accent="var(--pui-stage-tape)">
-                {tapeRouter && (
-                  <JuceStageRouter parameterId="tapepre" label="Tape" labels={["Post", "Pre"]} />
-                )}
-              </StageHeader>
+              <StageHeader icon={<TapeIcon size={24} />} name="Tape" accent="var(--pui-stage-tape)" />
             }
           >
             <JuceStageKnob parameterId="tape" name="Wear" size={stageKnobSize} />

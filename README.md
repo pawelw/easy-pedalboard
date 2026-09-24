@@ -260,27 +260,15 @@ shows up in the list once it has actually been built in, because that is the
 point at which it is real.
 
 **Tape** is not part of the delay. It is a section of its own, the way a
-separate pedal would sit somewhere in a chain, and the `‹ PRE ›` router in its
-header says where: **Pre** puts it in front of the delay, **Post** puts it on
-the repeats. In front, it colours the dry signal and everything the delay goes
-on to repeat, whether or not any delay is being heard - turn **Mix** all the way
-down and the repeats go silent but the tape keeps working on the dry signal.
-Post is the other way round: it is on the delay's output alone, so the wear and
-the flutter are on the repeats and the note you are playing stays clean. The two
-settings are the two ways a tape echo can be built, and which one you want is
-usually decided by whether you want to hear the machine on your own playing.
-**Post is the default**, because it is the one that keeps the Tape knobs inside
-the Mix control - a pedal fresh out of the box should not be altering a signal
-it is not being asked to delay.
-
-The router moves the section over about a quarter of a second rather than
-switching it, and what actually travels is Wear and Flutter: there is a tape
-machine wired in permanently at each end of the delay, and the router turns one
-down as it turns the other up. At zero both stages are bit-exact pass-through,
-so the idle one costs a delay line and colours nothing. It works this way
-because a section that *moved* had to be handed a different signal the instant
-it moved, and the six milliseconds of the previous one still inside its delay
-line came out as a click on every flip.
+separate pedal would sit somewhere in a chain, and it sits on the repeats: it is
+on the delay's output alone, so the wear and the flutter are on the echoes and
+the note you are playing stays clean. That keeps the Tape knobs inside the Mix
+control - a pedal fresh out of the box does not alter a signal it is not being
+asked to delay - and it is why the pedal adds **no latency at all**. There used to
+be a `‹ PRE ›` router that could put the same machine in front of the delay
+instead, colouring the dry note too; that meant the dry note travelling through a
+6 ms transport delay line whether or not anything was being asked of it, which
+was the whole of the pedal's latency, and the placement was taken out for that.
 
 **Filter** is fixed on the repeats: **Low Cut** is a high pass and **High Cut**
 a low pass, the same pair of cuts BitBit EQ carries in its top corner, and they
@@ -295,8 +283,7 @@ the feedback loop - because the compounding version of this control already
 exists and is called Drift. Putting a second lowpass in the loop would only have
 blurred the first.
 
-**Mod** has no router, because its two knobs sit in different places and only
-one of them has a choice. **Drift** is the delay line's own modulation, inside
+**Mod**'s two knobs sit in different places. **Drift** is the delay line's own modulation, inside
 the feedback path: a slow wow on the tap plus a rolloff, both applied again on
 every pass, so the repeats wander further out of tune and lose more top end the
 longer the tail runs. It is not before or after the delay - it is part of it.
@@ -345,14 +332,16 @@ plugin, so the chain can be checked end to end. With Mix at 0 % and Tape at
 100 %, the plugin's dry output carries grit 36.6 dB below the signal against the
 reference's 36.4 dB, where the untouched input sits at 55.8 dB.
 
-With Wear and Flutter at 0 the tape section is bit exact, and it reports a
-constant 6.0 ms of latency - the transport's 4.5 ms and the tape's own 1.5 ms -
-so the timing never shifts as the knobs move or the router flips. That figure is
-the dry path's, which is the one a host compensates against; the section on the
-repeats costs the same again, and that much is taken back off the delay's own
-time, so the gap between a note and its first repeat is what the Time knob says
-in either placement. Drift, Phaser and the Filter add none: two are inside the
-delay line or a wet/dry blend, and the cuts are biquads.
+With Wear and Flutter at 0 the tape section is bit exact. The dry note goes
+straight through, so **the pedal reports 0 latency**. The section on the repeats
+has a short delay of its own - the 1.85 ms transport (the shortest the wow fits
+in at full mono depth) plus the tape's 1.5 ms, 3.35 ms in all - and that much is
+taken back off the delay's own time, so the gap between a note and its first
+repeat is what the Time knob says (`tests/ee_delay_regress` checks it to the
+sample, at the shortest setting the knob can make - a 1/32 note at 300 bpm, 25 ms,
+about seven times the tape's own delay - as well as the long ones). Drift, Phaser
+and the Filter add none: two are inside the delay line
+or a wet/dry blend, and the cuts are biquads.
 
 Like the reverb it has no on/off switch of its own, and the `on` parameter has
 trails: bypassing fades the tape off the dry path and closes the delay input,

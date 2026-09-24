@@ -808,7 +808,10 @@ Worth a measurement at stage 8 before the face work is finished, because the
 answer might be "prepare the unselected reverb lazily" rather than "hold both".
 Still not measured in a host.
 
-**Latency: 576 samples, 12.0 ms, and all of it is tape.** Measured against the
+**Latency: 576 samples, 12.0 ms, and all of it is tape.** *(Historical - as first
+measured. Since G5.3 of `docs/release-plan.md` the Delay module has no dry-path
+tape at all and the Modulation module's transport is shortened, so the plugin
+reports 3.35 ms by default.)* Measured against the
 reported figure by `ee_alpine_host`'s ledger, which puts an impulse through the
 real processor with every Mix at 0. Two identical stages, 288 each — 4.5 ms of
 transport (the room the wow wobbles in) plus 1.5 ms of `TapeCharacter` — one in

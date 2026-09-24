@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.delay
   categories   "Fx Delay"
 
-parameters 17
+parameters 16
 0 ltime
     name       "Left Time"
     default    0.357142866
@@ -91,26 +91,19 @@ parameters 17
     version    1
     steps      2147483647 continuous automatable
     range      1200 20000 interval 0 skew 0.364002496
-13 tapepre
-    name       "Tape Placement"
-    default    0
-    version    1
-    steps      2 discrete boolean automatable
-    range      0 1 interval 1 skew 1
-    choices    2: "Post" "Pre"
-14 ingain
+13 ingain
     name       "Input"
     default    0.666666687
     version    1
     steps      2147483647 continuous automatable
     range      -24 12 interval 0.100000001 skew 1
-15 outgain
+14 outgain
     name       "Output"
     default    0.666666687
     version    1
     steps      2147483647 continuous automatable
     range      -24 12 interval 0.100000001 skew 1
-16 on
+15 on
     name       "On"
     default    1
     version    1

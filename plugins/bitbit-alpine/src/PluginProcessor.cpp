@@ -514,11 +514,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::dlyHiCut, 1 }, "Delay High Cut",
                                                              hiCutRange, kHiCutMaxHz, withText (hertzToText)));
 
-    // false = Post. No control on the face reaches this (see DelayFace's
-    // tapeRouter) - BitBit Alpine's Mod module is where a tape machine is chosen.
-    layout.add (
-        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::dlyTapePre, 1 }, "Tape Placement", false));
-
     // ----------------------------------------------------------------- reverb
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::revOn, 1 }, "Reverb On", true));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::revEngine, 1 }, "Reverb Engine",
@@ -750,7 +745,6 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
                       : typeIndex == 2 ? ee::dsp::TapeDelay::Routing::pingPong
                                        : ee::dsp::TapeDelay::Routing::normal);
 
-    delay.setTapePost (! flag (id::dlyTapePre));
     delay.setTape (pct (id::dlyWear), pct (id::dlyFlutter));
     delay.setDrift01 (pct (id::dlyDrift));
     delay.setPhaser01 (pct (id::dlyPhaser));
@@ -828,18 +822,17 @@ void BitBitAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpecte
         juce::Decibels::decibelsToGain (apvts.getRawParameterValue (id::outGain)->load()));
     engageGain.setCurrentAndTargetValue (apvts.getRawParameterValue (id::on)->load() > 0.5f ? 1.0f : 0.0f);
 
-    // Two stages in the chain delay the signal without that being the effect:
-    // the Modulation module's alignment (its Tape engine's transport, which
-    // every other engine is now padded out to) and the Delay module's tape
-    // section. They are in series, so they add. The Artifact module's engines
-    // are all latency-free, so it contributes zero - added for the day one is
-    // not.
+    // Only the Modulation module's alignment delays the signal without that
+    // being the effect: its Tape engine's transport, which every other engine
+    // is padded out to. The Delay module's tape is on its repeats, so its dry
+    // path has none, and the Artifact and Reverb modules' engines are all
+    // latency-free. They are summed anyway, in series, for the day one is not.
     const int latency = artifact.latencySamples() + modulation.latencySamples() + delay.latencySamples();
     setLatencySamples (latency);
 
     // The global bypass's reference is held back by the same figure, so a
     // bypassed plugin is the input *as the host is compensating for it* and
-    // not the input 12 ms ahead of where the rest of the session is.
+    // not the input ahead of where the rest of the session is.
     bypassAlign.prepare (kMaxChannels, latency);
 }
 

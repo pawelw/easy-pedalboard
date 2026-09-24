@@ -51,15 +51,6 @@ namespace
 
         return -1;
     }
-
-    bool hasFlag (int argc, char* argv[], const char* name)
-    {
-        for (int i = 5; i < argc; ++i)
-            if (juce::String (argv[i]) == name)
-                return true;
-
-        return false;
-    }
 }
 
 int main (int argc, char* argv[])
@@ -67,7 +58,7 @@ int main (int argc, char* argv[])
     if (argc < 5)
     {
         std::printf ("usage: ee_delay_match <in.wav> <out.wav> <wear%%> <mix%%> [feedback%%] [drift%%]\n"
-                     "                      [--flutter %%] [--phaser %%] [--tape-post]\n"
+                     "                      [--flutter %%] [--phaser %%]\n"
                      "                      [--type normal|wide|pingpong]\n");
         return 1;
     }
@@ -91,7 +82,6 @@ int main (int argc, char* argv[])
 
     const float flutter = flagValue (argc, argv, "--flutter", 0.0f);
     const float phaser = flagValue (argc, argv, "--phaser", 0.0f);
-    const bool tapePost = hasFlag (argc, argv, "--tape-post");
     const juce::String type = flagText (argc, argv, "--type", "normal");
 
     juce::AudioFormatManager formats;
@@ -123,7 +113,6 @@ int main (int argc, char* argv[])
     setParam (processor.apvts, "mod", drift);
     setParam (processor.apvts, "flutter", flutter);
     setParam (processor.apvts, "phaser", phaser);
-    setFlag (processor.apvts, "tapepre", ! tapePost);
 
     const int typeIndex = routingIndex (processor.apvts, type);
 
@@ -163,10 +152,10 @@ int main (int argc, char* argv[])
     }
 
     std::printf ("wrote %s\n"
-                 "  tape %s: wear %.0f %%, flutter %.0f %%\n"
+                 "  tape (on the repeats): wear %.0f %%, flutter %.0f %%\n"
                  "  mod: drift %.0f %% (in the loop), phaser %.0f %% (on the repeats)\n"
                  "  type %s, mix %.0f %%, feedback %.0f %%, latency %d\n",
-                 outFile.getFullPathName().toRawUTF8(), tapePost ? "post" : "pre", wear, flutter,
+                 outFile.getFullPathName().toRawUTF8(), wear, flutter,
                  drift, phaser,
                  dynamic_cast<juce::AudioParameterChoice*> (processor.apvts.getParameter ("dtype"))
                      ->choices[typeIndex]

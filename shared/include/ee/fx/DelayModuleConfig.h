@@ -18,15 +18,8 @@ namespace ee::fx::delaymodule
 {
 
 // ============================================================================
-// TAPE PLACEMENT
+// TAPE
 // ============================================================================
-// How long the Tape router takes to move the section from one side of the delay
-// to the other. Slow on purpose: what actually travels is Wear and Flutter, so
-// this is a hand turning one knob down while another comes up, and a quarter of
-// a second is about how fast a hand does that. Anything much shorter starts to
-// read as a step in the drive rather than as a move.
-constexpr double kPlacementSeconds = 0.25;
-
 // How much of the tape stage's own Wear travel this module's knob reaches: a
 // fully-turned Wear here drives the machine half as hard as a fully-turned Wear
 // on BitBit Tape.
