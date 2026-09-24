@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CrushScope, EngineStepper, ModulePanel, ModuleTabs, RingScope, RustScope, Toggle } from "@synthpeak/pedal-ui";
+import { AmpScope, CrushScope, EngineStepper, ModulePanel, ModuleTabs, RingScope, RustScope, Toggle } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceMacroKnob,
@@ -28,9 +28,9 @@ import "./ArtifactFace.css";
  * not a re-draw of BitBit Artifact's face, it *is* that face - so a fix lands in
  * both and neither can drift.
  *
- * Amp's display reuses `CrushScope` (see `AmpDisplay`) with its Bits input
- * pinned to 0 - Amp's Bit knob is sample-rate reduction only, no amplitude
- * reduction, so the picture is a held sine with no amplitude bands, truthful
+ * Amp's display is `AmpScope` (see `AmpDisplay`): a sine bent by the Amp's
+ * own drive curve, then held by Bit - sample-rate reduction only, no amplitude
+ * reduction, so the picture is a held wave with no amplitude bands, truthful
  * to what the engine actually does (see ee::fx::ArtifactModule's class note).
  *
  * `prefix` is the parameter-id prefix its controls bind through: "" for BitBit
@@ -199,17 +199,18 @@ function RingDisplay() {
 }
 
 function AmpDisplay() {
+  const [drive] = useJuceSliderValue("amp.drive");
   const [bit] = useJuceSliderValue("amp.bit");
 
   return (
-    // CrushScope with Bits pinned to 0 - a held (sample-rate-reduced) sine with
-    // no amplitude bands, since Amp's Bit knob never touches the word length.
-    // The tube drive and Mids/Tone shaping ahead of and after it aren't shown.
+    // A sine through the Amp's own drive curve - bent the way TubeDrive bends
+    // it, softly and unevenly as Drive comes up - then held by Bit's
+    // sample-and-hold. The clean sine sits faintly behind for comparison.
+    // Mids and Tone are equalisers after it and aren't shown.
     <div className="af-display af-display--crush">
-      <CrushScope
-        bits01={0}
-        rate01={bit}
-        jitter01={0}
+      <AmpScope
+        drive01={drive}
+        bit01={bit}
         height={64}
         baseColor={SCOPE.baseColor}
         fillColor={SCOPE.fillColor}

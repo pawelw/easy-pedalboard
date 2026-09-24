@@ -23,14 +23,16 @@ export default function App() {
       {/* theme="onyx" on the Delay face only - see main.jsx. Wah never
           passes a theme, so none of this reaches it (packages/pedal-ui/src/
           tokens.css's [data-pui-theme="onyx"] block). */}
-      {/* 568 + the link bracket's own column - see --pd-link-col. */}
+      {/* 415px is too narrow for the preset bar to share a row with the title,
+          so it takes its own row underneath, as Artifact's and Reverb's do. */}
       <Card
         title="BitBit Delay"
         headerCenter={<JucePresetBar variant="separated" showDice={false} />}
+        headerCenterPlacement="below"
         className="pd-card"
-        width={548}
+        width={415}
       >
-        <DelayFace />
+        <DelayFace mainKnobSize={50} />
       </Card>
     </div>
   );

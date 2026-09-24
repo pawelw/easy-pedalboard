@@ -44,12 +44,11 @@ import "./DelayFace.css";
  *
  * `stageKnobSize` is the footer knobs' dial. BitBit Delay's own 38px is the
  * default; BitBit Alpine passes 36, the size every other small knob on that
- * panel is. The Filter section's Low Cut/High Cut sit 8px under it - a cut is
- * a supporting knob, not a lead one, same as SideModule.jsx's reverb/mod
- * engines draw it.
+ * panel is. All six footer knobs, Low Cut and High Cut included, are this size.
  *
- * `mainKnobSize` is Mix and Feedback. 76px is what BitBit Delay's 528px card was
- * laid out around; BitBit Alpine's 490px module passes 60.
+ * `mainKnobSize` is Mix and Feedback. 76px is what BitBit Delay's original
+ * 528px card was laid out around; its 415px card passes 50 and BitBit Alpine's
+ * 490px module passes 60.
  *
  * `scopeHeight` is the tap scope's well. BitBit Delay's own 110px is the
  * default; BitBit Alpine passes the height that takes the well from the top of
@@ -95,18 +94,13 @@ function DelayFaceBody({ stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) 
 
       <div className="pd-row">
         {/* sweepGap pinned to the 42px Time knobs' own value explicitly,
-            rather than relying on Knob.jsx's size-based default (which
-            would put an 84px+ knob in the "big" bucket and its ring - a
-            wider gap there - would then sit visibly closer to the scope
-            above than Left/Right Time's despite an identical row
-            layout). The ring's distance from a neighbour is `gap` alone,
-            independent of the knob's own diameter, so this keeps that
-            distance identical while leaving the size free to be whatever
-            reads best here. */}
+            rather than relying on Knob.jsx's size-based default, so the ring's
+            distance from a neighbour is the same whatever `mainKnobSize` is
+            (it is `gap` alone, independent of the knob's own diameter). */}
         {/* showValueLabel={false}: the value already has a permanent home
-            below the caption (showValueBelow) now, so caption swapping to
-            a second copy of the same text mid-drag is redundant - Mix
-            should keep reading "Mix" the whole time. */}
+            below the caption (showValueBelow), so the caption swapping to a
+            second copy of the same text mid-drag is redundant - Mix should
+            keep reading "Mix" the whole time. */}
         <JuceKnob
           parameterId="mix"
           caption="Mix"
@@ -209,16 +203,17 @@ function DelayFaceBody({ stageKnobSize, mainKnobSize = 76, scopeHeight = 110 }) 
             from there, so its scale fills from the maximum end - the same
             distinction BitBit EQ draws with an inverted arc on its High Cut.
             Low is an ordinary knob: it rests at 0 Hz and fills as it opens.
-            Both 8px smaller than the other stage knobs - a cut is a
-            supporting knob, not a lead one, the same distinction
-            SideModule.jsx's reverb/mod engines draw on their own locut/hicut
-            pair, so a Filter section reads the same way wherever it sits. */}
+            Same size as the Tape and Mod knobs beside them: they were 8px
+            smaller (a cut as a supporting knob, the way SideModule.jsx's
+            reverb/mod engines still draw their own locut/hicut pair), which
+            left the Filter section's knobs looking undersized in a footer of
+            equals. Only the Delay's cuts moved; those engines are untouched. */}
         <div className="pd-footer__section">
           <StageGroup
             header={<StageHeader icon={<FilterIcon size={30} />} name="Filter" accent="var(--pui-stage-filter)" />}
           >
-            <JuceStageKnob parameterId="locut" name="Low Cut" size={stageKnobSize - 8} />
-            <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" size={stageKnobSize - 8} />
+            <JuceStageKnob parameterId="locut" name="Low Cut" size={stageKnobSize} />
+            <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" size={stageKnobSize} />
           </StageGroup>
         </div>
       </div>

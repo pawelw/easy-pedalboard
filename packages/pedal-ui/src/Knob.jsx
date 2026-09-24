@@ -526,6 +526,9 @@ export default function Knob({
   modIndicator,
 }) {
   const [dragging, setDragging] = useState(false);
+  // Pointer over the dial. Shows the value in the caption's place exactly as a
+  // drag does, so a value can be read without moving the knob.
+  const [hovered, setHovered] = useState(false);
   const dragStartRef = useRef(null);
   const bodyRef = useRef(null);
 
@@ -724,6 +727,8 @@ export default function Knob({
           className={`pui-knob__body${isScale ? " pui-knob__body--scale" : ""}${isSoft ? " pui-knob__body--soft" : ""}${isConcave ? " pui-knob__body--concave" : ""}${isSpoke ? " pui-knob__body--spoke" : ""}${dragging ? " pui-knob__body--dragging" : ""}`}
           style={{ width: dialSize, height: dialSize }}
           onPointerDown={onPointerDown}
+          onPointerEnter={() => setHovered(true)}
+          onPointerLeave={() => setHovered(false)}
           onKeyDown={onKeyDown}
           onDoubleClick={onDoubleClick}
           role="slider"
@@ -772,13 +777,13 @@ export default function Knob({
         </div>
       </div>
 
-      {/* The value replaces the caption in place while dragging, rather than
-          appearing as a second line below it - a second line meant the row's
-          height (and everything below it in the grid) changed the instant
-          you touched a knob. */}
+      {/* The value replaces the caption in place while dragging or hovering,
+          rather than appearing as a second line below it - a second line meant
+          the row's height (and everything below it in the grid) changed the
+          instant you touched a knob. */}
       {!bare && (
         <div className="pui-caption pui-knob__caption">
-          {dragging && valueLabel ? <StableDigits>{valueLabel}</StableDigits> : caption}
+          {(dragging || hovered) && valueLabel ? <StableDigits>{valueLabel}</StableDigits> : caption}
         </div>
       )}
 

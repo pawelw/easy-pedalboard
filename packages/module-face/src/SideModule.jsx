@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import {
   BarDisplay,
+  ChorusScope,
   EngineStepper,
   FilterScope,
   ModulePanel,
   ModuleTabs,
+  PhaserScope,
+  ReverbScope,
   Toggle,
   WaveIcon,
   freqHzFor01,
@@ -36,7 +39,6 @@ const BAR_SPAN = 26;
 const FILTER_SCOPE_HEIGHT = 64;
 
 const TREM_BARS = 26;
-const DECAY_BARS = 7;
 
 // The Easy / Adv strip is hidden for now and every module opens on Adv. The
 // Easy path below is kept whole so flipping this back is the only change.
@@ -60,19 +62,6 @@ function tremBars(amount01, shape01) {
     const phase = (i / (TREM_BARS - 1)) * 2;
     return BAR_MIN + BAR_SPAN * amount01 * Math.abs(lfoValue(phase, shape01));
   });
-}
-
-/** The reverb tail: seven bars falling away to the floor, bending as Decay
-    opens out. A short decay drops off a cliff, a long one holds up. The last
-    bar always lands on BAR_MIN, so the display's floor is the floor rather
-    than wherever the maths happened to end. */
-function decayBars(decay01) {
-  // The exponent runs the opposite way to Decay: a short tail wants the steep
-  // curve, so the bars are already on the floor by the end of the well.
-  const curve = 0.45 + (1 - decay01) * 1.6;
-  return Array.from({ length: DECAY_BARS }, (_, i) =>
-    BAR_MIN + BAR_SPAN * Math.pow(1 - i / (DECAY_BARS - 1), curve),
-  );
 }
 
 /**
@@ -162,8 +151,12 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
       />
 
       {engine.display === "tremolo" && <TremoloDisplay prefix={engine.prefix} />}
-      {engine.display === "decay" && <DecayDisplay parameterId={engine.decayId} />}
+      {engine.display === "reverb" && engine.reverb === "spring" && <SpringDisplay prefix={engine.prefix} />}
+      {engine.display === "reverb" && engine.reverb === "shimmer" && <ShimmerDisplay prefix={engine.prefix} />}
+      {engine.display === "reverb" && engine.reverb === "studio" && <StudioDisplay prefix={engine.prefix} />}
       {engine.display === "filter" && <FilterDisplay prefix={engine.prefix} />}
+      {engine.display === "chorus" && <ChorusDisplay prefix={engine.prefix} />}
+      {engine.display === "phaser" && <PhaserDisplay prefix={engine.prefix} />}
 
       {easy && tab === "easy" ? (
         /* The Easy face: one macro knob that rides this engine's own Adv
@@ -309,12 +302,97 @@ function TremoloDisplay({ prefix }) {
   );
 }
 
-function DecayDisplay({ parameterId }) {
-  const [decay] = useJuceSliderValue(parameterId);
+/* Both read the knobs' normalised positions: Rate's skewed travel is what the
+   scope's cycle count follows, and Phase's 0..180 deg range is linear, so its
+   normalised value is the fraction of the engine's phase span. */
+function ChorusDisplay({ prefix }) {
+  const [rate] = useJuceSliderValue(`${prefix}rate`);
+  const [depth] = useJuceSliderValue(`${prefix}depth`);
+  const [phase] = useJuceSliderValue(`${prefix}phase`);
 
   return (
     <div className="sm-display">
-      <BarDisplay heights={decayBars(decay)} align="bottom" ariaLabel="Reverb decay" />
+      <ChorusScope rate01={rate} depth01={depth} phase01={phase} />
+    </div>
+  );
+}
+
+function PhaserDisplay({ prefix }) {
+  const [rate] = useJuceSliderValue(`${prefix}rate`);
+  const [depth] = useJuceSliderValue(`${prefix}depth`);
+
+  return (
+    <div className="sm-display">
+      <PhaserScope rate01={rate} depth01={depth} />
+    </div>
+  );
+}
+
+/* The three reverbs share one display (ReverbScope) and differ only in which
+   knobs feed its model - one component each so each subscribes to the
+   parameters its engine actually has. */
+function SpringDisplay({ prefix }) {
+  const [decay] = useJuceSliderValue(`${prefix}decay`);
+  const [tension] = useJuceSliderValue(`${prefix}tension`);
+  const [locut] = useJuceSliderValue(`${prefix}locut`);
+  const [hicut] = useJuceSliderValue(`${prefix}hicut`);
+
+  return (
+    <div className="sm-display">
+      <ReverbScope
+        engine="spring"
+        decay01={decay}
+        tension01={tension}
+        lowCut01={locut}
+        highCut01={hicut}
+        ariaLabel="Spring reverb decay"
+      />
+    </div>
+  );
+}
+
+function ShimmerDisplay({ prefix }) {
+  const [decay] = useJuceSliderValue(`${prefix}decay`);
+  const [damping] = useJuceSliderValue(`${prefix}damping`);
+  const [locut] = useJuceSliderValue(`${prefix}locut`);
+  const [hicut] = useJuceSliderValue(`${prefix}hicut`);
+  const [octave] = useJuceChoiceValue(`${prefix}octave`, 3);
+
+  return (
+    <div className="sm-display">
+      <ReverbScope
+        engine="shimmer"
+        decay01={decay}
+        damping01={damping}
+        lowCut01={locut}
+        highCut01={hicut}
+        octave={octave}
+        ariaLabel="Shimmer reverb decay"
+      />
+    </div>
+  );
+}
+
+function StudioDisplay({ prefix }) {
+  const [decay] = useJuceSliderValue(`${prefix}decay`);
+  const [size] = useJuceSliderValue(`${prefix}size`);
+  const [predelay] = useJuceSliderValue(`${prefix}predelay`);
+  const [damping] = useJuceSliderValue(`${prefix}damping`);
+  const [locut] = useJuceSliderValue(`${prefix}locut`);
+  const [hicut] = useJuceSliderValue(`${prefix}hicut`);
+
+  return (
+    <div className="sm-display">
+      <ReverbScope
+        engine="studio"
+        decay01={decay}
+        size01={size}
+        predelay01={predelay}
+        damping01={damping}
+        lowCut01={locut}
+        highCut01={hicut}
+        ariaLabel="Studio reverb decay"
+      />
     </div>
   );
 }

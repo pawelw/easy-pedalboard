@@ -17,7 +17,7 @@
 #include <random>
 #include <vector>
 
-#include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/GrainerTuning.h"
@@ -93,13 +93,12 @@ Result run (float sizeMs, float densityHz, float timeMs, float pitch, float feed
     delay.setFeedback (feedback);
     delay.snapDelays();
 
-    ee::dsp::FdnReverb reverb;
+    ee::dsp::SpaceReverb reverb;
     reverb.prepare (kSampleRate);
     reverb.reset();
     reverb.setDecayTime (verbDecaySeconds);
-    reverb.setResonance (ee::dsp::GrainerTuning{}.verbResonance);
-    reverb.setShimmer (ee::dsp::config::kVerbShimmer);
-    reverb.setLowCut (ee::dsp::GrainerTuning{}.verbLowCutHz);
+    reverb.setDamping (ee::dsp::config::kReverbDamping01);
+    reverb.setLowCut (ee::dsp::config::kDefaultReverbLoCutHz);
 
     // Equal-power delay blend (fixed at half) and reverb blend (the `verb` knob),
     // matching the pedal's per-stage crossfades.
@@ -167,7 +166,7 @@ Result run (float sizeMs, float densityHz, float timeMs, float pitch, float feed
             mono[static_cast<size_t> (i)] = 0.5f * (dryL[static_cast<size_t> (i)] + dryR[static_cast<size_t> (i)]);
         }
 
-        reverb.process (mono.data(), wetL.data(), wetR.data(), kBlock);
+        reverb.process (mono.data(), mono.data(), wetL.data(), wetR.data(), kBlock);
 
         for (int i = 0; i < kBlock; ++i)
         {
@@ -201,7 +200,7 @@ int main()
     const float grainTimes[] = { cfg::kMinTimeMs, 400.0f, cfg::kMaxTimeMs };
     const float feedbacks[] = { 0.0f, cfg::kMaxFeedback };
     const float pitches[] = { -1.0f, 0.0f, 1.0f };
-    const float decays[] = { ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay };
+    const float decays[] = { ee::dsp::SpaceReverb::kMinDecay, ee::dsp::SpaceReverb::kMaxDecay };
     const float verbs[] = { 0.0f, 1.0f };
     const Input inputs[] = { Input::noise, Input::dc, Input::impulses, Input::poison };
 
@@ -250,7 +249,7 @@ int main()
                 for (float pitch : pitches)
                 {
                     const auto result = run (size, cfg::kMaxDensityHz, 400.0f, pitch, cfg::kMaxFeedback, fc.freeze,
-                                             fc.stretch, ee::dsp::FdnReverb::kMaxDecay, 1.0f, input);
+                                             fc.stretch, ee::dsp::SpaceReverb::kMaxDecay, 1.0f, input);
 
                     finite = finite && result.finite;
 
@@ -278,7 +277,7 @@ int main()
                     for (float feedback : feedbacks)
                     {
                         const auto result = run (size, cfg::kMaxDensityHz, 400.0f, 0.0f, feedback, false, 1.0f,
-                                                 ee::dsp::FdnReverb::kMaxDecay, 1.0f, input, family, shape);
+                                                 ee::dsp::SpaceReverb::kMaxDecay, 1.0f, input, family, shape);
 
                         finite = finite && result.finite;
 

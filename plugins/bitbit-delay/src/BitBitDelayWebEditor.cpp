@@ -176,12 +176,12 @@ BitBitDelayWebEditor::BitBitDelayWebEditor (BitBitDelayProcessor& p)
     // Just a starting size for the brief moment before the page's own
     // ResizeObserver reports its real rendered size - see jsui/src/autoSize.js.
     // Close to the real thing on purpose: the width is exact (the card is a
-    // fixed 528 plus .page's 4px each side), the height only a guess, so the
+    // fixed 415 plus .page's 4px each side), the height only a guess, so the
     // host sees at most a small vertical correction rather than a window that
     // visibly jumps. It must not be *relied* on - a face whose card can't fit
     // in the starting window used to deadlock here, which is what Card.css's
     // `flex: none` now prevents.
-    setSize (536, 440);
+    setSize (423, 558);
     setResizable (false, false);
 
     startTimerHz (45); // the rate BitBit Wah's own live feed runs at

@@ -585,13 +585,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitGrainProcessor::create
     // processBlock's own note on where that tap sits (there used to be a
     // "Reverb Source" choice, Global vs Grains; Global is gone, and with only
     // one choice left the parameter went with it).
-    auto decayRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
+    auto decayRange = juce::NormalisableRange<float> (ee::dsp::SpaceReverb::kMinDecay, ee::dsp::SpaceReverb::kMaxDecay);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kDecayID, 1 }, "Decay", decayRange, cfg::kDefaultReverbDecaySeconds,
         juce::AudioParameterFloatAttributes().withStringFromValueFunction (decaySecondsToText)));
 
     auto loCutRange =
-        juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz, ee::dsp::FdnReverb::kMaxLowCutHz);
+        juce::NormalisableRange<float> (ee::dsp::SpaceReverb::kMinLowCutHz, ee::dsp::SpaceReverb::kMaxLowCutHz);
     loCutRange.setSkewForCentre (180.0f);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { kReverbLoCutID, 1 }, "Reverb Low Cut", loCutRange, cfg::kDefaultReverbLoCutHz,
@@ -1016,16 +1016,17 @@ void BitBitGrainProcessor::prepareToPlay (double sampleRate, int maximumExpected
 
     // Set here as well as per block: a host asks for getTailLengthSeconds()
     // before it ever calls processBlock, and without this it is answered from
-    // FdnReverb's own default decay rather than the knob.
+    // SpaceReverb's own default decay rather than the knob.
     reverb.setDecayTime (decayParam->load());
     reverb.setLowCut (reverbLoCutParam->load());
 
-    // Fixed for the life of the plugin: BitBit Grain runs the network plain. Read
-    // back from the engine's own tuning, so a value the dev panel has changed
-    // survives the host re-preparing us.
-    const auto& tuning = grainer.getTuning();
-    reverb.setResonance (tuning.verbResonance);
-    reverb.setShimmer (ee::dsp::config::kVerbShimmer);
+    // Fixed for the life of the plugin: only Decay, Low Cut and Mix are on the
+    // face, so the rest of the Studio engine rests where BitBit Reverb's own
+    // Studio default puts it.
+    reverb.setDamping (ee::dsp::config::kReverbDamping01);
+    reverb.setPredelay (0.0f);
+    reverb.setHighCut (ee::dsp::SpaceReverb::kMaxHighCutHz);
+    reverb.setSize (ee::dsp::SpaceReverb::kDefaultSize);
 
     grainBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
     dryBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
@@ -1472,7 +1473,9 @@ void BitBitGrainProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
 
         float* verbL = verbBuffer.getWritePointer (0);
         float* verbR = verbBuffer.getWritePointer (1);
-        reverb.process (mono, verbL, verbR, chunk);
+        // Mono cloud into both sides of the stereo engine: the send is one
+        // signal (see above), the engine's own early echoes do the widening.
+        reverb.process (mono, mono, verbL, verbR, chunk);
 
         float* outL = buffer.getWritePointer (0, offset);
         float* outR = numOut > 1 ? buffer.getWritePointer (1, offset) : nullptr;

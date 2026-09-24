@@ -20,8 +20,13 @@ export { default as WaveIcon } from "./WaveIcon.jsx";
 export { default as FilterCurveIcon } from "./FilterCurveIcon.jsx";
 export { default as FilterScope } from "./FilterScope.jsx";
 export { default as CrushScope } from "./CrushScope.jsx";
+export { default as AmpScope } from "./AmpScope.jsx";
 export { default as RingScope } from "./RingScope.jsx";
 export { default as RustScope } from "./RustScope.jsx";
+// The Modulation module's Chorus and Phaser displays, drawn from the engines' own constants.
+export { ChorusScope, PhaserScope } from "./ModScope.jsx";
+// The Reverb module's display, one for all three engines.
+export { default as ReverbScope } from "./ReverbScope.jsx";
 export { freqHzFor01 } from "./autowah.js";
 // The shaped LFO the tremolo engine runs on, ported from ee/dsp/Lfo.h - so a
 // face drawing that engine's envelope draws the wave it actually produces.

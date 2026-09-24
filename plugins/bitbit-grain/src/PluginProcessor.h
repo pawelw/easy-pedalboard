@@ -5,7 +5,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 #include "ee/dsp/BreakpointLfo.h"
-#include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/Grainer.h"
@@ -219,7 +219,7 @@ private:
     std::atomic<float> visLevel { 0.0f };
     std::atomic<float> visDryLevel { 0.0f };
     ee::dsp::TapeDelay delay;
-    ee::dsp::FdnReverb reverb;
+    ee::dsp::SpaceReverb reverb;
 
     /** Amp's own single-knob drive stage (see ee/dsp/TubeDrive.h), run on the
         grain cloud alone - same insertion point as the cloud Filter, right

@@ -1,0 +1,52 @@
+/* The Chorus / Phaser well: BarDisplay's recess, so the Modulation module's
+   displays read as one family whichever engine is up. */
+.pui-modscope {
+  height: 63px;
+  border-radius: 12px;
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  overflow: hidden;
+}
+
+.pui-modscope__svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* The well stretches its 140-unit viewBox to whatever the module is wide, so
+   every stroke is held to screen pixels rather than stretched with it. */
+.pui-modscope__svg * {
+  vector-effect: non-scaling-stroke;
+}
+
+.pui-modscope__grid {
+  stroke: var(--pui-scope-grid);
+  stroke-width: 1;
+}
+
+.pui-modscope__trace {
+  fill: none;
+  stroke: var(--pui-accent, var(--pui-ink));
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.9;
+}
+
+/* The right channel: the same line, stepped back. */
+.pui-modscope__trace--r {
+  stroke-width: 1.1;
+  opacity: 0.4;
+}
+
+.pui-modscope__band {
+  fill: var(--pui-accent, var(--pui-ink));
+  opacity: 0.14;
+  stroke: none;
+}
+
+/* ReverbScope's waveform: denser than an LFO trace, so a finer line. */
+.pui-modscope__trace--thin {
+  stroke-width: 1;
+}

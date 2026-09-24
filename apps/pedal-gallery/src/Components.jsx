@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 import {
   PedalUIProvider,
+  AmpScope,
   BarDisplay,
+  ChorusScope,
+  PhaserScope,
+  ReverbScope,
   Card,
   EngineStepper,
   Knob,
@@ -282,6 +286,70 @@ function Showcase() {
           <div style={{ width: 162, "--pui-accent": "var(--pui-accent-reverb)" }}>
             <BarDisplay heights={DECAY_BARS} align="bottom" ariaLabel="Reverb decay" />
           </div>
+        </div>
+
+        {/* The engine displays drawn from their engines' own maths, each at
+            three knob settings - rest, default-ish and full - so a change to
+            the port shows up here without a host. */}
+        <SectionLabel>Chorus scope — rate / depth / phase</SectionLabel>
+        <div style={{ display: "flex", gap: 14, "--pui-accent": "var(--pui-accent-mod)" }}>
+          {[
+            [0.3, 0, 0.6],
+            [0.4, 0.45, 0.6],
+            [0.8, 1, 1],
+          ].map(([r, d, p]) => (
+            <div key={`${r}${d}${p}`} style={{ width: 150 }}>
+              <ChorusScope rate01={r} depth01={d} phase01={p} />
+            </div>
+          ))}
+        </div>
+
+        <SectionLabel>Phaser scope — rate / depth</SectionLabel>
+        <div style={{ display: "flex", gap: 14, "--pui-accent": "var(--pui-accent-mod)" }}>
+          {[
+            [0.3, 0],
+            [0.35, 0.75],
+            [0.8, 1],
+          ].map(([r, d]) => (
+            <div key={`${r}${d}`} style={{ width: 150 }}>
+              <PhaserScope rate01={r} depth01={d} />
+            </div>
+          ))}
+        </div>
+
+        <SectionLabel>Reverb scope — spring (tension 0 / 1), shimmer (-1 / 0 / +1), studio (size 0 / 0.5 / 1, then damped + pre-delay + cuts, then damping 50 % at short / long decay)</SectionLabel>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 14, "--pui-accent": "var(--pui-accent-reverb)" }}>
+          {[
+            { engine: "spring", decay01: 0.5, tension01: 0, lowCut01: 0.3, highCut01: 0.5 },
+            { engine: "spring", decay01: 0.5, tension01: 1, lowCut01: 0.3, highCut01: 0.5 },
+            { engine: "shimmer", decay01: 0.67, damping01: 0.5, lowCut01: 0, highCut01: 1, octave: 0 },
+            { engine: "shimmer", decay01: 0.67, damping01: 0.5, lowCut01: 0, highCut01: 1, octave: 1 },
+            { engine: "shimmer", decay01: 0.67, damping01: 0.5, lowCut01: 0, highCut01: 1, octave: 2 },
+            { engine: "studio", decay01: 0.6, size01: 0, predelay01: 0, damping01: 0.25, lowCut01: 0, highCut01: 1 },
+            { engine: "studio", decay01: 0.6, size01: 0.5, predelay01: 0, damping01: 0.25, lowCut01: 0, highCut01: 1 },
+            { engine: "studio", decay01: 0.6, size01: 1, predelay01: 0, damping01: 0.25, lowCut01: 0, highCut01: 1 },
+            { engine: "studio", decay01: 0.6, size01: 1, predelay01: 0.8, damping01: 1, lowCut01: 0.6, highCut01: 0.3 },
+            { engine: "studio", decay01: 0.05, size01: 0.5, predelay01: 0, damping01: 0.5, lowCut01: 0, highCut01: 1 },
+            { engine: "studio", decay01: 0.9, size01: 0.5, predelay01: 0, damping01: 0.5, lowCut01: 0, highCut01: 1 },
+          ].map((p, i) => (
+            <div key={i} style={{ width: 150 }}>
+              <ReverbScope {...p} />
+            </div>
+          ))}
+        </div>
+
+        <SectionLabel>Amp scope — drive / bit</SectionLabel>
+        <div style={{ display: "flex", gap: 14 }}>
+          {[
+            [0, 0],
+            [0.35, 0],
+            [1, 0],
+            [0.6, 0.5],
+          ].map(([dr, b]) => (
+            <div key={`${dr}${b}`} style={{ width: 150 }}>
+              <AmpScope drive01={dr} bit01={b} />
+            </div>
+          ))}
         </div>
 
         {/* The shell assembled: a side module at its real 180px track width,

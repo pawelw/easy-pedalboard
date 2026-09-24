@@ -480,20 +480,20 @@ constexpr bool kDefaultDelaySync = true;
 // ============================================================================
 // REVERB
 // ============================================================================
-// BitBit Grain runs ee::dsp::FdnReverb plain: the two knobs are its decay (in
-// seconds, straight onto the network) and its mix, and everything else is pinned
-// here. No shimmer - the header states 0 means the pitch shifters never run, so
-// it costs nothing. The reverb now hears the whole post-delay blend rather than
-// a grain-only send.
-constexpr float kVerbShimmer = 0.0f;
+// BitBit Grain runs ee::dsp::SpaceReverb - BitBit Reverb's Studio engine - and
+// the face's three knobs are its decay (RT60 of the low mids, in seconds), its
+// Low Cut and the mix; everything else is pinned here at BitBit Reverb's own
+// Studio defaults. (It used to run FdnReverb, the Shimmer engine's network, at
+// shimmer 0; kVerbShimmer went with it.)
+constexpr float kReverbDamping01 = 0.25f;
 
-constexpr float kDefaultReverbDecaySeconds = 2.5f;
+constexpr float kDefaultReverbDecaySeconds = 3.0f;
 constexpr float kDefaultReverbMixPct = 30.0f;
 
-// Low Cut is a real face knob now (it used to be GrainerTuning::verbLowCutHz,
-// fixed and never exposed); this is that same resting point, kept here as the
-// parameter's default so the two stay obviously in step.
-constexpr float kDefaultReverbLoCutHz = 120.0f;
+// Low Cut sits at 30% of the knob's travel by default. The range is 20-800 Hz
+// with its centre pulled to 180 Hz (see PluginProcessor.cpp), which puts 30% of
+// the way round at about 70 Hz.
+constexpr float kDefaultReverbLoCutHz = 70.0f;
 
 // ============================================================================
 // GRAIN SIZE / DENSITY SYNC

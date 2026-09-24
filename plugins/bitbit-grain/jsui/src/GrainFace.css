@@ -207,14 +207,28 @@
   padding: 6px 0 2px;
 }
 
-/* Fader plus its own dB ladder. Bottom-aligned, which is the one edge the two
-   share without measuring: the fader's label sits above its track, so the
-   track's floor and the ladder's are the same line. */
+/* Fader plus its own dB ladder. Top-aligned, with the ladder dropped by what
+   sits above the track - the label (fixed at 12px below) and the fader's 8px
+   gap - so the ladder spans the track itself. It used to be bottom-aligned,
+   which only works while nothing hangs under the track: in a host the fader
+   also renders its dB readout there (the Vite stub has none, which is why
+   this looked fine locally), the box grew by one readout, and the ladder's
+   "60" landed on the "-1.1 dB" text. Measured from the top, the ladder does
+   not care whether the readout is there. */
 .pg-mixer__strip {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   gap: 0;
   flex: none;
+}
+
+.pg-mixer__strip .pui-fader__label {
+  height: 12px;
+  line-height: 12px;
+}
+
+.pg-mixer__strip .pg-meter {
+  margin-top: 20px;
 }
 
 /* Over the ladder's ticks pulled under it (MixerMeter.jsx's own -3px), the

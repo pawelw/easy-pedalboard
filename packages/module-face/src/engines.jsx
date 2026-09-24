@@ -96,8 +96,8 @@ export const MOD_ENGINES = [
     name: "Trem",
     icon: <TremoloIcon size={22} />,
     prefix: "trem.",
-    // The one engine with a display: a tremolo's shape is the whole of what it
-    // does, and four knob captions do not show it.
+    // A tremolo's shape is the whole of what it does, and four knob captions
+    // do not show it. Chorus and Phaser draw their LFO the same way.
     display: "tremolo",
     knobs: [
       ["amount", "Amount"],
@@ -122,6 +122,7 @@ export const MOD_ENGINES = [
     name: "Chorus",
     icon: <ModIcon size={20} />,
     prefix: "chorus.",
+    display: "chorus",
     knobs: [
       ["rate", "Rate"],
       ["depth", "Depth"],
@@ -140,6 +141,7 @@ export const MOD_ENGINES = [
     name: "Phaser",
     icon: <PhaserIcon size={22} />,
     prefix: "phase.",
+    display: "phaser",
     knobs: [
       ["rate", "Rate"],
       ["depth", "Depth"],
@@ -185,16 +187,17 @@ export const FILTER_WAVES = [
   { name: "Square", shape01: 1.0 },
 ];
 
-// Every reverb shows the decay display: what a reverb does is a tail, and the
-// Decay knob is the one control whose effect is worth drawing. In the order of
-// the owner's `engine` choice - Spring, Shimmer, Studio.
+// Every reverb shows the same display - its tail as a time x frequency map,
+// drawn from that engine's own decay model (pedal-ui's ReverbScope), so every
+// knob on the engine shows up in it. `display` names the model. In the order
+// of the owner's `engine` choice - Spring, Shimmer, Studio.
 export const REVERB_ENGINES = [
   {
     name: "Spring",
     icon: <SpringIcon size={22} />,
     prefix: "spring.",
-    display: "decay",
-    decayId: "spring.decay",
+    display: "reverb",
+    reverb: "spring",
     // No Reso: a spring tank has no resonance control to expose. What Shimmer
     // calls Reso is how hard its FDN is allowed to ring, and a tank's
     // equivalent is its decay - so a knob for it here would have been a
@@ -222,6 +225,8 @@ export const REVERB_ENGINES = [
     name: "Shimmer",
     icon: <ShimmerIcon size={22} />,
     prefix: "space.",
+    display: "reverb",
+    reverb: "shimmer",
     picker: { paramId: "octave", options: ["-1 Oct", "0", "+1 Oct"], label: "Shimmer octave" },
     lead: [
       ["decay", "Decay"],
@@ -243,8 +248,8 @@ export const REVERB_ENGINES = [
     name: "Studio",
     icon: <SpaceIcon size={22} />,
     prefix: "studio.",
-    display: "decay",
-    decayId: "studio.decay",
+    display: "reverb",
+    reverb: "studio",
     lead: [
       ["decay", "Decay"],
       ["size", "Size"],

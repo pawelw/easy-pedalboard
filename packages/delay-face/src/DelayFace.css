@@ -163,3 +163,38 @@
 .pd-footer__section + .pd-footer__section {
   border-left: 1px solid var(--pui-divider);
 }
+
+/* The six footer knobs wear the same light cap as the effect knobs in BitBit
+   Grain's Delay and Reverb sections (GrainFace.css): a dark bezel, a pale dish
+   and a black tick. Scoped to the footer, and not in Knob.css, so every other
+   pedal's concave knobs keep their dark dish. */
+.pd-footer .pui-knob__body--concave {
+  background: #2e3539;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgb(255 255 255 / 9%);
+}
+
+.pd-footer .pui-knob__concave-face {
+  inset: 5%;
+  background: #b5b5b5;
+}
+
+.pd-footer .pui-knob__pointer--concave {
+  top: 11%;
+  height: 20%;
+  background: #000000;
+  box-shadow: none;
+}
+
+/* The footer knobs' value arc is the Delay green - the same colour as the
+   Delay module's header knob in Alpine - rather than StageGroup's grayscale
+   pair. The track stays as it is. */
+.pd-footer .pui-stage-group {
+  --pui-soft-lit: var(--pui-accent-delay);
+}
+
+/* Likewise the four large knobs in the centre row - Mix, Feedback and the two
+   Times: their lit ticks are the Delay green too. Set on the knobs rather than
+   the row, so nothing else in it that reads --pui-tick-lit changes. */
+.pd-row .pui-knob {
+  --pui-tick-lit: var(--pui-accent-delay);
+}

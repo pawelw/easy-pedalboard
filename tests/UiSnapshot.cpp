@@ -4,6 +4,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/GrainSyncMap.h"
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/Lfo.h"
@@ -584,13 +585,13 @@ public:
 
         // Reverb: decay in seconds, Low Cut (a real knob now, was fixed), its
         // own mix.
-        auto decayRange = juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinDecay, ee::dsp::FdnReverb::kMaxDecay);
+        auto decayRange = juce::NormalisableRange<float> (ee::dsp::SpaceReverb::kMinDecay, ee::dsp::SpaceReverb::kMaxDecay);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "decay", 1 }, "Decay", decayRange, cfg::kDefaultReverbDecaySeconds,
             juce::AudioParameterFloatAttributes().withStringFromValueFunction (
                 [] (float v, int) { return juce::String (v, 2) + " s"; })));
         auto loCutRange =
-            juce::NormalisableRange<float> (ee::dsp::FdnReverb::kMinLowCutHz, ee::dsp::FdnReverb::kMaxLowCutHz);
+            juce::NormalisableRange<float> (ee::dsp::SpaceReverb::kMinLowCutHz, ee::dsp::SpaceReverb::kMaxLowCutHz);
         loCutRange.setSkewForCentre (180.0f);
         layout.add (std::make_unique<juce::AudioParameterFloat> (
             juce::ParameterID { "rlocut", 1 }, "Reverb Low Cut", loCutRange, cfg::kDefaultReverbLoCutHz,

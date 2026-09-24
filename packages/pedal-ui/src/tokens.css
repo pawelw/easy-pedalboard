@@ -404,9 +404,9 @@
    modulation, and inside BitBit Alpine it sits a module away from the panel
    that already means that. */
 :root {
-  --pui-stage-tape: #309a10;
-  --pui-stage-mod: var(--pui-accent-mod);
-  --pui-stage-filter: #e08fc0;
+  --pui-stage-tape: #97be71;
+  --pui-stage-mod: #97be71;
+  --pui-stage-filter: #97be71;
 }
 
 /* BitBit Alpine's three module accents, outside the theme blocks for exactly
