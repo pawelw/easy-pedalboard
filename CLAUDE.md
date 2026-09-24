@@ -64,8 +64,8 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_grain_host_artefacts/Release/ee_grain_host        # drives the real processor like a host
 ./build/tests/ee_au_host_artefacts/Release/ee_au_host              # runs an *installed* AU, by identifier
 ./build/tests/ee_plugin_render_artefacts/Release/ee_plugin_render 'AudioUnit:Effects/aufx,Ni$Q,-NI-' --set Decay=2 --in dry.wav --out ref.wav  # renders through any installed AU at knob values set by their text
-./build/tests/ee_space_fit_artefacts/Release/ee_space_fit --decay 2 --damp 0.25 --out ir.wav [field=value ...]  # SpaceReverb (the Modern engine) alone, any voicing field overridden
-./build/tests/ee_reverb_match_artefacts/Release/ee_reverb_match dry.wav out.wav 2 20 [damp] [predelay] [locut] [hicut]  # the real BitBit Reverb processor, Modern engine
+./build/tests/ee_space_fit_artefacts/Release/ee_space_fit --decay 2 --damp 0.25 --out ir.wav [field=value ...]  # SpaceReverb (the Studio engine) alone, any voicing field overridden
+./build/tests/ee_reverb_match_artefacts/Release/ee_reverb_match dry.wav out.wav 2 20 [damp] [predelay] [locut] [hicut]  # the real BitBit Reverb processor, Studio engine
 ./build/tests/ee_ui_snapshot_artefacts/Release/ee_ui_snapshot /tmp # renders every face to PNG
 ./build/tests/ee_sympathy_regress_artefacts/Release/ee_sympathy_regress  # BitBit Sympathy, checksum per pass
 ./build/tests/ee_sympathy_stress_artefacts/Release/ee_sympathy_stress    # resonator bank runaway / non-finite hunt
@@ -108,7 +108,7 @@ parameters by their *displayed* value (`--set Decay=2.5` bisects until the
 plugin prints 2.5; `n:0.4` sets the normalised value) and renders a file or a
 unit impulse. Every `--set` is applied twice, because some plugins move one
 knob when another is set (Raum resets Mix when Decay changes). BitBit Reverb's
-Modern engine (`ee::dsp::SpaceReverb`) was fitted to NI Raum this way:
+Studio engine (`ee::dsp::SpaceReverb`) was fitted to NI Raum this way:
 impulse responses over a Decay x Damp grid, octave-band T20 and per-octave
 energy, then `ee_space_fit` renders of the engine measured with the same
 analysis. `SpaceConfig.h` records what was measured and how. Match per octave,
@@ -305,7 +305,7 @@ Never reformat a file you are not otherwise changing.
 shared/include/ee/dsp/    DSP primitives and engines (mostly header-only) -
                           Chorus, Phaser, Tremolo, TapeMachine, FdnReverb
                           (the Shimmer reverb, and BitBit Grain's), SpaceReverb
-                          (the Modern reverb), SpringReverb, TapeDelay. A pedal is one of these plus
+                          (the Studio reverb), SpringReverb, TapeDelay. A pedal is one of these plus
                           its parameters; nothing owns its own copy of the maths.
 shared/include/ee/dsp/*Config.h   tuning constants — the knobs behind the knobs
 shared/src/dsp/           FdnReverb, SpaceReverb, SpringReverb + TapeDelay implementations

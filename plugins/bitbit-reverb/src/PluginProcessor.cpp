@@ -36,6 +36,14 @@ juce::String msToText (float value, int)
     return juce::String (juce::roundToInt (value)) + " ms";
 }
 
+/** "100 %" at the voicing this engine was fitted to NI Raum at - Studio's Size
+    is a scale, not a 0..1 amount, so it gets its own readout rather than
+    addPercent's fixed 0..100 range. */
+juce::String sizeToText (float value, int)
+{
+    return juce::String (juce::roundToInt (value * 100.0f)) + " %";
+}
+
 using Attributes = juce::AudioParameterFloatAttributes;
 
 Attributes withText (juce::String (*fn) (float, int))
@@ -74,11 +82,20 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitReverbProcessor::creat
     // `rev.` - the same module, so the same knob position sounds the same.
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::on, 1 }, "On", true));
     layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::engine, 1 }, "Engine",
-                                                              juce::StringArray { "Spring", "Shimmer", "Modern" }, 2));
+                                                              juce::StringArray { "Spring", "Shimmer", "Studio" }, 2));
     addPercent (layout, id::mix, "Mix", 30.0f);
 
-    // Shimmer (the `space.` ids - see Params.h). Decay, its own feedback
-    // amount and Reso are fixed inside ee::fx::ReverbModule::setShimmer.
+    // Shimmer (the `space.` ids - see Params.h). Its own feedback amount and
+    // Reso stay fixed inside ee::fx::ReverbModule::setShimmer; Decay is a
+    // knob again, clamped to ReverbModule::kMinShimmerDecay..kMaxShimmerDecay
+    // rather than FdnReverb's own wider range.
+    auto spaceDecay = juce::NormalisableRange<float> (ee::fx::ReverbModule::kMinShimmerDecay,
+                                                       ee::fx::ReverbModule::kMaxShimmerDecay);
+    // 8 s - what this was pinned to before Decay came back as a knob (the old
+    // FdnReverb::kMaxDecay, back when that was 8 rather than 10), so an
+    // untouched Shimmer sounds exactly as it always has.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::spaceDecay, 1 }, "Shimmer Decay",
+                                                             spaceDecay, 8.0f, withText (secondsToText)));
     layout.add (std::make_unique<juce::AudioParameterChoice> (
         juce::ParameterID { id::spaceOctave, 1 }, "Shimmer Octave", juce::StringArray { "-1 Oct", "0", "+1 Oct" }, 2));
 
@@ -122,29 +139,33 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitReverbProcessor::creat
                                                              springHiCut, ee::dsp::spring::kOutputHighCutHz,
                                                              withText (hertzToText)));
 
-    // Modern, appended last. Decay is the RT60 of the low mids and Damping the
+    // Studio, appended last. Decay is the RT60 of the low mids and Damping the
     // reference's Damp, one for one - see SpaceConfig.h. Pre-delay adds to the
     // engine's own ~18 ms before the first echo; 0 is the reference's setting.
-    using Modern = ee::dsp::SpaceReverb;
-    auto modernDecay = juce::NormalisableRange<float> (Modern::kMinDecay, Modern::kMaxDecay);
-    modernDecay.setSkewForCentre (2.0f);
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::modernDecay, 1 }, "Modern Decay",
-                                                             modernDecay, 2.0f, withText (secondsToText)));
+    using Studio = ee::dsp::SpaceReverb;
+    auto studioDecay = juce::NormalisableRange<float> (Studio::kMinDecay, Studio::kMaxDecay);
+    studioDecay.setSkewForCentre (2.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::studioDecay, 1 }, "Studio Decay",
+                                                             studioDecay, 3.0f, withText (secondsToText)));
     layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { id::modernPredelay, 1 }, "Modern Pre-delay",
-        juce::NormalisableRange<float> (Modern::kMinPredelayMs, Modern::kMaxPredelayMs), 0.0f, withText (msToText)));
-    addPercent (layout, id::modernDamping, "Modern Damping", 25.0f);
+        juce::ParameterID { id::studioSize, 1 }, "Studio Size",
+        juce::NormalisableRange<float> (Studio::kMinSize, Studio::kMaxSize), Studio::kDefaultSize,
+        withText (sizeToText)));
+    layout.add (std::make_unique<juce::AudioParameterFloat> (
+        juce::ParameterID { id::studioPredelay, 1 }, "Studio Pre-delay",
+        juce::NormalisableRange<float> (Studio::kMinPredelayMs, Studio::kMaxPredelayMs), 0.0f, withText (msToText)));
+    addPercent (layout, id::studioDamping, "Studio Damping", 25.0f);
 
-    auto modernLoCut = juce::NormalisableRange<float> (Modern::kMinLowCutHz, Modern::kMaxLowCutHz);
-    modernLoCut.setSkewForCentre (180.0f);
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::modernLoCut, 1 }, "Modern Low Cut",
-                                                             modernLoCut, Modern::kMinLowCutHz,
+    auto studioLoCut = juce::NormalisableRange<float> (Studio::kMinLowCutHz, Studio::kMaxLowCutHz);
+    studioLoCut.setSkewForCentre (180.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::studioLoCut, 1 }, "Studio Low Cut",
+                                                             studioLoCut, Studio::kMinLowCutHz,
                                                              withText (hertzToText)));
 
-    auto modernHiCut = juce::NormalisableRange<float> (Modern::kMinHighCutHz, Modern::kMaxHighCutHz);
-    modernHiCut.setSkewForCentre (6000.0f);
-    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::modernHiCut, 1 }, "Modern Hi Cut",
-                                                             modernHiCut, Modern::kMaxHighCutHz,
+    auto studioHiCut = juce::NormalisableRange<float> (Studio::kMinHighCutHz, Studio::kMaxHighCutHz);
+    studioHiCut.setSkewForCentre (6000.0f);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::studioHiCut, 1 }, "Studio Hi Cut",
+                                                             studioHiCut, Studio::kMaxHighCutHz,
                                                              withText (hertzToText)));
 
     return layout;
@@ -161,10 +182,10 @@ void BitBitReverbProcessor::pushSettings() noexcept
 
     // The octave choice's raw value is its index (0/1/2), not the -1/0/+1 the
     // engine wants.
-    module.setShimmer (static_cast<int> (raw (id::spaceOctave)) - 1, raw (id::spaceLoCut), raw (id::spaceHiCut),
-                       pct (id::spaceDamping));
-    module.setModern (raw (id::modernDecay), raw (id::modernPredelay), pct (id::modernDamping), raw (id::modernLoCut),
-                      raw (id::modernHiCut));
+    module.setShimmer (raw (id::spaceDecay), static_cast<int> (raw (id::spaceOctave)) - 1, raw (id::spaceLoCut),
+                       raw (id::spaceHiCut), pct (id::spaceDamping));
+    module.setStudio (raw (id::studioDecay), raw (id::studioPredelay), pct (id::studioDamping), raw (id::studioLoCut),
+                      raw (id::studioHiCut), raw (id::studioSize));
     module.setSpring (raw (id::springDecay), pct (id::springTension), raw (id::springLoCut), raw (id::springHiCut));
 }
 

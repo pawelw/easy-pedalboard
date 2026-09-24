@@ -6,7 +6,7 @@ namespace ee::dsp
 {
 
 /**
- * Voicing for SpaceReverb - BitBit Reverb's and BitBit Alpine's Modern engine.
+ * Voicing for SpaceReverb - BitBit Reverb's and BitBit Alpine's Studio engine.
  *
  * Fitted against NI Raum's Airy mode at Size 70 %, Diffusion 25 %, Modulation
  * ~18 %, measured offline through ee_plugin_render (the installed AU, driven

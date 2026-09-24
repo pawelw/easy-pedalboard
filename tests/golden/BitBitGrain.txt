@@ -201,10 +201,10 @@ parameters 51
     range      0 100 interval 0.100000001 skew 1
 30 decay
     name       "Decay"
-    default    0.266666681
+    default    0.210526317
     version    1
     steps      2147483647 continuous automatable
-    range      0.5 8 interval 0 skew 1
+    range      0.5 10 interval 0 skew 1
 31 rlocut
     name       "Reverb Low Cut"
     default    0.407057077

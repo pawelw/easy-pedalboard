@@ -2,7 +2,7 @@
  * A four-point sparkle with a smaller one above it: the Reverb module's Shimmer
  * engine, whose tail climbs an octave on every pass. The sparkle rather than
  * SpaceIcon's rings because the pitch climbing is what sets this engine apart
- * from the Modern one beside it, which keeps the rings.
+ * from the Studio one beside it, which keeps the rings.
  *
  * Same 44x36 family as the other engine glyphs, so all three Reverb engines sit
  * at one size in an `EngineStepper`.

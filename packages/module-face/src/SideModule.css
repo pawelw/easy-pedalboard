@@ -66,11 +66,35 @@
 }
 
 /* A picker stepper (the Shimmer engine's octave), below its knob grid on the
-   same 16px lead the sync pill above uses. No fixed slot height of its own -
-   a well sizes to its own content, the way the module's own engine stepper
-   at the top of the body does. */
+   same 16px lead the sync pill above uses. Sized down from the module's own
+   engine stepper at the top of the body (the well the base .pui-stepper rule
+   draws) - full width there reads as this engine's own identity, which a
+   secondary control below the knobs is not, so it shrinks to its content and
+   centres instead. The name well stays unfixed (no width set) rather than
+   following ShapeFamilyStepper's fixed 42px (BitBit Grain) - "-1 Oct" and
+   "+1 Oct" are exactly the two longest labels this picker will ever show, so
+   there is nothing a fixed width would be protecting against, and fitting
+   the actual text is worth more than a well that never moves. */
 .sm-picker {
   margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.sm-picker .pui-stepper {
+  width: fit-content;
+  gap: 2px;
+  padding: 3px 6px;
+}
+
+.sm-picker .pui-stepper__arrow {
+  width: 16px;
+  height: 16px;
+}
+
+.sm-picker .pui-stepper__name {
+  font-size: 8px;
+  letter-spacing: 0.08em;
 }
 
 /* The Filter engine's response scope. FilterScope reads the --pui-scope-*

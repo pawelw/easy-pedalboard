@@ -669,11 +669,11 @@ The website already promises "global presets across the whole chain".
 - Get a second pair of ears. Presets are the demo most buyers judge you on, and
   the author is the worst judge of their own.
 
-### 5.2 Third reverb engine (your item 6) — **DONE, as Modern rather than Plate** ✅
+### 5.2 Third reverb engine (your item 6) — **DONE, as Studio rather than Plate** ✅
 
 Landed 2026-09-23 (`Reverb changes`, `Reverb more knobs`), and it took the
 **expensive and distinctive** path this section offered as the alternative to a
-cheap third `FdnReverb` voicing, not the cheap one: **Modern**
+cheap third `FdnReverb` voicing, not the cheap one: **Studio**
 (`ee::dsp::SpaceReverb`) is a separate engine, not a `PlateConfig.h` retune of
 the existing FDN, voiced against a real commercial reference — NI Raum's Airy
 mode — by rendering impulse responses over a Decay × Damp grid and matching
@@ -682,19 +682,26 @@ the tail's per-octave autocorrelation. `SpaceConfig.h` records what was
 measured. This is a bigger undertaking than the "cheap and credible" option
 ever needed to be, not a shortfall against it.
 
-BitBit Reverb is now three engines — **Spring, Shimmer, Modern** — where it
+Named Studio as of 2026-09-24 - it shipped as "Modern" and was renamed before
+anything sold, so unlike Shimmer's `space.` ids there was no saved session to
+protect: the parameter ids moved with it (`modern.*` → `studio.*` in both
+`bitbit-reverb` and `bitbit-alpine`'s `rev.modern.*` → `rev.studio.*`), rather
+than leaving the display name ahead of a stale id prefix. The golden files
+were regenerated and say so.
+
+BitBit Reverb is now three engines — **Spring, Shimmer, Studio** — where it
 used to be two. Shimmer is the renamed Space/`FdnReverb` (its parameters kept
 the `space.` ids: a saved session keys on them, and renaming would have lost
-every setting anyone made). Modern is true stereo in (Spring and Shimmer are
+every setting anyone made). Studio is true stereo in (Spring and Shimmer are
 mono in, stereo out, same as their standalone pedals) and follows Raum's own
 Mix law rather than the module-wide equal-power one.
 
 The checklist this section asked for, checked against what actually shipped:
 engine enum appended last ✅; `ReverbModule` prepare/render/reset ✅;
-`bitbit-reverb` params (`modern.*`) + `Init.xml` ✅; `bitbit-alpine` `rev.`
-bindings (`rev.modern.*`) ✅; the `module-face` engine list ✅; `ee_reverb_host`
+`bitbit-reverb` params (`studio.*`) + `Init.xml` ✅; `bitbit-alpine` `rev.`
+bindings (`rev.studio.*`) ✅; the `module-face` engine list ✅; `ee_reverb_host`
 coverage (all three engines, still a checksum per case) ✅; `tests/golden/BitBitReverb.txt`
-already carries the five `modern.*` parameters, so the golden freeze (1.1) is
+already carries the five `studio.*` parameters, so the golden freeze (1.1) is
 current, not stale ✅; the README ✅, with real technical detail on the match.
 **Not applicable, on reflection: `tests/UiSnapshot.cpp`.** That renderer only
 ever covered the native `ee::ui` pedals — no WebView pedal, Reverb included, is
@@ -935,7 +942,7 @@ G1  correctness              │   golden param file ✅ · CI on both platforms
                              │   both known failures closed ✅ · soak harness ·
                              │   preset-loader fuzzing          — six products
    ↓                         │
-G5a DSP content              │   reverb engine (Modern, vs. NI Raum) ✅ · latency work
+G5a DSP content              │   reverb engine (Studio, vs. NI Raum) ✅ · latency work
     ← before checksums freeze│
    ↓                         │
 G1b re-baseline              │   *_regress checksums frozen, per platform

@@ -7,13 +7,13 @@
 
 /** Offline renderer used to A/B the plugin against a reference recording.
 
-    Runs a dry file through the real BitBitReverbProcessor's Modern engine, so the
+    Runs a dry file through the real BitBitReverbProcessor's Studio engine, so the
     module's mix law and parameter smoothing are exercised rather than
     reimplemented.
 
         ee_reverb_match in.wav out.wav <decaySeconds> <mixPercent> [dampingPercent] [predelayMs] [lowCutHz] [hiCutHz]
 
-    Always the Modern engine - the one voiced against a reference.
+    Always the Studio engine - the one voiced against a reference.
 */
 int main (int argc, char** argv)
 {
@@ -67,13 +67,13 @@ int main (int argc, char** argv)
             p->setValueNotifyingHost (p->convertTo0to1 (value));
     };
 
-    set ("engine", 2.0f); // Modern
-    set ("modern.decay", decay);
+    set ("engine", 2.0f); // Studio
+    set ("studio.decay", decay);
     set ("mix", mix);
-    set ("modern.damping", damping);
-    set ("modern.predelay", predelay);
-    set ("modern.locut", lowCut);
-    set ("modern.hicut", hiCut);
+    set ("studio.damping", damping);
+    set ("studio.predelay", predelay);
+    set ("studio.locut", lowCut);
+    set ("studio.hicut", hiCut);
     set ("on", 1.0f);
 
     juce::MidiBuffer midi;

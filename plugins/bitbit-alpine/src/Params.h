@@ -116,11 +116,13 @@ inline constexpr const char* revEngine = "rev.engine";
 inline constexpr const char* revLevel = "rev.level";
 inline constexpr const char* revMix = "rev.mix";
 
-// The Shimmer engine - still `space.`, the name it had until Modern arrived
-// beside it, so a saved session keeps its settings. Decay, the FDN's own
-// Shimmer feedback and Reso are fixed inside ee::fx::ReverbModule::setShimmer
-// - not knobs any more (see its doc comment) - so what is left is which
-// octave the feedback stacks at, the two cuts, and Damping.
+// The Shimmer engine - still `space.`, the name it had until Studio arrived
+// beside it, so a saved session keeps its settings. Decay is a knob again,
+// clamped to ee::fx::ReverbModule::kMinShimmerDecay..kMaxShimmerDecay; the
+// FDN's own Shimmer feedback and Reso stay fixed inside
+// ee::fx::ReverbModule::setShimmer (see its doc comment) - so what is left is
+// Decay, which octave the feedback stacks at, the two cuts, and Damping.
+inline constexpr const char* revSpaceDecay = "rev.space.decay";
 inline constexpr const char* revSpaceOctave = "rev.space.octave";
 inline constexpr const char* revSpaceLoCut = "rev.space.locut";
 inline constexpr const char* revSpaceHiCut = "rev.space.hicut";
@@ -131,13 +133,14 @@ inline constexpr const char* revSpringTension = "rev.spring.tension";
 inline constexpr const char* revSpringLoCut = "rev.spring.locut";
 inline constexpr const char* revSpringHiCut = "rev.spring.hicut";
 
-// The Modern engine (ee::dsp::SpaceReverb), appended after those for the same
+// The Studio engine (ee::dsp::SpaceReverb), appended after those for the same
 // reason, in the order its knobs sit on the face.
-inline constexpr const char* revModernDecay = "rev.modern.decay";
-inline constexpr const char* revModernPredelay = "rev.modern.predelay";
-inline constexpr const char* revModernDamping = "rev.modern.damping";
-inline constexpr const char* revModernLoCut = "rev.modern.locut";
-inline constexpr const char* revModernHiCut = "rev.modern.hicut";
+inline constexpr const char* revStudioDecay = "rev.studio.decay";
+inline constexpr const char* revStudioSize = "rev.studio.size";
+inline constexpr const char* revStudioPredelay = "rev.studio.predelay";
+inline constexpr const char* revStudioDamping = "rev.studio.damping";
+inline constexpr const char* revStudioLoCut = "rev.studio.locut";
+inline constexpr const char* revStudioHiCut = "rev.studio.hicut";
 
 // -------------------------------------------------------------------- chain
 // A Lehmer-code index into the 24 permutations of the four modules - see

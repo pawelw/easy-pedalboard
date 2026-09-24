@@ -179,8 +179,12 @@ void SpaceReverb::prepare (double sampleRate)
 {
     sr = sampleRate;
 
+    // Every line's buffer is sized for kMaxSize, whatever the current Size -
+    // setSize below only ever moves the read/delay position within it, so
+    // Size can move smoothly (dirty -> updateDerived) rather than needing a
+    // reset the way a genuine buffer resize would.
     const float longestEarly = juce::jmax (voicing.earlySameMs, voicing.earlyLeftToRightMs, voicing.earlyRightToLeftMs);
-    const float inputSeconds = (kMaxPredelayMs + longestEarly + 10.0f) * 0.001f;
+    const float inputSeconds = (kMaxPredelayMs + longestEarly * kMaxSize + 10.0f) * 0.001f;
     inputL.prepare (sampleRate, inputSeconds);
     inputR.prepare (sampleRate, inputSeconds);
 
@@ -190,9 +194,7 @@ void SpaceReverb::prepare (double sampleRate)
         for (auto [ap, ms] : { std::pair { &feedDiffuserMid[idx], voicing.feedDiffuserMidMs[idx] },
                                std::pair { &feedDiffuserSide[idx], voicing.feedDiffuserSideMs[idx] } })
         {
-            ap->prepare (sampleRate, (ms + 2.0f) * 0.001f);
-            // Whole samples - a fractional Hermite read would dull the top.
-            ap->setDelaySamples (juce::jmax (2.0f, std::round (ms * 0.001f * static_cast<float> (sampleRate))));
+            ap->prepare (sampleRate, (ms * kMaxSize + 2.0f) * 0.001f);
             ap->setCoefficient (voicing.feedDiffusion);
         }
     }
@@ -200,7 +202,7 @@ void SpaceReverb::prepare (double sampleRate)
     for (int i = 0; i < kLines; ++i)
     {
         const auto idx = static_cast<size_t> (i);
-        lines[idx].prepare (sampleRate, (voicing.lineMs[idx] + voicing.modDepthMs + 5.0f) * 0.001f);
+        lines[idx].prepare (sampleRate, (voicing.lineMs[idx] * kMaxSize + voicing.modDepthMs + 5.0f) * 0.001f);
         lfoPhase[idx] = static_cast<float> (i) / static_cast<float> (kLines);
     }
 
@@ -269,6 +271,16 @@ void SpaceReverb::setDamping (float amount01) noexcept
     if (! juce::approximatelyEqual (amount01, damping))
     {
         damping = amount01;
+        dirty = true;
+    }
+}
+
+void SpaceReverb::setSize (float scale) noexcept
+{
+    scale = juce::jlimit (kMinSize, kMaxSize, scale);
+    if (! juce::approximatelyEqual (scale, sizeScale))
+    {
+        sizeScale = scale;
         dirty = true;
     }
 }
@@ -355,18 +367,31 @@ void SpaceReverb::updateDerived() noexcept
     for (int i = 0; i < kLines; ++i)
     {
         const auto idx = static_cast<size_t> (i);
-        const float seconds = voicing.lineMs[idx] * 0.001f;
+        // The trip really is this long at the current Size, so both the loss
+        // filter and the per-trip gain are designed against the scaled time -
+        // otherwise RT60 would drift off the Decay knob as Size moved.
+        const float seconds = voicing.lineMs[idx] * 0.001f * sizeScale;
         lineSamples[idx] = seconds * fs;
         lineGain[idx] = std::pow (10.0f, -3.0f * seconds / rt);
         designTrip (lineShelf[idx], seconds, decaySeconds);
         lfoInc[idx] = voicing.lfoHz[idx] / fs;
     }
 
+    for (int i = 0; i < SpaceVoicing::kFeedDiffusers; ++i)
+    {
+        const auto idx = static_cast<size_t> (i);
+        // Whole samples - a fractional Hermite read would dull the top.
+        feedDiffuserMid[idx].setDelaySamples (
+            juce::jmax (2.0f, std::round (voicing.feedDiffuserMidMs[idx] * 0.001f * fs * sizeScale)));
+        feedDiffuserSide[idx].setDelaySamples (
+            juce::jmax (2.0f, std::round (voicing.feedDiffuserSideMs[idx] * 0.001f * fs * sizeScale)));
+    }
+
     // Whole samples, so the echoes are read exactly: a fractional Hermite read
     // takes ~2 dB off the top octave, which on a bare echo is audible.
-    earlySamples[0] = std::round (voicing.earlySameMs * 0.001f * fs);
-    earlySamples[1] = std::round (voicing.earlyLeftToRightMs * 0.001f * fs);
-    earlySamples[2] = std::round (voicing.earlyRightToLeftMs * 0.001f * fs);
+    earlySamples[0] = std::round (voicing.earlySameMs * 0.001f * fs * sizeScale);
+    earlySamples[1] = std::round (voicing.earlyLeftToRightMs * 0.001f * fs * sizeScale);
+    earlySamples[2] = std::round (voicing.earlyRightToLeftMs * 0.001f * fs * sizeScale);
     for (auto& filter : earlyShelf)
         designTrip (filter, voicing.earlyDampTripMs * 0.001f, std::sqrt (2.0f * decaySeconds));
 

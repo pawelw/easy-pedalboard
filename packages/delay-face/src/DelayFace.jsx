@@ -51,7 +51,9 @@ import "./DelayFace.css";
  *
  * `stageKnobSize` is the footer knobs' dial. BitBit Delay's own 38px is the
  * default; BitBit Alpine passes 36, the size every other small knob on that
- * panel is.
+ * panel is. The Filter section's Low Cut/High Cut sit 8px under it - a cut is
+ * a supporting knob, not a lead one, same as SideModule.jsx's reverb/mod
+ * engines draw it.
  *
  * `mainKnobSize` is Mix and Feedback. 76px is what BitBit Delay's 528px card was
  * laid out around; BitBit Alpine's 490px module passes 60.
@@ -219,13 +221,17 @@ function DelayFaceBody({ tapeRouter = true, stageKnobSize, mainKnobSize = 76, sc
         {/* High rests wide open at the top of its travel and counts down
             from there, so its scale fills from the maximum end - the same
             distinction BitBit EQ draws with an inverted arc on its High Cut.
-            Low is an ordinary knob: it rests at 0 Hz and fills as it opens. */}
+            Low is an ordinary knob: it rests at 0 Hz and fills as it opens.
+            Both 8px smaller than the other stage knobs - a cut is a
+            supporting knob, not a lead one, the same distinction
+            SideModule.jsx's reverb/mod engines draw on their own locut/hicut
+            pair, so a Filter section reads the same way wherever it sits. */}
         <div className="pd-footer__section">
           <StageGroup
             header={<StageHeader icon={<FilterIcon size={30} />} name="Filter" accent="var(--pui-stage-filter)" />}
           >
-            <JuceStageKnob parameterId="locut" name="Low Cut" size={stageKnobSize} />
-            <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" size={stageKnobSize} />
+            <JuceStageKnob parameterId="locut" name="Low Cut" size={stageKnobSize - 8} />
+            <JuceStageKnob parameterId="hicut" name="High Cut" scaleFrom="max" size={stageKnobSize - 8} />
           </StageGroup>
         </div>
       </div>

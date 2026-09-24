@@ -386,7 +386,7 @@ protected:
         default the same equal-power law the delay's Mix uses, so a Mix knob
         means the same thing across the modules; an engine voiced against a
         reference whose Mix behaves differently overrides both (ReverbModule's
-        Modern). Switching engines moves the gains on the usual Mix ramp. */
+        Studio). Switching engines moves the gains on the usual Mix ramp. */
     virtual float dryGainFor (int /*index*/, float mix01) const noexcept
     {
         return std::cos (mix01 * juce::MathConstants<float>::halfPi);

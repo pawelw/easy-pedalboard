@@ -13,22 +13,24 @@ namespace ee::fx
  *
  *   - Spring is BitBit Spring's tank, the same engine that pedal runs.
  *   - Shimmer is FdnReverb - the engine this module was called Space for -
- *     pinned to a fixed, always-on voicing: Decay at FdnReverb::kMaxDecay,
- *     its own Shimmer feedback at 1.0 and Reso at FdnReverb's own default
- *     (0.5), none of them knobs any more. What the face offers is which
- *     octave the feedback stacks at (setOctave), the two cuts and Damping.
- *     Its parameters kept the `space.` ids, so a session saved before Modern
- *     existed opens on the same Low Cut/Damping.
- *   - Modern is SpaceReverb, voiced against NI Raum (see SpaceConfig.h). No
+ *     narrowed to a fixed shimmer wash: its own Shimmer feedback at 1.0 and
+ *     Reso at FdnReverb's own default (0.5), neither a knob. Decay came back
+ *     as one, clamped to kMinShimmerDecay..kMaxShimmerDecay rather than
+ *     FdnReverb's full range - short of ~4 s the wash stops reading as
+ *     itself. What the face offers is Decay, which octave the feedback
+ *     stacks at (setOctave), the two cuts and Damping. Its parameters kept
+ *     the `space.` ids, so a session saved before Studio existed opens on
+ *     the same Low Cut/Damping.
+ *   - Studio is SpaceReverb, voiced against NI Raum (see SpaceConfig.h). No
  *     shimmer of its own; that is what the engine beside it is for.
  *
  * Spring and Shimmer are mono in, stereo out - a tank has one input, and the
  * FDN was voiced that way - so the module sums the incoming stereo for them
- * exactly as their pedals did. Modern is true stereo in: each input side has
+ * exactly as their pedals did. Studio is true stereo in: each input side has
  * its own echoes and its own way into the network, as the reference does, so a
  * wide source stays wide.
  *
- * Modern's Mix law is the reference's too, not the plugin-wide equal-power one
+ * Studio's Mix law is the reference's too, not the plugin-wide equal-power one
  * the other two keep: dry held at unity up to 50 % and then faded out, wet
  * rising as (2 x Mix)^1.5 to full at 50 %. Measured off Raum; a Mix of 20 %
  * there is dry 1.0 / wet 0.25, which equal power (0.95 / 0.31) is audibly not.
@@ -42,20 +44,26 @@ public:
     {
         Spring = 0,
         Shimmer,
-        Modern,
+        Studio,
         NumEngines
     };
 
+    /** Shimmer's own Decay knob is a slice of FdnReverb's full
+        kMinDecay..kMaxDecay range, not the whole thing - this was an
+        "always maxed" wash before Decay came back as a knob, and 4 s is
+        about where that character stops reading as itself. */
+    static constexpr float kMinShimmerDecay = 4.0f;
+    static constexpr float kMaxShimmerDecay = 10.0f;
+
     // -------------------------------------------------------------- the knobs
 
-    /** octave is -1/0/+1 (see FdnReverb::setOctave). Decay, the FDN's own
-        Shimmer feedback and Reso are not exposed here any more - see the
-        class note - so this only ever moves the four things still on the
-        face. Pre-delay stays on its decay-linked auto amount, which is fixed
-        too now that Decay itself is. */
-    void setShimmer (int octave, float lowCutHz, float highCutHz, float damping01) noexcept
+    /** octave is -1/0/+1 (see FdnReverb::setOctave). decaySeconds is clamped
+        to kMinShimmerDecay..kMaxShimmerDecay - see its own note. The FDN's own
+        Shimmer feedback and Reso stay fixed, not knobs - see the class note.
+        Pre-delay stays on its decay-linked auto amount. */
+    void setShimmer (float decaySeconds, int octave, float lowCutHz, float highCutHz, float damping01) noexcept
     {
-        shimmer.setDecayTime (ee::dsp::FdnReverb::kMaxDecay);
+        shimmer.setDecayTime (juce::jlimit (kMinShimmerDecay, kMaxShimmerDecay, decaySeconds));
         shimmer.setShimmer (1.0f);
         shimmer.setOctave (octave);
         shimmer.setLowCut (lowCutHz);
@@ -63,13 +71,15 @@ public:
         shimmer.setDamping (damping01);
     }
 
-    void setModern (float decaySeconds, float predelayMs, float damping01, float lowCutHz, float highCutHz) noexcept
+    void setStudio (float decaySeconds, float predelayMs, float damping01, float lowCutHz, float highCutHz,
+                    float sizeScale) noexcept
     {
-        modern.setDecayTime (decaySeconds);
-        modern.setPredelay (predelayMs);
-        modern.setDamping (damping01);
-        modern.setLowCut (lowCutHz);
-        modern.setHighCut (highCutHz);
+        studio.setDecayTime (decaySeconds);
+        studio.setPredelay (predelayMs);
+        studio.setDamping (damping01);
+        studio.setLowCut (lowCutHz);
+        studio.setHighCut (highCutHz);
+        studio.setSize (sizeScale);
     }
 
     void setSpring (float decaySeconds, float tension01, float lowCutHz, float highCutHz) noexcept
@@ -88,7 +98,7 @@ public:
         {
             case Spring:  return static_cast<double> (spring.getTailSeconds());
             case Shimmer: return static_cast<double> (shimmer.getTailSeconds());
-            default:      return static_cast<double> (modern.getTailSeconds());
+            default:      return static_cast<double> (studio.getTailSeconds());
         }
     }
 
@@ -97,19 +107,19 @@ protected:
 
     float dryGainFor (int index, float mix01) const noexcept override
     {
-        return index == Modern ? juce::jmin (1.0f, 2.0f * (1.0f - mix01))
+        return index == Studio ? juce::jmin (1.0f, 2.0f * (1.0f - mix01))
                                : MultiEngineModule::dryGainFor (index, mix01);
     }
     float wetGainFor (int index, float mix01) const noexcept override
     {
-        return index == Modern ? std::pow (juce::jmin (1.0f, 2.0f * mix01), 1.5f)
+        return index == Studio ? std::pow (juce::jmin (1.0f, 2.0f * mix01), 1.5f)
                                : MultiEngineModule::wetGainFor (index, mix01);
     }
 
     void prepareEngines (double sampleRate, int maxBlockSize) override
     {
         shimmer.prepare (sampleRate);
-        modern.prepare (sampleRate);
+        studio.prepare (sampleRate);
         spring.prepare (sampleRate);
 
         monoBuffer.assign (static_cast<size_t> (juce::jmax (1, maxBlockSize)), 0.0f);
@@ -132,9 +142,9 @@ protected:
         const float* inL = dry.getReadPointer (0);
         const float* inR = dry.getReadPointer (numChannels > 1 ? 1 : 0);
 
-        if (index == Modern)
+        if (index == Studio)
         {
-            modern.process (inL, inR, outL, outR, numSamples);
+            studio.process (inL, inR, outL, outR, numSamples);
             return;
         }
 
@@ -154,7 +164,7 @@ protected:
     /** The one module that does not keep its engines warm. Two reasons, and
         both have to hold: three reverbs running at once is the heaviest thing
         in the plugin, and none of them clicks cold. The tank's and the FDN's
-        output is a gradual build from silence; Modern's first sound is a
+        output is a gradual build from silence; Studio's first sound is a
         discrete echo, a delayed copy of the input, so it ramps its input in
         after a reset rather than starting that copy mid-waveform.
         ee_module_stress measures the claim rather than assuming it. */
@@ -166,13 +176,13 @@ protected:
         {
             case Spring:  spring.reset(); break;
             case Shimmer: shimmer.reset(); break;
-            default:      modern.reset(); break;
+            default:      studio.reset(); break;
         }
     }
 
 private:
     ee::dsp::FdnReverb shimmer;
-    ee::dsp::SpaceReverb modern;
+    ee::dsp::SpaceReverb studio;
     ee::dsp::SpringReverb spring;
 
     /** The mono engines' send: a tank takes one signal, so the two sides are

@@ -30,11 +30,13 @@ import {
  * is the norm; Tape is the one engine that runs to three, because it is the
  * whole of BitBit Tape and
  * that pedal has five knobs plus a switch. `centre` is a single knob on a row
- * of its own under the pairs (Tape's bipolar Tone), `lead` one on a row of its
- * own above them (Modern reverb's Decay); `toggle` is a Mono/Stereo
- * switch pinned to the bottom of the body, just above the footer. Each is
- * used by one engine so far - an engine that wants one needs a look at the
- * layout, not just a line here.
+ * of its own under the pairs (Tape's bipolar Tone), `lead` a list of one or
+ * more `[id, caption]` pairs on a row of its own above them, centred as a
+ * group (Studio reverb's Decay and Size, Shimmer's Decay and Damping);
+ * `toggle` is a Mono/Stereo
+ * switch pinned to the bottom of the body, just above the footer. `centre`
+ * and `toggle` are each used by one engine so far - an engine that wants one
+ * needs a look at the layout, not just a line here.
  *
  * `body: "filter"` swaps the knob grid for SideModule's FilterBody - Filter's
  * controls carry a wave picker and a Sync pill under two of its knobs, which a
@@ -185,7 +187,7 @@ export const FILTER_WAVES = [
 
 // Every reverb shows the decay display: what a reverb does is a tail, and the
 // Decay knob is the one control whose effect is worth drawing. In the order of
-// the owner's `engine` choice - Spring, Shimmer, Modern.
+// the owner's `engine` choice - Spring, Shimmer, Studio.
 export const REVERB_ENGINES = [
   {
     name: "Spring",
@@ -213,40 +215,52 @@ export const REVERB_ENGINES = [
   },
   {
     // The FDN this module was called Space for, and still bound to its
-    // `space.` ids so a saved session keeps its settings. Decay, its own
-    // Shimmer feedback and Reso are fixed inside ee::fx::ReverbModule::
-    // setShimmer - always maxed - rather than knobs, so this reads as one
-    // simple "always-on" shimmer wash: what pitch it stacks at, how open it
-    // is, and how fast the top decays.
+    // `space.` ids so a saved session keeps its settings. Decay is a knob
+    // again (4-10 s - ee::fx::ReverbModule::kMinShimmerDecay..kMaxShimmerDecay,
+    // narrower than a plain FdnReverb's own range); its own Shimmer feedback
+    // and Reso stay fixed inside ee::fx::ReverbModule::setShimmer.
     name: "Shimmer",
     icon: <ShimmerIcon size={22} />,
     prefix: "space.",
     picker: { paramId: "octave", options: ["-1 Oct", "0", "+1 Oct"], label: "Shimmer octave" },
+    lead: [
+      ["decay", "Decay"],
+      ["damping", "Damping"],
+    ],
     knobs: [
       ["locut", "Low Cut"],
       ["hicut", "Hi Cut", "max"],
-      ["damping", "Damping"],
     ],
   },
   {
-    // ee::dsp::SpaceReverb, voiced against NI Raum. Decay on its own at the
-    // top, then the tail's shape in time and colour (Pre-delay, Damping), then
-    // the two cuts on the finished wet.
-    name: "Modern",
+    // ee::dsp::SpaceReverb, voiced against NI Raum. Decay and Size on their
+    // own at the top - Size is a real parameter (ee::dsp::SpaceReverb::setSize),
+    // scaling the room's own travel times, not the Easy tab's macro (see
+    // `easy` below, which used to share this name and was renamed to Room to
+    // stop meaning two different things on the same engine) - then the tail's
+    // shape in time and colour (Pre-delay, Damping), then the two cuts on the
+    // finished wet.
+    name: "Studio",
     icon: <SpaceIcon size={22} />,
-    prefix: "modern.",
+    prefix: "studio.",
     display: "decay",
-    decayId: "modern.decay",
-    lead: ["decay", "Decay"],
+    decayId: "studio.decay",
+    lead: [
+      ["decay", "Decay"],
+      ["size", "Size"],
+    ],
     knobs: [
       ["predelay", "Pre-delay"],
       ["damping", "Damping"],
       ["locut", "Low Cut"],
       ["hicut", "Hi Cut", "max"],
     ],
-    // A bigger space is a longer tail that arrives a little later.
+    // A bigger space is a longer tail that arrives a little later. Its own
+    // macro, riding the existing knobs - not the real Size parameter above,
+    // which this pre-dates; kept as a coarse "feel" control alongside the
+    // precise one now that both exist.
     easy: {
-      name: "Size",
+      name: "Room",
       targets: [
         { id: "decay", min: 0.25, max: 0.9 },
         { id: "predelay", min: 0.0, max: 0.3 },

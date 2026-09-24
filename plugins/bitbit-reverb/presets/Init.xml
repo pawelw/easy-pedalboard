@@ -4,6 +4,7 @@
   <PARAM id="on" value="1"/>
   <PARAM id="engine" value="2"/>
   <PARAM id="mix" value="30"/>
+  <PARAM id="space.decay" value="8"/>
   <PARAM id="space.octave" value="2"/>
   <PARAM id="space.locut" value="20"/>
   <PARAM id="space.hicut" value="20000"/>
@@ -12,9 +13,10 @@
   <PARAM id="spring.tension" value="50"/>
   <PARAM id="spring.locut" value="60"/>
   <PARAM id="spring.hicut" value="6000"/>
-  <PARAM id="modern.decay" value="2"/>
-  <PARAM id="modern.predelay" value="0"/>
-  <PARAM id="modern.damping" value="25"/>
-  <PARAM id="modern.locut" value="20"/>
-  <PARAM id="modern.hicut" value="20000"/>
+  <PARAM id="studio.decay" value="3"/>
+  <PARAM id="studio.size" value="1"/>
+  <PARAM id="studio.predelay" value="0"/>
+  <PARAM id="studio.damping" value="25"/>
+  <PARAM id="studio.locut" value="20"/>
+  <PARAM id="studio.hicut" value="20000"/>
 </PARAMETERS>

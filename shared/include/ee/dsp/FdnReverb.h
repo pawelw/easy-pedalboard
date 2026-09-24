@@ -27,9 +27,12 @@ namespace ee::dsp
     Every knob here is available to a caller that wants the plain plate (BitBit
     Grain's own instance runs it that way, with Shimmer at 0). BitBit Reverb's
     Shimmer engine (ee::fx::ReverbModule) is a narrower, fixed voicing of the
-    same class: Decay pinned at kMaxDecay and Shimmer at 1.0 rather than knobs,
-    so what the face exposes is only setOctave, setLowCut/setHighCut and
-    setDamping - see ReverbModule::setShimmer.
+    same class: Shimmer pinned at 1.0 rather than a knob, so what the face
+    exposes is setDecayTime, setOctave, setLowCut/setHighCut and setDamping -
+    see ReverbModule::setShimmer. Shimmer's own Decay knob is clamped to a
+    4-10 s slice of the full range below (release-plan.md-era "always maxed"
+    wash needed at least 8 s to read as one), not the whole kMinDecay..kMaxDecay
+    a plain plate offers.
 */
 class FdnReverb
 {
@@ -39,9 +42,22 @@ public:
     static constexpr int kDecorrelators = 3;
     // The diffusion ladder and the output decorrelators ring on for around
     // half a second regardless of the network, so anything shorter than this
-    // could not be delivered and the knob would be lying.
+    // could not be delivered and the knob would be lying. kMaxDecay raised
+    // 8 -> 10 s so setDecayTime's own clamp does not silently cap Shimmer's
+    // Decay knob (ReverbModule::setShimmer) a fifth short of its 4-10 s range.
+    //
+    // This is *only* the clamp ceiling, not the reference kNormReferenceMax
+    // below normalises against - the first attempt used kMaxDecay for both,
+    // and it does not just extend new territory past the old 8 s: the room
+    // size/predelay a given decaySeconds derives (see updateDerived's norm)
+    // is normalised against this range, so raising it alone quietly moves
+    // that derivation at *every* decay setting, BitBit Grain's included -
+    // testShimmer (DspTests.cpp) caught this at decay 5 s, nowhere near
+    // either ceiling. kNormReferenceMax keeps that derivation exactly where
+    // it always was; only the actual decay time reaches further now.
     static constexpr float kMinDecay = 0.5f;
-    static constexpr float kMaxDecay = 8.0f;
+    static constexpr float kMaxDecay = 10.0f;
+    static constexpr float kNormReferenceMax = 8.0f;
     static constexpr float kMinLowCutHz = 20.0f;
     static constexpr float kMaxLowCutHz = 800.0f;
     static constexpr float kMinHighCutHz = 1000.0f;

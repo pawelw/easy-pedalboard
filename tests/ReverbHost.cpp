@@ -137,7 +137,7 @@ int main()
     }
 
     std::printf ("\nEngines:\n");
-    static constexpr const char* names[] = { "Spring", "Shimmer", "Modern" };
+    static constexpr const char* names[] = { "Spring", "Shimmer", "Studio" };
 
     for (int engine = 0; engine < ee::fx::ReverbModule::NumEngines; ++engine)
     {

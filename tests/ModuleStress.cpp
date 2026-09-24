@@ -83,10 +83,10 @@ void setModulationDefaults (ee::fx::ModulationModule& m)
 
 void setReverbDefaults (ee::fx::ReverbModule& m)
 {
-    // octave (-1/0/+1), lowCutHz, highCutHz, damping01
-    m.setShimmer (1, 100.0f, 8000.0f, 0.5f);
-    // decay, predelayMs, damping01, lowCutHz, highCutHz
-    m.setModern (2.0f, 0.0f, 0.25f, 100.0f, 20000.0f);
+    // decaySeconds, octave (-1/0/+1), lowCutHz, highCutHz, damping01
+    m.setShimmer (8.0f, 1, 100.0f, 8000.0f, 0.5f);
+    // decay, predelayMs, damping01, lowCutHz, highCutHz, sizeScale
+    m.setStudio (2.0f, 0.0f, 0.25f, 100.0f, 20000.0f, 1.0f);
     m.setSpring (2.0f, 0.5f, 60.0f, 8000.0f);
 }
 
@@ -122,7 +122,7 @@ bool matchesDelayedInput (Module& module,
 
 /** Mix at 0 with Level at 1 must return the input untouched, bit for bit. Not
     "close": every engine's mix law is exactly dry 1, wet 0 at Mix 0 (cos/sin, or
-    Modern's held-dry law), so any drift here is a bug in the mix rather
+    Studio's held-dry law), so any drift here is a bug in the mix rather
     than a rounding cost. Bit for
     bit *at the module's own latency* - the alignment delay is a whole number of
     samples copied through a buffer, which does not change a value. */
@@ -346,8 +346,9 @@ void sweepReverb()
                     module.setLevel (1.0f);
                     module.setEngaged (true);
 
-                    module.setShimmer (a > 0.5f ? 1 : -1, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f, a);
-                    module.setModern (decay, a * 60.0f, a, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f);
+                    module.setShimmer (decay, a > 0.5f ? 1 : -1, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f, a);
+                    module.setStudio (decay, a * 60.0f, a, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f,
+                                      juce::jmap (a, ee::dsp::SpaceReverb::kMinSize, ee::dsp::SpaceReverb::kMaxSize));
                     module.setSpring (decay, a, 20.0f + a * 780.0f, 20000.0f - a * 19000.0f);
 
                     juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate));
@@ -586,7 +587,7 @@ int main()
             if (from == to)
                 continue;
 
-            static constexpr const char* names[] = { "Spring", "Shimmer", "Modern" };
+            static constexpr const char* names[] = { "Spring", "Shimmer", "Studio" };
             ee::fx::ReverbModule module;
             module.prepare (kSampleRate, 512);
             setReverbDefaults (module);

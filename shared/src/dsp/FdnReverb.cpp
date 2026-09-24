@@ -431,7 +431,9 @@ void FdnReverb::updateDerived() noexcept
 {
     dirty = false;
 
-    const float norm = juce::jlimit (0.0f, 1.0f, (decaySeconds - kMinDecay) / (kMaxDecay - kMinDecay));
+    // kNormReferenceMax, not kMaxDecay - see its own note in FdnReverb.h.
+    const float norm =
+        juce::jlimit (0.0f, 1.0f, (decaySeconds - kMinDecay) / (kNormReferenceMax - kMinDecay));
 
     // The two hidden parameters the decay knob drives. Room size stays in a
     // narrow band because a plate is dense at every setting; shrinking the

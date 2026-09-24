@@ -44,7 +44,7 @@ const MOD_ENGINE_ICONS = {
 const REVERB_ENGINE_ICONS = {
   Spring: <SpringIcon size={26} />,
   Shimmer: <ShimmerIcon size={26} />,
-  Modern: <SpaceIcon size={26} />,
+  Studio: <SpaceIcon size={26} />,
 };
 
 // One cycle of a tremolo's envelope, as BarDisplay wants it: plain pixel
@@ -100,7 +100,7 @@ function Showcase() {
   // the off state is one click away and is what the first toggle turns into.
   const [reverbOn, setReverbOn] = useState(true);
   const [modEngine, setModEngine] = useState("Tremolo");
-  const [reverbEngine, setReverbEngine] = useState("Modern");
+  const [reverbEngine, setReverbEngine] = useState("Studio");
   const [modLevel, setModLevel] = useState(0.55);
   const [modMix, setModMix] = useState(0.4);
   const [modKnobs, setModKnobs] = useState([0.58, 0.36, 0.5, 0.3]);
@@ -266,7 +266,7 @@ function Showcase() {
           </span>
           <span style={{ "--pui-accent": "var(--pui-accent-reverb)" }}>
             <EngineStepper
-              engines={["Spring", "Shimmer", "Modern"]}
+              engines={["Spring", "Shimmer", "Studio"]}
               value={reverbEngine}
               icon={REVERB_ENGINE_ICONS[reverbEngine]}
               onChange={setReverbEngine}

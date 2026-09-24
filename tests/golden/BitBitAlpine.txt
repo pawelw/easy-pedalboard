@@ -9,7 +9,7 @@ identity
   bundle-id    com.bitbitaudio.alpine
   categories   "Fx Delay Modulation Reverb"
 
-parameters 85
+parameters 87
 0 ingain
     name       "Input"
     default    0.666666687
@@ -443,7 +443,7 @@ parameters 85
     version    1
     steps      3 discrete automatable
     range      0 2 interval 1 skew 1
-    choices    3: "Spring" "Shimmer" "Modern"
+    choices    3: "Spring" "Shimmer" "Studio"
 69 rev.level
     name       "Reverb Level"
     default    0.5
@@ -456,88 +456,100 @@ parameters 85
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-71 rev.space.octave
+71 rev.space.decay
+    name       "Shimmer Decay"
+    default    0.666666687
+    version    1
+    steps      2147483647 continuous automatable
+    range      4 10 interval 0 skew 1
+72 rev.space.octave
     name       "Shimmer Octave"
     default    1
     version    1
     steps      3 discrete automatable
     range      0 2 interval 1 skew 1
     choices    3: "-1 Oct" "0" "+1 Oct"
-72 rev.space.locut
+73 rev.space.locut
     name       "Shimmer Low Cut"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
-73 rev.space.hicut
+74 rev.space.hicut
     name       "Shimmer Hi Cut"
     default    1
     version    1
     steps      2147483647 continuous automatable
     range      1000 20000 interval 0 skew 0.519210994
-74 rev.space.damping
+75 rev.space.damping
     name       "Shimmer Damping"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-75 rev.spring.decay
+76 rev.spring.decay
     name       "Spring Decay"
     default    0.443043411
     version    1
     steps      2147483647 continuous automatable
     range      0.400000006 8 interval 0 skew 0.481231391
-76 rev.spring.tension
+77 rev.spring.tension
     name       "Spring Tension"
     default    0.5
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-77 rev.spring.locut
+78 rev.spring.locut
     name       "Spring Low Cut"
     default    0.272604346
     version    1
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
-78 rev.spring.hicut
+79 rev.spring.hicut
     name       "Spring Hi Cut"
     default    0.49999997
     version    1
     steps      2147483647 continuous automatable
     range      1000 20000 interval 0 skew 0.519210994
-79 chain.order
+80 chain.order
     name       "Chain Order"
     default    0
     version    1
     steps      24 discrete automatable
     range      0 23 interval 1 skew 1
     choices    24: "Art-Mod-Dly-Rev" "Art-Mod-Rev-Dly" "Art-Dly-Mod-Rev" "Art-Dly-Rev-Mod" "Art-Rev-Mod-Dly" "Art-Rev-Dly-Mod" "Mod-Art-Dly-Rev" "Mod-Art-Rev-Dly" "Mod-Dly-Art-Rev" "Mod-Dly-Rev-Art" "Mod-Rev-Art-Dly" "Mod-Rev-Dly-Art" "Dly-Art-Mod-Rev" "Dly-Art-Rev-Mod" "Dly-Mod-Art-Rev" "Dly-Mod-Rev-Art" "Dly-Rev-Art-Mod" "Dly-Rev-Mod-Art" "Rev-Art-Mod-Dly" "Rev-Art-Dly-Mod" "Rev-Mod-Art-Dly" "Rev-Mod-Dly-Art" "Rev-Dly-Art-Mod" "Rev-Dly-Mod-Art"
-80 rev.modern.decay
-    name       "Modern Decay"
-    default    0.5
+81 rev.studio.decay
+    name       "Studio Decay"
+    default    0.623038769
     version    1
     steps      2147483647 continuous automatable
     range      0.5 8 interval 0 skew 0.43067655
-81 rev.modern.predelay
-    name       "Modern Pre-delay"
+82 rev.studio.size
+    name       "Studio Size"
+    default    0.5
+    version    1
+    steps      2147483647 continuous automatable
+    range      0.5 1.5 interval 0 skew 1
+83 rev.studio.predelay
+    name       "Studio Pre-delay"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      0 60 interval 0 skew 1
-82 rev.modern.damping
-    name       "Modern Damping"
+84 rev.studio.damping
+    name       "Studio Damping"
     default    0.25
     version    1
     steps      2147483647 continuous automatable
     range      0 100 interval 0.100000001 skew 1
-83 rev.modern.locut
-    name       "Modern Low Cut"
+85 rev.studio.locut
+    name       "Studio Low Cut"
     default    0
     version    1
     steps      2147483647 continuous automatable
     range      20 800 interval 0 skew 0.437559754
-84 rev.modern.hicut
-    name       "Modern Hi Cut"
+86 rev.studio.hicut
+    name       "Studio Hi Cut"
     default    1
     version    1
     steps      2147483647 continuous automatable

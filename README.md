@@ -11,9 +11,9 @@ Builds as **VST3**, **AU** and a **Standalone** app.
 
 BitBit Alpine's **Reverb** module as a pedal of its own, drawn the way BitBit
 Artifact is: one narrow compartment, a `<>` stepper between three engines -
-**Spring**, **Shimmer** and **Modern** - and a **Mix** knob in the footer.
+**Spring**, **Shimmer** and **Studio** - and a **Mix** knob in the footer.
 Stereo out on all three. Spring and Shimmer sum a stereo input before the send
-(a tank has one input); Modern is true stereo in, each side with its own echoes
+(a tank has one input); Studio is true stereo in, each side with its own echoes
 and its own way into the tail, so a wide source stays wide. It is the same
 `ee::fx::ReverbModule` BitBit Alpine runs, behind the same
 face (`ReverbFace`, `packages/module-face`), so the pedal and the Alpine module
@@ -23,7 +23,7 @@ moves.
 
 **Shimmer** (`ee::dsp::FdnReverb`) is the modulated feedback delay network - the
 whole of what this pedal used to be, and the engine that was called **Space**
-until Modern arrived beside it on 2026-09-23. Its parameters kept their `space.`
+until Studio arrived beside it on 2026-09-23. Its parameters kept their `space.`
 ids, so a session saved before then opens on the same sound. Simplified on
 2026-09-23 to a single always-on shimmer wash: Decay, its own feedback amount
 and Reso are fixed internally rather than knobs (Decay maxed, feedback at full,
@@ -37,7 +37,7 @@ the feedback stacks at and how the tail is shaped:
 | **Hi Cut**    | 1 - 20 kHz      | Lowpass across the wet tail; 20 kHz is off                                   |
 | **Damping**   | 0 - 100 %       | How fast the top end dies against the (now fixed) Decay. 50 % is the engine's original fixed voicing |
 
-**Modern** (`ee::dsp::SpaceReverb`) is voiced against NI Raum's Airy mode, and
+**Studio** (`ee::dsp::SpaceReverb`) is voiced against NI Raum's Airy mode, and
 measured rather than eyeballed: at the same Decay, Damp and Mix it lands within
 the difference between two renders of Raum itself. Two discrete early echoes
 per input, then a sixteen-line network whose tail thickens over the first
@@ -63,7 +63,7 @@ the two controls that pedal leaves off its own face:
 | **Low Cut** | 20 - 800 Hz | Highpass on the finished tank output, resting at 60 Hz                        |
 
 **Mix** (0 - 100 %) is shared by all three engines. On Spring and Shimmer it is
-equal power; on Modern it follows Raum's law: the dry stays at full level up to
+equal power; on Studio it follows Raum's law: the dry stays at full level up to
 50 % while the wet rises as (2 x Mix)^1.5, then the dry fades out to nothing at
 100 %, so 20 % is the dry untouched with the reverb a quarter of full level
 under it. Each engine keeps its own settings, so stepping away and back

@@ -186,16 +186,19 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
       ) : (
         <>
           <div className="sm-knobs">
-            {/* One knob on a row of its own, centred above the pairs - the
-                Modern reverb's Decay. */}
+            {/* One or more knobs on a row of their own, centred as a group
+                above the pairs - the Studio reverb's Decay and Size. */}
             {engine.lead && (
-              <div className="sm-knob-row sm-knob-row--centre" key={engine.prefix + engine.lead[0]}>
-                <JuceKnob
-                  parameterId={engine.prefix + engine.lead[0]}
-                  caption={engine.lead[1]}
-                  variant={knobVariant}
-                  size={36}
-                />
+              <div className="sm-knob-row sm-knob-row--centre" key={engine.prefix + engine.lead[0][0]}>
+                {engine.lead.map(([id, caption]) => (
+                  <JuceKnob
+                    key={engine.prefix + id}
+                    parameterId={engine.prefix + id}
+                    caption={caption}
+                    variant={knobVariant}
+                    size={36}
+                  />
+                ))}
               </div>
             )}
 
@@ -213,10 +216,10 @@ function SideModuleBody({ name, accent, engines, headerRight = null, easyTab = f
                     parameterId={engine.prefix + id}
                     caption={caption}
                     variant={knobVariant}
-                    // A cut is a supporting knob, not a lead one - 4px
+                    // A cut is a supporting knob, not a lead one - 8px
                     // smaller than the rest of the row reads that as a
                     // deliberate size, not a rendering mistake.
-                    size={id === "locut" || id === "hicut" ? 32 : 36}
+                    size={id === "locut" || id === "hicut" ? 28 : 36}
                     scaleFrom={scaleFrom}
                   />
                 ))}

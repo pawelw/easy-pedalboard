@@ -10,7 +10,7 @@
 namespace ee::dsp
 {
 
-/** BitBit Reverb's Modern engine: stereo in, stereo out.
+/** BitBit Reverb's Studio engine: stereo in, stereo out.
 
     Two discrete early echoes per input, then a sixteen-line feedback network
     whose loss filters are sized from the Decay and Damping knobs, then a
@@ -34,10 +34,23 @@ public:
     static constexpr float kMinPredelayMs = 0.0f;
     static constexpr float kMaxPredelayMs = 60.0f;
 
+    /** A scale on every travel time the room's own dimensions set - the early
+        echoes' arrival, the sixteen late lines, the feed diffusers - so Decay
+        and Damping still mean what they say at any Size: RT60 and trip loss
+        are both computed against each line's *scaled* length. 1.0 is exactly
+        the voicing this engine was fitted to NI Raum at (Size 70 % on the
+        reference's own knob - see SpaceConfig.h), so an untouched Size is
+        bit-identical to before this control existed. kMaxSize is what
+        `prepare` allocates every line's buffer for; nothing past it is safe
+        to ask for without a reset. */
+    static constexpr float kMinSize = 0.5f;
+    static constexpr float kMaxSize = 1.5f;
+    static constexpr float kDefaultSize = 1.0f;
+
     void prepare (double sampleRate);
     void reset();
 
-    /** RT60 of the low mids, in seconds. */
+    /** RT60 of the low mids, in seconds, at the current Size. */
     void setDecayTime (float seconds) noexcept;
 
     /** 0..1. How much faster than the Decay the top end dies. */
@@ -45,6 +58,10 @@ public:
 
     /** Added ahead of the whole wet path, early echoes included. */
     void setPredelay (float ms) noexcept;
+
+    /** kMinSize..kMaxSize. Scales the room's own travel times - see the note
+        above kMinSize. */
+    void setSize (float scale) noexcept;
 
     /** 12 dB/oct highpass on the wet. kMinLowCutHz is off. */
     void setLowCut (float hz) noexcept;
@@ -112,6 +129,7 @@ private:
 
     float decaySeconds = 2.0f;
     float damping = 0.25f;
+    float sizeScale = kDefaultSize;
     float predelayMs = 0.0f;
     float lowCutHz = kMinLowCutHz;
     float highCutHz = kMaxHighCutHz;

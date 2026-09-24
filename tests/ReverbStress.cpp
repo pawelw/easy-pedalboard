@@ -1,5 +1,5 @@
 // Hammers both reverb networks - FdnReverb (the Shimmer engine, and BitBit
-// Grain's) and SpaceReverb (the Modern engine) - with adverse input and extreme
+// Grain's) and SpaceReverb (the Studio engine) - with adverse input and extreme
 // settings, watching for a non-finite or runaway wet output: the "exploding
 // tail" bug. A reverb is a feedback network, so a single NaN/Inf that gets in is
 // stored in the delay lines and roars until a reset; this guards the
@@ -347,7 +347,7 @@ int main()
     std::printf ("\n%d cases, worst tail peak %.3f, %d flagged\n", cases, worstPeak, bad);
 
     // ---- SpaceReverb ---------------------------------------------------------
-    std::printf ("\n=== Space reverb stress (the Modern engine) ===\n");
+    std::printf ("\n=== Space reverb stress (the Studio engine) ===\n");
 
     using Space = ee::dsp::SpaceReverb;
     const float spaceDecays[] = { Space::kMinDecay, 2.0f, Space::kMaxDecay };

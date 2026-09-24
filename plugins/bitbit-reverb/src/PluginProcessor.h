@@ -11,11 +11,11 @@
 #endif
 
 /**
- * BitBit Reverb: BitBit Alpine's Reverb module - Spring / Shimmer / Modern - as a
+ * BitBit Reverb: BitBit Alpine's Reverb module - Spring / Shimmer / Studio - as a
  * pedal of its own, the way BitBit Artifact is Alpine's first module.
  *
  * Spring is BitBit Spring's tank, Shimmer the FDN this pedal used to be on its
- * own, Modern the reverb voiced against NI Raum; all three run inside
+ * own, Studio the reverb voiced against NI Raum; all three run inside
  * ee::fx::ReverbModule, the same object Alpine runs, so the same knob position
  * sounds the same in both. The processor is parameters
  * and plumbing: it reads the knobs and hands the module a global bypass.
