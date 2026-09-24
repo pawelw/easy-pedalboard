@@ -145,7 +145,10 @@ public:
         setting of this one. The level faders are floats but are not part of
         the sound, and a roll that lands the output at +12 dB is a surprise
         rather than an idea, so an id ending in `ingain`, `outgain` or `level`
-        (BitBit Alpine's per-module trims) is left alone too.
+        (BitBit Alpine's per-module trims) is left alone too. So are BitBit
+        Grain's balance controls - its Dry and Grains levels and the Pitch,
+        Delay and Reverb mixes - for the same reason: a roll should find a new
+        texture, not change how much of it you hear.
 
         Positions are drawn in normalised units, so a skewed range - a cutoff,
         a decay time - lands where a hand on the knob would put it, and capped
@@ -182,7 +185,8 @@ public:
         // same as a bare "level" (fromLastOccurrenceOf hands back the whole
         // string when there is no dot).
         const auto leaf = parameterID.fromLastOccurrenceOf (".", false, false);
-        return leaf != "ingain" && leaf != "outgain" && leaf != "level";
+        return leaf != "ingain" && leaf != "outgain" && leaf != "level"
+            && leaf != "dry" && leaf != "grains" && leaf != "pmix" && leaf != "dmix" && leaf != "rmix";
     }
 
     //==============================================================================

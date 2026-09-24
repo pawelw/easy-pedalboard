@@ -408,11 +408,7 @@
   inset: 5%;
   /* A dish, not a dome: shaded at the top where the bezel's lip shadows it,
      lighter toward the bottom, with a thin highlight bouncing off the lower lip. */
-  background: linear-gradient(
-    180deg,
-    color-mix(in srgb, var(--pui-soft-lit) 92%, #1c3438) 0%,
-    color-mix(in srgb, var(--pui-soft-lit) 98%, #ffffff) 100%
-  );
+  background: #b5b5b5;
   
 }
 
@@ -687,7 +683,7 @@
    knobs and the link button in a plain flex row - see .pg-delay__body's own
    note. */
 .pg-time-row .pui-readout {
-  width: 97px;
+  width: 96px;
   height: 34px;
   box-sizing: border-box;
   border-radius: 5px;
@@ -715,7 +711,7 @@
    real equivalent of the same "free-floating" idea. */
 .pg-delay__link {
   position: absolute;
-  right: 100px;
+  right: 113px;
   top: 52%;
   transform: translateY(-50%);
 }
