@@ -3,6 +3,7 @@
 #include "BitBitDelayWebEditor.h"
 #include "ee/fx/DelayTimeMap.h"
 #include "ee/plugin/Bypass.h"
+#include "ee/plugin/OutputSafety.h"
 #include "ee/plugin/ParamText.h"
 #include "ee/plugin/StateVersion.h"
 
@@ -460,6 +461,12 @@ void BitBitDelayProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce:
     inputMeter.process (buffer.getReadPointer (0), numIn > 1 ? buffer.getReadPointer (1) : nullptr, numSamples);
 
     chain.process (buffer, numIn, numOut, numSamples);
+
+    // The last line of defence on the finished output, every block, every
+    // build - see ee::plugin::sanitizeOutput. DelayModule's own scrub() only
+    // catches a genuine explosion (+36 dBFS); this is the tighter check on
+    // what actually reaches the host.
+    ee::plugin::sanitizeOutput (buffer, numOut, numSamples);
 }
 
 juce::AudioProcessorEditor* BitBitDelayProcessor::createEditor()

@@ -6,6 +6,7 @@
 #include "ee/dsp/FdnReverb.h"
 #include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/SpringConfig.h"
+#include "ee/plugin/OutputSafety.h"
 #include "ee/plugin/ParamRange.h"
 #include "ee/plugin/ParamText.h"
 #include "ee/plugin/StateVersion.h"
@@ -234,6 +235,12 @@ void BitBitReverbProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
     pushSettings();
 
     module.process (buffer, numCh, numSamples);
+
+    // The last line of defence on the finished output, every block, every
+    // build - see ee::plugin::sanitizeOutput. MultiEngineModule's own runaway
+    // guard only catches a genuine explosion (+36 dBFS); this is the tighter
+    // check on what actually reaches the host.
+    ee::plugin::sanitizeOutput (buffer, numCh, numSamples);
 }
 
 juce::AudioProcessorEditor* BitBitReverbProcessor::createEditor()
