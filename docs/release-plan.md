@@ -630,7 +630,8 @@ Do the DSP-changing items (**the reverb engine**, **latency**) *before* you
 freeze the release regression checksums — both alter audio, and re-baselining
 after the fact removes the only evidence that nothing else moved. The reverb
 engine is done (5.2) and its golden file already reflects it; latency (5.3) is
-not, and is what is actually still holding the checksum freeze open.
+audited, its gaps closed and the latency cut, so what still holds the checksum
+freeze open is the real-host null test (and the re-baselining itself).
 
 ### 5.1 Presets (your item 4)
 
@@ -717,38 +718,88 @@ recording) and `ee_space_fit` (renders `SpaceReverb` alone at any voicing field
 override, for the fit loop without a full plugin build). See `CLAUDE.md`,
 *Matching a third-party reference*.
 
-### 5.3 Latency (your item 7)
+### 5.3 Latency (your item 7) - **audited, gaps closed, and cut to 0 / 3.35 / 3.35 ms** ✅
 
-Where it stands:
+Audited 2026-09-24 with `ee_latency_audit_<Product>` (`tests/LatencyAudit.cpp`,
+in `scripts/dev-check.sh`). For each product, at 44.1 / 48 / 88.2 / 96 / 176.4 /
+192 kHz over ragged block sizes, it puts every Mix at 0, then flips **every
+boolean and choice parameter through each of its values live** (after
+`prepareToPlay`, the way automation does) plus the host's own bypass, and
+null-tests the output against the input delayed by `getLatencySamples()`. It also
+requires the reported figure not to move while it does. This is the offline half
+of the null test below; a real host is still the other half.
 
-| Product | Reported latency | Comes from |
-| --- | --- | --- |
-| BitBit Tape | ~264 samples (~6 ms @ 44.1 k) | `TapeTransport` 198 + `TapeCharacter` 66 |
-| BitBit Delay | tape input latency | `DelayModule::tapeIn`, pre-section only |
-| BitBit Modulation | tape engine only | other engines report 0 |
-| BitBit Reverb | 0 | both engines latency-free |
-| BitBit Alpine | sum of Artifact + Modulation + Delay | per-module |
-| Everything else | 0 | no `setLatencySamples` |
+What the plugins report, per product - and **since 2026-09-24 this is no longer
+the 6 / 6 / 12 ms it was when this audit started**:
 
-So the site's "~6 ms, reported and compensated" is true of the tape path and
-*wrong* for Grains and Reverb, which are zero. Make the claim per product.
+| Product | Was | Now | How |
+| --- | --- | --- | --- |
+| **BitBit Delay** | 6.0 ms | **0** | the dry note no longer goes through a tape section: the pre-delay tape (and its Pre/Post router) is gone, the tape is on the repeats only |
+| **BitBit Modulation** | 6.0 ms | **3.35 ms** | the tape transport is 1.85 ms instead of 4.5, always (no switch) |
+| **BitBit Alpine** | 12.0 ms | **3.35 ms** | Modulation's 3.35 + Delay's 0 (Artifact, Reverb, Grains add none) |
+| BitBit Artifact / Reverb / Grains | 0 | 0 | unchanged |
 
-Work worth doing, in order:
+3.35 ms is the 1.85 ms transport plus `TapeCharacter`'s fixed 1.5 ms; at 48 kHz
+that is 161 samples, and the audit holds it to the sample at every rate from 44.1
+to 192 kHz. The site's "~6 ms, reported and compensated" is now wrong in the
+*other* direction - say the figures above.
 
-1. **Prove the compensation.** Null test in a real host: the same audio on two
-   tracks, one through the plugin at Mix 0, polarity inverted. It should cancel to
-   silence. If it does not, PDC is wrong, and that is a far worse bug than 6 ms.
-2. **Re-report on every change.** Latency must be pushed to the host when the
-   engine changes or a module is bypassed/reordered, not only in `prepareToPlay`.
-   Verify Alpine does this — a stale latency number is a subtle timing bug the
-   user will blame on their own playing.
-3. **Then reduce it.** The 198-sample nominal in `TapeTransport` is the budget the
-   wow/flutter modulation is allowed to swing within; shortening it narrows the
-   movement before the read pointer crosses the write pointer. A **"Low latency"**
-   switch on the tape stage that halves the nominal and clamps flutter depth gives
-   the user the choice instead of you guessing.
-4. Anything below ~5 ms stops mattering to most players. Do not trade the tape
-   voicing — which is the product — for a number.
+What the audit found, and what came of it:
+
+- **"Re-report on every change" is a non-issue by design**, and proven: the
+  latency is one constant per `prepareToPlay`, whichever engine is selected, any
+  module bypassed, any chain order. Nothing moves it.
+- **Bypass was the hole, in four places** (Delay's power toggle 6 ms early, Alpine's
+  Delay module 6 ms, Alpine's global bypass 12 ms, and the host's own bypass
+  button, which JUCE routes to a zero-latency `processBlockBypassed`). Fixed with
+  `ee::fx::AlignDelay` and a `processBlockBypassed` that runs the ordinary block
+  with power forced off, in Modulation and Alpine. (Delay has nothing left to
+  align, but keeps the same override so the host's bypass lets its repeats ring
+  out instead of cutting them.)
+- **The engaged sound did not move** through the audit fixes. It has moved through
+  the two latency changes below, by design, and the checksums were re-baselined
+  for them (`tests/baselines/Darwin-arm64`, `scripts/regress-baselines.sh`, in
+  `dev-check`) - and Delay's factory presets that used Pre placement (18 of 22) now have
+  their Wear and Flutter on the repeats, which is where Post always put them.
+
+The two latency changes, both decided 2026-09-24:
+
+1. **Modulation's short tape transport.** The transport line 4.5 -> 1.85 ms - the
+   shortest the mono wow (1.62 ms of swing, ceiling 0.9 x the line) fits in -
+   **always, with no switch**. (It was a `tape.lowlat` pill, on by default, for a
+   while on 2026-09-24; removed the same day once it was clear nobody would want it
+   off, along with everything that existed only to change latency at runtime - the
+   output duck, the resizable alignment lines, the parameter listeners. Those are
+   in git history if a runtime-changing latency is ever wanted.) The wow and the
+   Stereo width no longer fit together in a line that short, so `TapeTransport`
+   pulls them back by one common factor, per sample, exactly as far as their sum
+   needs: at any setting that fits (all of mono, and the default Flutter at low
+   Stereo) nothing is cut. Only in this mode - BitBit Tape keeps its 4.5 ms.
+   `TapeCharacter`'s 1.5 ms is untouched: it is shared with BitBit Tape and its
+   wobble needs the room.
+2. **Delay: no pre-delay tape.** `DelayModule` keeps one tape section, on the
+   repeats, on the same 1.85 ms transport (mono, so full depth), and its latency
+   comes off the delay time so the first repeat lands where the Time knob says
+   (`ee_delay_regress` asserts both: dry at +0, repeat at +0). The `tapepre`
+   parameter and its router are **removed** - from BitBit Delay and from Alpine's
+   Delay module (`dly.tapepre`, which the Alpine face never exposed) - so both
+   golden files were regenerated and every parameter after it shifted down one
+   index. Deliberate, and only available before the first sale.
+
+Still to do here, in order:
+
+1. **The real-host null test** - the only part an offline tool cannot stand in
+   for. Same audio on two tracks, one through the plugin at Mix 0, the other with
+   polarity inverted; it should cancel to silence in Live (native and Rosetta),
+   Logic, Reaper and Cubase, with the plugin's power on, off, and the host's own
+   bypass. Delay, Modulation and Alpine are the ones with something to prove.
+2. **Reduce it - done**, both changes above. The one worry - a Time shorter than
+   the tape's own 3.35 ms landing late against the delay line's 1 ms floor - is not
+   real: the shortest the knob can make is 25 ms (1/32 at 300 bpm; 62.5 ms free),
+   and `ee_delay_regress` asserts the first repeat lands exactly there.
+3. **Say it per product on the site**, from the table above.
+
+---
 
 ### 5.4 Full-screen preset browser (your item 8)
 
@@ -942,10 +993,10 @@ G1  correctness              │   golden param file ✅ · CI on both platforms
                              │   both known failures closed ✅ · soak harness ·
                              │   preset-loader fuzzing          — six products
    ↓                         │
-G5a DSP content              │   reverb engine (Studio, vs. NI Raum) ✅ · latency work
+G5a DSP content              │   reverb engine (Studio, vs. NI Raum) ✅ · latency ✅ (Delay 0, Modulation and Alpine 3.35 ms; real-host null test open)
     ← before checksums freeze│
    ↓                         │
-G1b re-baseline              │   *_regress checksums frozen, per platform
+G1b re-baseline              │   *_regress checksums frozen, per platform ✅ macOS (tests/baselines/Darwin-arm64, in dev-check) · Windows when it builds
    ↓                         │
    └─────────────────────────┴──→  both must be green before:
    ↓
