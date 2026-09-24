@@ -59,9 +59,10 @@ namespace ee::fx
  *
  * After the crush, a peaking Mids boost (the same centre frequency and Q BitBit
  * EQ's own Mid band uses) and a bipolar Tone tilt (BitBit Tape's, resting flat
- * and bypassed dead centre) shape the result, and a fixed short delay on the
- * right channel (kAmpHaasDelayMs) widens it when Stereo is on - a Haas trick,
- * not a real stereo signal. Its dry/wet is the footer Mix, like Bit Crush.
+ * and bypassed dead centre) shape the result. Its dry/wet is the footer Mix, like
+ * Bit Crush. (It used to have a Mono/Stereo switch that put a fixed 15 ms delay on
+ * the right channel - a Haas trick, not a real stereo signal. It was taken out; the
+ * Amp is mono in, mono out, like the input.)
  *
  * Values are the owner's parameters, not state here - see ModulationModule.
  */
@@ -129,12 +130,6 @@ public:
     static constexpr float kAmpToneHighGainDark = 0.52f;
     static constexpr float kAmpToneHighGainBright = 1.90f;
 
-    /** The Haas widener's fixed delay on the right channel when Amp's Stereo
-        switch is on. Short enough that the ear fuses it with the left channel
-        as one sound coming from the side rather than as a discrete echo - see
-        setAmp. Not a knob: the switch is Mono/Stereo, not a delay time. */
-    static constexpr float kAmpHaasDelayMs = 15.0f;
-
     /** Bit knob (0..1) -> the sample-and-hold rate in Hz at `sampleRate`. Knob
         0 returns the host rate, where the hold passes every sample. Public so
         the host-facing text formatter reads the same map `setAmp` does rather
@@ -165,9 +160,8 @@ public:
         reference. `mids01` is 0..1 across the 0..kAmpMidsMaxDb peaking boost
         at kAmpMidsFreqHz / kAmpMidsQ. `bit01` is sample-rate reduction only
         (ampRateHzFor) - no bit-depth quantisation, no anti-alias filter, see
-        the class note. `tone` is bipolar, -1..1, and rests flat at 0.
-        `stereo` switches the Haas widener on the right channel on or off. */
-    void setAmp (float drive01, float mids01, float bit01, float tone, bool stereo) noexcept
+        the class note. `tone` is bipolar, -1..1, and rests flat at 0. */
+    void setAmp (float drive01, float mids01, float bit01, float tone) noexcept
     {
         ampDrive.setDrive01 (drive01);
 
@@ -213,8 +207,6 @@ public:
         ampToneEngaged = tone != 0.0f;
         ampToneLowGain = juce::jmap (tilt01, kAmpToneLowGainDark, kAmpToneLowGainBright);
         ampToneHighGain = juce::jmap (tilt01, kAmpToneHighGainDark, kAmpToneHighGainBright);
-
-        ampStereo = stereo;
     }
 
     /** Every Ring Mod control in one call. `freq01`, `tweak01` and `lp01` are
@@ -265,7 +257,6 @@ protected:
             f.reset();
         ampToneCoeff = onePoleCoeff (kAmpTonePivotHz, sampleRate);
         ampToneLp.fill (0.0f);
-        ampHaas.prepare (1, static_cast<int> (kAmpHaasDelayMs * 0.001 * sampleRate));
     }
 
     void renderEngine (int index,
@@ -328,13 +319,6 @@ protected:
                     ampToneLp[ch] = lp;
                 }
             }
-
-            if (ampStereo)
-            {
-                float* rPtr = wet.getWritePointer (1);
-                juce::AudioBuffer<float> rView (&rPtr, 1, numSamples);
-                ampHaas.process (rView, 1, numSamples);
-            }
         }
     }
 
@@ -354,7 +338,6 @@ protected:
             for (auto& f : ampMids)
                 f.reset();
             ampToneLp.fill (0.0f);
-            ampHaas.reset();
         }
     }
 
@@ -386,8 +369,6 @@ private:
     float ampToneLowGain = 1.0f;
     float ampToneHighGain = 1.0f;
     std::array<float, 2> ampToneLp { 0.0f, 0.0f };
-    bool ampStereo = false;
-    AlignDelay ampHaas;
 };
 
 } // namespace ee::fx

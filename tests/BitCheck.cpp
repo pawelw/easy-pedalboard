@@ -87,7 +87,7 @@ juce::AudioBuffer<float> renderAmpBit (int numSamples, float bit01, float scale 
     module.setLevel (1.0f);
     module.setEngaged (true);
     module.prepare (kSampleRate, kBlockSize);
-    module.setAmp (0.0f, 0.0f, bit01, 0.0f, false);
+    module.setAmp (0.0f, 0.0f, bit01, 0.0f);
 
     juce::AudioBuffer<float> buffer (2, numSamples);
     fillTestSignal (buffer, kSampleRate);
@@ -229,7 +229,7 @@ bool renderRealFile (const juce::String& path, const juce::String& outDir)
         module.setLevel (1.0f);
         module.setEngaged (true);
         module.prepare (reader->sampleRate, kBlockSize);
-        module.setAmp (0.0f, 0.0f, bit01, 0.0f, false);
+        module.setAmp (0.0f, 0.0f, bit01, 0.0f);
 
         juce::AudioBuffer<float> wet (dry);
         module.process (wet, 2, wet.getNumSamples());
@@ -365,7 +365,7 @@ int main (int argc, char* argv[])
             module.setLevel (1.0f);
             module.setEngaged (true);
             module.prepare (kSampleRate, kBlockSize);
-            module.setAmp (0.0f, mids01, 0.0f, 0.0f, false);
+            module.setAmp (0.0f, mids01, 0.0f, 0.0f);
 
             juce::AudioBuffer<float> buffer (2, numSamples);
             for (int i = 0; i < numSamples; ++i)

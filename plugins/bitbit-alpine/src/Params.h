@@ -54,7 +54,6 @@ inline constexpr const char* artAmpDrive = "art.amp.drive";
 inline constexpr const char* artAmpMids = "art.amp.mids";
 inline constexpr const char* artAmpBit = "art.amp.bit";
 inline constexpr const char* artAmpTone = "art.amp.tone";
-inline constexpr const char* artAmpStereo = "art.amp.stereo";
 
 // --------------------------------------------------------------- modulation
 inline constexpr const char* modOn = "mod.on";

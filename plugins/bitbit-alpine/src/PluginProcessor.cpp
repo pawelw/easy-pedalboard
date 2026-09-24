@@ -368,16 +368,13 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
     // (like Bit Crush's own knobs above) - the real unit (dB, the hold rate)
     // is BitBit Artifact's own readout, not this file's. Tone is the same
     // bipolar tilt BitBit Tape's Tone is: -100 dark, 0 flat and bypassed, +100
-    // bright, resting in the middle. Stereo switches a fixed Haas delay on the
-    // right channel on or off.
+    // bright, resting in the middle.
     addPercent (layout, id::artAmpDrive, "Artifact Amp Drive", ee::dsp::tubedrive::kDefaultDrivePct);
     addPercent (layout, id::artAmpMids, "Artifact Amp Mids", 0.0f);
     addPercent (layout, id::artAmpBit, "Artifact Amp Bit", ee::fx::ArtifactModule::kAmpDefaultBitPct);
     layout.add (std::make_unique<juce::AudioParameterFloat> (
         juce::ParameterID { id::artAmpTone, 1 }, "Artifact Amp Tone",
         juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f), 0.0f, withText (toneToText)));
-    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artAmpStereo, 1 },
-                                                            "Artifact Amp Stereo", false));
 
     // ------------------------------------------------------------- modulation
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::modOn, 1 }, "Modulation On", true));
@@ -698,8 +695,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
 
     artifact.setRust (pct (id::artRustGrind), pct (id::artRustTone), static_cast<int> (raw (id::artRustMode)));
 
-    artifact.setAmp (pct (id::artAmpDrive), pct (id::artAmpMids), pct (id::artAmpBit), raw (id::artAmpTone) * 0.01f,
-                     flag (id::artAmpStereo));
+    artifact.setAmp (pct (id::artAmpDrive), pct (id::artAmpMids), pct (id::artAmpBit), raw (id::artAmpTone) * 0.01f);
 
     // --------------------------------------------------------------- modulation
     modulation.setEngine (static_cast<int> (raw (id::modEngine)));

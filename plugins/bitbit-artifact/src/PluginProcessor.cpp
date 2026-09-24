@@ -192,8 +192,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitArtifactProcessor::cre
     // ee::fx::ArtifactModule::ampRateHzFor) with no bit-depth quantisation and
     // no anti-alias filter, a Mids peaking boost (BitBit EQ's own Mid band/Q,
     // 0..7 dB) and a bipolar Tone tilt (BitBit Tape's, flat and bypassed dead
-    // centre). Stereo switches a fixed Haas delay on the right channel on or
-    // off. Its dry/wet is the footer Mix.
+    // centre). Its dry/wet is the footer Mix.
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ampDrive, 1 }, "Amp Drive",
                                                              percent, ee::dsp::tubedrive::kDefaultDrivePct, pctAttr));
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ampMids, 1 }, "Amp Mids", percent,
@@ -204,8 +203,6 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitArtifactProcessor::cre
     layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::ampTone, 1 }, "Amp Tone",
                                                              juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
                                                              0.0f, withText (signedPctToText)));
-    layout.add (
-        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::ampStereo, 1 }, "Amp Stereo", false));
 
     return layout;
 }
@@ -227,8 +224,7 @@ void BitBitArtifactProcessor::pushSettings() noexcept
 
     module.setRust (pct (id::rustGrind), pct (id::rustTone), static_cast<int> (raw (id::rustMode)));
 
-    module.setAmp (pct (id::ampDrive), pct (id::ampMids), pct (id::ampBit), raw (id::ampTone) * 0.01f,
-                   flag (id::ampStereo));
+    module.setAmp (pct (id::ampDrive), pct (id::ampMids), pct (id::ampBit), raw (id::ampTone) * 0.01f);
 }
 
 void BitBitArtifactProcessor::installState (const juce::ValueTree& tree)

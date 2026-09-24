@@ -18,7 +18,7 @@ import "./ArtifactFace.css";
  * Crush has a stepped-wave display and two rows of knobs; Ring Mod has a
  * lattice display, its four knobs and a Wobble / Octave switch; Rust has a
  * corrosion display, one row of knobs and an Oxide / Contact switch; Amp has a
- * display, two rows of knobs and a Mono/Stereo (Haas) switch. The footer Mix
+ * display and two rows of knobs. The footer Mix
  * doubles as the Ring Mod's and Rust's Blend. (The Filter engine that used to
  * be here is now BitBit Alpine's Modulation module's.)
  *
@@ -300,7 +300,7 @@ function RingBody({ knobVariant }) {
   );
 }
 
-/* Pinned to the foot of the module body, like Mono/Stereo. Wobble is the
+/* Pinned to the foot of the module body. Wobble is the
    Ringworm's carrier-wobble voicing (Earworm in the DSP), Octave the Green
    Ringer's rectified one - named for what each does rather than for the pedal
    behind it, because "Green Lantern" wrapped to two lines in a 168px module. */
@@ -349,8 +349,7 @@ function RustBody({ knobVariant }) {
 
 /* The Amp body: its display well, two knob rows - Drive / Mids, then Bit /
    Tone, the order the signal actually runs through (drive, then the
-   sample-and-hold, then the Mids lift, then Tone) - and the Mono/Stereo Haas
-   switch at the foot. */
+   sample-and-hold, then the Mids lift, then Tone). */
 function AmpBody({ knobVariant }) {
   return (
     // Matches the other engine bodies' height so stepping between engines
@@ -370,13 +369,11 @@ function AmpBody({ knobVariant }) {
           <JuceKnob parameterId="amp.tone" caption="Tone" variant={knobVariant} size={36} scaleFrom="centre" />
         </div>
       </div>
-
-      <MonoStereoSwitch parameterId="amp.stereo" />
     </div>
   );
 }
 
-/* Pinned to the foot of the module body, like Mono/Stereo. Oxide is the soft
+/* Pinned to the foot of the module body. Oxide is the soft
    magnetic-decay voicing (full warble, wear darkens the tone); Contact is
    harder and more electrical (little warble, wear squares the peaks with a
    hard clip and deepens the crumble). Neither adds noise. */
@@ -396,24 +393,6 @@ function RustModeSwitch() {
       />
       <span className="af-switch-label" data-active={contact || undefined}>
         Contact
-      </span>
-    </div>
-  );
-}
-
-/* Pinned to the foot of the module body, just above the footer. Amp's is a
-   Haas widen on the right channel (see ee::fx::ArtifactModule). */
-function MonoStereoSwitch({ parameterId }) {
-  const [stereo, setStereo] = useJuceToggleValue(parameterId, false);
-
-  return (
-    <div className="af-inline-switch af-ms-switch">
-      <span className="af-switch-label" data-active={!stereo || undefined}>
-        Mono
-      </span>
-      <Toggle checked={stereo} onChange={setStereo} ariaLabel="Mono / Stereo" />
-      <span className="af-switch-label" data-active={stereo || undefined}>
-        Stereo
       </span>
     </div>
   );

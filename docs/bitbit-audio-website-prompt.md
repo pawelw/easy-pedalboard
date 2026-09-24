@@ -351,8 +351,8 @@ look like it was designed by whoever designed these plugins. Send, at minimum:
 >   Oxide (soft, magnetic) or Contact (hard, electrical).
 >   Controls: Grind · Tone · Oxide/Contact · Mix
 > - **Amp** — tube drive with a peaking mid, a bipolar tone tilt, sample-rate
->   reduction and an optional Haas stereo spread.
->   Controls: Drive · Mids · Bit · Tone · Mono/Stereo · Mix
+>   reduction.
+>   Controls: Drive · Mids · Bit · Tone · Mix
 >
 > **Module 2 — Modulation (amber `#e0b23c`), labelled `MOD` on the face —
 > movement and warmth. 5 engines:**

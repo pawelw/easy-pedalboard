@@ -47,8 +47,8 @@ export const MODULES = [
       {
         name: 'Amp',
         tag: 'Transfer saturation',
-        desc: 'Tube drive with a peaking mid, a bipolar tone tilt, sample-rate reduction and an optional Haas stereo spread.',
-        pills: ['Drive', 'Mids', 'Bit', 'Tone', 'Mono/Stereo', 'Mix'],
+        desc: 'Tube drive with a peaking mid, a bipolar tone tilt, sample-rate reduction.',
+        pills: ['Drive', 'Mids', 'Bit', 'Tone', 'Mix'],
         img: '/assets/artifact-amp.png',
       },
     ],

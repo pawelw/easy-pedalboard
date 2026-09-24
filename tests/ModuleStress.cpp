@@ -481,31 +481,30 @@ void sweepArtifact()
                 }
 
     // Amp's own knob space - Drive, Mids, Bit and Tone at each end and the
-    // middle, both Stereo positions, each Mix position.
+    // middle, each Mix position.
     for (float drive : { 0.0f, 0.5f, 1.0f })
         for (float mids : { 0.0f, 0.5f, 1.0f })
             for (float bit : { 0.0f, 0.5f, 1.0f })
                 for (float tone : { 0.0f, 1.0f })
-                    for (bool stereo : { false, true })
-                        for (float mix : { 0.0f, 0.5f, 1.0f })
-                        {
-                            ee::fx::ArtifactModule module;
-                            module.prepare (kSampleRate, 512);
-                            module.setEngine (ee::fx::ArtifactModule::Amp);
-                            module.setMix01 (mix);
-                            module.setLevel (1.0f);
-                            module.setEngaged (true);
+                    for (float mix : { 0.0f, 0.5f, 1.0f })
+                    {
+                        ee::fx::ArtifactModule module;
+                        module.prepare (kSampleRate, 512);
+                        module.setEngine (ee::fx::ArtifactModule::Amp);
+                        module.setMix01 (mix);
+                        module.setLevel (1.0f);
+                        module.setEngaged (true);
 
-                            module.setAmp (drive, mids, bit, tone, stereo);
+                        module.setAmp (drive, mids, bit, tone);
 
-                            juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
-                            fillTestSignal (buffer, kSampleRate);
-                            run (module, buffer);
+                        juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
+                        fillTestSignal (buffer, kSampleRate);
+                        run (module, buffer);
 
-                            ++cases;
-                            worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
-                            clean = allFinite (buffer) && clean;
-                        }
+                        ++cases;
+                        worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+                        clean = allFinite (buffer) && clean;
+                    }
 
     std::printf ("  %d cases, worst peak %.3f\n", cases, worstPeak);
     check (clean, "every Artifact case finite");

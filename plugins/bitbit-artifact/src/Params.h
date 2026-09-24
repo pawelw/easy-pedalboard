@@ -35,6 +35,5 @@ inline constexpr const char* ampDrive = "amp.drive";   // tube-style analog driv
 inline constexpr const char* ampMids = "amp.mids";     // peaking boost, 0..7 dB, BitBit EQ's own Mid band/Q
 inline constexpr const char* ampBit = "amp.bit";       // sample-and-hold rate only - no word length, no anti-alias
 inline constexpr const char* ampTone = "amp.tone";     // bipolar tilt, -100..+100, flat and bypassed at 0
-inline constexpr const char* ampStereo = "amp.stereo"; // Mono/Stereo - on = Haas-widen the right channel
 
 } // namespace ee::artifact::id

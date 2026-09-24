@@ -82,8 +82,8 @@
 }
 
 /* Ring Mod's Earworm / Green Lantern and Rust's Oxide / Contact switches drop
-   to the foot of the body, the same place Amp's Mono/Stereo sits. The padding
-   below is the module-face switch's, so the two land on the same line. */
+   to the foot of the body, the same place a module-face switch sits. The padding
+   below is that switch's, so the two land on the same line. */
 .af-mode-switch {
   margin-top: auto;
   padding: 16px 0 6px;
@@ -96,13 +96,6 @@
   align-items: center;
   justify-content: center;
   gap: 10px;
-}
-
-/* Mono/Stereo drops to the foot of the module body, whatever is above it, so
-   it sits just clear of the footer's top border. */
-.af-ms-switch {
-  margin-top: auto;
-  padding: 16px 0 6px;
 }
 
 .af-switch-label {
