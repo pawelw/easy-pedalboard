@@ -624,11 +624,13 @@ Nothing exists today; the version is `0.10.0` in the top-level `CMakeLists.txt`.
 
 ---
 
-## G5 — Content: presets, the plate engine, latency, the preset browser
+## G5 — Content: presets, the reverb engine, latency, the preset browser
 
-Do the DSP-changing items (**plate**, **latency**) *before* you freeze the release
-regression checksums — both alter audio, and re-baselining after the fact removes
-the only evidence that nothing else moved.
+Do the DSP-changing items (**the reverb engine**, **latency**) *before* you
+freeze the release regression checksums — both alter audio, and re-baselining
+after the fact removes the only evidence that nothing else moved. The reverb
+engine is done (5.2) and its golden file already reflects it; latency (5.3) is
+not, and is what is actually still holding the checksum freeze open.
 
 ### 5.1 Presets (your item 4)
 
@@ -667,25 +669,46 @@ The website already promises "global presets across the whole chain".
 - Get a second pair of ears. Presets are the demo most buyers judge you on, and
   the author is the worst judge of their own.
 
-### 5.2 Plate reverb engine (your item 6)
+### 5.2 Third reverb engine (your item 6) — **DONE, as Modern rather than Plate** ✅
 
-Note first: **`ee::dsp::FdnReverb` is already plate-voiced** — its own header
-describes it as a plate-voiced 16-line FDN, and it is what BitBit Reverb's Space
-engine runs. So "add a Plate engine" is one of two quite different jobs:
+Landed 2026-09-23 (`Reverb changes`, `Reverb more knobs`), and it took the
+**expensive and distinctive** path this section offered as the alternative to a
+cheap third `FdnReverb` voicing, not the cheap one: **Modern**
+(`ee::dsp::SpaceReverb`) is a separate engine, not a `PlateConfig.h` retune of
+the existing FDN, voiced against a real commercial reference — NI Raum's Airy
+mode — by rendering impulse responses over a Decay × Damp grid and matching
+octave-band T20 and per-octave energy, echo density in the first 150 ms, and
+the tail's per-octave autocorrelation. `SpaceConfig.h` records what was
+measured. This is a bigger undertaking than the "cheap and credible" option
+ever needed to be, not a shortfall against it.
 
-- **Cheap and credible:** a third engine in `ee::fx::ReverbModule` that runs
-  `FdnReverb` from a new `PlateConfig.h` — shorter predelay, higher input
-  diffusion, tighter modulation, no shimmer — voiced deliberately against Space so
-  the two are obviously different in a preset A/B.
-- **Expensive and distinctive:** a true Dattorro plate as a separate engine. A
-  real project, with its own voicing loop and reference material.
+BitBit Reverb is now three engines — **Spring, Shimmer, Modern** — where it
+used to be two. Shimmer is the renamed Space/`FdnReverb` (its parameters kept
+the `space.` ids: a saved session keys on them, and renaming would have lost
+every setting anyone made). Modern is true stereo in (Spring and Shimmer are
+mono in, stereo out, same as their standalone pedals) and follows Raum's own
+Mix law rather than the module-wide equal-power one.
 
-Either way, the checklist is the one in `CLAUDE.md` for adding an Artifact engine,
-transposed: **engine enum appended LAST**, `ReverbModule` prepare/render/reset,
-`bitbit-reverb` params + `Init.xml`, `bitbit-alpine` `rev.` bindings, the
-`module-face` engine list, `tests/UiSnapshot.cpp` mirrored (nothing catches drift
-there), `ee_reverb_host` coverage, a `*_regress` section asserting the new
-controls at their defaults are **bit-identical** to before, and the README.
+The checklist this section asked for, checked against what actually shipped:
+engine enum appended last ✅; `ReverbModule` prepare/render/reset ✅;
+`bitbit-reverb` params (`modern.*`) + `Init.xml` ✅; `bitbit-alpine` `rev.`
+bindings (`rev.modern.*`) ✅; the `module-face` engine list ✅; `ee_reverb_host`
+coverage (all three engines, still a checksum per case) ✅; `tests/golden/BitBitReverb.txt`
+already carries the five `modern.*` parameters, so the golden freeze (1.1) is
+current, not stale ✅; the README ✅, with real technical detail on the match.
+**Not applicable, on reflection: `tests/UiSnapshot.cpp`.** That renderer only
+ever covered the native `ee::ui` pedals — no WebView pedal, Reverb included, is
+in it — so this bullet was carried over from the Artifact-engine checklist
+without noticing it doesn't apply to a WebView product. Nothing to fix here;
+worth remembering next time this checklist gets reused for a WebView pedal.
+
+New tooling that came with it, useful beyond this one engine: `ee_plugin_render`
+(hosts any installed AU, sets its parameters by their *displayed* value, and
+renders a file or an impulse — the general mechanism for matching any
+third-party reference by hosting it rather than deconvolving a bounced
+recording) and `ee_space_fit` (renders `SpaceReverb` alone at any voicing field
+override, for the fit loop without a full plugin build). See `CLAUDE.md`,
+*Matching a third-party reference*.
 
 ### 5.3 Latency (your item 7)
 
@@ -912,7 +935,7 @@ G1  correctness              │   golden param file ✅ · CI on both platforms
                              │   both known failures closed ✅ · soak harness ·
                              │   preset-loader fuzzing          — six products
    ↓                         │
-G5a DSP content              │   plate engine · latency work
+G5a DSP content              │   reverb engine (Modern, vs. NI Raum) ✅ · latency work
     ← before checksums freeze│
    ↓                         │
 G1b re-baseline              │   *_regress checksums frozen, per platform
