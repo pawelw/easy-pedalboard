@@ -683,3 +683,9 @@ foreach(pluginTarget IN LISTS eeReleaseTargets)
         PRIVATE ${pluginTarget} ee_shared juce::juce_graphics juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
 endforeach()
+
+# TEMP-PROBE
+juce_add_console_app(ee_filter_probe PRODUCT_NAME "ee_filter_probe")
+target_sources(ee_filter_probe PRIVATE _FilterProbe.cpp)
+target_compile_definitions(ee_filter_probe PUBLIC JUCE_WEB_BROWSER=0 JUCE_USE_CURL=0 JUCE_STANDALONE_APPLICATION=1)
+target_link_libraries(ee_filter_probe PRIVATE ee_dsp PUBLIC juce::juce_recommended_config_flags)

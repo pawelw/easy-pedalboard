@@ -70,11 +70,10 @@
    engine stepper at the top of the body (the well the base .pui-stepper rule
    draws) - full width there reads as this engine's own identity, which a
    secondary control below the knobs is not, so it shrinks to its content and
-   centres instead. The name well stays unfixed (no width set) rather than
-   following ShapeFamilyStepper's fixed 42px (BitBit Grain) - "-1 Oct" and
-   "+1 Oct" are exactly the two longest labels this picker will ever show, so
-   there is nothing a fixed width would be protecting against, and fitting
-   the actual text is worth more than a well that never moves. */
+   centres instead. The name well gets a floor rather than a fixed width: the
+   pill is fit-content, so without one the middle option ("0") collapses it
+   and the two arrows jump inwards as you step through. 30px is "+1 Oct" at
+   this size, so the longest labels still set the width. */
 .sm-picker {
   margin-top: 16px;
   display: flex;
@@ -85,6 +84,10 @@
   width: fit-content;
   gap: 2px;
   padding: 3px 6px;
+}
+
+.sm-picker .pui-stepper__value {
+  min-width: 30px;
 }
 
 .sm-picker .pui-stepper__arrow {

@@ -60,7 +60,11 @@ public:
     void setPredelay (float ms) noexcept;
 
     /** kMinSize..kMaxSize. Scales the room's own travel times - see the note
-        above kMinSize. */
+        above kMinSize. Glides over 0.3 s: jumping every delay in the room to
+        its new length is a discontinuity in the audio (a click per block of a
+        knob drag), so they are moved instead, which bends the tail's pitch a
+        little for as long as the knob is moving - the same trade a tape delay's
+        time knob makes. */
     void setSize (float scale) noexcept;
 
     /** 12 dB/oct highpass on the wet. kMinLowCutHz is off. */
@@ -129,7 +133,18 @@ private:
 
     float decaySeconds = 2.0f;
     float damping = 0.25f;
+    // sizeScale is the Size the block being rendered was derived at; it trails
+    // sizeSmooth while Size is on the move. See setSize.
     float sizeScale = kDefaultSize;
+    float sizeTarget = kDefaultSize;
+    juce::SmoothedValue<float> sizeSmooth;
+    bool sizeWasMoving = false;
+    // The whole-sample positions (early echoes, feed diffusers) glide to the
+    // whole-sample position of the new Size rather than being rounded on the
+    // way, so they land on an integer without a last small step.
+    std::array<juce::SmoothedValue<float>, 3> earlySmooth;
+    std::array<juce::SmoothedValue<float>, SpaceVoicing::kFeedDiffusers> feedDiffuserMidSmooth, feedDiffuserSideSmooth;
+    void retargetSize (float size, bool snap) noexcept;
     float predelayMs = 0.0f;
     float lowCutHz = kMinLowCutHz;
     float highCutHz = kMaxHighCutHz;

@@ -18,6 +18,7 @@
 #include "ee/plugin/SafeParse.h"
 #include "ee/dsp/Chorus.h"
 #include "ee/dsp/FdnReverb.h"
+#include "ee/dsp/SpaceReverb.h"
 #include "ee/dsp/Grainer.h"
 #include "ee/dsp/GrainerConfig.h"
 #include "ee/dsp/ModDelayLine.h"
@@ -473,6 +474,139 @@ void testShimmerReproducible()
     std::printf ("  concurrent renders: %016llx %016llx\n",
                  static_cast<unsigned long long> (a), static_cast<unsigned long long> (b));
     check (a == first && b == first, "concurrent shimmered renders differ from a solo one");
+}
+
+/** The Shimmer octave selector's two failure modes, both reported by ear: at 0
+    the tail kept climbing after the note stopped (a coherent loop with gain
+    over 1 at long Decay), and -1 gave no lower octave at all (DaisySP's downward
+    shift ratio leaves the read head standing still). */
+void testShimmerOctaves()
+{
+    std::printf ("Shimmer octaves (0 must decay, -1 must land an octave down):\n");
+
+    constexpr double sr = 48000.0;
+    constexpr double note = 110.0;
+    constexpr int block = 512;
+
+    // One 2 s note, then silence to 14 s. Returns the wet left channel.
+    auto render = [&] (int octave)
+    {
+        ee::dsp::FdnReverb reverb;
+        reverb.prepare (sr);
+        reverb.setDecayTime (10.0f);
+        reverb.setShimmer (1.0f);
+        reverb.setOctave (octave);
+
+        std::vector<float> in (block), l (block), r (block), wet;
+        double phase = 0.0;
+        int n = 0;
+        for (int b = 0; b < static_cast<int> (sr * 14.0 / block); ++b)
+        {
+            for (int i = 0; i < block; ++i, ++n)
+            {
+                phase += 2.0 * juce::MathConstants<double>::pi * note / sr;
+                in[static_cast<size_t> (i)] = n < static_cast<int> (sr * 2.0)
+                    ? 0.3f * static_cast<float> (std::sin (phase) + 0.5 * std::sin (2.0 * phase)) : 0.0f;
+            }
+            reverb.process (in.data(), l.data(), r.data(), block);
+            wet.insert (wet.end(), l.begin(), l.end());
+        }
+        return wet;
+    };
+
+    auto rmsDb = [&] (const std::vector<float>& x, double fromSec, double toSec)
+    {
+        double sum = 0.0;
+        const auto a = static_cast<size_t> (fromSec * sr), b = static_cast<size_t> (toSec * sr);
+        for (size_t i = a; i < b; ++i)
+            sum += static_cast<double> (x[i]) * x[i];
+        return 10.0 * std::log10 (sum / static_cast<double> (b - a) + 1.0e-12);
+    };
+
+    auto binDb = [&] (const std::vector<float>& x, double hz, double fromSec, double toSec)
+    {
+        double re = 0.0, im = 0.0;
+        const auto a = static_cast<size_t> (fromSec * sr), b = static_cast<size_t> (toSec * sr);
+        for (size_t i = a; i < b; ++i)
+        {
+            const double ang = 2.0 * juce::MathConstants<double>::pi * hz * static_cast<double> (i) / sr;
+            re += x[i] * std::cos (ang);
+            im += x[i] * std::sin (ang);
+        }
+        return 20.0 * std::log10 (std::sqrt (re * re + im * im) / static_cast<double> (b - a) + 1.0e-9);
+    };
+
+    const auto unison = render (0);
+    const auto down = render (-1);
+    const auto up = render (1);
+
+    for (const auto* w : { &unison, &down, &up })
+        check (rmsDb (*w, 12.0, 14.0) < rmsDb (*w, 8.0, 10.0) - 3.0,
+               "the tail is still decaying at 12 s (octave " + juce::String (w == &unison ? "0" : w == &down ? "-1" : "+1") + ")");
+
+    // The lower octave's note is 55 Hz; nothing plays there, so energy at it is
+    // the shifter's. It measures about -55 dB with the fix and sits at the
+    // ~-96 dB floor without it (the note's own harmonic hides a like-for-like
+    // check at +1, so only the floor is asserted).
+    const double lowerDb = binDb (down, note * 0.5, 1.0, 5.0);
+    std::printf ("  -1 octave content at 55 Hz: %.1f dB\n", lowerDb);
+    check (lowerDb > -70.0, "-1 octave puts energy an octave below the note");
+}
+
+/** Dragging Studio's Size knob must not click. Size moves every delay the room
+    has, and used to jump each of them to its new length at the top of the next
+    block - a discontinuity in the audio per block of the drag. Measured as the
+    second difference of a sustained tone's wet output: a smooth signal has a
+    small one everywhere, a click is a spike many times the rest. */
+void testStudioSizeSweepDoesNotClick()
+{
+    std::printf ("Studio Size sweep (no clicks):\n");
+
+    constexpr double sr = 48000.0;
+    constexpr int block = 256;
+
+    // Largest second difference of the wet output over 1 s in which Size is
+    // dragged from 0.6 to 1.4 in one step per block (or not at all).
+    auto worstStepOf = [&] (bool sweepSize)
+    {
+        ee::dsp::SpaceReverb reverb;
+        reverb.prepare (sr);
+        reverb.setDecayTime (3.0f);
+        reverb.setSize (0.6f);
+
+        std::vector<float> in (block), l (block), r (block), wet;
+        double phase = 0.0;
+        const int settle = static_cast<int> (sr * 2.0 / block);
+        const int sweep = static_cast<int> (sr * 1.0 / block);
+
+        for (int b = 0; b < settle + sweep + settle / 2; ++b)
+        {
+            for (auto& x : in)
+            {
+                phase += 2.0 * juce::MathConstants<double>::pi * 330.0 / sr;
+                x = 0.3f * static_cast<float> (std::sin (phase));
+            }
+
+            if (sweepSize && b >= settle && b < settle + sweep)
+                reverb.setSize (0.6f + 0.8f * static_cast<float> (b - settle + 1) / static_cast<float> (sweep));
+
+            reverb.process (in.data(), in.data(), l.data(), r.data(), block);
+            if (b >= settle)
+                wet.insert (wet.end(), l.begin(), l.end());
+        }
+
+        // The largest second difference: a sine has a small one everywhere, a
+        // step in the signal has one as big as the step.
+        double worst = 0.0;
+        for (size_t i = 1; i + 1 < wet.size(); ++i)
+            worst = std::max (worst, std::abs (static_cast<double> (wet[i - 1]) - 2.0 * wet[i] + wet[i + 1]));
+        return worst;
+    };
+
+    const double still = worstStepOf (false);
+    const double swept = worstStepOf (true);
+    std::printf ("  largest second difference: %.5f held still, %.5f dragged (tone peaks near 0.13)\n", still, swept);
+    check (swept < still * 5.0, "dragging Size leaves no step in the wet output");
 }
 
 /** Silence in still has to give exact silence out with shimmer fully up. */
@@ -6010,6 +6144,10 @@ int main()
     std::printf ("\n");
     testShimmerSilence();
     testShimmerReproducible();
+    std::printf ("\n");
+    testShimmerOctaves();
+    std::printf ("\n");
+    testStudioSizeSweepDoesNotClick();
     std::printf ("\n");
     testDelayTaps();
     std::printf ("\n");

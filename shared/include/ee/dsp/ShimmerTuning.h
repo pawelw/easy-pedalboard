@@ -33,6 +33,15 @@ struct ShimmerTuning
     float maxFeedback = 0.555f;
     float skew = 3.0f;
 
+    // The same ceiling at 0 octaves. Shifted an octave either way the tap comes
+    // back at a different pitch, so it never lines up with what it is feeding
+    // and the stack dies away on its own. At 0 it lands on the very partials it
+    // came from: the loop is coherent, and at maxFeedback its gain is over 1 at
+    // long Decay - the tail then *grows* after the note ends (measured: +3 dB/s
+    // at Decay 10, from a 110 Hz note). 0.30 decays at every pitch and Damping
+    // tried, the lowest notes being the tightest.
+    float unisonMaxFeedback = 0.30f;
+
     // Band limits on each side of the feedback.
     float lowCutHz = 20.0f;
     float highCutHz = 3200.0f;
@@ -87,6 +96,7 @@ inline constexpr ShimmerTuningEntry kShimmerTuningEntries[] = {
 
     { "maxFeedback",   &ShimmerTuning::maxFeedback,     0.0f,     0.98f,  3 },
     { "skew",          &ShimmerTuning::skew,            0.5f,     3.0f,   2 },
+    { "unisonMaxFb",   &ShimmerTuning::unisonMaxFeedback, 0.0f,   0.98f,  3 },
 
     { "lowCutHz",      &ShimmerTuning::lowCutHz,       20.0f,   600.0f,   0 },
     { "highCutHz",     &ShimmerTuning::highCutHz,    2000.0f, 20000.0f,   0 },

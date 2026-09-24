@@ -142,6 +142,13 @@ private:
         shimmerTuning. Called from prepare and setShimmerTuning. */
     void updateShimmerDerived() noexcept;
 
+    /** The feedback ceiling for the current octave: an octave either way keeps
+        the tuned maxFeedback, unison gets its own lower one - see ShimmerTuning. */
+    float shimmerCeiling() const noexcept
+    {
+        return pitchSemitones == 0.0f ? shimmerTuning.unisonMaxFeedback : shimmerTuning.maxFeedback;
+    }
+
     double sr = 44100.0;
     bool dirty = true;
 

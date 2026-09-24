@@ -387,7 +387,7 @@ void FdnReverb::setShimmer (float amount01) noexcept
 
     shimmerAmount = amount01;
     shimmerGain.setTargetValue (
-        shimmerGainFor (amount01, shimmerTuning.skew, shimmerTuning.maxFeedback));
+        shimmerGainFor (amount01, shimmerTuning.skew, shimmerCeiling()));
 }
 
 void FdnReverb::setOctave (int octaves) noexcept
@@ -417,7 +417,7 @@ void FdnReverb::updateShimmerDerived() noexcept
     }
 
     shimmerGain.setTargetValue (
-        shimmerGainFor (shimmerAmount, shimmerTuning.skew, shimmerTuning.maxFeedback));
+        shimmerGainFor (shimmerAmount, shimmerTuning.skew, shimmerCeiling()));
 }
 
 void FdnReverb::setShimmerTuning (const ShimmerTuning& newTuning) noexcept

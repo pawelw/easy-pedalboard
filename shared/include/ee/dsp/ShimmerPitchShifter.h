@@ -22,7 +22,8 @@
 
     This version gives each instance its own generator, seeded in Init(), and
     sets every member there. Everything else - the delay lines, the crossfade,
-    the transposition maths - is unchanged, so the voicing is too; only the
+    the transposition maths (bar the downward ratio, see SetTransposition) - is
+    unchanged, so the voicing is too; only the
     sequence of random values differs from what the shared generator produced,
     and that sequence was never reproducible to begin with.
 */
@@ -137,7 +138,14 @@ public:
             ratio *= (uint8_t) (fabsf (transpose) / 12) + 1;
             shift_up_ = transpose > 0.0f;
 
-            mod_freq_ = ((ratio - 1.0f) * sr_) / del_size_;
+            // The read head moves at 1 + (sweep rate) going up and 1 - (sweep
+            // rate) going down, so a shift down to 1/ratio needs a sweep of
+            // (1 - 1/ratio), not (ratio - 1). DaisySP used (ratio - 1) for both
+            // and never corrected it: -12 semitones swept at the +12 rate, the
+            // read head stood still (speed 0) and the "octave down" came out as
+            // a frozen, sub-audible smear rather than a note an octave lower.
+            const float sweep = shift_up_ ? ratio - 1.0f : 1.0f - 1.0f / ratio;
+            mod_freq_ = (sweep * sr_) / del_size_;
             if (mod_freq_ < 0.0f)
                 mod_freq_ = 0.0f;
 

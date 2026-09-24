@@ -207,6 +207,15 @@ void SpaceReverb::prepare (double sampleRate)
     }
 
     predelaySamples.reset (sampleRate, kDelayRampSeconds);
+    sizeSmooth.reset (sampleRate, kDelayRampSeconds);
+    for (auto& v : earlySmooth)
+        v.reset (sampleRate, kDelayRampSeconds);
+    for (auto& v : feedDiffuserMidSmooth)
+        v.reset (sampleRate, kDelayRampSeconds);
+    for (auto& v : feedDiffuserSideSmooth)
+        v.reset (sampleRate, kDelayRampSeconds);
+    sizeScale = sizeTarget;
+    retargetSize (sizeTarget, true);
     lowCutSmooth.reset (sampleRate, kRampSeconds);
     highCutSmooth.reset (sampleRate, kRampSeconds);
     lowCutSmooth.setCurrentAndTargetValue (lowCutHz);
@@ -278,11 +287,39 @@ void SpaceReverb::setDamping (float amount01) noexcept
 void SpaceReverb::setSize (float scale) noexcept
 {
     scale = juce::jlimit (kMinSize, kMaxSize, scale);
-    if (! juce::approximatelyEqual (scale, sizeScale))
+    if (! juce::approximatelyEqual (scale, sizeTarget))
     {
-        sizeScale = scale;
-        dirty = true;
+        sizeTarget = scale;
+        retargetSize (scale, false);
     }
+}
+
+void SpaceReverb::retargetSize (float size, bool snap) noexcept
+{
+    const float fs = static_cast<float> (sr);
+
+    const auto aim = [snap] (juce::SmoothedValue<float>& v, float target)
+    {
+        if (snap)
+            v.setCurrentAndTargetValue (target);
+        else
+            v.setTargetValue (target);
+    };
+
+    aim (sizeSmooth, size);
+    aim (earlySmooth[0], std::round (voicing.earlySameMs * 0.001f * fs * size));
+    aim (earlySmooth[1], std::round (voicing.earlyLeftToRightMs * 0.001f * fs * size));
+    aim (earlySmooth[2], std::round (voicing.earlyRightToLeftMs * 0.001f * fs * size));
+
+    // Whole samples - a fractional Hermite read would dull the top.
+    for (int i = 0; i < SpaceVoicing::kFeedDiffusers; ++i)
+    {
+        const auto idx = static_cast<size_t> (i);
+        aim (feedDiffuserMidSmooth[idx], juce::jmax (2.0f, std::round (voicing.feedDiffuserMidMs[idx] * 0.001f * fs * size)));
+        aim (feedDiffuserSideSmooth[idx], juce::jmax (2.0f, std::round (voicing.feedDiffuserSideMs[idx] * 0.001f * fs * size)));
+    }
+
+    dirty = true;
 }
 
 void SpaceReverb::setPredelay (float ms) noexcept
@@ -377,21 +414,17 @@ void SpaceReverb::updateDerived() noexcept
         lfoInc[idx] = voicing.lfoHz[idx] / fs;
     }
 
+    // Where the smoothers are now: the target's whole-sample position at rest,
+    // a point on the way there while Size moves.
     for (int i = 0; i < SpaceVoicing::kFeedDiffusers; ++i)
     {
         const auto idx = static_cast<size_t> (i);
-        // Whole samples - a fractional Hermite read would dull the top.
-        feedDiffuserMid[idx].setDelaySamples (
-            juce::jmax (2.0f, std::round (voicing.feedDiffuserMidMs[idx] * 0.001f * fs * sizeScale)));
-        feedDiffuserSide[idx].setDelaySamples (
-            juce::jmax (2.0f, std::round (voicing.feedDiffuserSideMs[idx] * 0.001f * fs * sizeScale)));
+        feedDiffuserMid[idx].setDelaySamples (feedDiffuserMidSmooth[idx].getCurrentValue());
+        feedDiffuserSide[idx].setDelaySamples (feedDiffuserSideSmooth[idx].getCurrentValue());
     }
 
-    // Whole samples, so the echoes are read exactly: a fractional Hermite read
-    // takes ~2 dB off the top octave, which on a bare echo is audible.
-    earlySamples[0] = std::round (voicing.earlySameMs * 0.001f * fs * sizeScale);
-    earlySamples[1] = std::round (voicing.earlyLeftToRightMs * 0.001f * fs * sizeScale);
-    earlySamples[2] = std::round (voicing.earlyRightToLeftMs * 0.001f * fs * sizeScale);
+    for (size_t k = 0; k < earlySamples.size(); ++k)
+        earlySamples[k] = earlySmooth[k].getCurrentValue();
     for (auto& filter : earlyShelf)
         designTrip (filter, voicing.earlyDampTripMs * 0.001f, std::sqrt (2.0f * decaySeconds));
 
@@ -403,9 +436,21 @@ void SpaceReverb::updateDerived() noexcept
 
 void SpaceReverb::process (const float* inL, const float* inR, float* outL, float* outR, int numSamples) noexcept
 {
+    // Size on the move: the loss filters and per-trip gains follow it a block
+    // at a time (a fraction of a dB a step), and once more the block after it
+    // lands. The positions themselves move every sample, below.
+    const bool sizeMoving = sizeSmooth.isSmoothing();
+    if (sizeMoving || sizeWasMoving)
+    {
+        sizeScale = sizeSmooth.getCurrentValue();
+        dirty = true;
+    }
+    sizeWasMoving = sizeMoving;
+
     if (dirty)
         updateDerived();
 
+    const float fs = static_cast<float> (sr);
     const float earlyGain = voicing.earlyGain;
     const float lateGain = voicing.lateGain * kTapNorm
                          * std::pow (2.0f / decaySeconds, voicing.lateGainDecayExponent);
@@ -421,6 +466,20 @@ void SpaceReverb::process (const float* inL, const float* inR, float* outL, floa
             const float ramp = static_cast<float> (++warmupSamples) / static_cast<float> (warmupLength);
             xL *= ramp;
             xR *= ramp;
+        }
+
+        if (sizeMoving)
+        {
+            const float size = sizeSmooth.getNextValue();
+            for (int i = 0; i < kLines; ++i)
+                lineSamples[static_cast<size_t> (i)] = voicing.lineMs[static_cast<size_t> (i)] * 0.001f * size * fs;
+            for (size_t k = 0; k < earlySamples.size(); ++k)
+                earlySamples[k] = earlySmooth[k].getNextValue();
+            for (size_t i = 0; i < feedDiffuserMid.size(); ++i)
+            {
+                feedDiffuserMid[i].setDelaySamples (feedDiffuserMidSmooth[i].getNextValue());
+                feedDiffuserSide[i].setDelaySamples (feedDiffuserSideSmooth[i].getNextValue());
+            }
         }
 
         inputL.write (xL);
