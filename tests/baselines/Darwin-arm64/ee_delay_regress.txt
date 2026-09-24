@@ -1,0 +1,25 @@
+Timing (impulse, Mix 50 %, no feedback):
+  free, shortest                     62.5 ms: latency 0, dry at +0, first repeat +0 from the knob
+  free, mid                         433.0 ms: latency 0, dry at +0, first repeat +0 from the knob
+  free, long                       1074.8 ms: latency 0, dry at +0, first repeat +0 from the knob
+  1/32 at 300 bpm (the shortest)     25.0 ms: latency 0, dry at +0, first repeat +0 from the knob
+  1/16 at 300 bpm                    50.0 ms: latency 0, dry at +0, first repeat +0 from the knob
+  ok    the dry note is undelayed and the first repeat lands on the Time knob, shortest included
+
+BitBit Delay - 13 passes at 48000 Hz, 4 s each, ragged blocks
+
+normal, clean                  12a5e3149c6001eb  peak 1.044145  rms 0.270776
+wide                           d4d197bd5d40f454  peak 0.961524  rms 0.403630
+ping pong                      edb2b4228e934906  peak 0.939187  rms 0.242633
+unlinked times                 e41bc6f787934fc8  peak 0.915019  rms 0.277030
+tape                           3c42f0b2dfdace17  peak 0.996411  rms 0.259149
+drift                          b527a7cbba74c999  peak 1.097956  rms 0.340068
+phaser                         eae07a79c3ad020e  peak 1.235490  rms 0.274458
+filter both ends               3d6ea4a0efa8d3ab  peak 0.789580  rms 0.174965
+free (ms), not synced          84d636e7d6db5aba  peak 0.988511  rms 0.392971
+everything, high feedback      f17d9468dab89053  peak 0.923423  rms 0.291626
+bypassed (trails)              de9d429185e2c526  peak 0.995088  rms 0.336259
+mix 0                          de9d429185e2c526  peak 0.995088  rms 0.336259
+mix 100                        a0855ac02caa6add  peak 1.402805  rms 0.492891
+
+all passes finite

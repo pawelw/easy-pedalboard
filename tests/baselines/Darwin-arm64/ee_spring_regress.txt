@@ -1,0 +1,26 @@
+BitBit Spring - 8 passes at 48000 Hz, 6 s each (2 s of input, then tail)
+
+decay 0 (shortest)       6b8a7d4be7690cba  peak 0.107553  rms 0.014566  tail 0.000000
+decay 25                 246f09e8a390d3f4  peak 0.241151  rms 0.027135  tail 0.000000
+decay 50, default mix    af83229fdc642892  peak 0.916395  rms 0.192135  tail 0.000002
+decay 75                 846c3301b12867e4  peak 0.582306  rms 0.083789  tail 0.000056
+decay 100 (longest)      ce5a1af18880cc2a  peak 0.647598  rms 0.095543  tail 0.000134
+mono tank                7e3b35546c2e49a6  peak 0.246920  rms 0.062624  tail 0.000007
+mix 0                    51465a04d9dc7d43  peak 0.995088  rms 0.194139  tail 0.000000
+bypassed                 51465a04d9dc7d43  peak 0.995088  rms 0.194139  tail 0.000000
+
+engine sweep - the two controls BitBit Spring does not have
+
+engine: untouched                  3fa7a09bb1d9b3df  peak 0.451771  tail 0.000000
+engine: defaults set               3fa7a09bb1d9b3df  peak 0.451771  tail 0.000000
+engine: tension 0 (slack)          03bc7a0fd94fafa2  peak 0.278288  tail 0.000000
+engine: tension 1 (taut)           112ad2c170b88014  peak 0.371345  tail 0.000000
+engine: low cut min                9d1921c41e9b1aa5  peak 0.462077  tail 0.000000
+engine: low cut max                80388ec4a157d87a  peak 0.176610  tail 0.000000
+engine: hi cut min                 f18bf2e4fcdf3cac  peak 0.383642  tail 0.000000
+engine: hi cut max                 21988b92de742e29  peak 0.462161  tail 0.000000
+engine: all extreme, long decay    445d1e7a57dfb3a6  peak 0.155787  tail 0.000044
+
+  ok    setting both controls to their defaults changes nothing
+
+all passes finite

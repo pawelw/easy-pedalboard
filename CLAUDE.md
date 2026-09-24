@@ -76,6 +76,17 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_latency_audit_BitBitDelay_artefacts/Release/ee_latency_audit_BitBitDelay [--rate HZ] [--verbose]  # does the dry path land on getLatencySamples(), every rate, every discrete state, host bypass (G5.3), one per product
 ```
 
+**`tests/baselines/<platform>/*.txt` are the frozen regression checksums** -
+what `ee_delay_regress`, `ee_alpine_host`, `ee_modulation_host`, `ee_reverb_host`,
+`ee_grain_host`, `ee_spring_regress`, `ee_module_stress`, `ee_bit_check` and
+`ee_reverb_stress` print, kept per platform (`Darwin-arm64` today; a different
+compiler moves them, so Windows gets a directory of its own). `scripts/dev-check.sh`
+runs `scripts/regress-baselines.sh`, which diffs the tools against them, and a moved
+line is a change to the sound. If it was meant, refresh with
+`scripts/regress-baselines.sh --update` **in the same commit as the change and say
+why**; if it was not, it is a bug. Taken from the `fast` build (`build-fast`). Only
+tools that print the same thing every run are on the list.
+
 **`tests/golden/*.txt` is the frozen parameter contract**, one file per
 *shipping* product (`EE_RELEASE_PLUGINS` in the top-level `CMakeLists.txt` - the
 six in `docs/release-plan.md`, D2; the other nine are not packaged, so nothing

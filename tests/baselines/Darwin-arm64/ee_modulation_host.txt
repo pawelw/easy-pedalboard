@@ -1,0 +1,32 @@
+=== BitBit Modulation host ===
+
+Init preset:
+  ok    the factory bank ships an Init preset
+  ok    ...and it loads
+  ok    ...and puts every parameter back on its default
+
+Latency:
+        engine 1    161 samples   (reported 161)
+        engine 2    161 samples   (reported 161)
+        engine 3    161 samples   (reported 161)
+        engine 4    161 samples   (reported 161)
+  ok    the dry path arrives where the reported latency says, whichever engine mixes
+
+Defaults:
+  ok    the default patch is finite
+  ok    ...and makes sound
+  ok    ...and is not just the input back
+  ok    switched off is the input, delayed by the reported latency, bit for bit
+
+Engines:
+  ok    Tape               d4703fe613ff9dfc  peak 0.400200  rms 0.258229
+  ok    Tremolo            94c2bb9c1cf8047b  peak 1.631420  rms 0.468188
+  ok    Chorus             73ed13799c1223a6  peak 0.819675  rms 0.226219
+  ok    Phaser             1f1c561d835a18c3  peak 1.304357  rms 0.332654
+  ok    Filter             25f5a1a15c7d1c20  peak 1.024558  rms 0.337696
+
+Synced LFOs:
+  ok    Tremolo, synced    83d4e8ddfcfd2684  peak 1.632173  rms 0.467255
+  ok    Filter, synced     97fd3c4926f7340f  peak 1.031675  rms 0.338415
+
+OK - BitBit Modulation works

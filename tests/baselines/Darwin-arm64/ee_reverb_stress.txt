@@ -1,0 +1,23 @@
+=== FDN reverb stress (the Shimmer engine, BitBit Grain's) ===
+
+1512 cases, worst tail peak 9.856, 0 flagged
+
+=== long-duration decay (silence tail must not grow) ===
+  ok   decay=3.30 res=0.50  settledPeak=2.382e-44 peak=0.784
+  ok   decay=3.30 res=0.56  settledPeak=2.242e-44 peak=0.680
+  ok   decay=3.30 res=1.00  settledPeak=2.522e-44 peak=0.719
+  ok   decay=4.00 res=0.50  settledPeak=2.522e-44 peak=0.580
+  ok   decay=4.00 res=0.56  settledPeak=2.522e-44 peak=0.595
+  ok   decay=4.00 res=1.00  settledPeak=2.522e-44 peak=0.853
+  ok   decay=10.00 res=0.50  settledPeak=4.034e-33 peak=0.797
+  ok   decay=10.00 res=0.56  settledPeak=6.135e-34 peak=0.838
+  ok   decay=10.00 res=1.00  settledPeak=1.913e-33 peak=0.920
+
+1521 cases, worst tail peak 9.856, 0 flagged
+
+=== Space reverb stress (the Studio engine) ===
+  ok   decay=8.0 damp=0.0  settledPeak=1.121e-44 peak=1.027
+  ok   decay=8.0 damp=1.0  settledPeak=2.524e-42 peak=0.947
+
+2027 cases, worst tail peak 9.856, 0 flagged
+OK - nothing exploded

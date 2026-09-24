@@ -1,0 +1,27 @@
+=== Amp engine check ===
+
+Bit calibration (ee::fx::ArtifactModule::ampRateHzFor):
+  Bit @ 0%    hold  1  (48000 Hz)  - the knob at rest holds every sample
+  Bit @ 50%   hold  5  (9600 Hz)  (target hold 5)
+  Bit @ 100%  hold 32  (1500 Hz)  (target hold 32)
+  PASS - matches the reference measurement
+
+Bit is scale-invariant (the artefact follows the playing, it is not a floor):
+  input    +0.0 dB  ->  -0.45 dB through the engine  
+  input   -40.0 dB  ->  -0.44 dB through the engine  
+  input   -80.0 dB  ->  -0.44 dB through the engine  
+
+Drive level against the dry (RMS; kLevelTrimDb holds real playing near 0 dB):
+  220 Hz tone, peak      0.05      0.15      0.50
+  Drive  25 %          +0.20 dB   +0.08 dB   -0.93 dB
+  Drive  50 %          +1.54 dB   +0.86 dB   -2.35 dB
+  Drive  75 %          +4.06 dB   +2.04 dB   -3.13 dB
+  Drive 100 %          +6.62 dB   +2.92 dB   -3.49 dB
+
+Mids at 100 % (target +7.0 dB at its own centre, 1600 Hz):
+  Mids 0 % -> 100 %  +7.00 dB
+
+Drive knob moves without clicks (host-style jumps at block boundaries, through 0):
+  worst kink while moving 0.00252, settled 0.00252  (x1.00, limit x1.5)
+
+OK

@@ -1,0 +1,20 @@
+=== BitBit Reverb host ===
+
+Init preset:
+  ok    the factory bank ships an Init preset
+  ok    ...and it loads
+  ok    ...and puts every parameter back on its default
+
+  ok    all three engines are latency-free, and it says so
+  ok    ...and it reports a tail for the host to render
+  ok    the default patch is finite
+  ok    ...and makes sound
+  ok    ...and is not just the input back
+  ok    switched off is the input, bit for bit
+
+Engines:
+  ok    Spring   ead5bbda9f00805f  peak 0.706708  rms 0.272198
+  ok    Shimmer  80a4448dc2bb5411  peak 1.248425  rms 0.437653
+  ok    Studio   74f55dc9d6bf4a63  peak 1.296980  rms 0.587467
+
+OK - BitBit Reverb works

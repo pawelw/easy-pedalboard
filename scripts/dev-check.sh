@@ -90,6 +90,12 @@ for product in BitBitAlpine BitBitGrain BitBitArtifact BitBitModulation BitBitDe
     run "ee_latency_audit_$product"
 done
 
+# The frozen regression checksums, per platform - see scripts/regress-baselines.sh.
+# A moved line here is a change to the sound: if it was meant, update the baseline
+# in the same commit and say why; if not, it is a bug.
+echo "==> regression baselines"
+BUILD="$BUILD" scripts/regress-baselines.sh || status=1
+
 if [[ $status -eq 0 ]]; then
     echo "==> OK"
 else

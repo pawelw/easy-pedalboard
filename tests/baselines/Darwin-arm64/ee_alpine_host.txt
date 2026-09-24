@@ -1,0 +1,72 @@
+=== BitBit Alpine host ===
+
+Latency ledger (dry path, every Mix at 0):
+  everything engaged              161 samples   (reported 161)
+  ok    the dry path arrives exactly where the host is told it will
+  Artifact bypassed               161 samples
+  Modulation bypassed             161 samples
+  Delay bypassed                  161 samples
+  Reverb bypassed                 161 samples
+  Whole plugin bypassed           161 samples
+  ok    ...and no bypass, module or whole plugin, moves it
+  Modulation engine      0    165 samples   (Tape: fully wet, not the dry path)
+  Modulation engine      1    161 samples
+  Modulation engine      2    161 samples
+  Modulation engine      3    161 samples
+  Modulation engine      4    161 samples
+  ok    ...and does not move with the Modulation engine that mixes
+  Tape, module bypassed       161 samples
+  ok    the Tape dry path is aligned to the reported latency
+
+  ok    every chain.order index decodes to a genuine permutation of the four modules
+  ok    ...and indexForPermutation is its exact inverse
+  ok    index 0 is Artifact, Modulation, Delay, Reverb - today's fixed order
+
+Reported latency:
+   44100 Hz     148 samples    3.36 ms
+   48000 Hz     161 samples    3.35 ms
+   88200 Hz     295 samples    3.34 ms
+   96000 Hz     322 samples    3.35 ms
+  192000 Hz     643 samples    3.35 ms
+
+  ok    the default patch is finite
+  ok    ...and makes sound
+  ok    ...and is not just the input back
+  ok    Artifact off
+  ok    Modulation off
+  ok    Delay off
+  ok    Reverb off
+  ok    bypassed is the input delayed by the reported latency, bit for bit
+
+Engines:
+  ok    mod 0 / rev 0  f7a943848fe829b0  peak 0.526638  rms 0.192828
+  ok    mod 0 / rev 1  d4677dde1f286921  peak 0.767316  rms 0.250626
+  ok    mod 0 / rev 2  b298343bfd504bcd  peak 1.111930  rms 0.344704
+  ok    mod 1 / rev 0  a081fb55a32c860a  peak 1.702417  rms 0.431376
+  ok    mod 1 / rev 1  54e6d8b6319d7e04  peak 2.389758  rms 0.617608
+  ok    mod 1 / rev 2  437d3e767ac06c50  peak 2.761564  rms 0.834191
+  ok    mod 2 / rev 0  ec61481399b61f34  peak 0.733249  rms 0.174701
+  ok    mod 2 / rev 1  7c6c2de8446826a2  peak 0.944466  rms 0.226394
+  ok    mod 2 / rev 2  a866fe4afe326654  peak 1.244108  rms 0.343295
+  ok    mod 3 / rev 0  72d2d5f5f332a2be  peak 1.049753  rms 0.304091
+  ok    mod 3 / rev 1  e7e7fb874b74335e  peak 1.561409  rms 0.461477
+  ok    mod 3 / rev 2  18613d2f55a0dc1d  peak 1.931442  rms 0.580793
+  ok    mod 4 / rev 0  ed67850d9f652e0b  peak 1.140087  rms 0.315539
+  ok    mod 4 / rev 1  dbf93816a0da595b  peak 1.645776  rms 0.452060
+  ok    mod 4 / rev 2  2c9fb1c8c0e9f1d0  peak 1.847408  rms 0.618874
+
+Synced LFOs:
+  ok    Tremolo, synced  62868f9c4def7c2b  peak 2.430991  rms 0.659558
+  ok    Filter, synced   983d6fccf395a3ee  peak 1.641616  rms 0.483305
+
+Reversed chain order:
+  ok    reversed  83fe73e625c7f80f  peak 2.500597  rms 0.712406
+  ok    reversed chain order is finite
+  ok    ...and audibly differs from the default order - the DSP actually reorders, not just the parameter
+
+Everything up:
+  558dae7de5e4f836  peak 1.237521  rms 0.342913
+  ok    every module at once is finite
+  ok    ...and nothing ran away
+
+OK - BitBit Alpine works

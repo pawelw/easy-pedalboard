@@ -1,0 +1,87 @@
+  size       120 ms
+  density    4.9 /s
+  window     3.50 s
+  ssync      Off
+  dsync      Off
+  wsync      Off
+  time       300 ms
+  feedback   0 %
+  stretch    hold
+  freeze     Off
+  width      0 %
+  shape      55 %
+  scatter    25 %
+  reverse    25 %
+  stereo     85 %
+  mod        0 %
+  bit        0 %
+  scale      Major
+  root       C
+  plow       0 %
+  puni       100 %
+  phigh      0 %
+  pmix       100 %
+  ltime      1/8
+  rtime      1/8
+  dlink      On
+  dtsync     On
+  dtype      Normal
+  dfb        30 %
+  dmix       30 %
+  decay      2.50 s
+  rlocut     120 Hz
+  rmix       30 %
+  dry        0.0 dB
+  grains     -3.0 dB
+  mlink      Off
+  filter     13.0 kHz
+  reso       0 %
+  drive      35 %
+  on         On
+  lforate    2
+  lfosync    Off
+  lfoon      On
+  grainon    On
+  pitchon    On
+  scaleon    On
+  randon     On
+  delon      On
+  revon      On
+  level      0.0 dB
+  shapefamily Triangle
+BitBit Grain defaults: 48000 Hz, block 512, 2 ch, -20 dBFS noise, 30 s
+
+    sec        peak         rms
+      1      0.1807      0.0579
+      2      0.1713      0.0583
+      3      0.1596      0.0578
+      4      0.2077      0.0583
+      5      0.1769      0.0583
+      6      0.1907      0.0583
+      7      0.1581      0.0582
+      8      0.1754      0.0582
+      9      0.1949      0.0581
+     10      0.1913      0.0583
+     11      0.1824      0.0583
+     12      0.1662      0.0583
+     13      0.1935      0.0583
+     14      0.1652      0.0580
+     15      0.1992      0.0581
+     16      0.1692      0.0582
+     17      0.1717      0.0581
+     18      0.1929      0.0583
+     19      0.1770      0.0582
+     20      0.1613      0.0581
+     21      0.1830      0.0582
+     22      0.1617      0.0580
+     23      0.1876      0.0580
+     24      0.1629      0.0581
+     25      0.1761      0.0581
+     26      0.1906      0.0582
+     27      0.1659      0.0581
+     28      0.1820      0.0581
+     29      0.1755      0.0582
+
+grain events 89  (last: +0.00 oct, pan -0.41, level 0.672, 120 ms, spread +0.11)
+
+checksum 274fa23eeeacd5f7
