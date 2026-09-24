@@ -95,6 +95,19 @@ constexpr float kWarbleDepthMs = 5.0f;
 constexpr float kWarbleRateHz  = 0.7f;
 constexpr float kWarbleWalk    = 0.015f;  // random-walk step per control block
 
+// The walk used to be two independent per-channel random walks, each free to
+// roam the full -1..1 range - real width, but nothing kept the two channels'
+// delay times from landing near opposite ends of the modulation range at the
+// same time, which on a periodic-ish note is close enough to opposite phase
+// that summing to mono (a mono PA, a phone speaker, a DAW's mono button)
+// cancelled nearly the whole effect. ee_soak_BitBitArtifact found this by
+// running mono-duplicated input for hours: the warble-only wet signal folded
+// to 24% of its per-channel level. One walk now, shared, plus this fixed
+// offset for the right channel - the two channels' delay times always differ
+// by exactly this much rather than by anything between 0 and the full range,
+// which keeps the width without ever risking a near-total cancellation.
+constexpr float kWarbleStereoOffset = 0.35f;
+
 // Delay line length in ms; the buffer is sized for this at up to 192 kHz.
 constexpr float kWarbleLineMs  = 24.0f;
 

@@ -47,11 +47,15 @@ namespace ee::dsp
     and with Tone fully up (in Oxide) the engine is a pass-through. The owning
     module's engine crossfade covers selecting it.
 
-    The only randomness is the warble's slow random walk, a per-channel xorshift
-    re-seeded to a fixed value in reset(): a render is reproducible and can be
-    checksummed, and the two channels seed differently so the wow decorrelates
-    L/R. That warble wet path wanders in time, so under heavy Oxide wear a
-    partial module Mix combs it against the dry - that movement is the intent
+    The only randomness is the warble's slow random walk, an xorshift re-seeded
+    to a fixed value in reset(): a render is reproducible and can be checksummed.
+    One walk, shared - the two channels read it offset by a fixed, bounded
+    amount (RustConfig.h's kWarbleStereoOffset) rather than running two
+    independent walks, which used to let the pair drift close enough to
+    opposite phase that summing to mono cancelled nearly the whole effect (see
+    that constant's own note - ee_soak_BitBitArtifact is what found it). That
+    warble wet path wanders in time, so under heavy Oxide wear a partial module
+    Mix combs it against the dry - that movement is the intent
     here (it is wow), not the tremolo artefact `engineUsesMix` guards Tape
     against.
 */
@@ -84,8 +88,6 @@ public:
 
     void reset() noexcept
     {
-        uint32_t seed = 0x9e3779b9u;
-
         for (auto& ch : channels)
         {
             ch.line.fill (0.0f);
@@ -94,7 +96,6 @@ public:
             ch.env  = 0.0f;
             ch.wear = 0.0f;
 
-            ch.warbleWalk = 0.0f;
             ch.hold = 0;
             ch.held = 0.0f;
 
@@ -104,12 +105,11 @@ public:
             ch.quantStep = 0.0f; // 0 = quantiser off for the block
             ch.decimateN = 1;
 
-            ch.rng = seed;
-            seed = seed * 1664525u + 1013904223u;
-
             updateChannelLp (ch, currentToneHz);
         }
 
+        rng = 0x9e3779b9u;
+        warbleWalk   = 0.0f;
         warblePhase  = 0.0f;
         blockCounter = 0;
     }
@@ -149,7 +149,20 @@ public:
         {
             const bool ctrlTick = blockCounter == 0;
             if (ctrlTick)
+            {
                 currentToneHz += smoothCoeff * (targetToneHz - currentToneHz);
+
+                // One walk, shared - see RustConfig.h's note on kWarbleStereoOffset
+                // for why this used to be two independent per-channel walks and
+                // no longer is. Kept off the rails by half the stereo offset on
+                // each side rather than the full +-1, so adding that offset below
+                // never needs its own clamp - which would silently erase the
+                // offset (and the width with it) whenever the walk was already
+                // near an end of its range.
+                const float walkLimit = 1.0f - 0.5f * rust::kWarbleStereoOffset;
+                warbleWalk = std::clamp (warbleWalk + (nextUniform (rng) * 2.0f - 1.0f) * rust::kWarbleWalk,
+                                        -walkLimit, walkLimit);
+            }
             if (++blockCounter >= rust::kControlBlock)
                 blockCounter = 0;
 
@@ -161,6 +174,13 @@ public:
             {
                 auto& ch = channels[c];
                 float x = io[c][i];
+
+                // Left gets the walk half a stereo-offset below centre, right
+                // half above - a fixed, bounded separation instead of an
+                // independent random one, so the two can never land near
+                // opposite ends of the modulation range at the same time.
+                const float channelWalk =
+                    warbleWalk + (c == 0 ? -0.5f : 0.5f) * rust::kWarbleStereoOffset;
 
                 // Attack/release envelope on |x| - fast up, slow down - so wear
                 // reads "a note is sounding", not the instantaneous sample.
@@ -183,7 +203,7 @@ public:
                     {
                         float modS = rust::kWarbleBaseMs
                                    + rust::kWarbleDepthMs * wWt
-                                         * (0.5f * warbleSine + 0.5f * ch.warbleWalk);
+                                         * (0.5f * warbleSine + 0.5f * channelWalk);
                         modS = std::clamp (modS * msToSamples, 1.0f,
                                            static_cast<float> (lineLen - 3));
                         x += wWt * (readLine (ch, modS) - x);
@@ -244,7 +264,6 @@ private:
         float env  = 0.0f; // attack/release |x| envelope that drives wear
         float wear = 0.0f; // the memory, 0..1
 
-        float warbleWalk = 0.0f;
         int   hold = 0;
         float held = 0.0f;
 
@@ -254,8 +273,6 @@ private:
 
         float quantStep = 0.0f;
         int   decimateN = 1;
-
-        uint32_t rng = 1u;
     };
 
     static constexpr float kPi    = 3.14159265359f;
@@ -299,9 +316,6 @@ private:
         const float target = smoothstep (rust::kWearFloor, rust::kWearKnee, ch.env);
         const float coeff = target > ch.wear ? wearAttack : wearRelease;
         ch.wear += coeff * (target - ch.wear);
-
-        ch.warbleWalk = std::clamp (ch.warbleWalk + (nextUniform (ch.rng) * 2.0f - 1.0f) * rust::kWarbleWalk,
-                                    -1.0f, 1.0f);
 
         const float gw = ch.wear * grind;
 
@@ -381,6 +395,8 @@ private:
 
     float warblePhase = 0.0f;
     float warbleInc   = 0.0f;
+    float warbleWalk  = 0.0f; // shared between channels - see RustConfig.h, kWarbleStereoOffset
+    uint32_t rng      = 0x9e3779b9u;
     float msToSamples = 44.1f;
 
     int lineLen = kLineCapacity;
