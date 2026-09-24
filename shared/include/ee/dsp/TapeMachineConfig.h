@@ -55,6 +55,22 @@ constexpr float kParamSmoothingHz = 12.0f;
 // reported latency, so it is as short as that allows.
 constexpr float kNominalDelayMs = 4.5f;
 
+// Low latency: the same transport with its line shortened to just clear the
+// wow, for playing through live - BitBit Modulation's Tape engine and BitBit
+// Delay's tape run it; BitBit Tape does not. The nominal delay is the whole of the
+// transport's latency *and* the room the wow swings in, so shortening it cuts the
+// first and narrows the second. The floor is the wow alone: kWowDepthMs of swing
+// has to fit inside kWobbleLimit of the line, which is 1.62 / 0.9 = 1.8 ms, so
+// 1.85 ms is as short as it goes with Flutter's full mono depth intact.
+//
+// Anything more than that - Stereo's width on top of the wow - does not fit, and
+// TapeTransport scales the two back together, only as far as it takes to fit and
+// only in this mode (see TapeTransport::offsets). At the normal 4.5 ms the
+// sum of both already fits, so that scale is exactly 1 and the normal voicing is
+// untouched. The tape stage behind it (TapeCharacter, 1.5 ms) is not shortened:
+// it is shared with BitBit Tape and its own wobble needs the room it has.
+constexpr float kLowLatencyNominalDelayMs = 1.85f;
+
 constexpr float kWowRateHz = 2.0f;
 constexpr float kWowDepthMs =
     1.62f; // peak excursion at Flutter 100 %, matched to the reference

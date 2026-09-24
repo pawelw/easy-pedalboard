@@ -33,15 +33,19 @@ namespace ee::dsp
 class TapeTransport
 {
 public:
+    /** The transport's delay in whole samples, at a sample rate and in either
+        mode. Static so it can be worked out without a prepared transport. */
+    static int latencyFor (double sampleRate, bool lowLatency) noexcept
+    {
+        return static_cast<int> (nominalSamplesFor (sampleRate > 0.0 ? sampleRate : 44100.0, lowLatency));
+    }
+
     void prepare (double sampleRateIn) noexcept
     {
         sr = sampleRateIn > 0.0 ? sampleRateIn : 44100.0;
 
-        // Rounded to a whole sample so that with the transport still the line
-        // reads a stored sample rather than an interpolated one.
+        // The lines are sized for the longer of the two modes, always.
         const float nominalSeconds = tape::kNominalDelayMs * 0.001f;
-        nominalSamples = std::round (nominalSeconds * static_cast<float> (sr));
-        wobbleLimit = tape::kWobbleLimit * nominalSamples;
 
         for (auto& c : channels)
             c.prepare (sr, nominalSeconds * 3.0f);
@@ -57,8 +61,22 @@ public:
         wowDepthSamples    = tape::kWowDepthMs * perMs;
         stereoDepthSamples = tape::kStereoDepthMs * perMs;
 
+        applyNominal();
         snapSmoothing();
         reset();
+    }
+
+    /** Shortens the transport's line to tape::kLowLatencyNominalDelayMs. A mode
+        an owner chooses once, before prepare() - BitBit Delay's tape and
+        BitBit Modulation's run it, BitBit Tape does not. Changing it while
+        audio is running is a splice in the signal, so nothing here does. */
+    void setLowLatency (bool v) noexcept
+    {
+        if (lowLatency == v)
+            return;
+
+        lowLatency = v;
+        applyNominal();
     }
 
     void reset() noexcept
@@ -121,6 +139,23 @@ public:
 private:
     static constexpr float kTwoPi = juce::MathConstants<float>::twoPi;
 
+    /** Rounded to a whole sample so that with the transport still the line
+        reads a stored sample rather than an interpolated one. */
+    static float nominalSamplesFor (double sampleRate, bool low) noexcept
+    {
+        const float nominalSeconds = (low ? tape::kLowLatencyNominalDelayMs : tape::kNominalDelayMs) * 0.001f;
+        return std::round (nominalSeconds * static_cast<float> (sampleRate));
+    }
+
+    /** What follows from the line's length: the read point and the ceiling on
+        the excursion. How far the depths must give way to that ceiling is worked
+        out per sample, from where the knobs actually are - see offsets(). */
+    void applyNominal() noexcept
+    {
+        nominalSamples = nominalSamplesFor (sr, lowLatency);
+        wobbleLimit = tape::kWobbleLimit * nominalSamples;
+    }
+
     void advanceSmoothing() noexcept
     {
         smooth (flutter, flutterTarget, paramCoeff);
@@ -176,11 +211,29 @@ private:
         // Shared by both channels: one transport under the whole machine. The
         // sine and nothing else - noise riding it roughens the vibe rather than
         // deepening it.
-        const float common = flutter * std::sin (kTwoPi * wowPhase) * wowDepthSamples;
+        float common = flutter * std::sin (kTwoPi * wowPhase) * wowDepthSamples;
 
         // Width: the two sides read the same slow modulation a third of a cycle
         // apart, so they pull away from each other without ever mirroring.
-        const float widthDepth = stereo * stereoDepthSamples;
+        float widthDepth = stereo * stereoDepthSamples;
+
+        // In low latency the line is short, and the two depths together can ask
+        // for more swing than it has. They are pulled back by the same factor,
+        // exactly as far as it takes for their sum - the most the two sines can
+        // ever add up to - to sit inside the ceiling, and no further: at any
+        // setting that fits, the scale is not applied at all. Never in the
+        // normal mode, whose line is long enough for both at full.
+        if (lowLatency)
+        {
+            const float widest = flutter * wowDepthSamples + stereo * stereoDepthSamples;
+
+            if (widest > wobbleLimit)
+            {
+                const float scale = wobbleLimit / widest;
+                common *= scale;
+                widthDepth *= scale;
+            }
+        }
 
         for (int c = 0; c < 2; ++c)
         {
@@ -204,6 +257,7 @@ private:
     float stereoPhase = 0.0f, stereoInc = 0.0f;
     float wowJitterState = 0.0f, wowJitterCoeff = 0.0f, wowJitterNorm = 1.0f;
     float wowDepthSamples = 0.0f, stereoDepthSamples = 0.0f;
+    bool lowLatency = false;
     uint32_t modRng = 0x2545f491u;
 };
 

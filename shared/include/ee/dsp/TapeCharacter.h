@@ -33,6 +33,13 @@ namespace ee::dsp
 class TapeCharacter
 {
 public:
+    /** This stage's delay in whole samples at a sample rate - static so an
+        owner can work out what it will report before it has prepared anything. */
+    static int latencyFor (double sampleRate) noexcept
+    {
+        return static_cast<int> (std::round (kNominalDelaySeconds * static_cast<float> (sampleRate)));
+    }
+
     void prepare (double sampleRate) noexcept
     {
         sr = sampleRate;

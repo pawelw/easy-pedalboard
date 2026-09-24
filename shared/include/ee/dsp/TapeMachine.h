@@ -173,6 +173,19 @@ public:
         return transport.getLatencySamples() + wearStage.getLatencySamples();
     }
 
+    /** Shortens the transport's line, and with it the latency, at the cost of
+        some of Flutter's range when Stereo is up - see
+        tape::kLowLatencyNominalDelayMs. Chosen once, before prepare():
+        BitBit Modulation's Tape engine runs it, BitBit Tape does not. */
+    void setLowLatency (bool v) noexcept { transport.setLowLatency (v); }
+
+    /** What `getLatencySamples()` will answer at a sample rate, in either mode,
+        without needing a prepared machine. */
+    static int latencyFor (double sampleRate, bool lowLatency) noexcept
+    {
+        return TapeTransport::latencyFor (sampleRate, lowLatency) + TapeCharacter::latencyFor (sampleRate);
+    }
+
     /** In-place, one channel per pointer. `right` may be null for mono. */
     void process (float* left, float* right, int numSamples) noexcept
     {

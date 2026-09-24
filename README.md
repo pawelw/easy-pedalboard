@@ -676,10 +676,21 @@ Every engine keeps running while another is selected, so switching between them
 never clicks, and each keeps its own settings, so stepping away and back
 restores them. Tape reads off a transport delay line; the module pads every other
 engine and its own dry path out to match and reports that one figure to the host
-(6 ms), whichever engine is selected. **Tape has no Mix**: its wow makes the wet
+(3.35 ms), whichever engine is selected. **Tape has no Mix**: its wow makes the wet
 path wander in time, and any partial blend against a still dry signal combs and
 is heard as tremolo - so it runs fully wet, as BitBit Tape does, and the power
 toggle is its dry/wet.
+
+**The tape runs a short transport**: 1.85 ms rather than the 4.5 ms BitBit Tape's
+machine has, which is most of what would otherwise be 6 ms of latency - the module
+reports **3.35 ms** (the 1.85 ms plus the tape stage's 1.5 ms), whichever engine is
+selected. 1.85 ms is the shortest line the wow fits in at full mono depth, so **in
+mono Flutter keeps all of its range**. What the short line has no room for is the
+wow *and* the Stereo width at once: when Flutter and Stereo together would swing
+further than the line has, both are pulled back by the same factor, exactly as far
+as it takes and no further - at the default Flutter with Stereo on, a little; with
+Stereo off, not at all. (BitBit Tape itself keeps the full 4.5 ms.) There is no
+switch for it; it is how the tape is voiced here.
 
 Like the other pedals it has no on/off switch of its own - the `on` parameter
 crossfades to the dry signal, delayed by that same reported latency, so toggling

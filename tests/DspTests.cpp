@@ -1123,6 +1123,113 @@ void testTapeMachineAtRest()
     check (worst == 0.0f, "tape machine at rest is not bit exact");
 }
 
+/** The delay the tape machine is applying to a ramp, sample by sample: a ramp
+    comes out as itself read `d` samples late, so `d = i - y / slope`. Returns
+    the smallest and largest, over the second half of the run. */
+std::pair<float, float> tapeDelayRange (double sampleRate, bool lowLatency, float flutter, float stereo)
+{
+    const int total = static_cast<int> (sampleRate * 3.0);
+    constexpr float slope = 1.0e-3f;
+
+    ee::dsp::TapeMachine machine;
+    machine.setLowLatency (lowLatency);
+    machine.prepare (sampleRate);
+    machine.reset();
+    restTapeMachine (machine);
+    machine.setFlutter01 (flutter);
+    machine.setStereo01 (stereo);
+
+    std::vector<float> l (total), r (total);
+    for (int i = 0; i < total; ++i)
+        l[i] = r[i] = slope * static_cast<float> (i);
+
+    machine.process (l.data(), r.data(), total);
+
+    float lo = 1.0e9f, hi = -1.0e9f;
+    for (int i = total / 2; i < total; ++i)
+    {
+        const float d = static_cast<float> (i) - l[i] / slope;
+        lo = juce::jmin (lo, d);
+        hi = juce::jmax (hi, d);
+    }
+
+    return { lo, hi };
+}
+
+void testTapeMachineLowLatency()
+{
+    std::printf ("Tape machine: Low Latency shortens the transport and keeps the wow inside it\n");
+
+    // The latency it reports, in either mode, agrees with what latencyFor()
+    // works out without a prepared machine.
+    bool agrees = true;
+    for (const double rate : { 44100.0, 48000.0, 88200.0, 96000.0, 176400.0, 192000.0 })
+        for (const bool low : { false, true })
+        {
+            ee::dsp::TapeMachine m;
+            m.setLowLatency (low);
+            m.prepare (rate);
+            agrees = agrees && m.getLatencySamples() == ee::dsp::TapeMachine::latencyFor (rate, low);
+        }
+    check (agrees, "latencyFor() matches a prepared machine, both modes, every rate");
+
+    const int normal = ee::dsp::TapeMachine::latencyFor (kSampleRate, false);
+    const int low = ee::dsp::TapeMachine::latencyFor (kSampleRate, true);
+    std::printf ("  %d samples (%.2f ms) normal, %d samples (%.2f ms) low latency\n", normal,
+                 1000.0 * normal / kSampleRate, low, 1000.0 * low / kSampleRate);
+    check (low < normal, "low latency reports less");
+
+    // At rest it is still a bit-exact delay, just a shorter one.
+    {
+        const int total = static_cast<int> (kSampleRate);
+        std::mt19937 rng (0x1a7e);
+        std::normal_distribution<float> dist (0.0f, 0.12f);
+        std::vector<float> source (total);
+        for (auto& v : source)
+            v = std::tanh (dist (rng));
+
+        ee::dsp::TapeMachine machine;
+        machine.setLowLatency (true);
+        machine.prepare (kSampleRate);
+        machine.reset();
+        restTapeMachine (machine);
+
+        std::vector<float> l (source), r (source);
+        machine.process (l.data(), r.data(), total);
+
+        float worst = 0.0f;
+        for (int i = low; i < total; ++i)
+            worst = juce::jmax (worst, std::abs (l[i] - source[i - low]));
+
+        check (worst == 0.0f, "low latency at rest is a bit-exact delay of exactly what it reports");
+    }
+
+    // The point of the depth scale: Flutter and Stereo at full must stay inside
+    // the shorter line. Measured off a ramp, so it is the delay the audio
+    // actually gets and not what the code says it asked for.
+    const auto [nLo, nHi] = tapeDelayRange (kSampleRate, false, 1.0f, 1.0f);
+    const auto [lLo, lHi] = tapeDelayRange (kSampleRate, true, 1.0f, 1.0f);
+
+    const float wearStage = static_cast<float> (ee::dsp::TapeCharacter::latencyFor (kSampleRate));
+    const float lowNominal = static_cast<float> (ee::dsp::TapeTransport::latencyFor (kSampleRate, true));
+    const float lowLimit = ee::dsp::tape::kWobbleLimit * lowNominal;
+
+    std::printf ("  Flutter + Stereo at 100 %%, delay swings %.1f..%.1f samples normal, %.1f..%.1f low latency\n",
+                 nLo, nHi, lLo, lHi);
+
+    // Mono has no width to make room for, so the wow keeps its full depth in the
+    // short line - what the Delay, which never opens Stereo, gets.
+    const auto [mnLo, mnHi] = tapeDelayRange (kSampleRate, false, 1.0f, 0.0f);
+    const auto [mlLo, mlHi] = tapeDelayRange (kSampleRate, true, 1.0f, 0.0f);
+    std::printf ("  Flutter 100 %%, Stereo off: swing %.1f samples normal, %.1f low latency\n", mnHi - mnLo, mlHi - mlLo);
+    check (std::abs ((mlHi - mlLo) - (mnHi - mnLo)) < 1.0f, "in mono, low latency gives up none of Flutter's depth");
+
+    check (lLo >= wearStage + lowNominal - lowLimit - 0.5f && lHi <= wearStage + lowNominal + lowLimit + 0.5f,
+           "low latency never swings past its own ceiling, and so never reaches the write head");
+    check (lHi - lLo > 1.0f, "...and still moves");
+    check ((lHi - lLo) < (nHi - nLo), "...by less than the normal transport, which is the trade");
+}
+
 void testTapeMachineSilence()
 {
     std::printf ("Tape machine: with Noise down, silence in -> silence out\n");
@@ -6174,6 +6281,8 @@ int main()
     testTapeMachineStereoWidens();
     std::printf ("\n");
     testTapeMachineStability();
+    std::printf ("\n");
+    testTapeMachineLowLatency();
     std::printf ("\n");
     testModDelayLineWrapBoundary();
     testSafeParse();

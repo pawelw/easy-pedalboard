@@ -133,6 +133,12 @@ protected:
 
     void prepareEngines (double sampleRate, int maxBlockSize) override
     {
+        // The short transport, always: 1.85 ms instead of 4.5, which is most of
+        // this module's latency (3.35 ms rather than 6). It is as short as the
+        // wow fits in at full mono depth; Flutter and Stereo together are pulled
+        // back only as far as the short line needs. See
+        // tape::kLowLatencyNominalDelayMs.
+        tape.setLowLatency (true);
         tape.prepare (sampleRate);
         tremolo.prepare (sampleRate, maxBlockSize);
         chorus.prepare (sampleRate);
@@ -203,10 +209,10 @@ protected:
     }
 
     /** The one engine here with any. TapeMachine reads its whole output off a
-        transport delay line - 4.5 ms of capstan plus the tape stage's own - so
-        without this the module would be mixing a 9.7 ms copy of the signal
-        against the dry, which is a comb rather than a tape machine. See
-        MultiEngineModule's note. */
+        transport delay line - 1.85 ms of capstan plus the tape stage's own - so
+        without this the module would be mixing a copy of the signal that is
+        that much late against the dry, which is a comb rather than a tape
+        machine. See MultiEngineModule's note. */
     int engineLatencySamples (int index) const noexcept override
     {
         return index == Tape ? tape.getLatencySamples() : 0;
