@@ -557,6 +557,16 @@ rule holds inside a plugin: whatever a bypass falls back to must be held back by
 the reported latency (`ee::fx::AlignDelay`). `ee_latency_audit_<Target>` finds
 both, and finds them for a new product without being told about it.
 
+**A value that comes through a parameter is never exactly the number you set.** APVTS
+sets every parameter from a *normalised* value, and JUCE's interval rounding puts a
+bipolar knob's centre a few millionths off zero (BitBit Modulation's Tone reads back
+as 1.49e-6 - including the default, because APVTS initialises through the normalised
+path). Any `x != 0.0f` test for "centred / at rest / bypassed" is therefore wrong in a
+plugin though it passes in a unit test on the bare engine: Tape's tone tilt was
+"engaged" in every instance, at a flat +1.66 dB, until it was given a dead-band
+(`tape::kToneCentreEpsilon`). Compare against a small epsilon, and null-test through
+the real processor (`ee_modulation_host`'s "Tape at rest"), not only the engine.
+
 **`tests/UiSnapshot.cpp` duplicates every pedal's parameter layout and PedalSpec.**
 It builds throwaway processors so faces can be rendered without a host. If you
 change a pedal's parameters, ranges, defaults or spec, you must mirror the change

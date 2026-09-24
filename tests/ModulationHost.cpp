@@ -156,6 +156,48 @@ void checkLatency()
 
     check (honest, "the dry path arrives where the reported latency says, whichever engine mixes");
 }
+/** Everything neutral, through the real parameters, is the input delayed - bit for
+    bit. The Tone is set the way a host or the face sets it, as a normalised 0.5,
+    which JUCE's interval rounding turns into 1.49e-6 rather than 0; that used to
+    switch the tilt on and run the whole engine +1.7 dB hot. Tape has no Mix, so
+    this is the only way to null-test it. */
+void checkTapeAtRestIsTransparent()
+{
+    std::printf ("Tape at rest:\n");
+
+    BitBitModulationProcessor p;
+    setChoice (p.apvts, id::engine, ee::fx::ModulationModule::Tape);
+    setPercent (p.apvts, id::tapeSat, 0.0f);
+    setPercent (p.apvts, id::tapeFlutter, 0.0f);
+    setPercent (p.apvts, id::tapeWear, 0.0f);
+    setPercent (p.apvts, id::tapeNoise, 0.0f);
+    setFlag (p.apvts, id::tapeStereo, false);
+    p.apvts.getParameter (id::tapeTone)->setValueNotifyingHost (0.5f);
+
+    p.setPlayConfigDetails (2, 2, kSampleRate, 512);
+    p.prepareToPlay (kSampleRate, 512);
+
+    const int total = static_cast<int> (kSampleRate) * 2;
+    juce::AudioBuffer<float> input (2, total), output (2, total);
+    fillTestSignal (input, kSampleRate);
+    output.makeCopyOf (input);
+
+    juce::MidiBuffer midi;
+    for (int offset = 0; offset < total; offset += 512)
+    {
+        juce::AudioBuffer<float> slice (output.getArrayOfWritePointers(), 2, offset, juce::jmin (512, total - offset));
+        p.processBlock (slice, midi);
+    }
+
+    const int latency = p.getLatencySamples();
+    float worst = 0.0f;
+    for (int ch = 0; ch < 2; ++ch)
+        for (int i = static_cast<int> (kSampleRate * 0.5); i < total; ++i)
+            worst = juce::jmax (worst, std::abs (output.getSample (ch, i) - input.getSample (ch, i - latency)));
+
+    std::printf ("        latency %d, worst difference %.2e\n", latency, worst);
+    check (worst == 0.0f, "Tape with everything neutral is the input delayed by the reported latency, bit for bit");
+}
 } // namespace
 
 int main()
@@ -169,6 +211,9 @@ int main()
     std::printf ("\n");
 
     checkLatency();
+    std::printf ("\n");
+
+    checkTapeAtRestIsTransparent();
     std::printf ("\n");
 
     std::printf ("Defaults:\n");

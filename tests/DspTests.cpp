@@ -1097,6 +1097,41 @@ void testTapeMachineLowLatency()
     check ((lHi - lLo) < (nHi - nLo), "...by less than the normal transport, which is the trade");
 }
 
+/** A Tone set to the middle through a host or the face is a normalised 0.5 run
+    through JUCE's interval rounding, which lands a few millionths off zero (BitBit
+    Modulation's reads back as 1.49e-6). "Exactly centred is flat and bypassed" must
+    hold for that value too, or a knob that reads 0 % is quietly running the tilt at
+    a flat +1.7 dB - which is what every "everything neutral" null test through a
+    real plugin found. */
+void testTapeMachineToneCentreIsCentre()
+{
+    std::printf ("Tape machine: a Tone a hair off dead centre is still bypassed\n");
+
+    const int total = static_cast<int> (kSampleRate);
+    std::mt19937 rng (0x7a9f);
+    std::normal_distribution<float> dist (0.0f, 0.12f);
+
+    std::vector<float> source (total);
+    for (auto& v : source)
+        v = std::tanh (dist (rng));
+
+    ee::dsp::TapeMachine machine;
+    machine.prepare (kSampleRate);
+    machine.reset();
+    restTapeMachine (machine);
+    machine.setTone (1.49011612e-06f); // what a normalised 0.5 reads back as
+
+    std::vector<float> l (source), r (source);
+    machine.process (l.data(), r.data(), total);
+
+    const int latency = machine.getLatencySamples();
+    float worst = 0.0f;
+    for (int i = latency; i < total; ++i)
+        worst = juce::jmax (worst, std::abs (l[i] - source[i - latency]));
+
+    check (worst == 0.0f, "Tone at a rounded-off centre is not bit exact - the tilt has been switched on");
+}
+
 void testTapeMachineSilence()
 {
     std::printf ("Tape machine: with Noise down, silence in -> silence out\n");
@@ -6148,6 +6183,8 @@ int main()
     testTapeMachineStability();
     std::printf ("\n");
     testTapeMachineLowLatency();
+    std::printf ("\n");
+    testTapeMachineToneCentreIsCentre();
     std::printf ("\n");
     testModDelayLineWrapBoundary();
     testSafeParse();

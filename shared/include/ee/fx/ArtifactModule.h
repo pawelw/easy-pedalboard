@@ -129,6 +129,7 @@ public:
     static constexpr float kAmpToneLowGainBright = 0.52f;
     static constexpr float kAmpToneHighGainDark = 0.52f;
     static constexpr float kAmpToneHighGainBright = 1.90f;
+    static constexpr float kAmpToneCentreEpsilon = 1.0e-4f;
 
     /** Bit knob (0..1) -> the sample-and-hold rate in Hz at `sampleRate`. Knob
         0 returns the host rate, where the hold passes every sample. Public so
@@ -200,11 +201,15 @@ public:
                                                                                        kAmpMidsQ, midsGain);
         }
 
-        // Exactly centred is flat and bypassed; a hair off it is not, so there
-        // is no dead band around the middle. The knob snaps onto the centre in
-        // the UI, which is what makes that usable.
+        // Centred is flat and bypassed; anything off it is not. "Centred" has a
+        // hair of room - a Tone set to the middle through a host or the face
+        // is a normalised 0.5 run through JUCE's interval rounding, which lands
+        // a few millionths off zero, and that must not switch the tilt on (it
+        // runs at a flat +1.7 dB). The knob's own step is 0.1 %, so nothing
+        // reachable is lost. Same reason and same figure as
+        // ee::dsp::tape::kToneCentreEpsilon.
         const float tilt01 = 0.5f + 0.5f * juce::jlimit (-1.0f, 1.0f, tone);
-        ampToneEngaged = tone != 0.0f;
+        ampToneEngaged = std::abs (tone) > kAmpToneCentreEpsilon;
         ampToneLowGain = juce::jmap (tilt01, kAmpToneLowGainDark, kAmpToneLowGainBright);
         ampToneHighGain = juce::jmap (tilt01, kAmpToneHighGainDark, kAmpToneHighGainBright);
     }

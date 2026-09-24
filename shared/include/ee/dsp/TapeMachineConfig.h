@@ -151,6 +151,15 @@ constexpr float kToneLowGainBright = 0.52f;
 constexpr float kToneHighGainDark = 0.52f;
 constexpr float kToneHighGainBright = 1.90f;
 
+// How near the middle counts as the middle. The knob is "exactly centred is flat
+// and bypassed", but a value that reaches the engine through a host or the face
+// is a normalised 0.5 run through JUCE's interval rounding, which lands a hair off
+// zero (BitBit Modulation's reads back as 1.5e-6) - and a hair off is *not*
+// bypassed, so a Tone that read 0 % and sat dead centre was quietly running the
+// tilt, at a flat +1.7 dB. Anything within 0.01 % of centre is centre. The knob's
+// own step is 0.1 %, so no reachable setting is lost.
+constexpr float kToneCentreEpsilon = 1.0e-4f;
+
 // ============================================================================
 // NOISE
 // ============================================================================

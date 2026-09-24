@@ -388,7 +388,7 @@ private:
         // Exactly centred is flat and bypassed; a hair off it is not, so there
         // is no dead band around the middle. The knob snaps onto the centre in
         // the UI, which is what makes that usable.
-        toneEngaged = tone != 0.0f;
+        toneEngaged = std::abs (tone) > tape::kToneCentreEpsilon;
 
         const float tilt = 0.5f + 0.5f * tone;   // -1..1 -> 0..1
         toneLowGain  = juce::jmap (tilt, tape::kToneLowGainDark,  tape::kToneLowGainBright);

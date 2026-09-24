@@ -12,6 +12,10 @@ Latency:
         engine 4    161 samples   (reported 161)
   ok    the dry path arrives where the reported latency says, whichever engine mixes
 
+Tape at rest:
+        latency 161, worst difference 0.00e+00
+  ok    Tape with everything neutral is the input delayed by the reported latency, bit for bit
+
 Defaults:
   ok    the default patch is finite
   ok    ...and makes sound
@@ -19,7 +23,7 @@ Defaults:
   ok    switched off is the input, delayed by the reported latency, bit for bit
 
 Engines:
-  ok    Tape               d4703fe613ff9dfc  peak 0.400200  rms 0.258229
+  ok    Tape               ed6ab09df2b335a0  peak 0.330744  rms 0.213412
   ok    Tremolo            94c2bb9c1cf8047b  peak 1.631420  rms 0.468188
   ok    Chorus             73ed13799c1223a6  peak 0.819675  rms 0.226219
   ok    Phaser             1f1c561d835a18c3  peak 1.304357  rms 0.332654

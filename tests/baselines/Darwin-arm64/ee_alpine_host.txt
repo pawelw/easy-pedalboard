@@ -39,9 +39,9 @@ Reported latency:
   ok    bypassed is the input delayed by the reported latency, bit for bit
 
 Engines:
-  ok    mod 0 / rev 0  f7a943848fe829b0  peak 0.526638  rms 0.192828
-  ok    mod 0 / rev 1  d4677dde1f286921  peak 0.767316  rms 0.250626
-  ok    mod 0 / rev 2  b298343bfd504bcd  peak 1.111930  rms 0.344704
+  ok    mod 0 / rev 0  64a5f3c76892cdfa  peak 0.435238  rms 0.159362
+  ok    mod 0 / rev 1  f5769ffa508a2c43  peak 0.634406  rms 0.207135
+  ok    mod 0 / rev 2  b4b6caa000078bf0  peak 0.918950  rms 0.284879
   ok    mod 1 / rev 0  a081fb55a32c860a  peak 1.702417  rms 0.431376
   ok    mod 1 / rev 1  54e6d8b6319d7e04  peak 2.389758  rms 0.617608
   ok    mod 1 / rev 2  437d3e767ac06c50  peak 2.761564  rms 0.834191
