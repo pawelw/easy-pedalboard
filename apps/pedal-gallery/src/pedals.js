@@ -29,7 +29,7 @@ export const groups = [
 export const pedals = [
   // The multi-effect host - listed first because it is the one that contains
   // the four after it rather than sitting beside them.
-  { slug: "bitbit-alpine", name: "BitBit Alpine", group: "alpine", face: BitBitAlpineFace, theme: "onyx" },
+  { slug: "bitbit-alpine", name: "BitBit Alpine", group: "alpine", face: BitBitAlpineFace, theme: "light" },
   { slug: "bitbit-reverb", name: "BitBit Reverb", group: "alpine", face: BitBitReverbFace, theme: "onyx" },
   { slug: "bitbit-delay", name: "BitBit Delay", group: "alpine", face: BitBitDelayFace, theme: "onyx" },
   { slug: "bitbit-modulation", name: "BitBit Modulation", group: "alpine", face: BitBitModulationFace, theme: "onyx" },

@@ -11,7 +11,7 @@
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--pui-ink);
+  color: var(--pui-ink-soft);
   white-space: nowrap;
 }
 

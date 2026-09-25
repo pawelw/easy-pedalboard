@@ -11,16 +11,26 @@
 :root {
   /* Every footer knob's face - the switchable modules' Mix and Tone and the
      Delay's stage knobs - so the footers read as one strip across a row of
-     modules whatever variant each knob is. Not themed: it is the same in all. */
-  --pui-footer-knob-face: #1c252a;
-  /* ...and the value arc round the switchable modules' Mix and Tone: a dark
-     white rather than the module's accent, so the footer reads as the
-     module's output controls, not one more of its engine's knobs. */
-  --pui-footer-knob-lit: #c4c8ca;
+     modules whatever variant each knob is. One value per theme, not one value
+     full stop: it was a single dark literal, which on a cream panel put a row
+     of black discs under a face of light ones. What has to hold across a row
+     is that every footer knob matches its neighbours, not that it matches a
+     footer on a different ground. */
+  --pui-footer-knob-face: #dfddd6;
+  /* ...and the value arc round the switchable modules' Mix and Tone: a
+     grayscale rather than the module's accent, so the footer reads as the
+     module's output controls, not one more of its engine's knobs. It inverts
+     with the face - a dark white on the dark cap, a soft black on the light
+     one - because either way it has to be the arc that shows. */
+  --pui-footer-knob-lit: #6b6a63;
   --pui-panel: #f3f2ed;
   --pui-panel-edge: #e8e6de;
   --pui-ink: #1c1c1a;
-  --pui-ink-soft: #6b6a63;
+  /* The whole label family's colour (see .pui-caption at the foot of this
+     file) as well as the secondary ink. One step back from --pui-ink, not
+     two: at #6b6a63 a knob caption sat closer to the dim ink than to the
+     panel's own reading weight. */
+  --pui-ink-soft: #55544e;
   --pui-line: #1c1c1a;
   --pui-outline: rgba(0, 0, 0, 0.14); /* Card's border - was a literal on .pui-card itself */
   --pui-screw: #cfcdc3;
@@ -40,7 +50,9 @@
   --pui-knob-sweep-lit: #c60000;
   --pui-icon-ink: #424242; /* Knob's icon slot (Wah's Shape/Filter Type glyphs) */
 
-  --pui-track: #1c1c1a;
+  /* A dark grey, not the ink's near-black: the track is a ground for the thumb
+     to sit on, and at full ink it was the heaviest mark on a cream panel. */
+  --pui-track: #3a3a36;
   --pui-thumb: #f6f5f0;
   --pui-fader-thumb-hi: #ffffff; /* top of the vertical Slider's thumb gradient -
                                      unused by Wah; do not repoint the vertical
@@ -50,7 +62,7 @@
   --pui-led-on: #3fb662;
   --pui-led-on-glow: rgba(63, 182, 98, 0.45);
 
-  --pui-scope-bg: #e9e7e0;
+  --pui-scope-bg: #e0dccf;
   --pui-scope-grid: #d9d7cd;
   --pui-scope-base: #6c0000;
   --pui-scope-sweep: #9aa0aa;
@@ -87,7 +99,7 @@
      hardcoded - in both cases the number is identical to what was already
      on screen, so nothing about today's rendering moves. */
   --pui-page: #dcdad2;
-  --pui-recess: #e9e7e0; /* same value as --pui-scope-bg - a second name for the
+  --pui-recess: #e0dccf; /* same value as --pui-scope-bg - a second name for the
                              same "recessed display" colour, used by the new
                              components rather than repointing FilterScope */
   --pui-recess-ink: #8a8880;
@@ -123,11 +135,12 @@
      single continuous line needs a hue to read as a value at a glance, and
      the green is the family the tape band already established, so it lands
      as this system's accent rather than a new one.
-     -top/-bottom are dead in all three blocks: .pui-knob__soft-cap fills the
-     face with a literal now. */
+     -bottom is the cap's flat face and -lip the hairline along its lower
+     edge; -top is dead, kept as the pair's other half. */
   --pui-soft-face-top: #fdfdfb;
   --pui-soft-face-bottom: #e8e6df;
   --pui-soft-face-hi: rgba(255, 255, 255, 0.9);
+  --pui-soft-face-lip: rgba(28, 28, 26, 0.22);
   --pui-soft-rim: rgba(28, 28, 26, 0.09);
   /* The rim is lit from above, the way variant="scale"'s cap is by
      --pui-cap-ring: these two are crescents over the flat rim above, so the
@@ -182,7 +195,12 @@
   --pui-module: var(--pui-panel-edge);
   --pui-module-edge: var(--pui-outline);
   --pui-module-divider: var(--pui-divider);
-  --pui-module-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  /* The inset white line along the top edge is what makes a panel read as a
+     raised slab rather than a rectangle of a different colour - onyx's own
+     module shadow has always carried one. The drop below it stays soft. */
+  --pui-module-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.9),
+    0 1px 3px rgba(0, 0, 0, 0.12);
 
   --pui-chrome: var(--pui-panel-edge);
   --pui-chrome-hover: var(--pui-panel);
@@ -194,7 +212,7 @@
      is the same data URI it always painted under `var(--pui-panel)`. */
   --pui-panel-grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.006 0.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   --pui-panel-shadow:
-    0 1px 0 var(--pui-panel-edge) inset,
+    0 1px 0 rgba(255, 255, 255, 0.9) inset,
     0 2px 6px rgba(0, 0, 0, 0.08),
     0 14px 28px rgba(0, 0, 0, 0.14);
 }
@@ -247,6 +265,9 @@
   --pui-soft-face-top: #333f43;
   --pui-soft-face-bottom: #0a0d0e;
   --pui-soft-face-hi: rgba(185, 211, 217, 0.3);
+  --pui-soft-face-lip: rgb(0 0 0 / 93%);
+  --pui-footer-knob-face: #1c252a;
+  --pui-footer-knob-lit: #c4c8ca;
   --pui-soft-rim: rgb(5, 5, 5);
   --pui-soft-rim-hi: rgba(245, 245, 245, 0.278);
   --pui-soft-rim-lo: rgba(0, 0, 0, 0.49);
@@ -295,7 +316,9 @@
      bevel to catch light the way the cream panel's top edge does). */
   --pui-radius-panel: 20px;
   --pui-panel-grain: none;
-  --pui-panel-shadow: 0 20px 44px rgba(0, 0, 0, 0.4);
+  --pui-panel-shadow:
+    inset 0 1px 0 #ffffff14,
+    0 20px 44px rgba(0, 0, 0, 0.4);
 }
 
 /* The third theme: a cool, low-contrast grey in the soft-UI idiom - white
@@ -323,7 +346,7 @@
      and evenly lit, and true black on it reads as printed. Every ink below
      steps down from here at the same ratios the cream theme uses. */
   --pui-ink: #3c4043;
-  --pui-ink-soft: #70757a;
+  --pui-ink-soft: #5c6165;
   --pui-ink-dim: #9ba0a5;
   --pui-line: #dfe1e3;
   --pui-divider: #e6e8ea;
@@ -359,12 +382,13 @@
      to the panel's own value, so it lifts off a ground it nearly matches on
      shading alone. The arc is the one hue on the whole theme - a steel blue
      rather than the cream theme's green, which belongs to the tape band's
-     family and would read as a stray piece of that band over here.
-     The cap itself no longer reads this pair - see the note in the default
-     block above. */
+     family and would read as a stray piece of that band over here. */
   --pui-soft-face-top: #ffffff;
   --pui-soft-face-bottom: #e9ebed;
   --pui-soft-face-hi: rgba(255, 255, 255, 0.95);
+  --pui-soft-face-lip: rgba(40, 44, 48, 0.2);
+  --pui-footer-knob-face: #e7e9eb;
+  --pui-footer-knob-lit: #70757a;
   --pui-soft-rim: rgba(40, 44, 48, 0.1);
   --pui-soft-rim-hi: rgba(255, 255, 255, 0.98);
   --pui-soft-rim-lo: rgba(40, 44, 48, 0.2);
@@ -473,13 +497,20 @@
   -webkit-user-select: none;
 }
 
+/* Every knob caption on every face. --pui-ink-soft, not --pui-ink: this whole
+   family of small tracked uppercase labels - captions, the engine stepper's
+   name, a module's name, a slider row's, a footer stage's - names a control
+   rather than reporting anything, and at full ink a face was a field of black
+   words with the values it is actually meant to read no louder than any of
+   them. Never --pui-ink-dim, which measures 4.2:1 and reads as disabled
+   (TOKENS.md). */
 .pui-caption {
   font-family: var(--pui-font-label);
   font-weight: 700;
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--pui-ink);
+  color: var(--pui-ink-soft);
   text-align: center;
   cursor: default;
 }

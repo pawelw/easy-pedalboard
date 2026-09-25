@@ -25,7 +25,7 @@
   font-family: var(--pui-font-label);
   font-weight: 700;
   font-size: 11px;
-  color: var(--pui-ink);
+  color: var(--pui-ink-soft);
   pointer-events: none;
 }
 .pui-knob__corner--tl {
@@ -291,16 +291,18 @@ inset 0 1px 1px rgb(255 255 255), inset 6px 7px 13px -7px rgb(0 0 0 / 19%), inse
    the inner top highlight that keeps the cap from going flat against a dark
    panel. The two offset crescents over that hairline light it from above.
 
-   Reads --pui-soft-face-bottom, the darker of the pair each theme sets - the
-   flat value onyx already used here as a literal, so this only changes
-   anything for a theme that isn't onyx (this cap used to be onyx-black
-   under every theme, not just onyx). */
+   Reads --pui-soft-face-bottom, the darker of the pair each theme sets. It
+   was onyx's own value written in as a literal, which made every theme's cap
+   onyx-black - a black disc on the cream and grey panels, where the cap is
+   meant to be the light thing and the panel the ground. The bottom lip goes
+   through a token for the same reason: onyx's near-opaque black is a gouge
+   on a white face. */
 .pui-knob__soft-cap {
 position: absolute;
     inset: 2px;
     border-radius: 50%;
-    background: #0a0d0e;
-    box-shadow: inset 0 -1px 0.5px rgb(0 0 0 / 93%), inset 0 1px 0px var(--pui-soft-face-hi), var(--pui-soft-shadow);
+    background: var(--pui-soft-face-bottom);
+    box-shadow: inset 0 -1px 0.5px var(--pui-soft-face-lip), inset 0 1px 0px var(--pui-soft-face-hi), var(--pui-soft-shadow);
 }
 
 /* ==========================================================================

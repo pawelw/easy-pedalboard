@@ -6,6 +6,7 @@ import {
   TapeIcon,
   ModIcon,
   FilterIcon,
+  usePedalTheme,
 } from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
@@ -85,6 +86,13 @@ function DelayFaceBody({ stageKnobSize, knobVariant, mainKnobSize, scopeHeight }
   const [mix01] = useJuceSliderValue("mix");
   const { strikes, level } = useDelayMeter();
 
+  // The four big knobs wear BitBit Wah's collar on a light ground and the
+  // tick-ring "scale" cap on onyx. Not a token: the two are different
+  // drawings, not one drawing in two palettes. Onyx keeps scale because the
+  // collar is a dark ring around a pale cap, which on a near-black panel is a
+  // hole with a dot in it.
+  const mainKnobVariant = usePedalTheme() === "onyx" ? "scale" : "collar";
+
   return (
     <>
       <TapScope
@@ -109,7 +117,7 @@ function DelayFaceBody({ stageKnobSize, knobVariant, mainKnobSize, scopeHeight }
         <JuceKnob
           parameterId="mix"
           caption="Mix"
-          variant="scale"
+          variant={mainKnobVariant}
           size={mainKnobSize}
           sweepGap={4}
           showValueBelow
@@ -118,7 +126,7 @@ function DelayFaceBody({ stageKnobSize, knobVariant, mainKnobSize, scopeHeight }
         <JuceKnob
           parameterId="fb"
           caption="Feedback"
-          variant="scale"
+          variant={mainKnobVariant}
           size={mainKnobSize}
           sweepGap={4}
           showValueBelow
@@ -141,8 +149,8 @@ function DelayFaceBody({ stageKnobSize, knobVariant, mainKnobSize, scopeHeight }
             </div>
 
             <div className="pd-time-rows">
-              <TimeControl side="L" parameterId="ltime" />
-              <TimeControl side="R" parameterId="rtime" />
+              <TimeControl side="L" parameterId="ltime" variant={mainKnobVariant} />
+              <TimeControl side="R" parameterId="rtime" variant={mainKnobVariant} />
             </div>
           </div>
 

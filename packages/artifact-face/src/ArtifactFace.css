@@ -56,13 +56,13 @@
   box-sizing: border-box;
   height: var(--pui-slot);
   margin-top: var(--pui-slot-lead);
-  /* The scopes read these for their well and grid. Onyx leaves the
-     --pui-scope-* group on the light-theme values (it is a digital-pedal
-     token set), so this face sets its own: a near-black well with the
-     faintest warm cast and dim red-grey grid lines, to sit with the module's
-     red ink. */
-  --pui-scope-bg: #17090a;
-  --pui-scope-grid: #3b2122;
+  /* The scopes read these for their well and grid. --pui-recess rather than
+     --pui-scope-bg: onyx leaves the --pui-scope-* group on the light-theme
+     values (it is a digital-pedal token set) but does re-point the recess, so
+     this follows the ground every other module's display sits in instead of
+     pinning its own. It used to pin a near-black well with a warm cast, which
+     was right on onyx and left this the one black panel on a cream face. */
+  --pui-scope-bg: var(--pui-recess);
 }
 
 /* Every engine body: a display and its knob rows. `flex: 1` so the body fills

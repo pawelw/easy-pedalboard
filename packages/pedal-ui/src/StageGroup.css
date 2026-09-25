@@ -27,10 +27,11 @@
    the coloured glyph in each one's StageHeader.
 
    Stage values are on --pui-ink-soft, never --pui-ink-dim: the dim ink
-   measures 4.2:1 on the panel and reads as disabled (TOKENS.md). */
+   measures 4.2:1 on the panel and reads as disabled (TOKENS.md). The name is
+   on it too now - see .pui-caption in tokens.css for the label family. */
 .pui-stage-group {
   --pui-stage-icon: var(--pui-ink);
-  --pui-stage-name: var(--pui-ink);
+  --pui-stage-name: var(--pui-ink-soft);
   --pui-stage-value: var(--pui-ink-soft);
   --pui-stage-well: var(--pui-recess);
   --pui-stage-arrow: var(--pui-ink-soft);

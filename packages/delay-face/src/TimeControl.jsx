@@ -3,12 +3,13 @@ import { JuceKnob } from "@synthpeak/pedal-ui/juce";
 import { useTimeReadoutText } from "./juceBindings.jsx";
 
 /**
- * A 42px scale knob paired with a recessed Readout - the Delay face's
- * Left/Right Time rows (COMPONENTS.md #3). It lives beside `DelayFace` rather
- * than in `@synthpeak/pedal-ui`: it is just a Knob and a Readout wired
- * together, and nothing outside this face would reuse it as a unit.
+ * A 42px knob paired with a recessed Readout - the Delay face's Left/Right
+ * Time rows (COMPONENTS.md #3). It lives beside `DelayFace` rather than in
+ * `@synthpeak/pedal-ui`: it is just a Knob and a Readout wired together, and
+ * nothing outside this face would reuse it as a unit. `variant` comes from
+ * DelayFace so this pair matches Mix and Feedback above it.
  */
-export default function TimeControl({ side, parameterId }) {
+export default function TimeControl({ side, parameterId, variant = "scale" }) {
   const [text, msText, isMs] = useTimeReadoutText(parameterId);
 
   // In ms mode `text` (the toggle-aware main value) already reads e.g.
@@ -26,7 +27,7 @@ export default function TimeControl({ side, parameterId }) {
           always empty - it just made the row 48px tall with the dial sitting
           21px down instead of centred, which the link bracket's arms would
           then meet off-centre. */}
-      <JuceKnob parameterId={parameterId} variant="scale" size={42} showValueLabel={false} bare />
+      <JuceKnob parameterId={parameterId} variant={variant} size={42} showValueLabel={false} bare />
       <Readout label={side} value={text} unit={isMs ? undefined : msText} />
     </div>
   );

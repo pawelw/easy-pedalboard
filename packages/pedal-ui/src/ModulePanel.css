@@ -84,7 +84,8 @@
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--pui-ink);
+  /* The label family's soft ink - see .pui-caption in tokens.css. */
+  color: var(--pui-ink-soft);
   white-space: nowrap;
 }
 

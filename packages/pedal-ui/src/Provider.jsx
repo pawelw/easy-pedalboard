@@ -1,4 +1,15 @@
+import { createContext, useContext } from "react";
 import { MantineProvider } from "@mantine/core";
+
+const PedalThemeContext = createContext("light");
+
+/** The palette name the enclosing provider was given. For the few choices a
+    theme can't express as a token - a component swapping for a different one
+    rather than recolouring - not for anything a `[data-pui-theme]` block
+    could do in CSS. */
+export function usePedalTheme() {
+  return useContext(PedalThemeContext);
+}
 
 /**
  * Wrap a pedal's app in this once, at the root. The rack-module look never
@@ -18,9 +29,11 @@ import { MantineProvider } from "@mantine/core";
 export default function PedalUIProvider({ theme = "light", children }) {
   return (
     <MantineProvider forceColorScheme="light">
-      <div data-pui-theme={theme === "light" ? undefined : theme} style={{ background: "var(--pui-page)" }}>
-        {children}
-      </div>
+      <PedalThemeContext.Provider value={theme}>
+        <div data-pui-theme={theme === "light" ? undefined : theme} style={{ background: "var(--pui-page)" }}>
+          {children}
+        </div>
+      </PedalThemeContext.Provider>
     </MantineProvider>
   );
 }
