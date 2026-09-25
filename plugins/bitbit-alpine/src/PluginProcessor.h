@@ -24,10 +24,13 @@
 #include "ee/fx/ModulationControls.h"
 #include "ee/fx/ModulationModule.h"
 #include "ee/dsp/Equaliser.h"
+#include "ee/dsp/SpectrumAnalyser.h"
 #include "ee/dsp/Tuner.h"
 #include "ee/fx/ReverbModule.h"
 #include "ee/plugin/InputMeter.h"
 #include "ee/plugin/PresetStore.h"
+
+#include "GlobalEq.h"
 
 #if EE_HAS_FACTORY_PRESETS
 #include EE_FACTORY_PRESETS_HEADER
@@ -97,6 +100,11 @@ public:
         reads and writes is already built. */
     ee::plugin::PresetStore presets { apvts, "BitBit Alpine", EE_FACTORY_PRESETS };
 
+    /** The pre-EQ, kept as one machine-wide setting rather than per session or
+        preset - see GlobalEq. Attached in the constructor for a real plugin
+        wrapper only; public so a test can attach it to a file of its own. */
+    GlobalEq globalEq { apvts };
+
     /** The Delay module's TapScope feed - the same two numbers BitBit Delay's
         face reads, from a second instance of the same meter. */
     ee::plugin::InputMeter inputMeter;
@@ -139,6 +147,11 @@ public:
         closed, it does nothing, so the audio is exactly what it was without it.
         The editor owns the analysis half (ee::dsp::TunerAnalyser). */
     ee::dsp::TunerCapture tuner;
+
+    /** The pre-EQ dialog's spectrum: what the chain is fed, after the EQ.
+        Captures only while the editor has the dialog open - see
+        ee::dsp::SpectrumCapture. */
+    ee::dsp::SpectrumCapture eqSpectrum;
 
     /** The Artifact module, read-only, for the editor's Comp meter feed. */
     const ee::fx::ArtifactModule& artifactModule() const noexcept { return artifact; }

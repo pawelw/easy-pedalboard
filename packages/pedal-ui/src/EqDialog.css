@@ -33,7 +33,8 @@
   gap: 12px;
   padding: 14px 16px 16px;
   background: var(--pui-panel);
-  border: 1.5px solid var(--pui-line);
+  /* The outline, not the ink line: on the light face --pui-line is black. */
+  border: 1px solid var(--pui-outline);
   border-radius: var(--pui-radius-panel);
   box-shadow: 0 18px 40px rgb(0 0 0 / 45%);
 }
@@ -86,6 +87,23 @@
 .pui-eq__mode button[aria-pressed="true"] {
   background: var(--pui-ink);
   color: var(--pui-panel);
+}
+
+.pui-eq .pui-button.pui-eq__reset {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--pui-outline);
+  color: var(--pui-ink-soft);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+
+.pui-eq .pui-eq__reset .pui-button__label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .pui-eq .pui-button.pui-eq__close {
@@ -145,6 +163,17 @@
   font-weight: 700;
   font-size: 9px;
   letter-spacing: 0.04em;
+}
+
+/* The live spectrum: a faint shadow behind the curves, in the face's ink. */
+.pui-eq__spectrum {
+  fill: var(--pui-ink);
+  fill-opacity: 0.07;
+  stroke: var(--pui-ink);
+  stroke-opacity: 0.16;
+  stroke-width: 0.75;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 .pui-eq__band-fill {
@@ -348,11 +377,49 @@
   color: var(--pui-panel);
 }
 
+/* Packed from the left with a fixed gap, not spread across the strip: the
+   three belong to the one band beside them. */
 .pui-eq__knobs {
   flex: 1;
   display: flex;
-  justify-content: space-around;
+  justify-content: flex-start;
   align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+}
+
+/* A knob with its labels to its right - see EqKnob. */
+.pui-eq__knob {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.pui-eq__knob-labels {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 64px;
+}
+
+.pui-eq__knob-labels .pui-caption {
+  text-align: left;
+}
+
+.pui-eq__knob-value {
+  font-family: var(--pui-font-primary);
+  font-size: 12px;
+  color: var(--pui-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.pui-eq__knob-detail {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: var(--pui-accent);
 }
 
 /* A cut or a notch has no gain: the knob stays, greyed, so the row does not
@@ -380,12 +447,4 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-}
-
-.pui-eq__simple-hz {
-  font-family: var(--pui-font-label);
-  font-weight: 700;
-  font-size: 8.5px;
-  letter-spacing: 0.06em;
-  color: var(--pui-accent);
 }

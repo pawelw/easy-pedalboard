@@ -294,6 +294,50 @@ void checkChainOrderRoundTrip()
                == std::array<int, kNumModules> { moduleArtifact, moduleModulation, moduleDelay, moduleReverb },
            "index 0 is Artifact, Modulation, Delay, Reverb - today's fixed order");
 }
+/** The pre-EQ is machine-wide (GlobalEq): one instance's change is on disk and
+    in the next instance, and neither a session nor a preset carries it in.
+    Against a scratch file, so this never reads or writes the user's own. */
+void checkGlobalEq()
+{
+    const auto file = juce::File::createTempFile ("PreEQ.xml");
+    const auto value = [] (BitBitAlpineProcessor& p, const char* id)
+    { return p.apvts.getParameter (id)->convertFrom0to1 (p.apvts.getParameter (id)->getValue()); };
+    const auto set = [] (BitBitAlpineProcessor& p, const char* id, float v)
+    { p.apvts.getParameter (id)->setValueNotifyingHost (p.apvts.getParameter (id)->convertTo0to1 (v)); };
+
+    juce::MemoryBlock otherSession;
+    {
+        BitBitAlpineProcessor other;
+        set (other, ee::alpine::id::eqLow, -3.0f);
+        set (other, ee::alpine::id::dlyMix, 80.0f);
+        other.getStateInformation (otherSession);
+    }
+
+    {
+        BitBitAlpineProcessor first;
+        first.globalEq.attach (file);
+        set (first, ee::alpine::id::eqLow, 6.0f);
+        set (first, ee::alpine::id::eqMode, 1.0f);
+        first.globalEq.flush();
+    }
+
+    BitBitAlpineProcessor second;
+    second.globalEq.attach (file);
+    check (std::abs (value (second, ee::alpine::id::eqLow) - 6.0f) < 0.05f && value (second, ee::alpine::id::eqMode) > 0.5f,
+           "pre-EQ: a new instance opens on the EQ the last one left on disk");
+
+    second.setStateInformation (otherSession.getData(), static_cast<int> (otherSession.getSize()));
+    check (std::abs (value (second, ee::alpine::id::eqLow) - 6.0f) < 0.05f,
+           "...a session's own EQ does not replace it");
+    check (std::abs (value (second, ee::alpine::id::dlyMix) - 80.0f) < 0.05f, "...while the rest of the session loads");
+
+    BitBitAlpineProcessor detached;
+    check (std::abs (value (detached, ee::alpine::id::eqLow)) < 0.05f,
+           "...and a processor nothing attached to stays at its defaults (the offline tools)");
+
+    file.deleteFile();
+}
+
 } // namespace
 
 int main (int argc, char* argv[])
@@ -309,6 +353,9 @@ int main (int argc, char* argv[])
     std::printf ("\n");
 
     checkChainOrderRoundTrip();
+    std::printf ("\n");
+
+    checkGlobalEq();
     std::printf ("\n");
 
     // What the plugin tells a host to compensate, across the rates it runs at.

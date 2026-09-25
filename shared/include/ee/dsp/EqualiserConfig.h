@@ -24,6 +24,12 @@ enum class FilterType
 
 inline constexpr int kNumTypes = 8;
 
+constexpr bool isCut (FilterType t) noexcept
+{
+    return t == FilterType::lowCut48 || t == FilterType::lowCut12 || t == FilterType::highCut12
+        || t == FilterType::highCut48;
+}
+
 /** Whether a shape has a gain at all. The cuts and the notch do not: their
     Gain is ignored, and the face parks their dot on the 0 dB line. */
 constexpr bool hasGain (FilterType t) noexcept
@@ -40,6 +46,10 @@ inline constexpr float kMinQ      = 0.1f;
 inline constexpr float kMaxQ      = 18.0f;
 inline constexpr float kQSkewCentre = 1.0f;
 inline constexpr float kDefaultQ  = 0.71f;
+// The cuts' resonance stops here (+15.6 dB at the corner) whatever the Q knob
+// says - the pre-EQ feeds Alpine's drive stages, and the full kMaxQ on a cut
+// is a +25 dB spike into them. Bells and the notch keep the whole range.
+inline constexpr float kMaxCutQ   = 6.0f;
 
 // ----------------------------------------------------------------- the Simple
 // Three fixed bands at Ableton EQ Three's default split - FreqLow 250 Hz,

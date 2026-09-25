@@ -22,6 +22,11 @@ Latency ledger (dry path, every Mix at 0):
   ok    ...and indexForPermutation is its exact inverse
   ok    index 0 is Artifact, Modulation, Delay, Reverb - today's fixed order
 
+  ok    pre-EQ: a new instance opens on the EQ the last one left on disk
+  ok    ...a session's own EQ does not replace it
+  ok    ...while the rest of the session loads
+  ok    ...and a processor nothing attached to stays at its defaults (the offline tools)
+
 Reported latency:
    44100 Hz     148 samples    3.36 ms
    48000 Hz     161 samples    3.35 ms

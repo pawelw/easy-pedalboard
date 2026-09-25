@@ -254,8 +254,8 @@
   margin-left: 4px;
 }
 
-/* The pre-EQ is the third of the header's own controls, tight after the
-   theme switch the same way. */
+/* The pre-EQ sits between the tuner and the theme switch, tight against
+   them the same way. */
 .pui-presetbar--joined > .pui-presetbar__eq {
   margin-left: 2px;
 }
@@ -263,4 +263,23 @@
 .pui-presetbar--separated > .pui-presetbar__eq {
   border-radius: 8px;
   margin-left: 4px;
+}
+
+/* The pre-EQ is changing the sound: a lit dot in the button's corner, the
+   same LED green every "this is running" mark on the face uses. */
+.pui-presetbar > .pui-presetbar__eq {
+  position: relative;
+}
+
+.pui-presetbar > .pui-presetbar__eq--engaged::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--pui-led-on);
+  box-shadow: 0 0 4px var(--pui-led-on-glow);
+  pointer-events: none;
 }

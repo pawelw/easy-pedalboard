@@ -15,6 +15,7 @@
 #include "ee/dsp/BitCrusher.h"
 #include "ee/dsp/Compressor.h"
 #include "ee/dsp/Equaliser.h"
+#include "ee/dsp/SpectrumAnalyser.h"
 #include "ee/plugin/CompMeterFeed.h"
 #include "ee/dsp/BreakpointLfo.h"
 #include "ee/plugin/ModRouter.h"
@@ -6646,6 +6647,19 @@ void testEqualiser()
     }
 
     {
+        // The cuts' resonance is capped: Q 18 on a cut is Q kMaxCutQ.
+        Equaliser capped, reference;
+        capped.prepare (48000.0);
+        reference.prepare (48000.0);
+        capped.setBand (0, { FilterType::highCut48, 1000.0f, 0.0f, 18.0f, true });
+        reference.setBand (0, { FilterType::highCut48, 1000.0f, 0.0f, ee::dsp::eq::kMaxCutQ, true });
+        const float atCap = equaliserGainDb (capped, 1000.0f);
+        const float atSix = equaliserGainDb (reference, 1000.0f);
+        std::printf ("  high cut 48 @ 1 kHz: %.2f dB at Q 18, %.2f dB at Q 6\n", atCap, atSix);
+        check (std::abs (atCap - atSix) < 0.05f && atCap < 16.0f, "a cut's resonance is not capped at kMaxCutQ");
+    }
+
+    {
         // Toggling bands and changing shape mid-signal fades; nothing jumps.
         Equaliser eq;
         eq.prepare (48000.0);
@@ -6673,6 +6687,42 @@ void testEqualiser()
         check (finite, "the equaliser produced a non-finite sample under churn");
         check (worstStep < 0.35f, "the equaliser jumped under shape / on-off churn");
     }
+}
+
+void testSpectrumAnalyser()
+{
+    std::printf ("Spectrum analyser (the pre-EQ's display):\n");
+    using namespace ee::dsp;
+
+    // A full-scale 1 kHz sine: a peak at 1 kHz near 0 dB (the tilt pivots
+    // there), and nothing near it two octaves away.
+    std::vector<float> x (spectrum::kFftSize);
+    for (int i = 0; i < spectrum::kFftSize; ++i)
+        x[static_cast<size_t> (i)] = std::sin (6.283185307f * 1000.0f * static_cast<float> (i) / 48000.0f);
+
+    SpectrumAnalyser a;
+    const auto& f = a.analyse (x.data(), 48000.0, 0.0);
+    int peak = 0;
+    for (int p = 1; p < spectrum::kPoints; ++p)
+        if (f[static_cast<size_t> (p)] > f[static_cast<size_t> (peak)])
+            peak = p;
+    int at250 = 0;
+    for (int p = 0; p < spectrum::kPoints; ++p)
+        if (SpectrumAnalyser::frequencyAt (p) < 250.0f)
+            at250 = p;
+    std::printf ("  1 kHz sine: peak %.0f Hz at %.1f dB, %.1f dB at 250 Hz\n", SpectrumAnalyser::frequencyAt (peak),
+                 f[static_cast<size_t> (peak)], f[static_cast<size_t> (at250)]);
+    check (std::abs (SpectrumAnalyser::frequencyAt (peak) - 1000.0f) < 50.0f, "the spectrum peak is not at 1 kHz");
+    check (std::abs (f[static_cast<size_t> (peak)]) < 1.5f, "a full-scale sine does not read ~0 dB");
+    check (f[static_cast<size_t> (at250)] < -60.0f, "a 1 kHz sine leaks to 250 Hz");
+
+    // Silence afterwards falls at the release rate, not at once.
+    std::vector<float> silence (spectrum::kFftSize, 0.0f);
+    const float before = f[static_cast<size_t> (peak)];
+    const auto& g = a.analyse (silence.data(), 48000.0, 0.5);
+    std::printf ("  after 0.5 s of silence: %.1f dB\n", g[static_cast<size_t> (peak)]);
+    check (std::abs ((before - g[static_cast<size_t> (peak)]) - 0.5f * spectrum::kReleaseDbPerSecond) < 0.5f,
+           "the display does not release at kReleaseDbPerSecond");
 }
 
 } // namespace
@@ -6891,6 +6941,8 @@ int main()
     testModRouterAssignments();
     std::printf ("\n");
     testEqualiser();
+    std::printf ("\n");
+    testSpectrumAnalyser();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

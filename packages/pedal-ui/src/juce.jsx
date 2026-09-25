@@ -124,15 +124,22 @@ export function useJuceScaledValue(parameterId, fallback = 0) {
   const set = useCallback(
     (next) => {
       setValue(next);
-      const { start = 0, end = 1, skew = 1 } = sliderState.properties ?? {};
-      if (end === start) return;
-      const proportion = Math.min(1, Math.max(0, (next - start) / (end - start)));
-      sliderState.setNormalisedValue(Math.pow(proportion, skew));
+      setJuceScaledValue(sliderState, next);
     },
     [sliderState],
   );
 
   return [value, set, sliderState];
+}
+
+/** Sets a relay's parameter to a value in its own units, through the range
+    the relay was told about - useJuceScaledValue's setter, for a caller that
+    has the SliderState but no hook (a reset that writes many at once). */
+export function setJuceScaledValue(sliderState, value) {
+  const { start = 0, end = 1, skew = 1 } = sliderState.properties ?? {};
+  if (end === start) return;
+  const proportion = Math.min(1, Math.max(0, (value - start) / (end - start)));
+  sliderState.setNormalisedValue(Math.pow(proportion, skew));
 }
 
 /** A parameter's live formatted text (via formatKnobValue), re-fetched

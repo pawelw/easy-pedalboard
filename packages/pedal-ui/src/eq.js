@@ -24,6 +24,8 @@ export const EQ_MAX_HZ = 20000;
 export const EQ_MAX_GAIN_DB = 15;
 export const EQ_MIN_Q = 0.1;
 export const EQ_MAX_Q = 18;
+// A cut's resonance stops at this Q whatever the knob says (kMaxCutQ).
+export const EQ_MAX_CUT_Q = 6;
 export const EQ_BANDS = 8;
 
 // The Simple face's three fixed bands (EqualiserConfig.h's kSimple*).
@@ -48,6 +50,14 @@ export const EQ_DEFAULTS = [
 
 export function typeHasGain(type) {
   return type === 2 || type === 3 || type === 5;
+}
+
+/** The four cuts. Their level at the corner is exactly Q (in dB) - true of
+    one RBJ section, and of the 48s too, whose Butterworth section Qs multiply
+    to 1/sqrt2 before the band's Q scales the last one - so the graph puts a
+    cut's dot there, and dragging it up and down is Q. */
+export function typeIsCut(type) {
+  return type === 0 || type === 1 || type === 6 || type === 7;
 }
 
 const FS = 48000;
@@ -114,6 +124,7 @@ function clampQ(q) {
 export function bandSections({ type, hz, gain = 0, q = 0.71 }) {
   hz = clampHz(hz);
   q = clampQ(q);
+  if (typeIsCut(type)) q = Math.min(q, EQ_MAX_CUT_Q);
   switch (type) {
     case 0:
     case 7:

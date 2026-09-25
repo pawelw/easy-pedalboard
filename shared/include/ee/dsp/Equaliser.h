@@ -136,7 +136,8 @@ private:
         {
             using eq::FilterType;
             const double hz = std::exp (logHz);
-            const double q = std::exp (logQ);
+            const double q = eq::isCut (type) ? std::min (std::exp (logQ), static_cast<double> (eq::kMaxCutQ))
+                                              : std::exp (logQ);
 
             switch (type)
             {

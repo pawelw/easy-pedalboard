@@ -95,9 +95,10 @@ function ChevronRightIcon() {
  * pedal with a tuner behind it passes one (BitBit Alpine, through
  * JucePresetBar's `showTuner`).
  *
- * `onTheme` adds the palette switch beside it, and `onEq` the pre-EQ button
+ * `onEq` adds the pre-EQ button beside it, and `onTheme` the palette switch
  * after that, at the very end of the row. Same rule: omitted, there is no
- * button.
+ * button. `eqEngaged` lights a dot on the EQ button: the EQ is on and
+ * actually changing the sound.
  */
 export default function PresetBar({
   factory = DEMO_FACTORY,
@@ -114,6 +115,7 @@ export default function PresetBar({
   onTuner,
   onTheme,
   onEq,
+  eqEngaged = false,
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState("");
@@ -188,15 +190,20 @@ export default function PresetBar({
         </Button>
       )}
 
-      {onTheme && (
-        <Button onClick={() => onTheme()} aria-label="Switch theme" title="Switch theme" className="pui-presetbar__theme">
-          <ThemeIcon size={separated ? 14 : 13} />
+      {onEq && (
+        <Button
+          onClick={() => onEq()}
+          aria-label="Pre EQ"
+          title={eqEngaged ? "Pre EQ - shaping the input" : "Pre EQ"}
+          className={`pui-presetbar__eq${eqEngaged ? " pui-presetbar__eq--engaged" : ""}`}
+        >
+          <EqIcon size={separated ? 14 : 13} />
         </Button>
       )}
 
-      {onEq && (
-        <Button onClick={() => onEq()} aria-label="Pre EQ" title="Pre EQ" className="pui-presetbar__eq">
-          <EqIcon size={separated ? 14 : 13} />
+      {onTheme && (
+        <Button onClick={() => onTheme()} aria-label="Switch theme" title="Switch theme" className="pui-presetbar__theme">
+          <ThemeIcon size={separated ? 14 : 13} />
         </Button>
       )}
 

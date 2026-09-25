@@ -22,7 +22,8 @@
   gap: 12px;
   padding: 14px 16px 16px;
   background: var(--pui-panel);
-  border: 1.5px solid var(--pui-line);
+  /* The outline, not the ink line: on the light face --pui-line is black. */
+  border: 1px solid var(--pui-outline);
   border-radius: var(--pui-radius-panel);
   box-shadow: 0 18px 40px rgb(0 0 0 / 45%);
 }
@@ -148,6 +149,9 @@
   font-weight: 400;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  /* Fixed, so the box keeps one height whether it shows dashes or a note -
+     the octave's <sub> otherwise grows the line box the moment it appears. */
+  height: 48px;
 }
 
 .pui-tuner--in .pui-tuner__readout {
@@ -163,6 +167,7 @@
 }
 
 .pui-tuner__octave {
+  line-height: 0;
   font-size: 15px;
   margin-left: 2px;
   opacity: 0.7;

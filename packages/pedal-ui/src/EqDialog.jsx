@@ -1,13 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import * as Juce from "juce-framework-frontend";
 import Button from "./Button.jsx";
 import PowerToggle from "./PowerToggle.jsx";
 import { EqShapeIcon } from "./EqIcon.jsx";
-import { JuceKnob, useJuceChoiceValue, useJuceScaledValue, useJuceToggleValue } from "./juce.jsx";
+import {
+  JuceKnob,
+  setJuceScaledValue,
+  useFormattedText,
+  useJuceChoiceValue,
+  useJuceScaledValue,
+  useJuceSliderValue,
+  useJuceToggleValue,
+  useParamId,
+} from "./juce.jsx";
 import {
   EQ_BANDS,
   EQ_DEFAULTS,
   EQ_MAX_GAIN_DB,
   EQ_MAX_HZ,
+  EQ_MAX_CUT_Q,
   EQ_MAX_Q,
   EQ_MIN_HZ,
   EQ_MIN_Q,
@@ -17,6 +28,7 @@ import {
   curveFrequencies,
   sectionsDb,
   typeHasGain,
+  typeIsCut,
 } from "./eq.js";
 import "./EqDialog.css";
 
@@ -50,6 +62,47 @@ const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
     so it follows the palette like everything else on the face. */
 const bandColour = (i) => `var(--pui-eq-band-${i + 1})`;
 
+// The spectrum's points: ee::dsp::spectrum::kPoints, log-spaced 20 Hz..20 kHz
+// - the same axis as the graph, so point i sits at x = i / (n - 1) of it.
+// Its levels are drawn on their own scale, SPECTRUM_TOP_DB at the top of the
+// graph down to SPECTRUM_FLOOR_DB at the bottom: a shadow behind the curves,
+// not something to read the EQ's dB lines against.
+const SPECTRUM_TOP_DB = 0;
+const SPECTRUM_FLOOR_DB = -90;
+
+/** The processor's "eqSpectrum" feed - what the chain is fed, after the EQ -
+    for as long as the dialog is open. Opening it is what starts the capture
+    (BitBitAlpineWebEditor's eqSpectrumSetOpen), and closing stops it. Null
+    outside a host. */
+function useEqSpectrum() {
+  const [db, setDb] = useState(null);
+
+  useEffect(() => {
+    const backend = window.__JUCE__?.backend;
+    if (typeof backend?.addEventListener !== "function") return undefined;
+
+    const setOpen = Juce.getNativeFunction("eqSpectrumSetOpen");
+    setOpen(true);
+    const id = backend.addEventListener("eqSpectrum", (event) => {
+      if (Array.isArray(event?.db)) setDb(event.db);
+    });
+    return () => {
+      backend.removeEventListener(id);
+      setOpen(false);
+    };
+  }, []);
+
+  return db;
+}
+
+function spectrumPath(db) {
+  const n = db.length;
+  const y = (v) => H * (1 - clamp((v - SPECTRUM_FLOOR_DB) / (SPECTRUM_TOP_DB - SPECTRUM_FLOOR_DB), 0, 1));
+  let d = `M0 ${H}`;
+  for (let i = 0; i < n; ++i) d += `L${((i / (n - 1)) * W).toFixed(1)} ${y(db[i]).toFixed(1)}`;
+  return `${d}L${W} ${H}Z`;
+}
+
 /** Whether a band is actually shaping the sound - the same test the engine
     uses to leave a band out of the path (ee::dsp::Equaliser::wanted). */
 function isActive(b) {
@@ -66,8 +119,8 @@ function linePath(dbs) {
  * The response graph: the grid, one filled curve per band that is doing
  * something, the sum of them in ink on top, and a dot per band.
  *
- * Drag a dot to move its band - sideways is frequency, up and down is gain (a
- * cut or a notch has no gain, so only sideways). The wheel over the graph is Q
+ * Drag a dot to move its band - sideways is frequency, up and down is gain,
+ * or for a cut its resonance (Q), as on EQ Eight; a notch moves sideways only. The wheel over the graph is Q
  * for the selected band. Double-click a dot to switch its band on or off, or
  * the empty graph to switch on the first unused band where you clicked, as a
  * bell.
@@ -76,7 +129,7 @@ function linePath(dbs) {
  * parameters: the Simple face hands it three bands with no `setHz`, which is
  * what pins their dots to a frequency.
  */
-function EqGraph({ bands, selected, onSelect, onAddAt }) {
+function EqGraph({ bands, selected, onSelect, onAddAt, spectrum }) {
   const svgRef = useRef(null);
   const drag = useRef(null);
   const latest = useRef({ bands, selected });
@@ -128,6 +181,8 @@ function EqGraph({ bands, selected, onSelect, onAddAt }) {
     if (band.setHz) band.setHz(Math.round(hzOf(x) * 10) / 10);
     if (band.setGain && typeHasGain(band.type))
       band.setGain(Math.round(clamp(dbOf(y), -EQ_MAX_GAIN_DB, EQ_MAX_GAIN_DB) * 10) / 10);
+    else if (band.setQ && typeIsCut(band.type))
+      band.setQ(Math.round(clamp(Math.pow(10, dbOf(y) / 20), EQ_MIN_Q, EQ_MAX_CUT_Q) * 100) / 100);
   };
 
   const endDrag = () => {
@@ -136,9 +191,18 @@ function EqGraph({ bands, selected, onSelect, onAddAt }) {
     drag.current = null;
   };
 
+  // Where a band's dot sits: at its gain, or for a cut at its level at the
+  // corner - 20 log10 Q, which the curve passes through (see typeIsCut). A
+  // notch has neither and stays on the 0 dB line.
   const dotAt = (b) => ({
     x: xOf(clamp(b.hz, EQ_MIN_HZ, EQ_MAX_HZ)),
-    y: yOf(typeHasGain(b.type) ? b.gain : 0),
+    y: yOf(
+      typeHasGain(b.type)
+        ? b.gain
+        : typeIsCut(b.type)
+          ? clamp(20 * Math.log10(Math.min(b.q, EQ_MAX_CUT_Q)), -DB_SPAN, DB_SPAN)
+          : 0,
+    ),
   });
 
   // One handler for the whole graph rather than one per dot: the drag's
@@ -189,6 +253,8 @@ function EqGraph({ bands, selected, onSelect, onAddAt }) {
         </g>
       ))}
 
+      {spectrum && <path d={spectrumPath(spectrum)} className="pui-eq__spectrum" />}
+
       {curves.map(
         (c, i) =>
           c && (
@@ -222,6 +288,26 @@ function EqGraph({ bands, selected, onSelect, onAddAt }) {
         );
       })}
     </svg>
+  );
+}
+
+/** A 42px knob with its caption, live value and an optional detail line
+    stacked to its right rather than under it - the dialog has the width for
+    it, and the row reads as label: value like an EQ's band strip. */
+function EqKnob({ parameterId, caption, detail, scaleFrom }) {
+  const id = useParamId(parameterId);
+  const [value] = useJuceSliderValue(parameterId);
+  const text = useFormattedText(id, value);
+
+  return (
+    <div className="pui-eq__knob">
+      <JuceKnob parameterId={parameterId} variant="flat" size={36} scaleFrom={scaleFrom} bare showValueLabel={false} />
+      <div className="pui-eq__knob-labels">
+        <span className="pui-caption">{caption}</span>
+        <span className="pui-eq__knob-value">{text || "\u2013"}</span>
+        {detail && <span className="pui-eq__knob-detail">{detail}</span>}
+      </div>
+    </div>
   );
 }
 
@@ -289,7 +375,7 @@ function useEqBand(index) {
   const [type, setType] = useJuceChoiceValue(`${base}type`, EQ_TYPES.length, d.type);
   const [hz, setHz, hzState] = useJuceScaledValue(`${base}freq`, d.hz);
   const [gain, setGain, gainState] = useJuceScaledValue(`${base}gain`, 0);
-  const [q, setQ] = useJuceScaledValue(`${base}q`, 0.71);
+  const [q, setQ, qState] = useJuceScaledValue(`${base}q`, 0.71);
 
   return {
     label: index + 1,
@@ -303,19 +389,13 @@ function useEqBand(index) {
     setGain,
     q,
     setQ,
-    // One host gesture per drag, for both of the parameters a drag moves.
-    begin: () => {
-      hzState.sliderDragStarted();
-      gainState.sliderDragStarted();
-    },
-    end: () => {
-      hzState.sliderDragEnded();
-      gainState.sliderDragEnded();
-    },
+    // One host gesture per drag, for each parameter a drag can move.
+    begin: () => [hzState, gainState, qState].forEach((st) => st.sliderDragStarted()),
+    end: () => [hzState, gainState, qState].forEach((st) => st.sliderDragEnded()),
   };
 }
 
-function EqAdvanced() {
+function EqAdvanced({ spectrum }) {
   const bands = [];
   for (let i = 0; i < EQ_BANDS; ++i) bands.push(useEqBand(i)); // eslint-disable-line react-hooks/rules-of-hooks
   const [selected, setSelected] = useState(2);
@@ -338,7 +418,7 @@ function EqAdvanced() {
   return (
     <>
       <div className="pui-eq__screen">
-        <EqGraph bands={bands} selected={selected} onSelect={setSelected} onAddAt={addAt} />
+        <EqGraph bands={bands} selected={selected} onSelect={setSelected} onAddAt={addAt} spectrum={spectrum} />
       </div>
 
       <div
@@ -366,10 +446,10 @@ function EqAdvanced() {
 
         <div className="pui-eq__knobs">
           <div className={typeHasGain(band.type) ? undefined : "pui-eq__knob--unused"}>
-            <JuceKnob parameterId={`${base}gain`} variant="flat" size={36} caption="Gain" scaleFrom="centre" showValueBelow showValueLabel={false} />
+            <EqKnob parameterId={`${base}gain`} caption="Gain" scaleFrom="centre" />
           </div>
-          <JuceKnob parameterId={`${base}freq`} variant="flat" size={36} caption="Freq" showValueBelow showValueLabel={false} />
-          <JuceKnob parameterId={`${base}q`} variant="flat" size={36} caption="Q" showValueBelow showValueLabel={false} />
+          <EqKnob parameterId={`${base}freq`} caption="Freq" />
+          <EqKnob parameterId={`${base}q`} caption="Q" />
         </div>
       </div>
     </>
@@ -380,7 +460,7 @@ function EqAdvanced() {
 // six wider than the `size` it is given (Knob's dialSize), hence 36.
 const SIMPLE_IDS = ["eq.low", "eq.mid", "eq.high"];
 
-function EqSimple() {
+function EqSimple({ spectrum }) {
   const gains = SIMPLE_IDS.map((id) => useJuceScaledValue(id, 0)); // eslint-disable-line react-hooks/rules-of-hooks
   const bands = EQ_SIMPLE.map((s, i) => ({
     label: s.label[0],
@@ -399,7 +479,7 @@ function EqSimple() {
   return (
     <>
       <div className="pui-eq__screen">
-        <EqGraph bands={bands} selected={selected} onSelect={setSelected} />
+        <EqGraph bands={bands} selected={selected} onSelect={setSelected} spectrum={spectrum} />
       </div>
 
       <div className="pui-eq__simple">
@@ -409,12 +489,46 @@ function EqSimple() {
             className="pui-eq__simple-band"
             style={{ "--pui-accent": bandColour(bands[i].colourIndex), "--pui-soft-lit": bandColour(bands[i].colourIndex) }}
           >
-            <JuceKnob parameterId={SIMPLE_IDS[i]} variant="flat" size={36} caption={s.label} scaleFrom="centre" showValueBelow showValueLabel={false} />
-            <span className="pui-eq__simple-hz">{s.caption}</span>
+            <EqKnob parameterId={SIMPLE_IDS[i]} caption={s.label} detail={s.caption} scaleFrom="centre" />
           </div>
         ))}
       </div>
     </>
+  );
+}
+
+/** Puts one of the two faces back to where a fresh instance starts - flat -
+    leaving the EQ's power and which face is selected alone. Straight through
+    the relays rather than the hooks, as one host gesture per parameter. */
+function resetEq(mode, prefix = "") {
+  const slider = (id, value) => {
+    const state = Juce.getSliderState(prefix + id);
+    state.sliderDragStarted();
+    setJuceScaledValue(state, value);
+    state.sliderDragEnded();
+  };
+
+  if (mode === 0) {
+    SIMPLE_IDS.forEach((id) => slider(id, 0));
+    return;
+  }
+
+  EQ_DEFAULTS.forEach((d, i) => {
+    const base = `eq.b${i + 1}.`;
+    Juce.getToggleState(prefix + base + "on").setValue(d.on);
+    Juce.getComboBoxState(prefix + base + "type").setChoiceIndex(d.type);
+    slider(base + "freq", d.hz);
+    slider(base + "gain", 0);
+    slider(base + "q", 0.71);
+  });
+}
+
+function ResetIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2.75 8a5.25 5.25 0 1 0 1.6-3.8" />
+      <path d="M2.5 1.75v3h3" />
+    </svg>
   );
 }
 
@@ -423,6 +537,17 @@ function EqSimple() {
 function EqBody({ onClose }) {
   const [on, setOn] = useJuceToggleValue("eq.on", true);
   const [mode, setMode] = useJuceChoiceValue("eq.mode", 2, 0);
+  const spectrum = useEqSpectrum();
+  const prefix = useParamId("");
+
+  // Bumped by Reset, to remount the face: its controls then read the values
+  // just written rather than waiting on the relays to echo them - and outside
+  // a host, where nothing echoes, come back up at their defaults.
+  const [generation, setGeneration] = useState(0);
+  const reset = () => {
+    resetEq(mode, prefix);
+    setGeneration((g) => g + 1);
+  };
 
   return (
     <div className="pui-eq__box" role="dialog" aria-modal="true" aria-label="Pre EQ">
@@ -437,6 +562,15 @@ function EqBody({ onClose }) {
             Advanced
           </button>
         </div>
+        <Button
+          className="pui-eq__reset"
+          onClick={reset}
+          aria-label="Reset EQ"
+          title={mode === 1 ? "Reset all eight bands" : "Reset Low, Mid and High to 0 dB"}
+        >
+          <ResetIcon />
+          <span>Reset</span>
+        </Button>
         <Button className="pui-eq__close" onClick={onClose} aria-label="Close EQ">
           <svg width="10" height="10" viewBox="0 0 10 10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
             <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" />
@@ -444,9 +578,29 @@ function EqBody({ onClose }) {
         </Button>
       </div>
 
-      <div className={`pui-eq__body${on ? "" : " pui-eq__body--off"}`}>{mode === 1 ? <EqAdvanced /> : <EqSimple />}</div>
+      <div className={`pui-eq__body${on ? "" : " pui-eq__body--off"}`}>{mode === 1 ? (
+          <EqAdvanced key={generation} spectrum={spectrum} />
+        ) : (
+          <EqSimple key={generation} spectrum={spectrum} />
+        )}</div>
     </div>
   );
+}
+
+/** Whether the pre-EQ is changing the sound right now: switched on, and the
+    face in use has at least one band in the signal path - the engine's own
+    test (see isActive). For the header button's lit dot, so it is read while
+    the dialog is shut, which is why it keeps its own relay subscriptions. */
+export function useEqEngaged() {
+  const [on] = useJuceToggleValue("eq.on", true);
+  const [mode] = useJuceChoiceValue("eq.mode", 2, 0);
+  const simple = SIMPLE_IDS.map((id) => useJuceScaledValue(id, 0)[0]); // eslint-disable-line react-hooks/rules-of-hooks
+  const bands = [];
+  for (let i = 0; i < EQ_BANDS; ++i) bands.push(useEqBand(i)); // eslint-disable-line react-hooks/rules-of-hooks
+
+  if (!on) return false;
+  if (mode === 0) return simple.some((g) => Math.abs(g) > 0.01);
+  return bands.some(isActive);
 }
 
 /**

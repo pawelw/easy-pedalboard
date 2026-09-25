@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
 import PresetBar from "./PresetBar.jsx";
 import TunerDialog from "./TunerDialog.jsx";
-import EqDialog from "./EqDialog.jsx";
+import EqDialog, { useEqEngaged } from "./EqDialog.jsx";
 import { usePedalTheme, useSetPedalTheme } from "./Provider.jsx";
 
 // The six native functions ee/plugin/PresetBridge.h registers. Resolved once
@@ -93,6 +93,15 @@ function useTunerBridge() {
   return { open, mute, reading, show, hide, setMuted };
 }
 
+/** Reads useEqEngaged and reports it up. A component of its own so its ~45
+    relay subscriptions exist only on a bar that has an EQ button - a hook
+    cannot be called conditionally on `showEq`. */
+function EqEngagedProbe({ onChange }) {
+  const engaged = useEqEngaged();
+  useEffect(() => onChange(engaged), [engaged, onChange]);
+  return null;
+}
+
 /**
  * The preset bar, wired to the processor's `ee::plugin::PresetStore` through
  * the native bridge. This is the drop-in: a pedal whose editor wraps its
@@ -141,6 +150,7 @@ export default function JucePresetBar({
   const { state, load, step, save, randomize } = usePresetBridge();
   const tuner = useTunerBridge();
   const [eqOpen, setEqOpen] = useState(false);
+  const [eqEngaged, setEqEngaged] = useState(false);
   const closeEq = useCallback(() => setEqOpen(false), []);
   const theme = usePedalTheme();
   const setTheme = useSetPedalTheme();
@@ -162,7 +172,9 @@ export default function JucePresetBar({
         onTuner={showTuner ? tuner.show : undefined}
         onTheme={showThemeSwitch ? () => setTheme(theme === "onyx" ? "light" : "onyx") : undefined}
         onEq={showEq ? () => setEqOpen(true) : undefined}
+        eqEngaged={eqEngaged}
       />
+      {showEq && <EqEngagedProbe onChange={setEqEngaged} />}
       {showEq && <EqDialog open={eqOpen} onClose={closeEq} />}
       {showTuner && (
         <TunerDialog

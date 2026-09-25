@@ -5,6 +5,7 @@
 
 #include "ee/plugin/CompMeterFeed.h"
 #include "ee/plugin/CornerResizer.h"
+#include "ee/dsp/SpectrumAnalyser.h"
 #include "ee/dsp/Tuner.h"
 #include "ee/plugin/RelaySet.h"
 
@@ -62,7 +63,12 @@ private:
         And a third while the header's tuner is open:
 
         - "tuner": the note, cents and whether there is a signal at all, from
-          the analysis half below, plus the mute button's state. */
+          the analysis half below, plus the mute button's state.
+
+        And one while the pre-EQ dialog is open:
+
+        - "eqSpectrum": `db`, ee::dsp::spectrum::kPoints levels on a log axis
+          from 20 Hz to 20 kHz, of what the chain is fed after the EQ. */
     void timerCallback() override;
 
     /** The tuner's native functions: open/close it (which is what starts and
@@ -71,6 +77,10 @@ private:
     juce::var tunerState() const;
 
     ee::dsp::TunerAnalyser tunerAnalyser;
+
+    /** The pre-EQ dialog's spectrum, sent as "eqSpectrum" while it is open. */
+    ee::dsp::SpectrumAnalyser eqAnalyser;
+    double lastSpectrumFrameMs = 0.0;
 
     /** The Artifact module's Comp display - see ee::plugin::CompMeterFeed. */
     ee::plugin::CompMeterFeed compMeter;

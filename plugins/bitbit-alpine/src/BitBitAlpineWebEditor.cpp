@@ -166,6 +166,21 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
                                            processorRef.tuner.setActive (open);
                                            complete (tunerState());
                                        })
+                  // The pre-EQ dialog's spectrum: capture runs only while it
+                  // is open, and the timer below sends a frame per tick.
+                  .withNativeFunction ("eqSpectrumSetOpen",
+                                       [this] (const juce::Array<juce::var>& args,
+                                               juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                       {
+                                           const bool open = args.size() > 0 && static_cast<bool> (args[0]);
+                                           if (open && ! processorRef.eqSpectrum.isActive())
+                                           {
+                                               eqAnalyser.reset();
+                                               lastSpectrumFrameMs = juce::Time::getMillisecondCounterHiRes();
+                                           }
+                                           processorRef.eqSpectrum.setActive (open);
+                                           complete (open);
+                                       })
                   .withNativeFunction ("tunerSetMute",
                                        [this] (const juce::Array<juce::var>& args,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
@@ -235,6 +250,11 @@ BitBitAlpineWebEditor::~BitBitAlpineWebEditor()
     // A tuner left open when the window closes would keep capturing, and keep
     // the output muted, with nothing on screen to say so or turn it off.
     processorRef.tuner.setActive (false);
+    processorRef.eqSpectrum.setActive (false);
+
+    // Still the active editor here, so this is the last moment a change made
+    // in it counts as the user's - see GlobalEq.
+    processorRef.globalEq.flush();
 }
 
 juce::var BitBitAlpineWebEditor::tunerState() const
@@ -290,6 +310,24 @@ void BitBitAlpineWebEditor::timerCallback()
         tunerPayload->setProperty ("hz", r.hz);
         tunerPayload->setProperty ("mute", processorRef.tunerMute.load (std::memory_order_relaxed));
         webView.emitEventIfBrowserIsVisible ("tuner", juce::var (tunerPayload));
+    }
+
+    if (processorRef.eqSpectrum.isActive())
+    {
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        const double dt = juce::jlimit (0.0, 0.25, (now - lastSpectrumFrameMs) * 0.001);
+        lastSpectrumFrameMs = now;
+
+        const auto& frame = eqAnalyser.update (processorRef.eqSpectrum, dt);
+
+        juce::Array<juce::var> db;
+        db.ensureStorageAllocated (static_cast<int> (frame.size()));
+        for (float v : frame)
+            db.add (std::round (v * 10.0f) * 0.1f);
+
+        auto* spectrumPayload = new juce::DynamicObject();
+        spectrumPayload->setProperty ("db", db);
+        webView.emitEventIfBrowserIsVisible ("eqSpectrum", juce::var (spectrumPayload));
     }
 
 #if EE_ALPINE_WATCHDOG

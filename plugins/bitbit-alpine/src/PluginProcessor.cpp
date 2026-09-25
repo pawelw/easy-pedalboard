@@ -181,6 +181,16 @@ juce::String eqBandId (int band, const char* leaf)
     return "eq.b" + juce::String (band + 1) + "." + leaf;
 }
 
+/** The pre-EQ's Freq. Not hertzToText: that keeps one decimal of kHz, which
+    reads 1250 Hz as "1.3 kHz" - fine for a cut's corner, too coarse for a bell
+    you are placing. */
+juce::String eqHzToText (float value, int)
+{
+    if (value < 1000.0f)
+        return juce::String (juce::roundToInt (value)) + " Hz";
+    return juce::String (value / 1000.0f, value < 10000.0f ? 2 : 1) + " kHz";
+}
+
 /** The pre-EQ's Q: two decimals, no unit - the way every EQ prints it. */
 juce::String qToText (float value, int)
 {
@@ -233,6 +243,15 @@ BitBitAlpineProcessor::BitBitAlpineProcessor()
     }
 
     loadTapeNoiseSample();
+
+    // The pre-EQ is the user's, not the session's: a real wrapper (AU, VST3,
+    // Standalone) opens on the last one set anywhere. An offline tool builds
+    // the processor directly - wrapperType_Undefined - and stays hermetic.
+    // Only what changes with the window open is remembered - see GlobalEq;
+    // auval, for one, sets every parameter and never opens an editor.
+    globalEq.shouldRemember = [this] { return getActiveEditor() != nullptr; };
+    if (wrapperType != wrapperType_Undefined)
+        globalEq.attach (GlobalEq::defaultFile());
 }
 
 BitBitAlpineProcessor::~BitBitAlpineProcessor()
@@ -298,7 +317,9 @@ void BitBitAlpineProcessor::mirrorTime (const juce::String& from, const juce::St
 void BitBitAlpineProcessor::installState (const juce::ValueTree& tree)
 {
     installingState = true;
-    apvts.replaceState (tree);
+    // Whatever the tree says about the pre-EQ, the one in force stays - see
+    // GlobalEq.
+    apvts.replaceState (globalEq.keepCurrent (tree));
     installingState = false;
 }
 
@@ -699,7 +720,7 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
                                                               name + "Type", typeNames, static_cast<int> (d.type)));
             layout.add (
                 std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { eqBandId (b, id::eqBandFreq), 1 },
-                                                             name + "Freq", freqRange, d.hz, withText (hertzToText)));
+                                                             name + "Freq", freqRange, d.hz, withText (eqHzToText)));
             layout.add (
                 std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { eqBandId (b, id::eqBandGain), 1 },
                                                              name + "Gain", gainRange, 0.0f, withText (gainDbToText)));
@@ -948,6 +969,7 @@ void BitBitAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpecte
 
     inputMeter.prepare (sampleRate);
     tuner.prepare (sampleRate);
+    eqSpectrum.prepare (sampleRate);
 
     dryBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
 
@@ -1063,6 +1085,7 @@ void BitBitAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
     // the input meter, which read the instrument as it is played, and not on
     // dryBuffer, so the global bypass is the untouched input still.
     equaliser.process (buffer.getArrayOfWritePointers(), numCh, numSamples);
+    eqSpectrum.process (buffer.getReadPointer (0), numCh > 1 ? buffer.getReadPointer (1) : nullptr, numSamples);
 
     // The Modulation module's two tempo-locked LFOs, kept on the host grid when
     // their Sync switches are on and the transport is rolling - see
