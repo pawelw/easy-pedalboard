@@ -42,7 +42,7 @@ using namespace ee::fx::modulation; // the Mod module's knob maps, shared with B
 using ee::plugin::kRampSeconds;
 using ee::plugin::percentToText;
 
-// The three modules restate this rather than including ee/plugin - see
+// The modules restate this rather than including ee/plugin - see
 // ee/fx/DelayModuleConfig.h. This is the one place all of them are visible.
 static_assert (ee::fx::delaymodule::kGainRampSeconds == kRampSeconds,
                "ee::fx::delaymodule::kGainRampSeconds must track ee::plugin::kRampSeconds");
@@ -86,7 +86,7 @@ constexpr float kMaxGainDb = 12.0f;
 // pair above: this one rests at unity and the face draws its arc out from the
 // middle, so the two halves have to be the same size or "no change" would not
 // be at twelve o'clock. It also stops short of silence at the bottom, which
-// the old 0..100 % level did not - and since the three modules are in series,
+// the old 0..100 % level did not - and since the four modules are in series,
 // a Level anyone could wind to zero was a knob that silenced the whole plugin.
 // Mix and the module's own power toggle are how you take a module out.
 constexpr float kModuleTrimDb = 12.0f;
@@ -806,9 +806,18 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
     const auto pct = [&raw] (const char* pid) { return raw (pid) * 0.01f; };
     const auto flag = [&raw] (const char* pid) { return raw (pid) > 0.5f; };
 
+    // Bypassed, the output is the global crossfade's dry path whatever the
+    // modules make, so each is told it is off too - and, once its own ramp
+    // and (for the Delay) its trails are done, stops running. A bypassed Alpine
+    // costs its dry path, not four modules nobody hears. Coming back, the
+    // global ramp opens onto the modules' own dry paths and each module's wet
+    // follows as it wakes.
+    const bool pluginOn = flag (id::on) && ! hostBypassed;
+    const auto moduleOn = [&flag, pluginOn] (const char* pid) { return pluginOn && flag (pid); };
+
     // ----------------------------------------------------------------- artifact
     artifact.setEngine (static_cast<int> (raw (id::artEngine)));
-    artifact.setEngaged (flag (id::artOn));
+    artifact.setEngaged (moduleOn (id::artOn));
     artifact.setLevel (juce::Decibels::decibelsToGain (raw (id::artLevel)));
     artifact.setMix01 (pct (id::artMix));
     artifact.setTone (raw (id::artTone) * 0.01f);
@@ -825,7 +834,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
 
     // --------------------------------------------------------------- modulation
     modulation.setEngine (static_cast<int> (raw (id::modEngine)));
-    modulation.setEngaged (flag (id::modOn));
+    modulation.setEngaged (moduleOn (id::modOn));
     modulation.setLevel (juce::Decibels::decibelsToGain (raw (id::modLevel)));
     modulation.setMix01 (pct (id::modMix));
     modulation.setTone (raw (id::modTone) * 0.01f);
@@ -873,7 +882,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
     delay.setPhaser01 (pct (id::dlyPhaser));
     delay.setFilter (raw (id::dlyLoCut), raw (id::dlyHiCut));
     delay.setMix01 (pct (id::dlyMix));
-    delay.setEngaged (flag (id::dlyOn));
+    delay.setEngaged (moduleOn (id::dlyOn));
 
     // The host owns the input trim, so the module's is left at unity. The
     // module's output trim is the Delay Level knob in the header - the same
@@ -883,7 +892,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
 
     // ------------------------------------------------------------------- reverb
     reverb.setEngine (static_cast<int> (raw (id::revEngine)));
-    reverb.setEngaged (flag (id::revOn));
+    reverb.setEngaged (moduleOn (id::revOn));
     reverb.setLevel (juce::Decibels::decibelsToGain (raw (id::revLevel)));
     reverb.setMix01 (pct (id::revMix));
     reverb.setTone (raw (id::revTone) * 0.01f);
@@ -937,6 +946,11 @@ void BitBitAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpecte
     maxBlock = juce::jmax (1, maximumExpectedSamplesPerBlock);
 
     badBlockRun = 0;
+    chainFadeLength = juce::jmax (1, static_cast<int> (std::lround (kChainFadeSeconds * sampleRate)));
+    chainFadeLeft = 0;
+    chainFadingIn = false;
+    chainOrderPrimed = false;
+    chainDip.assign (static_cast<size_t> (chainFadeLength), 0.0f);
     safetyResetHoldBlocks =
         juce::jlimit (4, 64, static_cast<int> (std::lround (0.025 * sampleRate / juce::jmax (1, maxBlock))));
 
@@ -1098,48 +1112,14 @@ void BitBitAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
 
     // The chain. chain.order picks who's fed to whom, in the order it names -
     // each module is still responsible for its own dry/wet and its own power
-    // toggle, all this does is hand the signal on. See ChainOrder.h.
-    const auto chainOrderNow =
-        chainOrder::permutationForIndex (static_cast<int> (apvts.getRawParameterValue (id::chainOrder)->load()));
-
+    // toggle, all this does is hand the signal on. See ChainOrder.h. A new
+    // order is not switched to on the spot: see runChainWithReorderFade.
 #if EE_ALPINE_WATCHDOG
     watchdog.beginBlock();
     watchdog.setStagePeak (AlpineWatchdog::stageInput, buffer, numCh, numSamples);
 #endif
 
-    for (const int moduleId : chainOrderNow)
-    {
-        switch (moduleId)
-        {
-        case chainOrder::moduleArtifact:
-            artifact.process (buffer, numCh, numSamples);
-#if EE_ALPINE_WATCHDOG
-            watchdog.setStagePeak (AlpineWatchdog::stageArtifact, buffer, numCh, numSamples);
-#endif
-            break;
-
-        case chainOrder::moduleModulation:
-            modulation.process (buffer, numCh, numSamples);
-#if EE_ALPINE_WATCHDOG
-            watchdog.setStagePeak (AlpineWatchdog::stageModulation, buffer, numCh, numSamples);
-#endif
-            break;
-
-        case chainOrder::moduleDelay:
-            delay.process (buffer, numCh, numCh, numSamples);
-#if EE_ALPINE_WATCHDOG
-            watchdog.setStagePeak (AlpineWatchdog::stageDelay, buffer, numCh, numSamples);
-#endif
-            break;
-
-        default: // chainOrder::moduleReverb
-            reverb.process (buffer, numCh, numSamples);
-#if EE_ALPINE_WATCHDOG
-            watchdog.setStagePeak (AlpineWatchdog::stageReverb, buffer, numCh, numSamples);
-#endif
-            break;
-        }
-    }
+    runChainWithReorderFade (buffer, numCh, numSamples);
 
     // The Modulation Filter engine's live sweep position, for the editor's scope.
     filterModL.store (modulation.filterModL(), std::memory_order_relaxed);
@@ -1173,6 +1153,136 @@ void BitBitAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
 #else
     juce::ignoreUnused (verdict);
 #endif
+}
+
+void BitBitAlpineProcessor::runChain (juce::AudioBuffer<float>& block,
+                                      int numCh,
+                                      int numSamples,
+                                      const float* dip) noexcept
+{
+    const auto applyDip = [&block, numCh, numSamples, dip]
+    {
+        if (dip != nullptr)
+            for (int ch = 0; ch < numCh; ++ch)
+                juce::FloatVectorOperations::multiply (block.getWritePointer (ch), dip, numSamples);
+    };
+
+    for (const int moduleId : chainOrder::permutationForIndex (activeChainOrder))
+    {
+        applyDip();
+
+        switch (moduleId)
+        {
+        case chainOrder::moduleArtifact:
+            artifact.process (block, numCh, numSamples);
+#if EE_ALPINE_WATCHDOG
+            watchdog.setStagePeak (AlpineWatchdog::stageArtifact, block, numCh, numSamples);
+#endif
+            break;
+
+        case chainOrder::moduleModulation:
+            modulation.process (block, numCh, numSamples);
+#if EE_ALPINE_WATCHDOG
+            watchdog.setStagePeak (AlpineWatchdog::stageModulation, block, numCh, numSamples);
+#endif
+            break;
+
+        case chainOrder::moduleDelay:
+            delay.process (block, numCh, numCh, numSamples);
+#if EE_ALPINE_WATCHDOG
+            watchdog.setStagePeak (AlpineWatchdog::stageDelay, block, numCh, numSamples);
+#endif
+            break;
+
+        default: // chainOrder::moduleReverb
+            reverb.process (block, numCh, numSamples);
+#if EE_ALPINE_WATCHDOG
+            watchdog.setStagePeak (AlpineWatchdog::stageReverb, block, numCh, numSamples);
+#endif
+            break;
+        }
+    }
+
+    applyDip();
+}
+
+void BitBitAlpineProcessor::runChainWithReorderFade (juce::AudioBuffer<float>& buffer,
+                                                     int numCh,
+                                                     int numSamples) noexcept
+{
+    const auto wantedOrder = [this]
+    {
+        return juce::jlimit (0, chainOrder::kNumPermutations - 1,
+                             static_cast<int> (apvts.getRawParameterValue (id::chainOrder)->load()));
+    };
+
+    // Nothing to hide a swap from on the first block after prepare, or while
+    // the global bypass has the output entirely on the dry path: take the new
+    // order outright. The first is what keeps a session that opens on a
+    // reordered chain playing it from sample one.
+    const bool unheard = engageGain.getCurrentValue() == 0.0f && ! engageGain.isSmoothing();
+
+    if (! chainOrderPrimed || unheard)
+    {
+        activeChainOrder = wantedOrder();
+        chainFadeLeft = 0;
+        chainFadingIn = false;
+        chainOrderPrimed = true;
+    }
+    else if (chainFadeLeft == 0 && wantedOrder() != activeChainOrder)
+    {
+        chainFadeLeft = chainFadeLength;
+        chainFadingIn = false;
+    }
+
+    // At rest this is one pass over the whole block - the same calls, with the
+    // same arguments, as before the fade existed. Only a block a fade starts,
+    // turns or ends in is split, so the swap lands on its exact sample.
+    for (int offset = 0; offset < numSamples;)
+    {
+        const int len = chainFadeLeft > 0 ? juce::jmin (numSamples - offset, chainFadeLeft) : numSamples - offset;
+
+        juce::AudioBuffer<float> segment (buffer.getArrayOfWritePointers(), numCh, offset, len);
+
+        if (chainFadeLeft > 0)
+        {
+            // Raised cosine, out to silence and back up: the two orders are
+            // never heard at once, because the modules carry one set of state
+            // and cannot run both.
+            const int done = chainFadeLength - chainFadeLeft;
+            const float step = juce::MathConstants<float>::pi / static_cast<float> (chainFadeLength);
+
+            for (int i = 0; i < len; ++i)
+            {
+                const float c = std::cos (static_cast<float> (done + i + 1) * step);
+                chainDip[static_cast<size_t> (i)] = chainFadingIn ? 0.5f - 0.5f * c : 0.5f + 0.5f * c;
+            }
+
+            runChain (segment, numCh, len, chainDip.data());
+
+            chainFadeLeft -= len;
+
+            if (chainFadeLeft == 0)
+            {
+                chainFadingIn = ! chainFadingIn;
+
+                // Silent now: swap to whatever the parameter says at this
+                // moment - a drag that moved again mid-fade lands on where it
+                // ended, not where it started - and come back up.
+                if (chainFadingIn)
+                {
+                    activeChainOrder = wantedOrder();
+                    chainFadeLeft = chainFadeLength;
+                }
+            }
+        }
+        else
+        {
+            runChain (segment, numCh, len, nullptr);
+        }
+
+        offset += len;
+    }
 }
 
 BitBitAlpineProcessor::SafetyVerdict

@@ -16,5 +16,6 @@ Engines:
   ok    Spring   ead5bbda9f00805f  peak 0.706708  rms 0.272198
   ok    Shimmer  80a4448dc2bb5411  peak 1.248425  rms 0.437653
   ok    Studio   74f55dc9d6bf4a63  peak 1.296980  rms 0.587467
+  ok    Simple   782cc2274909bbfd  peak 1.342624  rms 0.546579
 
 OK - BitBit Reverb works

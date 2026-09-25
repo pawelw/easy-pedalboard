@@ -63,4 +63,15 @@ constexpr float kHiCutBypassMarginHz = 0.5f;
 // 62 ms against 6 ms of trim.
 constexpr float kMinDelaySeconds = 0.001f;
 
+// ============================================================================
+// SLEEP
+// ============================================================================
+// When a module that is off stops running (DelayModule::sleep). Its repeats have
+// to stay under kSleepLevel (-120 dBFS) for kSleepAfterSeconds first: longer
+// than the longest line (ee::dsp::TapeDelay::kMaxDelaySeconds, 6 s), with room
+// for the tape's short transport on top, so every sample still in the lines has
+// been rewritten with next to nothing by the time it stops.
+constexpr float kSleepLevel = 1.0e-6f;
+constexpr double kSleepAfterSeconds = 6.25;
+
 } // namespace ee::fx::delaymodule

@@ -56,6 +56,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_module_stress_artefacts/Release/ee_module_stress    # BitBit Alpine's switchable modules
 ./build/tests/ee_bit_check_artefacts/Release/ee_bit_check [outDir] [dry.wav]  # Amp's Bit calibration and Drive's dB
 ./build/tests/ee_alpine_host_artefacts/Release/ee_alpine_host        # drives the real BitBit Alpine processor
+./build/tests/ee_alpine_bench_artefacts/Release/ee_alpine_bench [--seconds N] [--repeats N]  # Alpine's CPU per patch, % of one core - timing, not in the baselines
 ./build/tests/ee_modulation_host_artefacts/Release/ee_modulation_host  # the real BitBit Modulation, checksum per engine
 ./build/tests/ee_reverb_host_artefacts/Release/ee_reverb_host      # the real BitBit Reverb, all three engines
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
@@ -141,6 +142,11 @@ in each plugin's `CMakeLists.txt` (`PLUGIN_CODE`).
 Factory**, which writes the preset into the pedal's own `presets/` folder in the
 source tree for committing. Off by default and refused by the bridge in a normal
 build; never ship one.
+
+`EE_BUILD_STAMP` (on in the `dev` and `fast` presets, off otherwise and in
+`release`) puts the native build's compile time in a corner of BitBit Alpine's
+face, to tell a rebuilt plugin from a stale one still loaded in a host. An
+existing `build/` picks it up when reconfigured with `cmake --preset dev`.
 
 Two pedals carry a development side panel that drives the part of their
 voicing that is not on the face, and prints the header lines for whatever you

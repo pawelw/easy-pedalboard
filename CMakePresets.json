@@ -16,7 +16,8 @@
         "CMAKE_BUILD_TYPE": "Release",
         "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
         "EE_BUILD_TESTS": "ON",
-        "EE_LTO": "OFF"
+        "EE_LTO": "OFF",
+        "EE_BUILD_STAMP": "ON"
       }
     },
     {

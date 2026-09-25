@@ -126,10 +126,16 @@ public:
         engageGain.setCurrentAndTargetValue (engaged ? 1.0f : 0.0f);
         inGain.setCurrentAndTargetValue (inGainLinear);
         outGain.setCurrentAndTargetValue (outGainLinear);
+
+        asleep = false;
+        quietSamples = 0;
+        sleepAfterSamples = static_cast<int> (delaymodule::kSleepAfterSeconds * sampleRate);
     }
 
     void reset() noexcept
     {
+        quietSamples = 0;
+
         tapeOut.reset();
         phaser.reset();
         delay.reset();
@@ -239,6 +245,25 @@ public:
         inGain.setTargetValue (inGainLinear);
         outGain.setTargetValue (outGainLinear);
 
+        // Off, the ramps done, and the trails run out: see sleep().
+        if (! engaged && engageGain.getCurrentValue() == 0.0f && ! engageGain.isSmoothing()
+            && ! dryGain.isSmoothing() && quietSamples >= sleepAfterSamples)
+        {
+            sleep (buffer, numIn, numOut, numSamples);
+            return;
+        }
+
+        if (asleep)
+        {
+            // The lines are quiet end to end (see sleep), so there is nothing
+            // to clear - but a Time moved while asleep would glide from where
+            // it was, bending the first repeats. There is nothing in the line
+            // for a glide to be heard on, so land it.
+            asleep = false;
+            quietSamples = 0;
+            delay.snapDelays();
+        }
+
         for (int offset = 0; offset < numSamples; offset += maxBlock)
         {
             const int chunk = juce::jmin (maxBlock, numSamples - offset);
@@ -309,6 +334,12 @@ public:
             // signal that never went near the delay, at any Mix setting and
             // even at zero.
             runPhaser (wetL, wetR, chunk);
+
+            // How long the repeats have been below hearing, for sleep().
+            const auto wetRange = juce::FloatVectorOperations::findMinAndMax (wetL, chunk).getUnionWith (
+                juce::FloatVectorOperations::findMinAndMax (wetR, chunk));
+            const bool quiet = juce::jmax (-wetRange.getStart(), wetRange.getEnd()) < delaymodule::kSleepLevel;
+            quietSamples = quiet ? juce::jmin (quietSamples + chunk, sleepAfterSamples) : 0;
 
             float* mixL = mixBuffer.getWritePointer (0);
             float* mixR = mixBuffer.getWritePointer (1);
@@ -384,6 +415,57 @@ public:
     void setTapeTuning (const ee::dsp::TapeTuning& t) noexcept { tapeOut.tape.setTuning (t); }
 
 private:
+    /** Off, with nothing left ringing: the output is the input, and the delay,
+        the tape, the filters and the phaser are not run at all.
+
+        Bypassing keeps the trails, so off is not enough - the repeats have to
+        have died away first. `quietSamples` counts how long they have stayed
+        under kSleepLevel, and kSleepAfterSeconds is longer than the longest
+        line, so by then every sample in the lines has been rewritten with
+        next to nothing and the module wakes with nothing stale to play.
+
+        The output is what the full path makes of an off module with a silent
+        wet side - `pre * dry + wet * wetGain`, the pre crossfade at 0 leaving
+        `pre` exactly the input and the dry gain exactly 1 - bar a wet side
+        below kSleepLevel that is no longer added. */
+    void sleep (juce::AudioBuffer<float>& buffer, int numIn, int numOut, int numSamples) noexcept
+    {
+        asleep = true;
+
+        for (auto* g : { &wetGain, &inGain, &outGain })
+            g->skip (numSamples);
+
+        if (numOut > 1)
+        {
+            // In place, so the left side is already there; a mono input is
+            // spread to the right as the full path would.
+            for (int i = 0; i < numSamples; ++i)
+            {
+                float* l = buffer.getWritePointer (0);
+                l[i] = scrub (l[i]);
+            }
+
+            float* r = buffer.getWritePointer (1);
+            const float* inR = numIn > 1 ? r : buffer.getReadPointer (0);
+            for (int i = 0; i < numSamples; ++i)
+                r[i] = scrub (inR[i]);
+        }
+        else
+        {
+            float* l = buffer.getWritePointer (0);
+            const float* inR = numIn > 1 ? buffer.getReadPointer (1) : l;
+            for (int i = 0; i < numSamples; ++i)
+                l[i] = 0.5f * (scrub (l[i]) + scrub (inR[i]));
+        }
+    }
+
+    static_assert (delaymodule::kSleepAfterSeconds > ee::dsp::TapeDelay::kMaxDelaySeconds,
+                   "sleep() relies on every sample in the lines having been rewritten");
+
+    bool asleep = false;
+    int quietSamples = 0;
+    int sleepAfterSamples = 0;
+
     /** The tape machine on the repeats: the transport's wobble (Flutter), then
         the tape itself (Wear), in the order a machine has them. Both are the
         stages BitBit Tape's knobs of the same name drive - shared engines, not

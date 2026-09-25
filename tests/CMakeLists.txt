@@ -612,6 +612,24 @@ if(TARGET BitBitAlpine)
     target_link_libraries(ee_alpine_host
         PRIVATE BitBitAlpine ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
+
+    # What the real processor costs per second of audio, over a few patches -
+    # the published CPU figure. Timing, so not in regress-baselines.sh.
+    juce_add_console_app(ee_alpine_bench PRODUCT_NAME "ee_alpine_bench")
+
+    target_sources(ee_alpine_bench PRIVATE AlpineBench.cpp)
+
+    target_compile_definitions(ee_alpine_bench PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_alpine_bench
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-alpine/src)
+
+    target_link_libraries(ee_alpine_bench
+        PRIVATE BitBitAlpine ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
 endif()
 
 # The frozen parameter contract, one binary per shipping product. See

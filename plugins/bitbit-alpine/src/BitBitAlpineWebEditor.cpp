@@ -29,6 +29,26 @@ juce::String formatPeak (float v)
 
     return juce::String (v, 3, true);
 }
+
+/** Which binary is actually running, so a rebuild can be told apart from a
+    stale one still loaded in an open project or a DAW's own plugin cache - see
+    useJuceBuildInfo. __DATE__ / __TIME__ are this translation unit's own compile
+    time, so the stamp only moves when this file (or a header it depends on -
+    PluginProcessor.h, and through it every DSP header) is actually recompiled.
+
+    A development aid, not something a customer should see: only an
+    EE_BUILD_STAMP build registers the function, and without it the face draws
+    no stamp at all. */
+juce::WebBrowserComponent::Options withBuildStamp (juce::WebBrowserComponent::Options options)
+{
+#if EE_BUILD_STAMP
+    return options.withNativeFunction (
+        "getBuildInfo", [] (const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
+        { complete (juce::String (__DATE__) + " " + __TIME__); });
+#else
+    return options;
+#endif
+}
 } // namespace
 
 #if JUCE_ANDROID
@@ -63,7 +83,7 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
       // through, and where the page comes from.
       webView (ee::plugin::presetBridge (
           relays.apply (
-              juce::WebBrowserComponent::Options {}
+              withBuildStamp (juce::WebBrowserComponent::Options {})
                   .withNativeIntegrationEnabled()
                   // WKWebView's own right-click context menu has no dedicated
                   // JUCE option to turn off, so this suppresses it the ordinary
@@ -134,22 +154,6 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
 
                                            complete (text);
                                        })
-                  // The TapScope's time axis. Numbers, not the formatted
-                  // readouts above: the scope places taps at multiples of the
-                  // delay time, and what a knob position means in milliseconds
-                  // depends on the Sync pill and the host tempo, neither of
-                  // which the web view knows.
-                  // Which binary is actually running, so a rebuild can be told
-                  // apart from a stale one still loaded in an open project or
-                  // a DAW's own plugin cache - see useJuceBuildInfo. __DATE__ /
-                  // __TIME__ are this translation unit's own compile time, so
-                  // the stamp only moves when this file (or a header it
-                  // depends on - PluginProcessor.h, and through it every DSP
-                  // header) is actually recompiled.
-                  .withNativeFunction (
-                      "getBuildInfo",
-                      [] (const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
-                      { complete (juce::String (__DATE__) + " " + __TIME__); })
                   // The header's tuner - see tunerState(). Opening it is what
                   // starts the processor capturing; the mute only ever acts
                   // while it is open.
@@ -189,6 +193,11 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
                                                                          std::memory_order_relaxed);
                                            complete (tunerState());
                                        })
+                  // The TapScope's time axis. Numbers, not the formatted
+                  // readouts above: the scope places taps at multiples of the
+                  // delay time, and what a knob position means in milliseconds
+                  // depends on the Sync pill and the host tempo, neither of
+                  // which the web view knows.
                   .withNativeFunction ("getDelayTimesMs",
                                        [this] (const juce::Array<juce::var>&,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
