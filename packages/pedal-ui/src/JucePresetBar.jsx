@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
 import PresetBar from "./PresetBar.jsx";
 import TunerDialog from "./TunerDialog.jsx";
+import { usePedalTheme, useSetPedalTheme } from "./Provider.jsx";
 
 // The six native functions ee/plugin/PresetBridge.h registers. Resolved once
 // per page rather than per render: getNativeFunction only builds a wrapper,
@@ -117,10 +118,17 @@ function useTunerBridge() {
  * editor registers the tuner's native functions (BitBit Alpine's does - see
  * BitBitAlpineWebEditor); anywhere else the button would open a meter that
  * never moves.
+ *
+ * `showThemeSwitch` adds the palette switch beside it, flipping the enclosing
+ * provider between its dark and light faces. Nothing native is involved and
+ * nothing is remembered: it is a look, not a parameter, so it is not in the
+ * state a host saves.
  */
-export default function JucePresetBar({ variant, showSteppers, showDice, showTuner = false }) {
+export default function JucePresetBar({ variant, showSteppers, showDice, showTuner = false, showThemeSwitch = false }) {
   const { state, load, step, save, randomize } = usePresetBridge();
   const tuner = useTunerBridge();
+  const theme = usePedalTheme();
+  const setTheme = useSetPedalTheme();
 
   return (
     <>
@@ -137,6 +145,7 @@ export default function JucePresetBar({ variant, showSteppers, showDice, showTun
         onSave={save}
         onRandomize={randomize}
         onTuner={showTuner ? tuner.show : undefined}
+        onTheme={showThemeSwitch ? () => setTheme(theme === "onyx" ? "light" : "onyx") : undefined}
       />
       {showTuner && (
         <TunerDialog

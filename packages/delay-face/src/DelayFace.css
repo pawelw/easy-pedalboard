@@ -208,8 +208,13 @@
 }
 
 /* Likewise the four large knobs in the centre row - Mix, Feedback and the two
-   Times: their lit ticks are the Delay green too. Set on the knobs rather than
-   the row, so nothing else in it that reads --pui-tick-lit changes. */
+   Times: their value mark is the Delay green, the colour of the module's own
+   level knob in the header. Two tokens because the row draws two different
+   knobs - the tick ring on onyx's "scale" cap, the sweep on the collar the
+   light themes get (see DelayFace.jsx) - and the collar's own red would be
+   the one thing on the face wearing a second accent. Set on the knobs rather
+   than the row, so nothing else in it that reads either token changes. */
 .pd-row .pui-knob {
   --pui-tick-lit: var(--pui-accent-delay);
+  --pui-knob-sweep-lit: var(--pui-accent-delay);
 }

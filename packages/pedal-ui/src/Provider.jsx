@@ -1,14 +1,18 @@
-import { createContext, useContext } from "react";
+import { createContext, useContext, useMemo, useState } from "react";
 import { MantineProvider } from "@mantine/core";
 
-const PedalThemeContext = createContext("light");
+const PedalThemeContext = createContext({ theme: "light", setTheme: () => {} });
 
-/** The palette name the enclosing provider was given. For the few choices a
-    theme can't express as a token - a component swapping for a different one
-    rather than recolouring - not for anything a `[data-pui-theme]` block
-    could do in CSS. */
+/** The palette name in force. For the few choices a theme can't express as a
+    token - a component swapping for a different one rather than recolouring -
+    not for anything a `[data-pui-theme]` block could do in CSS. */
 export function usePedalTheme() {
-  return useContext(PedalThemeContext);
+  return useContext(PedalThemeContext).theme;
+}
+
+/** Switches the palette for the whole tree under the provider. */
+export function useSetPedalTheme() {
+  return useContext(PedalThemeContext).setTheme;
 }
 
 /**
@@ -25,12 +29,19 @@ export function usePedalTheme() {
  * near-white soft-UI one. Anything but "light" stamps `data-pui-theme` on a
  * wrapper div, which every token-driven component inherits from - an unknown
  * name stamps too and simply finds no block, leaving the default palette.
+ *
+ * The prop is the *starting* palette: `useSetPedalTheme` can move it at
+ * runtime, which is what the header's theme switch does. A pedal that never
+ * calls it stays on whatever it was given.
  */
 export default function PedalUIProvider({ theme = "light", children }) {
+  const [current, setCurrent] = useState(theme);
+  const value = useMemo(() => ({ theme: current, setTheme: setCurrent }), [current]);
+
   return (
     <MantineProvider forceColorScheme="light">
-      <PedalThemeContext.Provider value={theme}>
-        <div data-pui-theme={theme === "light" ? undefined : theme} style={{ background: "var(--pui-page)" }}>
+      <PedalThemeContext.Provider value={value}>
+        <div data-pui-theme={current === "light" ? undefined : current} style={{ background: "var(--pui-page)" }}>
           {children}
         </div>
       </PedalThemeContext.Provider>

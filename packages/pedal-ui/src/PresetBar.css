@@ -232,12 +232,24 @@
 }
 
 /* The tuner stands apart from Save and the dice - it is not about presets at
-   all - so it keeps its own rounded corners and a wider gap before it. */
+   all - so it keeps its own rounded corners and a wider gap before it. The
+   theme switch is the same kind of thing and sits right of it, but tight
+   against it: the two are the header's own controls, not two more of the
+   bar's. */
 .pui-presetbar--joined > .pui-presetbar__tuner {
   margin-left: 6px;
 }
 
 .pui-presetbar--separated > .pui-presetbar__tuner {
+  border-radius: 8px;
+  margin-left: 4px;
+}
+
+.pui-presetbar--joined > .pui-presetbar__theme {
+  margin-left: 2px;
+}
+
+.pui-presetbar--separated > .pui-presetbar__theme {
   border-radius: 8px;
   margin-left: 4px;
 }

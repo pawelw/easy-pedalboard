@@ -1,7 +1,7 @@
 import "@mantine/core/styles.css";
 import "./tokens.css";
 
-export { default as PedalUIProvider, usePedalTheme } from "./Provider.jsx";
+export { default as PedalUIProvider, usePedalTheme, useSetPedalTheme } from "./Provider.jsx";
 export { default as Card } from "./Card.jsx";
 export { default as Logo } from "./Logo.jsx";
 export { default as Knob } from "./Knob.jsx";

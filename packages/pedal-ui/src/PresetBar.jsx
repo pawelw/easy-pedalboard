@@ -6,6 +6,7 @@ import PresetSaveDialog from "./PresetSaveDialog.jsx";
 import DiceIcon from "./DiceIcon.jsx";
 import SaveIcon from "./SaveIcon.jsx";
 import TunerIcon from "./TunerIcon.jsx";
+import ThemeIcon from "./ThemeIcon.jsx";
 import "./PresetBar.css";
 
 // What the bar shows with nothing behind it: a plain browser tab, the
@@ -92,6 +93,9 @@ function ChevronRightIcon() {
  * - a tuning fork that opens the tuner. Omitted, there is no button: only a
  * pedal with a tuner behind it passes one (BitBit Alpine, through
  * JucePresetBar's `showTuner`).
+ *
+ * `onTheme` adds the palette switch beside it, at the very end of the row.
+ * Same rule: omitted, there is no button.
  */
 export default function PresetBar({
   factory = DEMO_FACTORY,
@@ -106,6 +110,7 @@ export default function PresetBar({
   onSave,
   onRandomize,
   onTuner,
+  onTheme,
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState("");
@@ -177,6 +182,12 @@ export default function PresetBar({
       {onTuner && (
         <Button onClick={() => onTuner()} aria-label="Tuner" title="Tuner" className="pui-presetbar__tuner">
           <TunerIcon size={separated ? 14 : 13} />
+        </Button>
+      )}
+
+      {onTheme && (
+        <Button onClick={() => onTheme()} aria-label="Switch theme" title="Switch theme" className="pui-presetbar__theme">
+          <ThemeIcon size={separated ? 14 : 13} />
         </Button>
       )}
 
