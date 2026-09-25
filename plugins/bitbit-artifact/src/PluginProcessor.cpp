@@ -4,6 +4,7 @@
 #include "BitBitArtifactWebEditor.h"
 
 #include "ee/dsp/BitCrusherConfig.h"
+#include "ee/dsp/CompressorConfig.h"
 #include "ee/dsp/RingModulatorConfig.h"
 #include "ee/dsp/RustConfig.h"
 #include "ee/dsp/TubeDriveConfig.h"
@@ -95,6 +96,13 @@ juce::String ringLpToText (float pct, int)
     return freqText (hz);
 }
 
+// Comp's Attack readout: a decimal under 10 ms, where the knob spends most of
+// its travel.
+juce::String compAttackToText (float ms, int)
+{
+    return juce::String (ms, ms < 10.0f ? 1 : 0) + " ms";
+}
+
 using Attributes = juce::AudioParameterFloatAttributes;
 
 Attributes withText (juce::String (*fn) (float, int))
@@ -125,9 +133,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitArtifactProcessor::cre
 
     // All four engines are voiced; the pedal opens on Ring Mod. Filter used to
     // be the third, before it moved to BitBit Alpine's Modulation module.
-    layout.add (
-        std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::engine, 1 }, "Engine",
-                                                      juce::StringArray { "Ring Mod", "Bit Crush", "Rust", "Amp" }, 0));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { id::engine, 1 }, "Engine",
+        juce::StringArray { "Ring Mod", "Bit Crush", "Rust", "Drive", "Comp" }, 0));
 
     layout.add (
         std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::mix, 1 }, "Mix", percent, 50.0f, pctAttr));
@@ -196,6 +204,27 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitArtifactProcessor::cre
                                                              juce::NormalisableRange<float> (-100.0f, 100.0f, 0.1f),
                                                              0.0f, withText (signedPctToText)));
 
+    // Comp - a Keeley-style compressor (ee::dsp::Compressor, voicing in
+    // CompressorConfig.h). Sensitivity (the pedal's Sustain) is a plain
+    // percent, Attack in ms. No Level: the engine matches its output to the
+    // input's level. Its Blend is the footer Mix and its Tone the footer Tone.
+    // Appended so every other parameter keeps its index.
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::compSensitivity, 1 },
+                                                             "Comp Sensitivity", percent,
+                                                             ee::dsp::comp::kDefaultSensitivityPct, pctAttr));
+
+    auto compAttack = juce::NormalisableRange<float> (ee::dsp::comp::kAttackMinMs, ee::dsp::comp::kAttackMaxMs, 0.01f);
+    compAttack.setSkewForCentre (ee::dsp::comp::kAttackCentreMs);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::compAttack, 1 }, "Comp Attack",
+                                                             compAttack, ee::dsp::comp::kDefaultAttackMs,
+                                                             withText (compAttackToText)));
+
+    // Comp's SC switch: a high-pass on what the detector hears (never on the
+    // audio), so the low strings stop setting the gain for a whole chord. On
+    // by default. Appended.
+    layout.add (
+        std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::compScFilter, 1 }, "Comp SC Filter", true));
+
     return layout;
 }
 
@@ -218,6 +247,8 @@ void BitBitArtifactProcessor::pushSettings() noexcept
     module.setRust (pct (id::rustGrind), static_cast<int> (raw (id::rustMode)));
 
     module.setAmp (pct (id::ampDrive), pct (id::ampMids), pct (id::ampBit), raw (id::ampTone) * 0.01f);
+
+    module.setComp (pct (id::compSensitivity), raw (id::compAttack), flag (id::compScFilter));
 }
 
 void BitBitArtifactProcessor::installState (const juce::ValueTree& tree)

@@ -31,7 +31,7 @@ export const ARTIFACT_EASY = {
       { id: "rust.grind", min: 0.15, max: 0.9 },
     ],
   },
-  Amp: {
+  Drive: {
     name: "Drive",
     targets: [
       { id: "amp.drive", min: 0.2, max: 0.9 },

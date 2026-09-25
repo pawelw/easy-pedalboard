@@ -146,11 +146,23 @@
   flex: 1 1 0;
   min-width: 0;
   display: flex;
-  /* At the foot, 8px off the bottom edge - the switchable modules' footer
-     (.pui-module__footer) does the same, so in BitBit Alpine the Delay's knob
-     captions sit on one line with the Mix and Tone captions beside it. */
-  align-items: flex-end;
-  padding: 12px 14px 8px;
+  /* The group fills the section's height and its knobs sit 8px off the bottom
+     edge - the switchable modules' footer (.pui-module__footer) does the same,
+     so in BitBit Alpine the Delay's knob captions sit on one line with the Mix
+     and Tone captions beside it. */
+  align-items: stretch;
+  /* The top pad is StageGroup's header-to-knobs gap, so the header's two sides
+     start level and the auto margins below keep them that way. */
+  padding: calc(11px + var(--pui-knob-reach-small)) 14px 8px;
+}
+
+/* The footer stretches to the tallest module in an Alpine row, and all of that
+   slack used to pile up above the header - it sat low, close to its knobs and
+   far from the divider. Auto margins either side split the slack instead, so
+   the header stays midway between the section's top and its knobs however tall
+   the row makes it, and the knobs stay pinned to the foot. */
+.pd-footer .pui-stage-header {
+  margin-block: auto;
 }
 
 /* A hairline wherever two sections meet, so the footer reads as three sections
@@ -175,11 +187,24 @@
   background: var(--pui-footer-knob-face);
 }
 
-/* The footer knobs' value arc is the Delay green - the same colour as the
-   Delay module's header knob in Alpine - rather than StageGroup's grayscale
-   pair. The track stays as it is. */
+/* The whole footer is grayscale: the three section glyphs and the knobs' value
+   arcs all take --pui-footer-knob-lit, the dark white every other module's
+   footer knob is lit in. The marks were three greens and the arcs the Delay
+   accent, which made the strip the brightest thing on a face whose subject is
+   above it. What tells the sections apart is still the glyph - its shape, now,
+   rather than its hue.
+
+   Scoped here rather than in tokens.css so only this footer changes: TapeIcon
+   reads --pui-stage-tape itself, and it also sits in the Modulation stepper,
+   where the deck stays green. */
+.pd-footer {
+  --pui-stage-tape: var(--pui-footer-knob-lit);
+  --pui-stage-mod: var(--pui-footer-knob-lit);
+  --pui-stage-filter: var(--pui-footer-knob-lit);
+}
+
 .pd-footer .pui-stage-group {
-  --pui-soft-lit: var(--pui-accent-delay);
+  --pui-soft-lit: var(--pui-footer-knob-lit);
 }
 
 /* Likewise the four large knobs in the centre row - Mix, Feedback and the two

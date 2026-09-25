@@ -150,6 +150,30 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
                       "getBuildInfo",
                       [] (const juce::Array<juce::var>&, juce::WebBrowserComponent::NativeFunctionCompletion complete)
                       { complete (juce::String (__DATE__) + " " + __TIME__); })
+                  // The header's tuner - see tunerState(). Opening it is what
+                  // starts the processor capturing; the mute only ever acts
+                  // while it is open.
+                  .withNativeFunction ("tunerSetOpen",
+                                       [this] (const juce::Array<juce::var>& args,
+                                               juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                       {
+                                           const bool open = args.size() > 0 && static_cast<bool> (args[0]);
+                                           if (open && ! processorRef.tuner.isActive())
+                                           {
+                                               tunerAnalyser.reset();
+                                               lastTunerFrameMs = juce::Time::getMillisecondCounterHiRes();
+                                           }
+                                           processorRef.tuner.setActive (open);
+                                           complete (tunerState());
+                                       })
+                  .withNativeFunction ("tunerSetMute",
+                                       [this] (const juce::Array<juce::var>& args,
+                                               juce::WebBrowserComponent::NativeFunctionCompletion complete)
+                                       {
+                                           processorRef.tunerMute.store (args.size() > 0 && static_cast<bool> (args[0]),
+                                                                         std::memory_order_relaxed);
+                                           complete (tunerState());
+                                       })
                   .withNativeFunction ("getDelayTimesMs",
                                        [this] (const juce::Array<juce::var>&,
                                                juce::WebBrowserComponent::NativeFunctionCompletion complete)
@@ -207,6 +231,18 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
 BitBitAlpineWebEditor::~BitBitAlpineWebEditor()
 {
     stopTimer();
+
+    // A tuner left open when the window closes would keep capturing, and keep
+    // the output muted, with nothing on screen to say so or turn it off.
+    processorRef.tuner.setActive (false);
+}
+
+juce::var BitBitAlpineWebEditor::tunerState() const
+{
+    auto* state = new juce::DynamicObject();
+    state->setProperty ("open", processorRef.tuner.isActive());
+    state->setProperty ("mute", processorRef.tunerMute.load (std::memory_order_relaxed));
+    return juce::var (state);
 }
 
 void BitBitAlpineWebEditor::timerCallback()
@@ -223,6 +259,38 @@ void BitBitAlpineWebEditor::timerCallback()
     filterPayload->setProperty ("modL", processorRef.filterModL.load (std::memory_order_relaxed));
     filterPayload->setProperty ("modR", processorRef.filterModR.load (std::memory_order_relaxed));
     webView.emitEventIfBrowserIsVisible ("filterMod", juce::var (filterPayload));
+
+    // The Artifact module's Comp display, only while Comp is its engine - the
+    // same "compMeter" event BitBit Artifact's editor sends.
+    {
+        const auto raw = [this] (const char* pid) { return processorRef.apvts.getRawParameterValue (pid)->load(); };
+        const bool comp = static_cast<int> (raw (id::artEngine)) == ee::fx::ArtifactModule::Comp;
+
+        const auto compPayload = compMeter.poll (processorRef.artifactModule().compressor(), comp && isShowing(),
+                                                 ee::dsp::comp::inputThresholdDbFor (raw (id::artCompSensitivity) * 0.01f));
+
+        if (! compPayload.isVoid())
+            webView.emitEventIfBrowserIsVisible ("compMeter", compPayload);
+    }
+
+    if (processorRef.tuner.isActive())
+    {
+        const double now = juce::Time::getMillisecondCounterHiRes();
+        const double dt = juce::jlimit (0.001, 0.25, (now - lastTunerFrameMs) * 0.001);
+        lastTunerFrameMs = now;
+
+        const auto r = tunerAnalyser.update (processorRef.tuner, dt);
+
+        auto* tunerPayload = new juce::DynamicObject();
+        tunerPayload->setProperty ("signal", r.signal);
+        tunerPayload->setProperty ("holding", r.holding);
+        tunerPayload->setProperty ("note", juce::String (ee::dsp::TunerReading::noteName (r.midiNote)));
+        tunerPayload->setProperty ("octave", ee::dsp::TunerReading::octave (r.midiNote));
+        tunerPayload->setProperty ("cents", r.cents);
+        tunerPayload->setProperty ("hz", r.hz);
+        tunerPayload->setProperty ("mute", processorRef.tunerMute.load (std::memory_order_relaxed));
+        webView.emitEventIfBrowserIsVisible ("tuner", juce::var (tunerPayload));
+    }
 
 #if EE_ALPINE_WATCHDOG
     pollWatchdog();

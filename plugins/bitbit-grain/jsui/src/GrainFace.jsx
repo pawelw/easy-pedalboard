@@ -379,7 +379,15 @@ function ReverbSection() {
 function SegmentSwitch({ parameterId, offLabel, onLabel, className }) {
   const [on, setOn] = useJuceToggleValue(parameterId);
 
-  return <Pill label={on ? onLabel : offLabel} pressed={on} onClick={() => setOn(!on)} className={className} />;
+  return (
+    <Pill
+      label={on ? onLabel : offLabel}
+      labelSet={[offLabel, onLabel]}
+      pressed={on}
+      onClick={() => setOn(!on)}
+      className={className}
+    />
+  );
 }
 
 /** `on`/`onToggle` are handed down rather than read here, the way Alpine's

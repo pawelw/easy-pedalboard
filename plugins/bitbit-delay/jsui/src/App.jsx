@@ -23,16 +23,22 @@ export default function App() {
       {/* theme="onyx" on the Delay face only - see main.jsx. Wah never
           passes a theme, so none of this reaches it (packages/pedal-ui/src/
           tokens.css's [data-pui-theme="onyx"] block). */}
-      {/* 415px is too narrow for the preset bar to share a row with the title,
-          so it takes its own row underneath, as Artifact's and Reverb's do. */}
+      {/* 526px is the width at which this card's content box is the 452px of
+          BitBit Alpine's 490px Delay module - the card's own 26px sides and
+          .pui-card__body's 10px, on top of it. The face is the same component
+          in both, so it is drawn at the same size in both; at 415 it was the
+          same controls laid out smaller, which read as a second face.
+
+          That width is also what lets the preset bar share the title's row
+          again (see .pd-card's header-left override for how it lands right
+          rather than centred); at 415 it had to take one of its own. */}
       <Card
         title="BitBit Delay"
         headerCenter={<JucePresetBar variant="separated" showDice={false} />}
-        headerCenterPlacement="below"
         className="pd-card"
-        width={415}
+        width={526}
       >
-        <DelayFace mainKnobSize={50} />
+        <DelayFace />
       </Card>
     </div>
   );

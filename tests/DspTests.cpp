@@ -13,6 +13,8 @@
 
 #include "ee/dsp/AutoWah.h"
 #include "ee/dsp/BitCrusher.h"
+#include "ee/dsp/Compressor.h"
+#include "ee/plugin/CompMeterFeed.h"
 #include "ee/dsp/BreakpointLfo.h"
 #include "ee/plugin/ModRouter.h"
 #include "ee/plugin/SafeParse.h"
@@ -3233,6 +3235,352 @@ void testRingModulator()
 
 // ------------------------------------------------------------------------ rust
 
+/** ee::dsp::Compressor (BitBit Artifact's Comp) renders a stereo sine burst
+    schedule and returns the left channel. `levelsDb[k]` holds for
+    `seconds[k]`; a level below -150 is silence. */
+std::vector<float> renderComp (ee::dsp::Compressor& comp, float hz, const std::vector<float>& levelsDb,
+                               const std::vector<float>& seconds)
+{
+    std::vector<float> out;
+    double phase = 0.0;
+
+    for (size_t k = 0; k < levelsDb.size(); ++k)
+    {
+        const int n = static_cast<int> (seconds[k] * kSampleRate);
+        const float amp = levelsDb[k] < -150.0f ? 0.0f : juce::Decibels::decibelsToGain (levelsDb[k]) * std::sqrt (2.0f);
+
+        for (int done = 0; done < n; done += kBlock)
+        {
+            const int m = std::min (kBlock, n - done);
+            std::vector<float> l (static_cast<size_t> (m)), r (static_cast<size_t> (m));
+            for (int i = 0; i < m; ++i)
+            {
+                l[static_cast<size_t> (i)] = r[static_cast<size_t> (i)] = amp * static_cast<float> (std::sin (phase));
+                phase += juce::MathConstants<double>::twoPi * hz / kSampleRate;
+            }
+            comp.process (l.data(), r.data(), m);
+            out.insert (out.end(), l.begin(), l.end());
+        }
+    }
+    return out;
+}
+
+float rmsDb (const std::vector<float>& x, double fromSeconds, double toSeconds)
+{
+    const size_t a = static_cast<size_t> (fromSeconds * kSampleRate);
+    const size_t b = std::min (x.size(), static_cast<size_t> (toSeconds * kSampleRate));
+    double sum = 0.0;
+    for (size_t i = a; i < b; ++i)
+        sum += static_cast<double> (x[i]) * x[i];
+    return static_cast<float> (10.0 * std::log10 (sum / static_cast<double> (std::max<size_t> (1, b - a)) + 1.0e-20));
+}
+
+/** A played guitar for the Comp tests: plucked notes (five decaying harmonics)
+    0.6 s apart at varying strength, scaled to `peakDb`. `held` makes each
+    note decay ten times slower - a strummed chord left ringing, which is
+    where a level match fitted on plucks is most likely to be off. */
+std::vector<float> pluckedGuitar (float peakDb, bool held = false)
+{
+    const int total = static_cast<int> (6.0 * kSampleRate);
+    const int spacing = static_cast<int> (0.6 * kSampleRate);
+    const float strengths[] = { 1.0f, 0.5f, 0.8f, 0.3f, 0.9f, 0.6f, 0.4f, 1.0f, 0.7f, 0.5f };
+    const float notes[] = { 82.4f, 110.0f, 146.8f, 196.0f, 246.9f, 329.6f, 196.0f, 110.0f, 164.8f, 220.0f };
+    const double decay = held ? 0.1 : 1.0;
+
+    std::vector<float> x (static_cast<size_t> (total), 0.0f);
+    for (int i = 0; i < total; ++i)
+    {
+        const int k = i / spacing;
+        const double t = static_cast<double> (i - k * spacing) / kSampleRate;
+        const double f = notes[k % 10];
+        double v = 0.0;
+        for (int h = 1; h <= 5; ++h)
+            v += std::sin (juce::MathConstants<double>::twoPi * f * h * t) / h * std::exp (-t * (2.0 + h) * decay);
+        x[static_cast<size_t> (i)] = strengths[k % 10] * static_cast<float> (v);
+    }
+
+    float peak = 0.0f;
+    for (float v : x)
+        peak = std::max (peak, std::abs (v));
+    for (auto& v : x)
+        v *= juce::Decibels::decibelsToGain (peakDb) / peak;
+    return x;
+}
+
+/** `in` through the compressor, both channels the same; the left comes back.
+    The take is played through twice first and those passes thrown away: the
+    auto level follows the player over seconds (deliberately - see AUTO LEVEL
+    in CompressorConfig.h), and in use it has been listening since long before
+    the take. This measures where it settles, not how it gets there. */
+std::vector<float> compress (ee::dsp::Compressor& c, const std::vector<float>& in)
+{
+    std::vector<float> l, r;
+    const int total = static_cast<int> (in.size());
+    for (int pass = 0; pass < 3; ++pass)
+    {
+        l = in;
+        r = in;
+        for (int done = 0; done < total; done += kBlock)
+        {
+            c.process (l.data() + done, r.data() + done, std::min (kBlock, total - done));
+        }
+    }
+    return l;
+}
+
+void testCompressor()
+{
+    std::printf ("Compressor: silence, auto level, compression, attack, program-dependent release, low-E ripple\n");
+
+    auto make = [] (float sensitivity01, float attackMs)
+    {
+        auto c = std::make_unique<ee::dsp::Compressor>();
+        c->prepare (kSampleRate);
+        c->setSensitivity01 (sensitivity01);
+        c->setAttackMs (attackMs);
+        c->reset(); // snap the parameter smoothing to the settings
+        return c;
+    };
+
+    // 1. Silence in -> exact silence out, every knob up.
+    {
+        auto c = make (1.0f, 25.0f);
+        const auto y = renderComp (*c, 440.0f, { -200.0f }, { 3.0f });
+        float peak = 0.0f;
+        for (float v : y)
+            peak = std::max (peak, std::abs (v));
+        check (peak == 0.0f, "silence in is silence out (peak " + juce::String (peak) + ")");
+    }
+
+    // 2. Auto level - the owner's rule: with the compressor on, a guitar is as
+    //    loud as with it off, at any Sensitivity and whatever level the guitar
+    //    arrives at. Average level over the whole take, three input levels,
+    //    plucked and held.
+    std::printf ("  auto level, output vs input rms:   Sensitivity 0 %%   50 %%  100 %%\n");
+    for (bool held : { false, true })
+        for (float peakDb : { 0.0f, -6.0f, -18.0f })
+        {
+            const auto in = pluckedGuitar (peakDb, held);
+            float change[3] {};
+            for (int k = 0; k < 3; ++k)
+            {
+                auto c = make (0.5f * static_cast<float> (k), 5.0f);
+                const auto out = compress (*c, in);
+                change[k] = rmsDb (out, 0.0, 6.0) - rmsDb (in, 0.0, 6.0);
+
+            }
+            std::printf ("    %s guitar, %4.0f dBFS peak             %+5.1f  %+5.1f  %+5.1f dB\n",
+                         held ? "held   " : "plucked", peakDb, change[0], change[1], change[2]);
+            for (int k = 0; k < 3; ++k)
+                check (std::abs (change[k]) < 1.5f,
+                       juce::String (held ? "held" : "plucked") + " guitar at " + juce::String (peakDb, 0)
+                           + " dBFS, Sensitivity " + juce::String (50 * k) + " %: level moved "
+                           + juce::String (change[k], 1) + " dB");
+        }
+
+    // 3. It still compresses: a phrase alternating a loud and a quiet second
+    //    (24 dB apart) comes out closer together the more Sensitivity there is.
+    {
+        std::vector<float> levels, seconds;
+        for (int i = 0; i < 4; ++i)
+        {
+            levels.push_back (-6.0f);
+            levels.push_back (-30.0f);
+            seconds.push_back (1.0f);
+            seconds.push_back (1.0f);
+        }
+        float range[3] {};
+        for (int k = 0; k < 3; ++k)
+        {
+            auto c = make (0.5f * static_cast<float> (k), 5.0f);
+            const auto y = renderComp (*c, 1000.0f, levels, seconds);
+            range[k] = rmsDb (y, 6.5, 7.0) - rmsDb (y, 7.5, 8.0);
+        }
+        std::printf ("  loud / quiet gap (24 dB in): %.1f / %.1f / %.1f dB at Sensitivity 0 / 50 / 100 %%\n",
+                     range[0], range[1], range[2]);
+        check (range[0] > 20.0f, "Sensitivity 0 barely compresses");
+        check (range[1] < range[0] - 4.0f && range[2] < range[1] - 4.0f, "more Sensitivity, less gap");
+    }
+
+    // 3b. Squash: how flat the *loud* notes get, which is the ratio - and the
+    //     ratio follows Sensitivity (kRatioMin at 0 to kRatioMax at 100 %).
+    //     Two loud levels 10 dB apart, alternating: open at the bottom of the
+    //     knob, pressed nearly flat at the top.
+    {
+        std::vector<float> levels, seconds;
+        for (int i = 0; i < 4; ++i)
+        {
+            levels.push_back (0.0f);
+            levels.push_back (-10.0f);
+            seconds.push_back (3.0f);
+            seconds.push_back (3.0f);
+        }
+        // 3 s sections, read in their last half second: the slow release
+        // state (kReleaseSlowMs, the bloom) is still letting go a second in,
+        // and that is the release, not the ratio.
+        float squash[3] {};
+        for (int k = 0; k < 3; ++k)
+        {
+            auto c = make (0.5f * static_cast<float> (k), 5.0f);
+            const auto y = renderComp (*c, 1000.0f, levels, seconds);
+            squash[k] = rmsDb (y, 20.5, 21.0) - rmsDb (y, 23.5, 24.0);
+        }
+        std::printf ("  loud notes 10 dB apart come out %.1f / %.1f / %.1f dB apart at Sensitivity 0 / 50 / 100 %%"
+                     " (ratio %.0f / %.1f / %.0f : 1)\n",
+                     squash[0], squash[1], squash[2], ee::dsp::comp::ratioForPreGainDb (0.0f),
+                     ee::dsp::comp::ratioForPreGainDb (ee::dsp::comp::sensitivityDbFor (0.5f)),
+                     ee::dsp::comp::ratioForPreGainDb (ee::dsp::comp::kSensitivityMaxDb));
+        check (squash[0] > 5.0f, "Sensitivity 0 leaves loud notes their dynamics");
+        check (squash[2] < 1.5f, "Sensitivity 100 % presses loud notes flat");
+        check (squash[1] < squash[0] && squash[2] < squash[1], "more Sensitivity, more squash");
+    }
+
+    // 4. Attack: a -40 -> -10 dBFS step at full Sensitivity. The level 2-10 ms
+    //    after the onset, over where it has settled 60-80 ms in, is how long
+    //    the pick gets through for; the peak of the whole onset is capped by
+    //    maxOvershootDbFor (Attack). "Settled" is taken that early because the auto level
+    //    goes on moving over seconds, which is not the attack.
+    auto overshoot = [&make] (float attackMs)
+    {
+        auto c = make (1.0f, attackMs);
+        const auto y = renderComp (*c, 1000.0f, { -40.0f, -10.0f }, { 1.0f, 1.0f });
+        return rmsDb (y, 1.002, 1.010) - rmsDb (y, 1.060, 1.080);
+    };
+    const float fastOver = overshoot (ee::dsp::comp::kAttackMinMs);
+    const float slowOver = overshoot (ee::dsp::comp::kAttackMaxMs);
+    std::printf ("  onset overshoot: %.1f dB at %.0f ms, %.1f dB at %.0f ms\n", fastOver, ee::dsp::comp::kAttackMinMs,
+                 slowOver, ee::dsp::comp::kAttackMaxMs);
+    // The knob has to be worth turning: the cap used to be a flat 3 dB and it
+    // held the whole Attack range to ~2 dB of difference.
+    check (slowOver > fastOver + 4.0f, "a slower Attack lets clearly more of the onset through");
+    check (slowOver < ee::dsp::comp::maxOvershootDbFor (ee::dsp::comp::kAttackMaxMs) + 0.5f,
+           "no onset beats the cap");
+
+    // 4b. The sidechain filter: a treble note held at -20 dBFS while a low E
+    //     at -6 dBFS comes and goes, a second each. How far the treble note
+    //     is pulled down while the bass sounds, with the filter and without -
+    //     the bass should set the gain for the chord far less with it.
+    {
+        auto duck = [&make] (bool filter)
+        {
+            auto c = make (0.5f, 5.0f);
+            c->setSidechainFilter (filter);
+            const int total = static_cast<int> (8.0 * kSampleRate);
+            std::vector<float> x (static_cast<size_t> (total));
+            for (int i = 0; i < total; ++i)
+            {
+                const double t = i / kSampleRate;
+                const bool bass = (static_cast<int> (t) % 2) == 0;
+                x[static_cast<size_t> (i)] =
+                    juce::Decibels::decibelsToGain (-20.0f) * static_cast<float> (std::sin (juce::MathConstants<double>::twoPi * 659.3 * t))
+                    + (bass ? juce::Decibels::decibelsToGain (-6.0f) * static_cast<float> (std::sin (juce::MathConstants<double>::twoPi * 82.41 * t)) : 0.0f);
+            }
+            const auto y = compress (*c, x);
+            auto trebleDb = [&y] (double from)
+            {
+                const size_t a = static_cast<size_t> (from * kSampleRate);
+                const size_t n = static_cast<size_t> (0.4 * kSampleRate);
+                double re = 0.0, im = 0.0;
+                for (size_t i = 0; i < n; ++i)
+                {
+                    const double w = juce::MathConstants<double>::twoPi * 659.3 * static_cast<double> (a + i) / kSampleRate;
+                    re += y[a + i] * std::cos (w);
+                    im += y[a + i] * std::sin (w);
+                }
+                return 20.0 * std::log10 (std::sqrt (re * re + im * im) + 1.0e-12);
+            };
+            // Bass on 6..7 s, off 7..8 s: read the back half of each.
+            return static_cast<float> (trebleDb (7.5) - trebleDb (6.5));
+        };
+        const float with = duck (true);
+        const float without = duck (false);
+        std::printf ("  treble note pulled down by a low E: %.1f dB with the sidechain filter, %.1f dB without\n", with,
+                     without);
+        check (with < without - 2.0f, "the sidechain filter keeps the bass from ducking the treble");
+    }
+
+    // 5. Program-dependent release: after a short burst the gain comes back
+    //    faster than after a long one. Time until the -40 dBFS tail is within
+    //    3 dB of where it sits a second later - no later than that, because
+    //    past it the auto level is moving too, and that is not the release.
+    auto recovery = [&make] (float burstSeconds)
+    {
+        auto c = make (0.5f, 5.0f);
+        const auto y = renderComp (*c, 1000.0f, { -40.0f, -10.0f, -40.0f }, { 1.0f, burstSeconds, 4.0f });
+        const double start = 1.0 + burstSeconds;
+        const float settled = rmsDb (y, start + 0.9, start + 1.0);
+        for (double t = start; t < start + 0.9; t += 0.005)
+            if (rmsDb (y, t, t + 0.005) > settled - 3.0f)
+                return static_cast<float> (t - start);
+        return 99.0f;
+    };
+    const float shortRec = recovery (0.05f);
+    const float longRec = recovery (2.0f);
+    std::printf ("  release to within 3 dB: %.0f ms after 50 ms, %.0f ms after 2 s\n", shortRec * 1000.0f,
+                 longRec * 1000.0f);
+    check (longRec > shortRec * 1.5f, "a held note releases more slowly than a transient");
+
+    // 6. A low E under heavy compression: the gain must not ripple at the
+    //    note's own rate, which is heard as distortion. Third harmonic vs the
+    //    fundamental, by Goertzel over the settled second.
+    {
+        auto c = make (1.0f, ee::dsp::comp::kAttackMinMs);
+        const float hz = 82.41f;
+        const auto y = renderComp (*c, hz, { -10.0f }, { 3.0f });
+        auto bin = [&y] (double f)
+        {
+            const size_t a = static_cast<size_t> (2.0 * kSampleRate);
+            const size_t n = static_cast<size_t> (kSampleRate);
+            double re = 0.0, im = 0.0;
+            for (size_t i = 0; i < n; ++i)
+            {
+                const double w = juce::MathConstants<double>::twoPi * f * static_cast<double> (i) / kSampleRate;
+                re += y[a + i] * std::cos (w);
+                im += y[a + i] * std::sin (w);
+            }
+            return std::sqrt (re * re + im * im);
+        };
+        const double h1 = bin (hz), h2 = bin (2.0 * hz), h3 = bin (3.0 * hz);
+        const float h2Db = static_cast<float> (20.0 * std::log10 (h2 / h1 + 1.0e-12));
+        const float h3Db = static_cast<float> (20.0 * std::log10 (h3 / h1 + 1.0e-12));
+        std::printf ("  low E at -10 dBFS, full Sensitivity, fastest Attack: H2 %.1f dB, H3 %.1f dB\n", h2Db, h3Db);
+        check (h2Db < -30.0f && h3Db < -30.0f, "no audible gain ripple on a low E");
+    }
+
+    // 7. The display feed, end to end through the editor's side of it: a loud
+    //    second after a quiet one comes out as points whose input peak is the
+    //    sine's, whose GR is deep, and whose count is the elapsed time.
+    {
+        auto c = make (0.5f, 5.0f);
+        ee::plugin::CompMeterFeed feed;
+        check (feed.poll (*c, false, 0.0f).isVoid(), "no event while the display is not wanted");
+
+        renderComp (*c, 1000.0f, { -40.0f }, { 1.0f });
+        feed.poll (*c, false, 0.0f); // not showing: skips to the present rather than queueing
+        renderComp (*c, 1000.0f, { -10.0f }, { 1.0f });
+
+        const auto event = feed.poll (*c, true, -27.0f);
+        const auto* pts = event["pts"].getArray();
+        const int n = pts != nullptr ? pts->size() / 3 : 0;
+        check (n == static_cast<int> (ee::plugin::CompMeterFeed::kMaxPointsPerPoll),
+               "a poll that has fallen behind sends the newest kMaxPointsPerPoll points (got " + juce::String (n) + ")");
+
+        if (n > 0)
+        {
+            const float in = static_cast<float> ((*pts)[3 * (n - 1)]);
+            const float gr = static_cast<float> ((*pts)[3 * (n - 1) + 2]);
+            std::printf ("  meter: %d points, last in %.3f (sine peak %.3f), GR %.1f dB, %.1f ms per point\n", n, in,
+                         juce::Decibels::decibelsToGain (-10.0f) * std::sqrt (2.0f),
+                         gr, static_cast<float> (event["period"]) * 1000.0f);
+            check (std::abs (in - juce::Decibels::decibelsToGain (-10.0f) * std::sqrt (2.0f)) < 0.01f,
+                   "the meter's input peak is the input's");
+            check (gr < -6.0f, "the meter shows the reduction");
+        }
+
+        check (! feed.poll (*c, true, -27.0f)["pts"].getArray()->size(), "nothing new, nothing sent");
+    }
+}
+
 void testRust()
 {
     std::printf ("Rust: silence, bounds, reproducibility, wear as a memory, mode Tone scaling\n");
@@ -6330,6 +6678,8 @@ int main()
     testRingModulator();
     std::printf ("\n");
     testRust();
+    std::printf ("\n");
+    testCompressor();
     std::printf ("\n");
     testSpringDecay();
     std::printf ("\n");

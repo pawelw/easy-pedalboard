@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ee/dsp/BitCrusher.h"
+#include "ee/dsp/Compressor.h"
 #include "ee/dsp/RingModulator.h"
 #include "ee/dsp/Rust.h"
 #include "ee/dsp/TubeDrive.h"
@@ -14,9 +15,9 @@
 namespace ee::fx
 {
 
-/** BitBit Artifact's module: four engines, one at a time.
+/** BitBit Artifact's module: five engines, one at a time.
  *
- * All four are voiced. Each takes the footer Mix as its dry/wet. Rust's warble
+ * All five are voiced. Each takes the footer Mix as its dry/wet. Rust's warble
  * has a wet path that wanders in time, but only under wear and gently - it is
  * wow, the intended movement, not the tremolo artefact `engineUsesMix` guards
  * Tape against - so it too keeps the Mix.
@@ -64,6 +65,14 @@ namespace ee::fx
  * the right channel - a Haas trick, not a real stereo signal. It was taken out; the
  * Amp is mono in, mono out, like the input.)
  *
+ * Comp is `ee::dsp::Compressor` - a Keeley-style pedal compressor:
+ * Sensitivity and Attack, and no Level - it matches its output to the input's
+ * level itself - with the footer Mix as its Blend (parallel compression -
+ * it has no latency, so the dry does not comb against it) and the footer Tone
+ * as its Tone. It also feeds the face's gain-reduction display - see
+ * `compressor()`. First shot at the voicing, not yet fitted to the pedal; see
+ * CompressorConfig.h.
+ *
  * Values are the owner's parameters, not state here - see ModulationModule.
  */
 class ArtifactModule final : public MultiEngineModule
@@ -78,6 +87,7 @@ public:
         BitCrush,
         Rust,
         Amp,
+        Comp, // appended - the order is the owner's choice parameter, and saved sessions hold its index
         NumEngines
     };
 
@@ -240,13 +250,49 @@ public:
         rust.setMode (mode);
     }
 
+    /** Every Comp control in one call: Sensitivity 0..1, Attack in ms and the
+        sidechain high-pass on the detector (on by default) -
+        the maps are ee::dsp::comp's. There is no Level: the engine matches its
+        output to the input's level. Blend is the footer Mix, Tone the footer
+        Tone. */
+    void setComp (float sensitivity01, float attackMs, bool sidechainFilter = true) noexcept
+    {
+        comp.setSensitivity01 (sensitivity01);
+        comp.setAttackMs (attackMs);
+        comp.setSidechainFilter (sidechainFilter);
+    }
+
+    /** The Comp engine, for its meter feed (Compressor::meterCount /
+        meterPointAt) - read-only, from the editor's timer. It runs warm like
+        every engine here, so the feed is live whichever engine is selected. */
+    const ee::dsp::Compressor& compressor() const noexcept { return comp; }
+
 protected:
     int engineCount() const noexcept override { return NumEngines; }
 
-    /** All four engines are summed against the dry - the footer Mix is their
+    /** All five engines are summed against the dry - the footer Mix is their
         Blend. Rust's warble wanders in time but only gently and only under
         wear, so it keeps the Mix like the rest (see the class note). */
     bool engineUsesMix (int) const noexcept override { return true; }
+
+    /** Comp's Mix is a straight linear blend; every other engine keeps the
+        module's equal-power law. Equal power is right for a wet that is
+        unlike the dry (it holds the loudness of two *uncorrelated* signals
+        level across the knob), but a compressor with no latency hands back
+        something close to the dry itself, and two near-identical signals at
+        0.71 each sum to +3 dB - the "bit of boost" the owner heard with Comp
+        at minimum and Mix at its default 50 %. Linear keeps the level-matched
+        engine level-matched through the whole Mix travel (ee_module_stress's
+        checkCompModuleLevel). */
+    float dryGainFor (int index, float mix01) const noexcept override
+    {
+        return index == Comp ? 1.0f - mix01 : MultiEngineModule::dryGainFor (index, mix01);
+    }
+
+    float wetGainFor (int index, float mix01) const noexcept override
+    {
+        return index == Comp ? mix01 : MultiEngineModule::wetGainFor (index, mix01);
+    }
 
     void prepareEngines (double sampleRate, int maxBlock) override
     {
@@ -269,6 +315,8 @@ protected:
             f.reset();
         ampToneCoeff = onePoleCoeff (kAmpTonePivotHz, sampleRate);
         ampToneLp.fill (0.0f);
+
+        comp.prepare (sampleRate);
     }
 
     void renderEngine (int index,
@@ -288,6 +336,8 @@ protected:
             ring.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
         else if (index == Rust)
             rust.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
+        else if (index == Comp)
+            comp.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
         else if (index == Amp)
         {
             ampDrive.process (wet.getWritePointer (0), wet.getWritePointer (1), numSamples);
@@ -342,6 +392,8 @@ protected:
             ring.reset();
         else if (index == Rust)
             rust.reset();
+        else if (index == Comp)
+            comp.reset();
         else if (index == Amp)
         {
             ampDrive.reset();
@@ -369,6 +421,7 @@ private:
     ee::dsp::BitCrusher crusher;
     ee::dsp::RingModulator ring;
     ee::dsp::Rust rust;
+    ee::dsp::Compressor comp;
 
     ee::dsp::TubeDrive ampDrive;
     ee::dsp::BitCrusher ampCrusher;

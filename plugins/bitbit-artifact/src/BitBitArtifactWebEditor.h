@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
+#include "ee/plugin/CompMeterFeed.h"
 #include "ee/plugin/CornerResizer.h"
 #include "ee/plugin/RelaySet.h"
 
@@ -22,8 +23,11 @@ class BitBitArtifactProcessor;
 
     The parameters come from `ee::plugin::RelaySet`, which walks the processor's
     own list and builds the right relay for each - there is no parameter list in
-    this file, so adding one to the layout binds it with no editor change. */
-class BitBitArtifactWebEditor : public juce::AudioProcessorEditor
+    this file, so adding one to the layout binds it with no editor change.
+
+    One live feed, off a Timer: "compMeter", the Comp engine's gain-reduction
+    display (ee::plugin::CompMeterFeed) - sent only while Comp is selected. */
+class BitBitArtifactWebEditor : public juce::AudioProcessorEditor, private juce::Timer
 {
 public:
     explicit BitBitArtifactWebEditor (BitBitArtifactProcessor&);
@@ -34,7 +38,11 @@ public:
     int getControlParameterIndex (Component&) override { return relays.getControlParameterIndex(); }
 
 private:
+    void timerCallback() override;
+
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
+
+    ee::plugin::CompMeterFeed compMeter;
 
     BitBitArtifactProcessor& processorRef;
 

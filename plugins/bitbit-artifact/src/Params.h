@@ -6,14 +6,14 @@ namespace ee::artifact::id
 /** BitBit Artifact's parameter ids.
  *
  * Each engine's controls are namespaced - `crush.` for Bit Crush, `ring.` for
- * Ring Mod, `rust.` for Rust and `amp.` for Amp - so they
+ * Ring Mod, `rust.` for Rust, `amp.` for Amp and `comp.` for Comp - so they
  * never clash and so the face can bind one engine's controls through a
  * `ParamScope` prefix the way BitBit Alpine's modules do. Dots are safe in an
  * APVTS id - it is a value in the state tree, not a property name.
  */
 
 inline constexpr const char* on = "on";         // module power
-inline constexpr const char* engine = "engine"; // Ring Mod / Bit Crush / Rust / Amp
+inline constexpr const char* engine = "engine"; // Ring Mod / Bit Crush / Rust / Drive / Comp
 inline constexpr const char* mix = "mix";       // footer dry/wet
 inline constexpr const char* tone = "tone";     // footer tilt, every engine, flat at 0
 
@@ -35,5 +35,9 @@ inline constexpr const char* ampDrive = "amp.drive";   // tube-style analog driv
 inline constexpr const char* ampMids = "amp.mids";     // peaking boost, 0..7 dB, BitBit EQ's own Mid band/Q
 inline constexpr const char* ampBit = "amp.bit";       // sample-and-hold rate only - no word length, no anti-alias
 inline constexpr const char* ampTone = "amp.tone";     // bipolar tilt, -100..+100, flat and bypassed at 0
+
+inline constexpr const char* compSensitivity = "comp.sensitivity"; // the pedal's Sustain, 0..100 %
+inline constexpr const char* compAttack = "comp.attack";           // ms, 1..25 - no Level: it matches the input's
+inline constexpr const char* compScFilter = "comp.scfilter";       // sidechain high-pass on the detector, on/off
 
 } // namespace ee::artifact::id

@@ -61,6 +61,8 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
 ./build/tests/ee_wah_stress_artefacts/Release/ee_wah_stress        # onset click hunt
 ./build/tests/ee_grain_stress_artefacts/Release/ee_grain_stress    # grain cloud into its reverb
+./build/tests/ee_tuner_check_artefacts/Release/ee_tuner_check      # BitBit Alpine's header tuner: note + cents B0..E6, stiff strings, hold
+./build/tests/ee_tuner_match_artefacts/Release/ee_tuner_match in.wav [--summary]  # the tuner over a real recording, frame by frame, fundamental vs whole-waveform Hz
 ./build/tests/ee_grain_host_artefacts/Release/ee_grain_host        # drives the real processor like a host
 ./build/tests/ee_au_host_artefacts/Release/ee_au_host              # runs an *installed* AU, by identifier
 ./build/tests/ee_plugin_render_artefacts/Release/ee_plugin_render 'AudioUnit:Effects/aufx,Ni$Q,-NI-' --set Decay=2 --in dry.wav --out ref.wav  # renders through any installed AU at knob values set by their text

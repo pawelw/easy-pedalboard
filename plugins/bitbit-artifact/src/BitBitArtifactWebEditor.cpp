@@ -4,6 +4,8 @@
 #include "PluginProcessor.h"
 #include "ee/plugin/PresetBridge.h"
 #include "ee/plugin/WebFace.h"
+#include "ee/fx/ArtifactModule.h"
+#include "ee/dsp/CompressorConfig.h"
 
 #if JUCE_ANDROID
 const juce::String BitBitArtifactWebEditor::devServerAddress = "http://10.0.2.2:3003/";
@@ -98,9 +100,27 @@ BitBitArtifactWebEditor::BitBitArtifactWebEditor (BitBitArtifactProcessor& p)
     // rendered size (installAutoResize).
     setSize (380, 600);
     setResizable (false, false);
+
+    startTimerHz (45); // the rate BitBit Alpine's live feeds run at
 }
 
-BitBitArtifactWebEditor::~BitBitArtifactWebEditor() = default;
+BitBitArtifactWebEditor::~BitBitArtifactWebEditor()
+{
+    stopTimer();
+}
+
+void BitBitArtifactWebEditor::timerCallback()
+{
+    const auto raw = [this] (const char* pid) { return processorRef.apvts.getRawParameterValue (pid)->load(); };
+    const bool comp = static_cast<int> (raw (ee::artifact::id::engine)) == ee::fx::ArtifactModule::Comp;
+
+    const auto payload =
+        compMeter.poll (processorRef.artifactModule().compressor(), comp && isShowing(),
+                        ee::dsp::comp::inputThresholdDbFor (raw (ee::artifact::id::compSensitivity) * 0.01f));
+
+    if (! payload.isVoid())
+        webView.emitEventIfBrowserIsVisible ("compMeter", payload);
+}
 
 void BitBitArtifactWebEditor::resized()
 {

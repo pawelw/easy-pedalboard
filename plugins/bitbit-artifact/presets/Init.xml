@@ -20,4 +20,7 @@
   <PARAM id="amp.bit" value="50"/>
   <PARAM id="amp.tone" value="0"/>
   <PARAM id="tone" value="0"/>
+  <PARAM id="comp.sensitivity" value="50"/>
+  <PARAM id="comp.attack" value="5"/>
+  <PARAM id="comp.scfilter" value="1"/>
 </PARAMETERS>

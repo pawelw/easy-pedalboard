@@ -230,3 +230,14 @@
   width: 10px;
   height: 13px;
 }
+
+/* The tuner stands apart from Save and the dice - it is not about presets at
+   all - so it keeps its own rounded corners and a wider gap before it. */
+.pui-presetbar--joined > .pui-presetbar__tuner {
+  margin-left: 6px;
+}
+
+.pui-presetbar--separated > .pui-presetbar__tuner {
+  border-radius: 8px;
+  margin-left: 4px;
+}

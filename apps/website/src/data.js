@@ -45,7 +45,7 @@ export const MODULES = [
         img: '/assets/artifact-rust.png',
       },
       {
-        name: 'Amp',
+        name: 'Drive',
         tag: 'Transfer saturation',
         desc: 'Tube drive with a peaking mid, a bipolar tone tilt, sample-rate reduction.',
         pills: ['Drive', 'Mids', 'Bit', 'Tone', 'Mix'],

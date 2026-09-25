@@ -74,7 +74,8 @@
 .af-crush,
 .af-ring,
 .af-rust,
-.af-amp {
+.af-amp,
+.af-comp {
   display: flex;
   flex-direction: column;
   flex: 1;

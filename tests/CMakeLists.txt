@@ -336,6 +336,37 @@ if(TARGET BitBitSpring)
         PUBLIC juce::juce_recommended_config_flags)
 endif()
 
+# The tuner (ee/dsp/Tuner.h, BitBit Alpine's header button): note and cents
+# across B0..E6 at three host rates, a pluck's whole life, stiff strings,
+# silence / noise / hold, and that an inactive capture writes nothing.
+juce_add_console_app(ee_tuner_check PRODUCT_NAME "ee_tuner_check")
+
+target_sources(ee_tuner_check PRIVATE TunerCheck.cpp)
+
+target_compile_definitions(ee_tuner_check PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_tuner_check
+    PRIVATE ee_dsp
+    PUBLIC juce::juce_recommended_config_flags)
+
+# The same tuner over a real recording, frame by frame - for comparing the
+# needle against another tuner playing the same file. Not a pass/fail suite.
+juce_add_console_app(ee_tuner_match PRODUCT_NAME "ee_tuner_match")
+
+target_sources(ee_tuner_match PRIVATE TunerMatch.cpp)
+
+target_compile_definitions(ee_tuner_match PUBLIC
+    JUCE_WEB_BROWSER=0
+    JUCE_USE_CURL=0
+    JUCE_STANDALONE_APPLICATION=1)
+
+target_link_libraries(ee_tuner_match
+    PRIVATE ee_dsp juce::juce_audio_formats
+    PUBLIC juce::juce_recommended_config_flags)
+
 # Drives silence-then-note through the auto-wah over a spread of settings,
 # looking for a step in the output at the onset - the click that a phase reset
 # or a hard capacitance change in the tank leaves behind.

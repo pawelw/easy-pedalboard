@@ -13,6 +13,10 @@
      Delay's stage knobs - so the footers read as one strip across a row of
      modules whatever variant each knob is. Not themed: it is the same in all. */
   --pui-footer-knob-face: #1c252a;
+  /* ...and the value arc round the switchable modules' Mix and Tone: a dark
+     white rather than the module's accent, so the footer reads as the
+     module's output controls, not one more of its engine's knobs. */
+  --pui-footer-knob-lit: #c4c8ca;
   --pui-panel: #f3f2ed;
   --pui-panel-edge: #e8e6de;
   --pui-ink: #1c1c1a;

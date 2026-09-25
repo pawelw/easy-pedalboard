@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
 import PresetBar from "./PresetBar.jsx";
+import TunerDialog from "./TunerDialog.jsx";
 
 // The six native functions ee/plugin/PresetBridge.h registers. Resolved once
 // per page rather than per render: getNativeFunction only builds a wrapper,
@@ -46,6 +47,50 @@ function usePresetBridge() {
   return { state, load, step, save, randomize };
 }
 
+/** The tuner's half of the bridge: `tunerSetOpen` / `tunerSetMute`, and the
+    45 Hz "tuner" event the editor emits while it is open. Opening is what
+    starts the processor capturing, so the dialog being on screen and the
+    capture running are the same fact. */
+function useTunerBridge() {
+  const [open, setOpen] = useState(false);
+  const [mute, setMute] = useState(false);
+  const [reading, setReading] = useState(null);
+
+  const applyState = useCallback((state) => {
+    if (state && typeof state.mute === "boolean") setMute(state.mute);
+  }, []);
+
+  useEffect(() => {
+    if (!open || typeof window.__JUCE__?.backend?.addEventListener !== "function") return undefined;
+    const id = window.__JUCE__.backend.addEventListener("tuner", (event) => {
+      setReading(event);
+      if (typeof event?.mute === "boolean") setMute(event.mute);
+    });
+    return () => window.__JUCE__.backend.removeEventListener(id);
+  }, [open]);
+
+  const show = useCallback(() => {
+    setReading(null);
+    setOpen(true);
+    nativeFunction("tunerSetOpen")(true).then(applyState);
+  }, [applyState]);
+
+  const hide = useCallback(() => {
+    setOpen(false);
+    nativeFunction("tunerSetOpen")(false).then(applyState);
+  }, [applyState]);
+
+  const setMuted = useCallback(
+    (value) => {
+      setMute(value);
+      nativeFunction("tunerSetMute")(value).then(applyState);
+    },
+    [applyState],
+  );
+
+  return { open, mute, reading, show, hide, setMuted };
+}
+
 /**
  * The preset bar, wired to the processor's `ee::plugin::PresetStore` through
  * the native bridge. This is the drop-in: a pedal whose editor wraps its
@@ -67,23 +112,41 @@ function usePresetBridge() {
  * because how the bar is *drawn* is the face's decision while everything else
  * about it comes off the bridge. `showSteppers` and `showDice` are PresetBar's
  * too, forwarded for the same reason.
+ *
+ * `showTuner` adds the tuner button and its dialog. Only for a pedal whose
+ * editor registers the tuner's native functions (BitBit Alpine's does - see
+ * BitBitAlpineWebEditor); anywhere else the button would open a meter that
+ * never moves.
  */
-export default function JucePresetBar({ variant, showSteppers, showDice }) {
+export default function JucePresetBar({ variant, showSteppers, showDice, showTuner = false }) {
   const { state, load, step, save, randomize } = usePresetBridge();
+  const tuner = useTunerBridge();
 
   return (
-    <PresetBar
-      factory={state.factory}
-      user={state.user}
-      value={{ kind: state.currentKind, name: state.currentName }}
-      canAuthor={state.canAuthor}
-      variant={variant}
-      showSteppers={showSteppers}
-      showDice={showDice}
-      onLoad={load}
-      onStep={step}
-      onSave={save}
-      onRandomize={randomize}
-    />
+    <>
+      <PresetBar
+        factory={state.factory}
+        user={state.user}
+        value={{ kind: state.currentKind, name: state.currentName }}
+        canAuthor={state.canAuthor}
+        variant={variant}
+        showSteppers={showSteppers}
+        showDice={showDice}
+        onLoad={load}
+        onStep={step}
+        onSave={save}
+        onRandomize={randomize}
+        onTuner={showTuner ? tuner.show : undefined}
+      />
+      {showTuner && (
+        <TunerDialog
+          open={tuner.open}
+          reading={tuner.reading}
+          mute={tuner.mute}
+          onMute={tuner.setMuted}
+          onClose={tuner.hide}
+        />
+      )}
+    </>
   );
 }

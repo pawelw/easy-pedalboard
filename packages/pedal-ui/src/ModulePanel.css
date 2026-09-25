@@ -135,6 +135,12 @@
   min-height: 92px;
 }
 
+/* Mix and Tone's value arc: the footer's dark white, not the module accent
+   ModulePanel sets on --pui-soft-lit for everything else inside it. */
+.pui-module__footer {
+  --pui-soft-lit: var(--pui-footer-knob-lit);
+}
+
 /* One face colour for every footer knob, whichever variant (see tokens.css). */
 .pui-module__footer .pui-knob__soft-cap,
 .pui-module__footer .pui-knob__concave-face {

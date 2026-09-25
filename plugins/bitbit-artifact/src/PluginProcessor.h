@@ -54,6 +54,9 @@ public:
         to it - see ee/plugin/PresetBridge.h. */
     ee::plugin::PresetStore presets { apvts, "BitBit Artifact", EE_FACTORY_PRESETS };
 
+    /** The module, read-only, for the editor's Comp meter feed. */
+    const ee::fx::ArtifactModule& artifactModule() const noexcept { return module; }
+
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 

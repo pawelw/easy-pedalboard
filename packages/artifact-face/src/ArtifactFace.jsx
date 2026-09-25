@@ -1,10 +1,21 @@
 import { useState } from "react";
-import { AmpScope, CrushScope, EngineStepper, ModulePanel, ModuleTabs, RingScope, RustScope, Toggle } from "@synthpeak/pedal-ui";
+import {
+  AmpScope,
+  CompScope,
+  CrushScope,
+  EngineStepper,
+  ModulePanel,
+  ModuleTabs,
+  RingScope,
+  RustScope,
+  Toggle,
+} from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceMacroKnob,
   ParamScope,
   useJuceChoiceValue,
+  useJuceCompMeter,
   useJuceSliderValue,
   useJuceToggleValue,
 } from "@synthpeak/pedal-ui/juce";
@@ -32,6 +43,10 @@ import "./ArtifactFace.css";
  * own drive curve, then held by Bit - sample-rate reduction only, no amplitude
  * reduction, so the picture is a held wave with no amplitude bands, truthful
  * to what the engine actually does (see ee::fx::ArtifactModule's class note).
+ *
+ * Comp's display is the only live one: `CompScope`, fed by the processor's
+ * "compMeter" event - the input envelope, the gain reduction and the threshold,
+ * scrolling, after Ableton's Compressor.
  *
  * `prefix` is the parameter-id prefix its controls bind through: "" for BitBit
  * Artifact, whose parameters are plain (`mix`, `ring.freq`), and "art." for BitBit
@@ -146,6 +161,8 @@ function ArtifactFaceBody({ headerRight = null, easyTab = false, easyConfig = nu
         <RustBody knobVariant={knobVariant} />
       ) : engine.body === "amp" ? (
         <AmpBody knobVariant={knobVariant} />
+      ) : engine.body === "comp" ? (
+        <CompBody knobVariant={knobVariant} />
       ) : (
         <RingBody knobVariant={knobVariant} />
       )}
@@ -227,6 +244,18 @@ function AmpDisplay() {
   );
 }
 
+function CompDisplay() {
+  const subscribe = useJuceCompMeter();
+
+  return (
+    // Live, unlike the other wells: the input's envelope, the gain reduction
+    // hanging from the top and the threshold Sensitivity puts on the input.
+    <div className="af-display af-display--comp">
+      <CompScope subscribe={subscribe} height={64} />
+    </div>
+  );
+}
+
 function RustDisplay() {
   const [grind] = useJuceSliderValue("rust.grind");
   const [mode] = useJuceChoiceValue("rust.mode", 2, 0);
@@ -251,7 +280,8 @@ function RustDisplay() {
 function ArtifactEngineDisplay({ engine }) {
   if (engine === "Crasher") return <CrushDisplay />;
   if (engine === "Rust") return <RustDisplay />;
-  if (engine === "Amp") return <AmpDisplay />;
+  if (engine === "Drive") return <AmpDisplay />;
+  if (engine === "Comp") return <CompDisplay />;
   return <RingDisplay />;
 }
 
@@ -377,6 +407,51 @@ function AmpBody({ knobVariant }) {
           <JuceKnob parameterId="amp.tone" caption="Tone" variant={knobVariant} size={36} scaleFrom="centre" />
         </div>
       </div>
+    </div>
+  );
+}
+
+/* The Comp body: its live display, then Sensitivity (the pedal's Sustain) and
+   Attack, and the SC switch pinned to the foot. No Level - the engine matches
+   its output to the input's level.
+   Blend is the footer Mix and Tone the footer Tone, the way the Keeley
+   Compressor Plus has them. */
+function CompBody({ knobVariant }) {
+  return (
+    // Matches the other engine bodies' height so stepping between engines
+    // doesn't resize the module.
+    <div className="af-comp">
+      <CompDisplay />
+
+      <div className="af-knobs">
+        <div className="af-knob-row">
+          <JuceKnob parameterId="comp.sensitivity" caption="Sensitivity" variant={knobVariant} size={36} />
+          <JuceKnob parameterId="comp.attack" caption="Attack" variant={knobVariant} size={36} />
+        </div>
+      </div>
+
+      <CompScSwitch />
+    </div>
+  );
+}
+
+/* Pinned to the foot of the module body, like Ring Mod's and Rust's mode
+   switches. What the compressor's detector listens to: the full signal, or
+   the signal with its lows cut (ee::dsp::comp::kSidechainHpfHz) so the bass
+   strings stop setting the gain for a whole chord - Ableton's SC Filter. The
+   audio itself is never filtered. */
+function CompScSwitch() {
+  const [on, setOn] = useJuceToggleValue("comp.scfilter", true);
+
+  return (
+    <div className="af-inline-switch af-mode-switch">
+      <span className="af-switch-label" data-active={!on || undefined}>
+        Full
+      </span>
+      <Toggle checked={on} onChange={setOn} ariaLabel="Sidechain filter" />
+      <span className="af-switch-label" data-active={on || undefined}>
+        SC HPF
+      </span>
     </div>
   );
 }

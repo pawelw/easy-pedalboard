@@ -41,27 +41,29 @@ import "./DelayFace.css";
  * second layout box between the card's padding and the content that has been
  * measured against it since the face was written.
  *
- * `stageKnobSize` is the footer knobs' dial, 38px - the size of the Mix and
- * Tone knobs in every other module's footer. The footer knobs are the same
- * `JuceKnob` those footers draw, in the same `knobVariant` ("flat" in every
- * host today), so a row of modules has one kind of footer knob. All six, Low
- * Cut and High Cut included, are this size.
+ * `stageKnobSize` is the footer knobs' dial, 28px - the size of the Tone knob
+ * in every other module's footer. They were 38px, Mix's size, which made six
+ * of them read as the loudest thing in a row of modules; the footer is a strip
+ * of supporting controls, so it takes the smaller of the two. The footer knobs
+ * are the same `JuceKnob` those footers draw, in the same `knobVariant` ("flat"
+ * in every host today), so a row of modules has one kind of footer knob. All
+ * six, Low Cut and High Cut included, are this size.
  *
- * `mainKnobSize` is Mix and Feedback. 76px is what BitBit Delay's original
- * 528px card was laid out around; its 415px card passes 50 and BitBit Alpine's
- * 490px module passes 60.
- *
- * `scopeHeight` is the tap scope's well. BitBit Delay's own 110px is the
- * default; BitBit Alpine passes the height that takes the well from the top of
- * its neighbours' engine stepper to the bottom of their display, so the three
- * modules read as one row rather than as three stacks of their own.
+ * `mainKnobSize` is Mix and Feedback, and `scopeHeight` the tap scope's well.
+ * Both default to what BitBit Alpine's 490px Delay module draws, and both
+ * hosts take the default: BitBit Delay used to pass a 50px knob against a
+ * 415px card, which made the same face two visibly different faces depending
+ * on where you met it. Its card is sized to the module's content width now
+ * instead. Alpine's neighbours are what fixed the scope at 117px - it takes
+ * the well from the top of their engine stepper to the bottom of their
+ * display, so the three modules read as one row rather than three stacks.
  */
 export default function DelayFace({
   prefix = "",
-  stageKnobSize = 38,
+  stageKnobSize = 28,
   knobVariant = "flat",
-  mainKnobSize = 76,
-  scopeHeight = 110,
+  mainKnobSize = 60,
+  scopeHeight = 117,
 }) {
   return (
     <ParamScope prefix={prefix}>
@@ -77,7 +79,7 @@ export default function DelayFace({
 
 /** Split out so its hooks resolve *inside* the ParamScope above - a hook in
     DelayFace itself would read the enclosing scope, not the one it declares. */
-function DelayFaceBody({ stageKnobSize, knobVariant, mainKnobSize = 76, scopeHeight = 110 }) {
+function DelayFaceBody({ stageKnobSize, knobVariant, mainKnobSize, scopeHeight }) {
   const [leftMs, rightMs] = useDelayTimesMs();
   const [feedback01] = useJuceSliderValue("fb");
   const [mix01] = useJuceSliderValue("mix");

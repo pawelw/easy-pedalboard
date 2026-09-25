@@ -1,0 +1,179 @@
+/* Same overlay as .pui-presetsave - fixed, over the whole plugin window. */
+.pui-tuner {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pui-tuner__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 55%);
+}
+
+.pui-tuner__box {
+  position: relative;
+  width: min(420px, calc(100vw - 40px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  background: var(--pui-panel);
+  border: 1.5px solid var(--pui-line);
+  border-radius: var(--pui-radius-panel);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 45%);
+}
+
+.pui-tuner__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pui-tuner__title {
+  flex: 1;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+}
+
+.pui-tuner .pui-button.pui-tuner__mute,
+.pui-tuner .pui-button.pui-tuner__close {
+  flex: 0 0 auto;
+  height: 26px;
+  border-radius: 7px;
+  border: 1px solid var(--pui-outline);
+  color: var(--pui-ink-soft);
+}
+
+/* Fixed width: "Mute" and "Muted" are different lengths, and the button must
+   not jump when pressed. Sized for the longer one. */
+.pui-tuner .pui-button.pui-tuner__mute {
+  width: 86px;
+  padding: 0;
+  justify-content: center;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.pui-tuner .pui-tuner__mute .pui-button__label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+/* Lit when muting - the one state on this box that changes what you hear. */
+.pui-tuner .pui-button.pui-tuner__mute--on {
+  background: #c9553f;
+  border-color: transparent;
+  color: #fff;
+}
+
+.pui-tuner .pui-button.pui-tuner__close {
+  width: 26px;
+  padding: 0;
+}
+
+/* The display is the face's own screen - the same recessed well, colours and
+   label type as the Delay module's TapScope - so it follows the theme. The dot
+   borrows the two scope accents: the Delay module's green when in tune, the
+   scope's amber dry mark when not. */
+.pui-tuner__screen {
+  --tuner-line: var(--pui-ink-dim);
+  --tuner-in: var(--pui-accent-delay, var(--pui-led-on));
+  --tuner-out: var(--pui-scope-dry);
+  --tuner-idle: var(--pui-recess-ink);
+  --tuner-scale: var(--pui-recess-ink);
+
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  border-radius: 12px;
+  padding: 14px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  font-family: var(--pui-font-primary);
+  transition: opacity 0.3s;
+}
+
+.pui-tuner__arc {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.pui-tuner__track {
+  fill: none;
+  stroke: var(--tuner-line);
+  stroke-width: 2;
+}
+
+.pui-tuner__scale {
+  fill: var(--tuner-scale);
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.pui-tuner__target {
+  fill: var(--pui-recess);
+  stroke: var(--tuner-line);
+  stroke-width: 2;
+}
+
+.pui-tuner__dot {
+  fill: var(--tuner-out);
+}
+
+.pui-tuner--in .pui-tuner__dot {
+  fill: var(--tuner-in);
+}
+
+.pui-tuner__readout {
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  align-items: baseline;
+  margin-top: 6px;
+  color: var(--tuner-out);
+  font-size: 40px;
+  font-weight: 400;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.pui-tuner--in .pui-tuner__readout {
+  color: var(--tuner-in);
+}
+
+.pui-tuner--idle .pui-tuner__readout {
+  color: var(--tuner-idle);
+}
+
+.pui-tuner__note {
+  justify-self: center;
+}
+
+.pui-tuner__octave {
+  font-size: 15px;
+  margin-left: 2px;
+  opacity: 0.7;
+}
+
+.pui-tuner__cents {
+  justify-self: center;
+}
+
+/* The string has stopped: the last note stays up, dimmed, for a second. */
+.pui-tuner--holding .pui-tuner__arc,
+.pui-tuner--holding .pui-tuner__readout {
+  opacity: 0.45;
+}

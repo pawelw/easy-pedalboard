@@ -605,11 +605,11 @@ size, per-type make-up, grit, output filtering, knob defaults - lives in
 
 ### BitBit Artifact
 
-A switchable module - **Ring Mod**, **Bit Crush**, **Rust**, **Amp** - as a
+A switchable module - **Ring Mod**, **Bit Crush**, **Rust**, **Amp**, **Comp** - as a
 pedal of its own, drawn as one narrow compartment in the style of BitBit Alpine's
 Modulation side-module but in red. A `<>` stepper picks the engine.
 
-All four engines are voiced. The module keeps every engine warm, so switching
+All five engines are voiced. The module keeps every engine warm, so switching
 between them never clicks.
 
 The footer carries **Mix** and a smaller **Tone** beside it. Both belong to the
@@ -650,6 +650,42 @@ darker to compensate.
 The voicing lives in `shared/include/ee/dsp/RustConfig.h`. The only RNG is the
 warble's slow random walk, fixed-seeded in `reset()`, so a render repeats bit
 for bit and can be checksummed.
+
+**Comp** - `ee::dsp::Compressor` - is a pedal compressor after the Keeley (an
+OTA design descended from the Ross / Dyna Comp). **Sensitivity** is the pedal's
+Sustain, and it turns up two things at once: *sustain* (how far the quiet tails
+come up) and *squash* (how flat the loud notes get - the ratio runs from a gentle
+3:1 at 0 to 36:1 at 100 %). At the bottom it barely touches a
+guitar; at the top loud notes 10 dB apart come out about half a dB apart. There is **no Level knob** - the output is
+kept at the level of the input with the compressor off, at any Sensitivity, so
+turning it changes how compressed you sound and never how loud. **Attack** sets
+how long a pick gets through before the gain comes down, and at its slow end how
+far it pokes out too - up to 9 dB over the compressed level, against 3 at the
+fast end. That happens in
+two stages: a make-up gain computed from the Sensitivity setting, which moves the
+instant you turn the knob, and a slow measured trim that matches it to your
+guitar's actual level over a few seconds (too slow to touch a note's attack or
+its release). The release depends on what you play - a pick transient lets go in
+about a tenth of a second, a held chord swells back over half a second or so. The
+footer Mix is its Blend (parallel compression; the engine has no latency, so it
+never combs, and the blend is linear rather than the other engines' equal-power
+law, so it stays at bypass level all the way across) and the footer Tone its Tone. There is no look-ahead and no added
+noise.
+
+Its display is live, after Ableton's Compressor: the input scrolling as a grey
+envelope, the gain reduction as a pale line hanging from the top with its
+current value top left, and the threshold Sensitivity puts on the input as a
+red line.
+
+| Knob            | Range     | What it does                                                  |
+| --------------- | --------- | ------------------------------------------------------------- |
+| **Sensitivity** | 0 - 100 % | How hard it compresses - the pedal's Sustain                  |
+| **Attack**      | 1 - 25 ms | How much of the pick gets through before the gain comes down |
+| **Full / SC HPF** | switch  | What the detector listens to: the whole signal, or the signal with its lows cut at 120 Hz so the bass strings stop pumping the treble on chords (on by default; the audio is never filtered) |
+
+The voicing lives in `shared/include/ee/dsp/CompressorConfig.h`. It is a first
+shot from how the circuit works, not yet fitted to a recording of the pedal - the
+header lists what to measure and in which order.
 
 ### BitBit Modulation
 

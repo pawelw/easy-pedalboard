@@ -3,7 +3,9 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
+#include "ee/plugin/CompMeterFeed.h"
 #include "ee/plugin/CornerResizer.h"
+#include "ee/dsp/Tuner.h"
 #include "ee/plugin/RelaySet.h"
 
 // Off by default (see EE_JSUI_DEV_SERVER in cmake/AddBitBitPlugin.cmake): the
@@ -55,8 +57,24 @@ private:
           for its response scope.
 
         Both keep the names their own pedals' editors emit (BitBit Delay's and
-        BitBit Wah's): one feed per editor, not one per module. */
+        BitBit Wah's): one feed per editor, not one per module.
+
+        And a third while the header's tuner is open:
+
+        - "tuner": the note, cents and whether there is a signal at all, from
+          the analysis half below, plus the mute button's state. */
     void timerCallback() override;
+
+    /** The tuner's native functions: open/close it (which is what starts and
+        stops the processor's capture) and set its mute. Both answer with
+        tunerState(), so the page never has to guess what the other end holds. */
+    juce::var tunerState() const;
+
+    ee::dsp::TunerAnalyser tunerAnalyser;
+
+    /** The Artifact module's Comp display - see ee::plugin::CompMeterFeed. */
+    ee::plugin::CompMeterFeed compMeter;
+    double lastTunerFrameMs = 0.0;
 
     std::optional<juce::WebBrowserComponent::Resource> getResource (const juce::String& url);
 

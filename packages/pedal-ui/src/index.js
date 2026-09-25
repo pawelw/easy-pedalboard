@@ -23,6 +23,7 @@ export { default as CrushScope } from "./CrushScope.jsx";
 export { default as AmpScope } from "./AmpScope.jsx";
 export { default as RingScope } from "./RingScope.jsx";
 export { default as RustScope } from "./RustScope.jsx";
+export { default as CompScope, demoCompFeed } from "./CompScope.jsx";
 // The Modulation module's Chorus and Phaser displays, drawn from the engines' own constants.
 export { ChorusScope, PhaserScope, TapeScope, TremoloScope } from "./ModScope.jsx";
 // The Reverb module's display, one for all three engines.
@@ -65,9 +66,12 @@ export { default as PhaserIcon } from "./PhaserIcon.jsx";
 export { default as CrushIcon } from "./CrushIcon.jsx";
 export { default as RustIcon } from "./RustIcon.jsx";
 export { default as BitIcon } from "./BitIcon.jsx";
+export { default as CompIcon } from "./CompIcon.jsx";
 export { default as SpaceIcon } from "./SpaceIcon.jsx";
 export { default as ShimmerIcon } from "./ShimmerIcon.jsx";
 export { default as SpringIcon } from "./SpringIcon.jsx";
 export { default as PowerIcon } from "./PowerIcon.jsx";
 export { default as SaveIcon } from "./SaveIcon.jsx";
 export { default as DiceIcon } from "./DiceIcon.jsx";
+export { default as TunerIcon } from "./TunerIcon.jsx";
+export { default as TunerDialog, TunerMeter } from "./TunerDialog.jsx";

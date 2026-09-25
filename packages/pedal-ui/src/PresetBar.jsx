@@ -5,6 +5,7 @@ import PresetPicker from "./PresetPicker.jsx";
 import PresetSaveDialog from "./PresetSaveDialog.jsx";
 import DiceIcon from "./DiceIcon.jsx";
 import SaveIcon from "./SaveIcon.jsx";
+import TunerIcon from "./TunerIcon.jsx";
 import "./PresetBar.css";
 
 // What the bar shows with nothing behind it: a plain browser tab, the
@@ -86,6 +87,11 @@ function ChevronRightIcon() {
  * Modulation, BitBit Reverb) and for BitBit Delay - dice stays only on BitBit
  * Alpine and BitBit Grain, where a whole instrument's worth of knobs makes a
  * random start worth having.
+ *
+ * `onTuner` adds one more button at the far end, apart from Save and the dice
+ * - a tuning fork that opens the tuner. Omitted, there is no button: only a
+ * pedal with a tuner behind it passes one (BitBit Alpine, through
+ * JucePresetBar's `showTuner`).
  */
 export default function PresetBar({
   factory = DEMO_FACTORY,
@@ -99,6 +105,7 @@ export default function PresetBar({
   onStep,
   onSave,
   onRandomize,
+  onTuner,
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState("");
@@ -164,6 +171,12 @@ export default function PresetBar({
           className="pui-presetbar__dice"
         >
           <DiceIcon size={separated ? 14 : 13} />
+        </Button>
+      )}
+
+      {onTuner && (
+        <Button onClick={() => onTuner()} aria-label="Tuner" title="Tuner" className="pui-presetbar__tuner">
+          <TunerIcon size={separated ? 14 : 13} />
         </Button>
       )}
 

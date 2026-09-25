@@ -35,7 +35,7 @@ inline constexpr const char* on = "on";
 // The leaf names are that pedal's own, exactly - drop the `art.` and you have
 // its parameter list, which is what lets one `ArtifactFace` bind to both.
 inline constexpr const char* artOn = "art.on";
-inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Rust / Amp
+inline constexpr const char* artEngine = "art.engine"; // Ring Mod / Bit Crush / Rust / Drive / Comp
 inline constexpr const char* artLevel = "art.level";   // module chrome, not BitBit Artifact's
 inline constexpr const char* artMix = "art.mix";
 inline constexpr const char* artTone = "art.tone"; // footer tilt, every engine, flat at 0
@@ -54,6 +54,9 @@ inline constexpr const char* artAmpDrive = "art.amp.drive";
 inline constexpr const char* artAmpMids = "art.amp.mids";
 inline constexpr const char* artAmpBit = "art.amp.bit";
 inline constexpr const char* artAmpTone = "art.amp.tone";
+inline constexpr const char* artCompSensitivity = "art.comp.sensitivity";
+inline constexpr const char* artCompAttack = "art.comp.attack"; // ms
+inline constexpr const char* artCompScFilter = "art.comp.scfilter"; // sidechain high-pass on the detector
 
 // --------------------------------------------------------------- modulation
 inline constexpr const char* modOn = "mod.on";

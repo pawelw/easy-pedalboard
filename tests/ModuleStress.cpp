@@ -371,6 +371,48 @@ void sweepReverb()
     check (worstPeak < 8.0f, "nothing ran away");
 }
 
+/** The Comp engine's level rule, through the whole module rather than the bare
+    engine: with the module on, the level is the level with it off, at every
+    Sensitivity *and every Mix*. The engine alone can be exact and the module
+    still be loud - an equal-power Mix law sums a wet that is nearly the dry
+    (a compressor at rest, no latency) to +3 dB at 50 %. That is what the owner
+    heard as "a bit of boost" at minimum Sensitivity. */
+void checkCompModuleLevel()
+{
+    std::printf ("\nArtifact Comp level through the module (output vs input rms, after 20 s):\n");
+
+    for (float sensitivity : { 0.0f, 1.0f })
+        for (float mix : { 0.0f, 0.25f, 0.5f, 0.75f, 1.0f })
+        {
+            ee::fx::ArtifactModule module;
+            module.setEngine (ee::fx::ArtifactModule::Comp);
+            module.prepare (kSampleRate, 512);
+            module.setMix01 (mix);
+            module.setLevel (1.0f);
+            module.setEngaged (true);
+            module.setComp (sensitivity, 5.0f);
+
+            juce::AudioBuffer<float> input (2, static_cast<int> (kSampleRate * 2));
+            fillTestSignal (input, kSampleRate);
+
+            // Ten times through, so the engine's slow auto level has settled -
+            // see AUTO LEVEL in CompressorConfig.h - and read the last pass.
+            juce::AudioBuffer<float> out;
+            for (int pass = 0; pass < 10; ++pass)
+            {
+                out.makeCopyOf (input);
+                run (module, out);
+            }
+
+            const float change = juce::Decibels::gainToDecibels (out.getRMSLevel (0, 0, out.getNumSamples()))
+                                 - juce::Decibels::gainToDecibels (input.getRMSLevel (0, 0, input.getNumSamples()));
+            char what[128];
+            std::snprintf (what, sizeof (what), "Sensitivity %3.0f %%, Mix %3.0f %%: %+5.2f dB", sensitivity * 100.0f,
+                           mix * 100.0f, change);
+            check (std::abs (change) < 0.75f, what);
+        }
+}
+
 /** ee::fx::ArtifactModule - BitBit Alpine's first module and BitBit Artifact's
     whole processor. All four engines are voiced; the interesting cases are
     each engine's own parameter space and that stepping between them does not
@@ -513,6 +555,30 @@ void sweepArtifact()
                         clean = allFinite (buffer) && clean;
                     }
 
+    // Comp's own knob space - Sensitivity and Attack at each end and the
+    // middle, each Mix position.
+    for (float sensitivity : { 0.0f, 0.5f, 1.0f })
+        for (float attackMs : { ee::dsp::comp::kAttackMinMs, 5.0f, ee::dsp::comp::kAttackMaxMs })
+                for (float mix : { 0.0f, 0.5f, 1.0f })
+                {
+                    ee::fx::ArtifactModule module;
+                    module.prepare (kSampleRate, 512);
+                    module.setEngine (ee::fx::ArtifactModule::Comp);
+                    module.setMix01 (mix);
+                    module.setLevel (1.0f);
+                    module.setEngaged (true);
+
+                    module.setComp (sensitivity, attackMs);
+
+                    juce::AudioBuffer<float> buffer (2, static_cast<int> (kSampleRate / 2));
+                    fillTestSignal (buffer, kSampleRate);
+                    run (module, buffer);
+
+                    ++cases;
+                    worstPeak = juce::jmax (worstPeak, buffer.getMagnitude (0, buffer.getNumSamples()));
+                    clean = allFinite (buffer) && clean;
+                }
+
     std::printf ("  %d cases, worst peak %.3f\n", cases, worstPeak);
     check (clean, "every Artifact case finite");
     check (worstPeak < 8.0f, "nothing ran away");
@@ -604,9 +670,9 @@ int main()
         }
 
     // Every neighbouring Artifact pair plus the wrap - Ring Mod, Bit Crush,
-    // Rust, Amp - since a crossfade between two engines that voice the signal
-    // very differently is exactly where a step would show.
-    const int artPairs[][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 0 }, { 0, 2 } };
+    // Rust, Amp, Comp - since a crossfade between two engines that voice the
+    // signal very differently is exactly where a step would show.
+    const int artPairs[][2] = { { 0, 1 }, { 1, 2 }, { 2, 3 }, { 3, 4 }, { 4, 0 }, { 0, 2 } };
     for (const auto& pair : artPairs)
     {
         ee::fx::ArtifactModule module;
@@ -621,6 +687,7 @@ int main()
     sweepModulation();
     sweepReverb();
     sweepArtifact();
+    checkCompModuleLevel();
 
     std::printf ("\n%s\n", failures == 0 ? "OK - all module checks passed" : "MODULE CHECKS FAILED");
     return failures == 0 ? 0 : 1;

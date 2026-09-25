@@ -7,6 +7,7 @@
 #include "ee/dsp/AutoWahConfig.h"
 #include "ee/dsp/BitCrusherConfig.h"
 #include "ee/dsp/ChorusConfig.h"
+#include "ee/dsp/CompressorConfig.h"
 #include "ee/dsp/PhaserConfig.h"
 #include "ee/dsp/RateMap.h"
 #include "ee/dsp/RingModulatorConfig.h"
@@ -121,6 +122,13 @@ juce::String sizeToText (float value, int)
 juce::String gainDbToText (float value, int)
 {
     return (value > 0.0f ? "+" : "") + juce::String (value, 1) + " dB";
+}
+
+/** The Artifact Comp's Attack - BitBit Artifact's own readout: a decimal
+    under 10 ms, where the knob spends most of its travel. */
+juce::String compAttackToText (float ms, int)
+{
+    return juce::String (ms, ms < 10.0f ? 1 : 0) + " ms";
 }
 
 juce::String degreesToText (float value, int)
@@ -311,9 +319,9 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
     // Every id, range and default is BitBit Artifact's, because the module is
     // BitBit Artifact's. All four engines are voiced (see ee::fx::ArtifactModule).
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artOn, 1 }, "Artifact On", true));
-    layout.add (
-        std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
-                                                      juce::StringArray { "Ring Mod", "Bit Crush", "Rust", "Amp" }, 0));
+    layout.add (std::make_unique<juce::AudioParameterChoice> (
+        juce::ParameterID { id::artEngine, 1 }, "Artifact Engine",
+        juce::StringArray { "Ring Mod", "Bit Crush", "Rust", "Drive", "Comp" }, 0));
     addTrimDb (layout, id::artLevel, "Artifact Level");
     addPercent (layout, id::artMix, "Artifact Mix", 50.0f);
 
@@ -616,6 +624,21 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
                                                              "Tremolo Attack", tremAttack, 0.0f,
                                                              withText (secondsToText)));
 
+    // The Artifact module's Comp engine - BitBit Artifact's `comp.*`, id for
+    // id, range for range (no Level - it matches the input's level itself).
+    // Appended so every other parameter keeps its index.
+    addPercent (layout, id::artCompSensitivity, "Artifact Comp Sensitivity", ee::dsp::comp::kDefaultSensitivityPct);
+
+    auto compAttack = juce::NormalisableRange<float> (ee::dsp::comp::kAttackMinMs, ee::dsp::comp::kAttackMaxMs, 0.01f);
+    compAttack.setSkewForCentre (ee::dsp::comp::kAttackCentreMs);
+    layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { id::artCompAttack, 1 },
+                                                             "Artifact Comp Attack", compAttack,
+                                                             ee::dsp::comp::kDefaultAttackMs,
+                                                             withText (compAttackToText)));
+
+    layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artCompScFilter, 1 },
+                                                            "Artifact Comp SC Filter", true));
+
     return layout;
 }
 
@@ -704,6 +727,7 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
     artifact.setRust (pct (id::artRustGrind), static_cast<int> (raw (id::artRustMode)));
 
     artifact.setAmp (pct (id::artAmpDrive), pct (id::artAmpMids), pct (id::artAmpBit), raw (id::artAmpTone) * 0.01f);
+    artifact.setComp (pct (id::artCompSensitivity), raw (id::artCompAttack), flag (id::artCompScFilter));
 
     // --------------------------------------------------------------- modulation
     modulation.setEngine (static_cast<int> (raw (id::modEngine)));
@@ -817,17 +841,20 @@ void BitBitAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpecte
                                        tapeNoiseSample.getNumSamples(), tapeNoiseSampleRate);
 
     inputMeter.prepare (sampleRate);
+    tuner.prepare (sampleRate);
 
     dryBuffer.setSize (kMaxChannels, maxBlock, false, true, true);
 
     inGain.reset (sampleRate, kRampSeconds);
     outGain.reset (sampleRate, kRampSeconds);
     engageGain.reset (sampleRate, kRampSeconds);
+    tunerMuteGain.reset (sampleRate, kRampSeconds);
 
     inGain.setCurrentAndTargetValue (juce::Decibels::decibelsToGain (apvts.getRawParameterValue (id::inGain)->load()));
     outGain.setCurrentAndTargetValue (
         juce::Decibels::decibelsToGain (apvts.getRawParameterValue (id::outGain)->load()));
     engageGain.setCurrentAndTargetValue (apvts.getRawParameterValue (id::on)->load() > 0.5f ? 1.0f : 0.0f);
+    tunerMuteGain.setCurrentAndTargetValue (tunerMuted() ? 0.0f : 1.0f);
 
     // Only the Modulation module's alignment delays the signal without that
     // being the effect: its Tape engine's transport, which every other engine
@@ -906,6 +933,7 @@ void BitBitAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
     // being played, not what the plugin is doing with it. The Input trim is
     // deliberately not in front of this.
     inputMeter.process (buffer.getReadPointer (0), numIn > 1 ? buffer.getReadPointer (1) : nullptr, numSamples);
+    tuner.process (buffer.getReadPointer (0), numIn > 1 ? buffer.getReadPointer (1) : nullptr, numSamples);
 
     if (numSamples > dryBuffer.getNumSamples())
         dryBuffer.setSize (kMaxChannels, numSamples, false, false, true);
@@ -986,6 +1014,20 @@ void BitBitAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
     // The global bypass crossfades back to the input as it was before the
     // Input trim, so a bypassed plugin is unity whatever either trim says.
     ee::plugin::crossfadeToDry (buffer, dryBuffer, engageGain, numCh, numSamples, &outGain);
+
+    // The tuner's mute, after everything - bypassed or not, a muted tuner is
+    // silent. Untouched unless it is muting or ramping, so the ordinary path
+    // is not even multiplied by one.
+    tunerMuteGain.setTargetValue (tunerMuted() ? 0.0f : 1.0f);
+    if (tunerMuteGain.isSmoothing() || tunerMuteGain.getTargetValue() < 1.0f)
+    {
+        for (int i = 0; i < numSamples; ++i)
+        {
+            const float g = tunerMuteGain.getNextValue();
+            for (int ch = 0; ch < numCh; ++ch)
+                buffer.getWritePointer (ch)[i] *= g;
+        }
+    }
 
     // The last line of defence - on the finished output, every block, every
     // build. See sanitizeOutput.

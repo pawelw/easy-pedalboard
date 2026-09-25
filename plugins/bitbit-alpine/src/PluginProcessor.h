@@ -22,6 +22,7 @@
 #include "ee/fx/DelayModule.h"
 #include "ee/fx/ModulationControls.h"
 #include "ee/fx/ModulationModule.h"
+#include "ee/dsp/Tuner.h"
 #include "ee/fx/ReverbModule.h"
 #include "ee/plugin/InputMeter.h"
 #include "ee/plugin/PresetStore.h"
@@ -131,6 +132,21 @@ public:
     std::atomic<float> filterModL { 0.0f };
     std::atomic<float> filterModR { 0.0f };
 
+    /** The header's tuner. Captures the untouched input - before the Input
+        trim, like inputMeter - but only while the editor has the tuner open;
+        closed, it does nothing, so the audio is exactly what it was without it.
+        The editor owns the analysis half (ee::dsp::TunerAnalyser). */
+    ee::dsp::TunerCapture tuner;
+
+    /** The Artifact module, read-only, for the editor's Comp meter feed. */
+    const ee::fx::ArtifactModule& artifactModule() const noexcept { return artifact; }
+
+    /** The tuner's mute button. Silences the output, ramped, only while the
+        tuner is open - so closing the tuner, or the editor with it, can never
+        leave the plugin silent. Not a parameter: nothing a session or preset
+        should remember. */
+    std::atomic<bool> tunerMute { false };
+
     double hostBpm() const { return currentBpm(); }
 
     /** What sanitizeOutput did to one block, handed back to the caller (and,
@@ -175,6 +191,8 @@ private:
         cannot catch the first bad block before it is heard, but it stops the
         sustained roar that follows. */
     SafetyVerdict sanitizeOutput (juce::AudioBuffer<float>& buffer, int numCh, int numSamples) noexcept;
+
+    bool tunerMuted() const noexcept { return tuner.isActive() && tunerMute.load (std::memory_order_relaxed); }
 
     /** Follows a person turning one of the Delay module's two Time knobs onto
         the other while its "Sync L/R" button is on - the same mirror BitBit Delay
@@ -240,6 +258,7 @@ private:
     juce::SmoothedValue<float> inGain;
     juce::SmoothedValue<float> outGain;
     juce::SmoothedValue<float> engageGain;
+    juce::SmoothedValue<float> tunerMuteGain; // 1 = sounding; see tunerMute
 
     /** The untouched input, kept for the global bypass crossfade. */
     juce::AudioBuffer<float> dryBuffer;

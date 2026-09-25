@@ -144,7 +144,7 @@ export default function App() {
         title="BitBit Alpine"
         subtitle="Artifact / Mod / Delay / Reverb machine"
         subtitlePlacement="below"
-        headerCenter={<JucePresetBar variant="separated" />}
+        headerCenter={<JucePresetBar variant="separated" showTuner />}
         headerRight={<HostControls on={on} onToggle={setOn} />}
         className="pa-card"
       >
@@ -182,7 +182,7 @@ function DelayModule() {
       headerRight={<ModuleLevel parameterId="dly.level" />}
       className="pa-delay"
     >
-      <DelayFace prefix="dly." mainKnobSize={60} scopeHeight={117} />
+      <DelayFace prefix="dly." />
     </ModulePanel>
   );
 }

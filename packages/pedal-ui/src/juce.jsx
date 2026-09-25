@@ -1,5 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import * as Juce from "juce-framework-frontend";
+import { demoCompFeed } from "./CompScope.jsx";
 import Knob from "./Knob.jsx";
 import Pill from "./Pill.jsx";
 import Slider from "./Slider.jsx";
@@ -436,19 +437,25 @@ export function useJuceChoiceValue(parameterId, count, defaultIndex = 0) {
     row of pills and reads as one of them; three positions is few enough that
     stepping through them is quicker than any menu would be.
 
-    Lit for every position but the first, so the mode the pedal has always had
-    reads as "nothing switched on" and the two that rewire it announce
-    themselves. `labels` is in the parameter's own index order - see
-    JuceStageRouter, which passes its two the same way. */
+    `labels` is in the parameter's own index order - see JuceStageRouter, which
+    passes its two the same way. */
 export function JuceChoicePill({ parameterId, labels, className }) {
   const [index, select] = useJuceChoiceValue(parameterId, labels.length);
 
-  // Never drawn pressed: this is a value, not a state. The label already says
-  // which one it is ("Wide", "Grains", "Penta Min"), so lighting it up on
-  // anything past the first entry only says "not the default", which is not a
-  // thing the face has any reason to shout about - and it reads as an on/off
-  // that has been switched on.
-  return <Pill label={labels[index] ?? labels[0]} pressed={false} onClick={() => select(index + 1)} className={className} />;
+  // Always lit, whichever position it is on. A choice is never off - one of
+  // its entries is always in force - and drawing the first one dark said the
+  // opposite, that the routing was switched out. Beside Sync, which is a
+  // genuine on/off, the two now read as what they are: an unlit pill is a
+  // thing that is not happening, a lit one names what is.
+  return (
+    <Pill
+      label={labels[index] ?? labels[0]}
+      labelSet={labels}
+      pressed
+      onClick={() => select(index + 1)}
+      className={className}
+    />
+  );
 }
 
 /** One knob in a footer stage, bound to a WebSliderRelay by parameter id -
@@ -599,4 +606,27 @@ export function useJuceBuildInfo() {
   }, []);
 
   return info;
+}
+
+/**
+ * The Artifact Comp display's feed, in the `subscribe` shape `CompScope` takes:
+ * the processor's "compMeter" event (ee::plugin::CompMeterFeed, sent by BitBit
+ * Artifact's and BitBit Alpine's editors while Comp is the engine). Outside a
+ * real host - the gallery, a Vite dev server, where the frontend installs a
+ * placeholder backend that never sends anything - it falls back to
+ * `demoCompFeed`, so the display has something to show while it is designed.
+ * "A real host" is the same test installAutoResize makes: the native function
+ * list is populated.
+ */
+export function useJuceCompMeter() {
+  return useCallback((onData) => {
+    const functions = window.__JUCE__?.initialisationData?.__juce__functions;
+    const backend = window.__JUCE__?.backend;
+    const real = typeof functions?.includes === "function" && functions.includes("formatKnobValue");
+
+    if (!real || typeof backend?.addEventListener !== "function") return demoCompFeed(onData);
+
+    const id = backend.addEventListener("compMeter", onData);
+    return () => backend.removeEventListener(id);
+  }, []);
 }
