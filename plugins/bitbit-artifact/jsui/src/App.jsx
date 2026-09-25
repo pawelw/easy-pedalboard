@@ -17,7 +17,7 @@ export default function App() {
     <div className="page">
       <Card
         showLogo={false}
-        headerCenter={<JucePresetBar variant="separated" showSteppers={false} showDice={false} />}
+        headerCenter={<JucePresetBar variant="separated" showSteppers={false} showDice={false} showThemeSwitch />}
         headerCenterPlacement="below"
         className="af-card"
       >

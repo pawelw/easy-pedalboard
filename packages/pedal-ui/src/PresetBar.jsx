@@ -7,6 +7,7 @@ import DiceIcon from "./DiceIcon.jsx";
 import SaveIcon from "./SaveIcon.jsx";
 import TunerIcon from "./TunerIcon.jsx";
 import ThemeIcon from "./ThemeIcon.jsx";
+import EqIcon from "./EqIcon.jsx";
 import "./PresetBar.css";
 
 // What the bar shows with nothing behind it: a plain browser tab, the
@@ -94,8 +95,9 @@ function ChevronRightIcon() {
  * pedal with a tuner behind it passes one (BitBit Alpine, through
  * JucePresetBar's `showTuner`).
  *
- * `onTheme` adds the palette switch beside it, at the very end of the row.
- * Same rule: omitted, there is no button.
+ * `onTheme` adds the palette switch beside it, and `onEq` the pre-EQ button
+ * after that, at the very end of the row. Same rule: omitted, there is no
+ * button.
  */
 export default function PresetBar({
   factory = DEMO_FACTORY,
@@ -111,6 +113,7 @@ export default function PresetBar({
   onRandomize,
   onTuner,
   onTheme,
+  onEq,
 }) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [error, setError] = useState("");
@@ -188,6 +191,12 @@ export default function PresetBar({
       {onTheme && (
         <Button onClick={() => onTheme()} aria-label="Switch theme" title="Switch theme" className="pui-presetbar__theme">
           <ThemeIcon size={separated ? 14 : 13} />
+        </Button>
+      )}
+
+      {onEq && (
+        <Button onClick={() => onEq()} aria-label="Pre EQ" title="Pre EQ" className="pui-presetbar__eq">
+          <EqIcon size={separated ? 14 : 13} />
         </Button>
       )}
 

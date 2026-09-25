@@ -82,9 +82,11 @@
 }
 
 /* Steppers and the dice both hidden (JucePresetBar showSteppers={false}
-   showDice={false}) and joined to Save (no gap, one shared 1px border) - the
-   name field is sized so the two together still take the module's own full
-   168px width below: 168 - 28 (Save) + 1 (the shared border) = 141. */
+   showDice={false}) and joined to Save and the theme switch (no gap, one
+   shared 1px border each) - the name field is sized so the three together
+   still take the module's own full 168px width below:
+   168 - 2 x 28 (Save, theme) + 2 x 1 (the shared borders) = 114. */
 .pr-card .pui-presetbar--separated .pui-dropdown__input {
-  width: 141px;
+  width: 114px;
+  min-width: 0; /* PresetBar.css floors it at 120 */
 }

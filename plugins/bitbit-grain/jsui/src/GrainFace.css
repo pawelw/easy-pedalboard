@@ -404,34 +404,22 @@
   box-shadow: inset 0 1px 0 0 #ffffff14;
 }
 
-/* Delay and Reverb's effect knobs: a filled accent cap in a dark bezel, the
-   value arc hugging the bezel's outside edge, and a short dark tick on the
-   cap. Scoped here rather than in Knob.css so every other pedal's concave
-   knobs keep their dark dish. The cap and the arc both read --pui-soft-lit,
-   which each section already sets to its own accent, so the two stay one
-   colour family. The bezel thickness is a percentage so the 49px lead knobs
-   and the 32px Reverb ones carry the same proportions. */
-.pg-section--delay .pui-knob__body--concave,
-.pg-section--reverb .pui-knob__body--concave {
-  background: #2e3539;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.45), 0 1px 2px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgb(255 255 255 / 9%);
+/* Delay and Reverb's effect knobs are the footer knob BitBit Alpine wears
+   across the bottom of every module: the same JuceKnob, the same face
+   (--pui-footer-knob-face) and the same grayscale arc (--pui-footer-knob-lit)
+   rather than the section's own accent. They used to be the concave variant
+   with a hand-picked dark bezel, a grey dish and a black tick, none of which
+   followed the theme - on a cream panel that was three literals fighting the
+   ground. The arc is set here rather than inline on the section, so the
+   sections only carry --pui-accent now. */
+.pg-section--delay,
+.pg-section--reverb {
+  --pui-soft-lit: var(--pui-footer-knob-lit);
 }
 
-.pg-section--delay .pui-knob__concave-face,
-.pg-section--reverb .pui-knob__concave-face {
-  inset: 5%;
-  /* A dish, not a dome: shaded at the top where the bezel's lip shadows it,
-     lighter toward the bottom, with a thin highlight bouncing off the lower lip. */
-  background: #b5b5b5;
-  
-}
-
-.pg-section--delay .pui-knob__pointer--concave,
-.pg-section--reverb .pui-knob__pointer--concave {
-  top: 11%;
-  height: 20%;
-  background: #000000;
-  box-shadow: none;
+.pg-section--delay .pui-knob__soft-cap,
+.pg-section--reverb .pui-knob__soft-cap {
+  background: var(--pui-footer-knob-face);
 }
 
 .pg-section--grain .pui-knob__caption,
@@ -540,13 +528,14 @@
   font-size: 11px;
 }
 
-/* Grain/Pitch/Random's own titles, in Mixer's neutral #c9cede rather than
-   their own accent - the accent still colours each section's display, knob
-   ticks and dividers, just not this text. */
+/* Grain/Pitch/Random's own titles in the label ink rather than their own
+   accent - the accent still colours each section's display, knob ticks and
+   dividers, just not this text. It was a pale literal picked against onyx,
+   which on a cream panel is a title you cannot read. */
 .pg-section--grain .pg-section__name,
 .pg-section--pitch .pg-section__name,
 .pg-section--random .pg-section__name {
-  color: #c9cede;
+  color: var(--pui-ink-soft);
 }
 
 .pg-section--grain .pg-section__knobs {
@@ -594,16 +583,16 @@
   font-size: 9px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  /* Same reasoning as .pg-section--pitch .pg-section__name above - Mixer's
-     neutral tone, not the Pitch accent. */
-  color: #c9cede;
+  /* Same reasoning as .pg-section--pitch .pg-section__name above - the label
+     ink, not the pink Pitch accent. */
+  color: var(--pui-ink-soft);
 }
 
 /* The power toggle's ring/wash/glyph all follow currentColor (PowerToggle.css)
    off --pui-accent - same neutral tone as the title beside it, not the pink
    Pitch accent, while switched on. */
 .pg-pitch__scale-head .pui-power {
-  color: #c9cede;
+  color: var(--pui-ink-soft);
 }
 
 /* The pills stacked as one block, with Mix centred against the pair of them
@@ -760,7 +749,7 @@
   right: 10px;
   bottom: 8px;
   height: 1px;
-  background: #1b2529;
+  background: var(--pui-scope-grid);
 }
 
 .pg-weights__col {
@@ -790,7 +779,7 @@
   right: 0;
   top: 50%;
   height: 1px;
-  background: #1b2529;
+  background: var(--pui-scope-grid);
 }
 
 .pg-field__side {
@@ -830,23 +819,6 @@
   display: block;
 }
 
-/* Reverb's falling tail. */
-.pg-tail {
-  height: 100%;
-  box-sizing: border-box;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 5px;
-  padding: 9px 12px;
-}
-
-.pg-tail__bar {
-  width: 5px;
-  border-radius: 2px;
-  opacity: 0.7;
-}
-
 /* -------------------------------------------------------------- scope */
 
 .pg-scope-wrap {
@@ -868,7 +840,7 @@
   top: 8px;
   bottom: 8px;
   width: 1px;
-  background: #1b2529;
+  background: var(--pui-scope-grid);
 }
 
 .pg-scope__hline {
@@ -877,7 +849,7 @@
   right: 0;
   top: 50%;
   height: 1px;
-  background: #1b2529;
+  background: var(--pui-scope-grid);
 }
 
 .pg-scope__label {

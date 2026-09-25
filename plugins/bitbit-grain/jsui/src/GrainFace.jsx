@@ -1,5 +1,15 @@
 import { useState } from "react";
-import { Logo, JucePresetBar, PowerToggle, Readout, VerticalTabs, Pill, EngineStepper } from "@synthpeak/pedal-ui";
+import {
+  Logo,
+  JucePresetBar,
+  PowerToggle,
+  Readout,
+  VerticalTabs,
+  Pill,
+  EngineStepper,
+  ReverbScope,
+  usePedalTheme,
+} from "@synthpeak/pedal-ui";
 import {
   JuceKnob,
   JuceFader,
@@ -11,7 +21,7 @@ import {
   useParamId,
   useFormattedText,
 } from "@synthpeak/pedal-ui/juce";
-import { GrainEnvelope, PitchWeights, RandomField, ReverbTail, FilterCurve } from "./Displays.jsx";
+import { GrainEnvelope, PitchWeights, RandomField, FilterCurve } from "./Displays.jsx";
 import ModTab from "./ModTab.jsx";
 import MixerMeter from "./MixerMeter.jsx";
 import ModdableKnob from "./ModdableKnob.jsx";
@@ -30,25 +40,46 @@ const FACE_TABS = [
 // three non-Alpine ones are also in packages/pedal-ui/src/tokens.css now
 // (--pui-accent-grain/-pitch/-random) for the text/pill uses below, which
 // *are* plain CSS properties and read the token fine.
-const GRAIN = "#b39bd8";
-const PITCH = "#e78fb3";
-// Was an orange (#dfa878); now the purple that Grain, Pitch and Random's displays,
-// knob arcs and Random's title all share. Still the "random" token in
-// packages/pedal-ui/src/tokens.css for anything else that reads it.
-const RANDOM = "#6a509c";
-// Delay now shares Reverb's own blue rather than its old green - one colour,
-// not two independently-declared literals that could drift apart.
-const REVERB = "#7fd2d8";
-const DELAY = REVERB;
-const MIXER = "#c9cede";
+//
+// Two sets, because this face is drawn on either ground now. A hue picked to
+// glow on near-black is a pastel smear on cream - the "filter curve you can't
+// see" was `mixer` at 1.4:1 against --pui-panel. Same hues, darkened until
+// each one reads; a literal per theme rather than a token for the reason
+// above, so the palette is picked here and handed down.
+const PALETTES = {
+  onyx: {
+    grain: "#b39bd8",
+    pitch: "#e78fb3",
+    // Was an orange (#dfa878); now the purple that Grain, Pitch and Random's
+    // displays, knob arcs and Random's title all share. Still the "random"
+    // token in packages/pedal-ui/src/tokens.css for anything else that reads it.
+    random: "#6a509c",
+    // Delay shares Reverb's own blue rather than its old green - one colour,
+    // not two independently-declared literals that could drift apart.
+    reverb: "#7fd2d8",
+    mixer: "#c9cede",
+  },
+  light: {
+    grain: "#6b4fa3",
+    pitch: "#a84a70",
+    random: "#553f80",
+    reverb: "#2b7f87",
+    mixer: "#5f6575",
+  },
+};
 
-// The knob value arc (--pui-soft-lit) on Grain/Pitch/Random is unified to
-// this instead of each section's own accent - the same purple the three
-// displays above them now share. Delay/Reverb keep their own accent lit.
-const KNOB_LIT = RANDOM;
+/** This face's accents for the palette in force. `KNOB_LIT` is the value arc
+    on Grain/Pitch/Random - the shared purple rather than each section's own
+    accent; Delay/Reverb light theirs from the footer tokens instead. */
+function usePalette() {
+  const theme = usePedalTheme();
+  const p = PALETTES[theme] ?? PALETTES.light;
+
+  return { GRAIN: p.grain, PITCH: p.pitch, RANDOM: p.random, REVERB: p.reverb, DELAY: p.reverb, MIXER: p.mixer, KNOB_LIT: p.random };
+}
 
 // BitBit Wah's own red (--pui-knob-sweep-lit in tokens.css) - Drive borrows it
-// rather than Mixer's own pale MIXER lit, the way a drive/overdrive control
+// rather than Mixer's own pale accent, the way a drive/overdrive control
 // reads on hardware.
 const DRIVE_LIT = "#c60000";
 
@@ -74,7 +105,7 @@ function TimeRow({ side, parameterId }) {
 
   return (
     <div className="pg-time-row">
-      <JuceKnob parameterId={parameterId} variant="concave" size={32} bare showValueLabel={false} />
+      <JuceKnob parameterId={parameterId} variant="flat" size={32} bare showValueLabel={false} />
       <Readout label={side} value={text} />
     </div>
   );
@@ -107,6 +138,7 @@ function ShapeFamilyStepper({ index, select }) {
 }
 
 function GrainSection() {
+  const { GRAIN, RANDOM, KNOB_LIT } = usePalette();
   // Read once here rather than separately in the display and the stepper -
   // both draw off the same "shapefamily" index, and a single subscription is
   // what guarantees the envelope and the stepper that sets it can never
@@ -153,6 +185,7 @@ function GrainSection() {
 }
 
 function PitchSection() {
+  const { PITCH, RANDOM, KNOB_LIT } = usePalette();
   const [scaleOn, scalePower] = useSectionPower("scaleon");
 
   return (
@@ -194,6 +227,7 @@ function PitchSection() {
 }
 
 function RandomSection() {
+  const { RANDOM, KNOB_LIT } = usePalette();
   return (
     <section className="pg-section pg-section--random" style={{ "--pui-accent": RANDOM, "--pui-soft-lit": KNOB_LIT }}>
       <div className="pg-section__head">
@@ -219,6 +253,7 @@ function RandomSection() {
     (what used to be Grain's single Mix knob), a link that locks them
     together, and the Filter knob over the grain cloud's own filter. */
 function MixerSection() {
+  const { MIXER } = usePalette();
   return (
     <section className="pg-section pg-section--mixer" style={{ "--pui-accent": MIXER, "--pui-soft-lit": MIXER }}>
       <div className="pg-section__head">
@@ -295,10 +330,11 @@ function MixerSection() {
 }
 
 function DelaySection() {
+  const { DELAY } = usePalette();
   const [on, powerToggle] = useSectionPower("delon");
 
   return (
-    <section className="pg-section pg-section--delay" style={{ "--pui-accent": DELAY, "--pui-soft-lit": DELAY }} data-off={!on || undefined}>
+    <section className="pg-section pg-section--delay" style={{ "--pui-accent": DELAY }} data-off={!on || undefined}>
       <div className="pg-section__head">
         {powerToggle}
         <span className="pg-section__name">Delay</span>
@@ -310,13 +346,12 @@ function DelaySection() {
       </div>
       <div className="pg-delay__body">
         <div className="pg-delay__leads">
-          {/* Same look as BitBit Delay's footer knobs (StageControl): concave,
-              value swapped in for the caption only while dragging. Sized to
-              the 42px the face's other large knobs (Drive, Bit, Filter, Reso)
-              render at - concave draws to its own `size`, the flat ones to
-              `size` plus their arc, which is why the numbers differ. */}
-          <JuceKnob parameterId="dmix" caption="Mix" variant="concave" size={42} />
-          <JuceKnob parameterId="dfb" caption="Feedback" variant="concave" size={42} />
+          {/* The footer knob every module wears across the bottom of BitBit
+              Alpine, and BitBit Delay's own stage knobs - one control for the
+              whole family. Sized to the 42px the face's other large knobs
+              (Drive, Bit, Filter, Reso) render at. */}
+          <JuceKnob parameterId="dmix" caption="Mix" variant="flat" size={42} />
+          <JuceKnob parameterId="dfb" caption="Feedback" variant="flat" size={42} />
         </div>
         <div className="pg-delay__times">
           <TimeRow side="L" parameterId="ltime" />
@@ -346,25 +381,32 @@ function LinkGlyph({ size = 14 }) {
 }
 
 function ReverbSection() {
+  const { REVERB } = usePalette();
   const [on, powerToggle] = useSectionPower("revon");
+  const [decay01] = useJuceSliderValue("decay");
+  const [locut01] = useJuceSliderValue("rlocut");
 
   return (
-    <section className="pg-section pg-section--reverb" style={{ "--pui-accent": REVERB, "--pui-soft-lit": REVERB }} data-off={!on || undefined}>
+    <section className="pg-section pg-section--reverb" style={{ "--pui-accent": REVERB }} data-off={!on || undefined}>
       <div className="pg-section__head">
         {powerToggle}
         <span className="pg-section__name">Reverb</span>
         <span className="pg-section__spacer" />
       </div>
       <div className="pg-section__display">
-        <ReverbTail accent={REVERB} />
+        {/* BitBit Alpine's own reverb display, not a second drawing of the
+            same idea - this used to be eight decaying bars. `shimmer` is the
+            model for an FdnReverb, which is what this section runs; Hi Cut
+            and Damping are knobs it doesn't expose, so they stay at rest. */}
+        <ReverbScope engine="shimmer" decay01={decay01} locut01={locut01} hicut01={1} damping01={0} octave={1} />
       </div>
       <div className="pg-section__knobs">
-        {/* Same concave look as Delay's own Mix/Feedback, sized down from
-            38px to fit Reverb's own row of three - 32px, 5% up from an
-            initial 30. */}
-        <JuceKnob parameterId="rmix" caption="Mix" variant="concave" size={32} />
-        <JuceKnob parameterId="decay" caption="Decay" variant="concave" size={32} />
-        <JuceKnob parameterId="rlocut" caption="Low Cut" variant="concave" size={32} />
+        {/* The footer knob every module wears across the bottom of BitBit
+            Alpine - same control, same face and same arc (the --pui-footer-*
+            tokens), so Grain's effects row reads as one of those strips. */}
+        <JuceKnob parameterId="rmix" caption="Mix" variant="flat" size={32} />
+        <JuceKnob parameterId="decay" caption="Decay" variant="flat" size={32} />
+        <JuceKnob parameterId="rlocut" caption="Low Cut" variant="flat" size={32} />
       </div>
     </section>
   );
@@ -405,7 +447,7 @@ function Header({ on, onToggle }) {
           <h1 className="pg-header__title">BitBit Grains</h1>
         </div>
         <div className="pg-header__presets">
-          <JucePresetBar variant="separated" />
+          <JucePresetBar variant="separated" showThemeSwitch />
         </div>
         <div className="pg-header__right">
           <div className="pg-header__level">

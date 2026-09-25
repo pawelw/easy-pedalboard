@@ -74,8 +74,11 @@ function PedalView({ pedal }) {
       {/* App.jsx is imported directly (see pedals.js), bypassing the pedal's
           own main.jsx - which is the only place that would otherwise wrap
           it in PedalUIProvider. Without this, every pedal would render off
-          bare :root regardless of its own theme choice. */}
-      <PedalUIProvider theme={pedal.theme}>
+          bare :root regardless of its own theme choice. Keyed per pedal: the
+          provider only reads `theme` as its starting palette (the header's
+          switch moves it after that), so without a remount a switch flipped
+          on one pedal would follow you to the next. */}
+      <PedalUIProvider key={pedal.slug} theme={pedal.theme}>
         <Face />
       </PedalUIProvider>
     </div>

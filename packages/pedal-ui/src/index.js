@@ -75,3 +75,5 @@ export { default as SaveIcon } from "./SaveIcon.jsx";
 export { default as DiceIcon } from "./DiceIcon.jsx";
 export { default as TunerIcon } from "./TunerIcon.jsx";
 export { default as TunerDialog, TunerMeter } from "./TunerDialog.jsx";
+export { default as EqIcon, EqShapeIcon } from "./EqIcon.jsx";
+export { default as EqDialog } from "./EqDialog.jsx";

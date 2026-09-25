@@ -34,7 +34,7 @@ export default function App() {
           rather than centred); at 415 it had to take one of its own. */}
       <Card
         title="BitBit Delay"
-        headerCenter={<JucePresetBar variant="separated" showDice={false} />}
+        headerCenter={<JucePresetBar variant="separated" showDice={false} showThemeSwitch />}
         className="pd-card"
         width={526}
       >

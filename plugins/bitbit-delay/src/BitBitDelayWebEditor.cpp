@@ -100,12 +100,12 @@ BitBitDelayWebEditor::BitBitDelayWebEditor (BitBitDelayProcessor& p)
 
                                            setResizable (true, false);
                                            setResizeLimits (juce::roundToInt (baseWidth * kMinZoom),
-                                                             juce::roundToInt (baseHeight * kMinZoom),
-                                                             juce::roundToInt (baseWidth * kMaxZoom),
-                                                             juce::roundToInt (baseHeight * kMaxZoom));
+                                                            juce::roundToInt (baseHeight * kMinZoom),
+                                                            juce::roundToInt (baseWidth * kMaxZoom),
+                                                            juce::roundToInt (baseHeight * kMaxZoom));
 
                                            if (auto* c = getConstrainer())
-                                               c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
+                                               c->setFixedAspectRatio ((double)baseWidth / (double)baseHeight);
 
                                            resizeGrip =
                                                std::make_unique<ee::plugin::CornerResizer> (*this, *getConstrainer());
@@ -228,7 +228,7 @@ void BitBitDelayWebEditor::resized()
     if (resizeGrip != nullptr)
     {
         resizeGrip->setBounds (0, getHeight() - ee::plugin::CornerResizer::kSize, ee::plugin::CornerResizer::kSize,
-                                ee::plugin::CornerResizer::kSize);
+                               ee::plugin::CornerResizer::kSize);
         resizeGrip->toFront (false);
     }
 }

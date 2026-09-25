@@ -14,6 +14,7 @@
 #include "ee/dsp/AutoWah.h"
 #include "ee/dsp/BitCrusher.h"
 #include "ee/dsp/Compressor.h"
+#include "ee/dsp/Equaliser.h"
 #include "ee/plugin/CompMeterFeed.h"
 #include "ee/dsp/BreakpointLfo.h"
 #include "ee/plugin/ModRouter.h"
@@ -6565,6 +6566,115 @@ void testModRouterAssignments()
     check (! router.hasAssignments(), "clearing the assignment list left something behind");
 }
 
+/** The level of a steady sine through `eq`, in dB relative to the input, measured
+    over the second half of a second so the glide and the filters have settled. */
+float equaliserGainDb (ee::dsp::Equaliser& eq, float hz, double sr = 48000.0)
+{
+    const int n = static_cast<int> (sr);
+    std::vector<float> l (static_cast<size_t> (n)), r (static_cast<size_t> (n));
+    for (int i = 0; i < n; ++i)
+        l[static_cast<size_t> (i)] = r[static_cast<size_t> (i)] =
+            0.25f * std::sin (6.283185307f * hz * static_cast<float> (i) / static_cast<float> (sr));
+
+    float* ch[2] = { l.data(), r.data() };
+    for (int start = 0; start < n; start += 480)
+        eq.process (ch, 2, std::min (480, n - start)), ch[0] += 480, ch[1] += 480;
+
+    double in = 0.0, out = 0.0;
+    for (int i = n / 2; i < n; ++i)
+    {
+        const double x = 0.25 * std::sin (6.283185307 * hz * i / sr);
+        in += x * x;
+        out += static_cast<double> (l[static_cast<size_t> (i)]) * l[static_cast<size_t> (i)];
+    }
+    return static_cast<float> (10.0 * std::log10 (out / in));
+}
+
+void testEqualiser()
+{
+    std::printf ("Equaliser (BitBit Alpine's pre-EQ):\n");
+    using ee::dsp::Equaliser;
+    using ee::dsp::eq::FilterType;
+
+    {
+        // Flat is out of the path altogether - not "very nearly unity".
+        Equaliser eq;
+        eq.setBand (0, { FilterType::bell, 1000.0f, 0.0f, 0.71f, true });
+        eq.setBand (1, { FilterType::lowShelf, 100.0f, 0.004f, 0.71f, true });
+        eq.setBand (2, { FilterType::lowCut48, 40.0f, 0.0f, 0.71f, false });
+        eq.prepare (48000.0);
+
+        std::vector<float> a (4096), b;
+        std::mt19937 rng (7);
+        std::uniform_real_distribution<float> dist (-1.0f, 1.0f);
+        for (auto& x : a)
+            x = dist (rng);
+        b = a;
+        float* ch[1] = { b.data() };
+        eq.process (ch, 1, static_cast<int> (b.size()));
+        check (a == b, "a flat equaliser changed its input");
+        check (eq.isIdle(), "a flat equaliser does not report itself idle");
+    }
+
+    {
+        Equaliser eq;
+        eq.prepare (48000.0);
+        eq.setBand (0, { FilterType::bell, 1000.0f, 6.0f, 1.0f, true });
+        const float atCentre = equaliserGainDb (eq, 1000.0f);
+        std::printf ("  bell +6 dB @ 1 kHz: %.2f dB at 1 kHz\n", atCentre);
+        check (std::abs (atCentre - 6.0f) < 0.1f, "a +6 dB bell is not +6 dB at its centre");
+    }
+
+    {
+        Equaliser eq;
+        eq.prepare (48000.0);
+        eq.setBand (0, { FilterType::lowShelf, 250.0f, -9.0f, 0.71f, true });
+        const float deep = equaliserGainDb (eq, 30.0f);
+        std::printf ("  low shelf -9 dB @ 250 Hz: %.2f dB at 30 Hz\n", deep);
+        check (std::abs (deep + 9.0f) < 0.3f, "a -9 dB low shelf is not -9 dB well below its corner");
+    }
+
+    {
+        Equaliser eq;
+        eq.prepare (48000.0);
+        eq.setBand (0, { FilterType::lowCut48, 200.0f, 0.0f, 0.71f, true });
+        const float octaveDown = equaliserGainDb (eq, 100.0f);
+        const float passband = equaliserGainDb (eq, 2000.0f);
+        std::printf ("  low cut 48 @ 200 Hz: %.1f dB at 100 Hz, %.2f dB at 2 kHz\n", octaveDown, passband);
+        check (octaveDown < -40.0f, "a 48 dB/oct low cut is not ~48 dB down an octave below its corner");
+        check (std::abs (passband) < 0.1f, "a low cut touches its passband");
+    }
+
+    {
+        // Toggling bands and changing shape mid-signal fades; nothing jumps.
+        Equaliser eq;
+        eq.prepare (48000.0);
+        const int n = 48000;
+        std::vector<float> x (static_cast<size_t> (n));
+        for (int i = 0; i < n; ++i)
+            x[static_cast<size_t> (i)] = 0.5f * std::sin (6.283185307f * 220.0f * static_cast<float> (i) / 48000.0f);
+
+        float worstStep = 0.0f, prev = 0.0f;
+        bool finite = true;
+        for (int start = 0, blk = 0; start < n; start += 256, ++blk)
+        {
+            const auto type = static_cast<FilterType> (blk % ee::dsp::eq::kNumTypes);
+            eq.setBand (0, { type, 180.0f + 40.0f * static_cast<float> (blk % 7), 12.0f, 4.0f, (blk / 3) % 2 == 0 });
+            float* ch[1] = { x.data() + start };
+            eq.process (ch, 1, std::min (256, n - start));
+            for (int i = start; i < std::min (start + 256, n); ++i)
+            {
+                finite = finite && std::isfinite (x[static_cast<size_t> (i)]);
+                worstStep = std::max (worstStep, std::abs (x[static_cast<size_t> (i)] - prev));
+                prev = x[static_cast<size_t> (i)];
+            }
+        }
+        std::printf ("  shape / on-off churn: worst sample step %.3f\n", worstStep);
+        check (finite, "the equaliser produced a non-finite sample under churn");
+        check (worstStep < 0.35f, "the equaliser jumped under shape / on-off churn");
+    }
+}
+
 } // namespace
 
 int main()
@@ -6779,6 +6889,8 @@ int main()
     testBreakpointLfoSelfHeals();
     std::printf ("\n");
     testModRouterAssignments();
+    std::printf ("\n");
+    testEqualiser();
 
     std::printf ("\n%s (%d failure%s)\n",
                  failures == 0 ? "ALL TESTS PASSED" : "TESTS FAILED",

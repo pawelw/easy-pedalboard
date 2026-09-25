@@ -1,0 +1,391 @@
+/* The tuner's overlay (TunerDialog.css), with a wider box - see EqDialog. */
+.pui-eq {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* One colour per band, all of them the theme's own accents, so the graph
+     follows the palette the rest of the face is in. */
+  --pui-eq-band-1: var(--pui-accent-reverb);
+  --pui-eq-band-2: var(--pui-accent-delay);
+  --pui-eq-band-3: var(--pui-accent-mod);
+  --pui-eq-band-4: var(--pui-accent-random);
+  --pui-eq-band-5: var(--pui-accent-pitch);
+  --pui-eq-band-6: var(--pui-accent-grain);
+  --pui-eq-band-7: var(--pui-scope-dry);
+  --pui-eq-band-8: var(--pui-ink-soft);
+}
+
+.pui-eq__scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 55%);
+}
+
+.pui-eq__box {
+  position: relative;
+  width: min(860px, calc(100vw - 40px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px 16px;
+  background: var(--pui-panel);
+  border: 1.5px solid var(--pui-line);
+  border-radius: var(--pui-radius-panel);
+  box-shadow: 0 18px 40px rgb(0 0 0 / 45%);
+}
+
+.pui-eq__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pui-eq__title {
+  flex: 1;
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pui-ink-soft);
+}
+
+/* Simple | Advanced - one pill split in two, the lit half the face in use. */
+.pui-eq__mode {
+  display: flex;
+  height: 26px;
+  border: 1px solid var(--pui-outline);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.pui-eq__mode button {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0 10px;
+  background: transparent;
+  color: var(--pui-ink-soft);
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pui-eq__mode button + button {
+  border-left: 1px solid var(--pui-outline);
+}
+
+.pui-eq__mode button[aria-pressed="true"] {
+  background: var(--pui-ink);
+  color: var(--pui-panel);
+}
+
+.pui-eq .pui-button.pui-eq__close {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid var(--pui-outline);
+  color: var(--pui-ink-soft);
+}
+
+/* Both faces are the same height, so switching between them never moves the
+   box: the graph, then an 84px strip of controls under it. */
+.pui-eq__body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: opacity 0.2s;
+}
+
+.pui-eq__body--off {
+  opacity: 0.45;
+}
+
+/* ------------------------------------------------------------------ graph */
+.pui-eq__screen {
+  background: var(--pui-recess);
+  box-shadow: var(--pui-well-shadow);
+  border-radius: 12px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.pui-eq__graph {
+  width: 100%;
+  height: auto;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+}
+
+.pui-eq__grid {
+  stroke: var(--pui-recess-ink);
+  stroke-width: 0.5;
+  opacity: 0.45;
+}
+
+.pui-eq__grid--zero {
+  opacity: 0.9;
+}
+
+.pui-eq__scale {
+  fill: var(--pui-recess-ink);
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.pui-eq__band-fill {
+  fill-opacity: 0.14;
+  stroke-width: 1;
+  stroke-opacity: 0.55;
+}
+
+.pui-eq__band-fill--selected {
+  fill-opacity: 0.3;
+  stroke-opacity: 0.9;
+}
+
+.pui-eq__total {
+  fill: none;
+  stroke: var(--pui-ink);
+  stroke-width: 1.75;
+  stroke-linejoin: round;
+  pointer-events: none;
+}
+
+.pui-eq__dot {
+  cursor: grab;
+}
+
+.pui-eq__dot:active {
+  cursor: grabbing;
+}
+
+.pui-eq__dot-body {
+  fill: currentColor;
+  stroke: var(--pui-recess);
+  stroke-width: 1.5;
+}
+
+.pui-eq__dot-ring {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  opacity: 0.6;
+}
+
+.pui-eq__dot-label {
+  fill: var(--pui-recess);
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  pointer-events: none;
+}
+
+/* A band that is off keeps its place on the graph, hollow. */
+.pui-eq__dot--off .pui-eq__dot-body {
+  fill: var(--pui-recess);
+  stroke: currentColor;
+  stroke-dasharray: 2 2;
+}
+
+.pui-eq__dot--off .pui-eq__dot-label {
+  fill: currentColor;
+}
+
+.pui-eq__dot--off {
+  opacity: 0.7;
+}
+
+/* ------------------------------------------------------- the Advanced panel */
+.pui-eq__panel {
+  height: 84px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 4px;
+}
+
+.pui-eq__bandsel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 22px;
+}
+
+.pui-eq__bandsel button {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 16px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pui-ink-soft);
+  cursor: pointer;
+}
+
+.pui-eq__bandsel button:hover {
+  background: var(--pui-panel-edge);
+}
+
+.pui-eq__bandnum {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--pui-accent);
+}
+
+.pui-eq__bandctl {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding-right: 12px;
+  border-right: 1px solid var(--pui-divider);
+}
+
+.pui-eq__bandctl .pui-power {
+  margin-top: 2px;
+}
+
+.pui-eq__type {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 72px;
+}
+
+.pui-eq__type-button {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid var(--pui-outline);
+  border-radius: 7px;
+  background: var(--pui-recess);
+  color: var(--pui-accent, var(--pui-ink));
+  cursor: pointer;
+}
+
+.pui-eq__type-button > svg:last-child {
+  color: var(--pui-ink-soft);
+}
+
+.pui-eq__type-caption {
+  white-space: nowrap;
+}
+
+.pui-eq__type-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  gap: 1px;
+  min-width: 128px;
+  background: var(--pui-panel);
+  border: 1px solid var(--pui-outline);
+  border-radius: 8px;
+  box-shadow: 0 10px 24px rgb(0 0 0 / 35%);
+}
+
+.pui-eq__type-option {
+  appearance: none;
+  -webkit-appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--pui-ink-soft);
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.pui-eq__type-option:hover {
+  background: var(--pui-panel-edge);
+  color: var(--pui-ink);
+}
+
+.pui-eq__type-option[aria-selected="true"] {
+  background: var(--pui-ink);
+  color: var(--pui-panel);
+}
+
+.pui-eq__knobs {
+  flex: 1;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+/* A cut or a notch has no gain: the knob stays, greyed, so the row does not
+   reflow as the shape changes. */
+.pui-eq__knob--unused {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.pui-eq__panel--off .pui-eq__knobs,
+.pui-eq__panel--off .pui-eq__type {
+  opacity: 0.5;
+}
+
+/* --------------------------------------------------------- the Simple strip */
+.pui-eq__simple {
+  height: 84px;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+}
+
+.pui-eq__simple-band {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.pui-eq__simple-hz {
+  font-family: var(--pui-font-label);
+  font-weight: 700;
+  font-size: 8.5px;
+  letter-spacing: 0.06em;
+  color: var(--pui-accent);
+}

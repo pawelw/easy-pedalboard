@@ -39,16 +39,19 @@
   transform: translateY(-50%);
 }
 
+/* The scale reads off the ink tokens rather than a white alpha - a white tick
+   and a white number are invisible the moment this face is on a cream panel,
+   and the dim ink is exactly what a scale beside a fader is for. */
 .pg-meter__tick::before {
   content: "";
   width: 3px;
   height: 1px;
-  background: rgba(255, 255, 255, 0.22);
+  background: var(--pui-ink-dim);
 }
 
 .pg-meter__tick--numbered::before {
   width: 4px;
-  background: rgba(255, 255, 255, 0.4);
+  background: var(--pui-ink-soft);
 }
 
 .pg-meter__num {
@@ -56,7 +59,7 @@
   font-size: 8px;
   line-height: 1;
   letter-spacing: 0;
-  color: rgba(255, 255, 255, 0.46);
+  color: var(--pui-ink-soft);
 }
 
 /* Mirrored with the ladder: the tick keeps to the bar's side of the number. */

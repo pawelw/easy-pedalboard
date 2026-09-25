@@ -91,6 +91,50 @@ export function useJuceSliderValue(parameterId) {
   return [value, setNormalisedValue, sliderState];
 }
 
+/** Whether the backend has told the page about a slider - the slider
+    counterpart of backendKnowsToggle below. */
+function backendKnowsSlider(id) {
+  const sliders = window.__JUCE__?.initialisationData?.__juce__sliders;
+  return Array.isArray(sliders) && sliders.includes(id);
+}
+
+/** A parameter's live value in its own units (Hz, dB, Q) rather than 0..1 -
+    for a control that is drawn in those units, like the pre-EQ's response
+    graph, where a dot sits at 250 Hz and not at "0.43 of the travel".
+
+    The relay carries the scaled value already; only setting needs the range,
+    which it reads off the relay's properties at the moment of the set (they
+    arrive after the page loads - see JuceFader's reset). `fallback` is the
+    picture with no backend at all, and outside a host it is also what `set`
+    moves, so the gallery's graph can still be dragged. */
+export function useJuceScaledValue(parameterId, fallback = 0) {
+  const id = useParamId(parameterId);
+  const sliderState = useMemo(() => Juce.getSliderState(id), [id]);
+  const [value, setValue] = useState(() => (backendKnowsSlider(id) ? sliderState.getScaledValue() : fallback));
+
+  useEffect(() => {
+    if (!backendKnowsSlider(id)) return undefined;
+
+    setValue(sliderState.getScaledValue());
+    const listenerId = sliderState.valueChangedEvent.addListener(() => setValue(sliderState.getScaledValue()));
+    return () => sliderState.valueChangedEvent.removeListener(listenerId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sliderState, id]);
+
+  const set = useCallback(
+    (next) => {
+      setValue(next);
+      const { start = 0, end = 1, skew = 1 } = sliderState.properties ?? {};
+      if (end === start) return;
+      const proportion = Math.min(1, Math.max(0, (next - start) / (end - start)));
+      sliderState.setNormalisedValue(Math.pow(proportion, skew));
+    },
+    [sliderState],
+  );
+
+  return [value, set, sliderState];
+}
+
 /** A parameter's live formatted text (via formatKnobValue), re-fetched
     whenever `value` changes - shared by every control here that prints one, so
     they all read the same live-readout pattern.

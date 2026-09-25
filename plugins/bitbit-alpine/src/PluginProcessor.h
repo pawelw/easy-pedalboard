@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <juce_dsp/juce_dsp.h>
 
+#include <array>
 #include <atomic>
 #include <vector>
 
@@ -22,6 +23,7 @@
 #include "ee/fx/DelayModule.h"
 #include "ee/fx/ModulationControls.h"
 #include "ee/fx/ModulationModule.h"
+#include "ee/dsp/Equaliser.h"
 #include "ee/dsp/Tuner.h"
 #include "ee/fx/ReverbModule.h"
 #include "ee/plugin/InputMeter.h"
@@ -233,6 +235,22 @@ private:
     juce::AudioBuffer<float> tapeNoiseSample;
     std::vector<const float*> tapeNoiseChannels;
     double tapeNoiseSampleRate = 44100.0;
+
+    /** The header's pre-EQ - see Params.h. Bands 0..kEqSimpleBands-1 are the
+        Simple face's, the rest the Advanced face's eight. */
+    static constexpr int kEqSimpleBands = 3;
+    ee::dsp::Equaliser equaliser;
+    static_assert (kEqSimpleBands + ee::dsp::eq::kAdvancedBands <= ee::dsp::Equaliser::kMaxBands);
+
+    struct EqBandParams
+    {
+        std::atomic<float>* on = nullptr;
+        std::atomic<float>* type = nullptr;
+        std::atomic<float>* freq = nullptr;
+        std::atomic<float>* gain = nullptr;
+        std::atomic<float>* q = nullptr;
+    };
+    std::array<EqBandParams, ee::dsp::eq::kAdvancedBands> eqBandParams {};
 
     ee::fx::ArtifactModule artifact;
     ee::fx::ModulationModule modulation;

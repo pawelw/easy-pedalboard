@@ -39,7 +39,7 @@ struct AlpineWatchdog
     };
 
     static constexpr int kRingFrames = 256;
-    static constexpr int kMaxParams = 96;
+    static constexpr int kMaxParams = 160;
 
     struct Frame
     {

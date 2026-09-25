@@ -565,7 +565,10 @@ function FilterCurveBody({ accent, openness, reso = 0 }) {
   return (
     <div className="pg-filter-curve">
       <svg width="100%" height="100%" viewBox={`0 0 ${CURVE_W} ${CURVE_H}`} preserveAspectRatio="none" fill="none">
-        <g stroke="#233034" strokeWidth="1" vectorEffect="non-scaling-stroke">
+        {/* Class, not a `stroke` attribute: WKWebView doesn't reliably
+            resolve `var(...)` in an SVG presentation attribute - see
+            Knob.jsx's TickScale. It was a dark literal, invisible on cream. */}
+        <g className="pg-filter-curve__grid" strokeWidth="1" vectorEffect="non-scaling-stroke">
           {CURVE_GRID_HZ.map((hz) => (
             <line key={hz} x1={curveX(hz)} y1={CURVE_PAD} x2={curveX(hz)} y2={floorY} />
           ))}
@@ -588,35 +591,6 @@ function FilterCurveBody({ accent, openness, reso = 0 }) {
   );
 }
 
-// Eight bars falling 28 -> 3px (COMPONENTS.md), bending with Decay the way
-// BitBit Alpine's own reverb-tail bars do (packages/module-face/src/
-// SideModule.jsx's decayBars) - the exponent runs the opposite way to Decay,
-// so a short decay is already on the floor a couple of bars in and a long
-// one holds up across the row. Was a fixed array (COMPONENTS.md's own numbers
-// at rest, decay01 = 0), so the display never moved no matter what Decay was
-// dialled to; this is that same rest shape, now a function of it.
-const TAIL_BARS = 8;
-const TAIL_MIN = 3;
-const TAIL_MAX = 28;
-
-function reverbTailHeights(decay01) {
-  const curve = 0.45 + (1 - decay01) * 1.6;
-  return Array.from({ length: TAIL_BARS }, (_, i) => TAIL_MIN + (TAIL_MAX - TAIL_MIN) * Math.pow(1 - i / (TAIL_BARS - 1), curve));
-}
-
-export function ReverbTail({ accent }) {
-  // Not a ModdableKnob target (PluginProcessor.cpp's own kModChunk note: Delay
-  // and Reverb are out of the LFO's reach), so there is no live-modulated
-  // reading to resolve here the way GrainEnvelope/PitchWeights do - the base
-  // value is the whole of it.
-  const [decay] = useJuceSliderValue("decay");
-  const heights = reverbTailHeights(decay);
-
-  return (
-    <div className="pg-tail">
-      {heights.map((h, i) => (
-        <div key={i} className="pg-tail__bar" style={{ height: `${h}px`, background: accent }} />
-      ))}
-    </div>
-  );
-}
+// The reverb display is pedal-ui's own ReverbScope now - BitBit Alpine's, so
+// the two faces draw one picture of a tail rather than two. What was here was
+// eight decaying bars (COMPONENTS.md); see GrainFace.jsx's ReverbSection.

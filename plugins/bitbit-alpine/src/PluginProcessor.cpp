@@ -7,6 +7,7 @@
 #include "ee/dsp/AutoWahConfig.h"
 #include "ee/dsp/BitCrusherConfig.h"
 #include "ee/dsp/ChorusConfig.h"
+#include "ee/dsp/EqualiserConfig.h"
 #include "ee/dsp/CompressorConfig.h"
 #include "ee/dsp/PhaserConfig.h"
 #include "ee/dsp/RateMap.h"
@@ -174,6 +175,18 @@ void addTrimDb (juce::AudioProcessorValueTreeState::ParameterLayout& layout, con
                                                              withText (gainDbToText)));
 }
 
+/** "eq.b3.freq" - one of the pre-EQ's Advanced band parameters, `band` 0-based. */
+juce::String eqBandId (int band, const char* leaf)
+{
+    return "eq.b" + juce::String (band + 1) + "." + leaf;
+}
+
+/** The pre-EQ's Q: two decimals, no unit - the way every EQ prints it. */
+juce::String qToText (float value, int)
+{
+    return juce::String (value, value < 10.0f ? 2 : 1);
+}
+
 /** The 24 chain.order choice labels, one per permutation, built from
     ChainOrder.h rather than typed out by hand so they cannot drift from
     what permutationForIndex actually decodes each index to. */
@@ -206,6 +219,18 @@ BitBitAlpineProcessor::BitBitAlpineProcessor()
     apvts.addParameterListener (id::dlyLeftTime, this);
     apvts.addParameterListener (id::dlyRightTime, this);
     apvts.addParameterListener (id::dlySync, this);
+
+    // The Advanced bands' ids are built, not constants, so their raw values are
+    // looked up once here rather than a string being made on the audio thread.
+    for (int b = 0; b < ee::dsp::eq::kAdvancedBands; ++b)
+    {
+        auto& band = eqBandParams[static_cast<size_t> (b)];
+        band.on = apvts.getRawParameterValue (eqBandId (b, id::eqBandOn));
+        band.type = apvts.getRawParameterValue (eqBandId (b, id::eqBandType));
+        band.freq = apvts.getRawParameterValue (eqBandId (b, id::eqBandFreq));
+        band.gain = apvts.getRawParameterValue (eqBandId (b, id::eqBandGain));
+        band.q = apvts.getRawParameterValue (eqBandId (b, id::eqBandQ));
+    }
 
     loadTapeNoiseSample();
 }
@@ -636,6 +661,54 @@ juce::AudioProcessorValueTreeState::ParameterLayout BitBitAlpineProcessor::creat
                                                              ee::dsp::comp::kDefaultAttackMs,
                                                              withText (compAttackToText)));
 
+    // The header's pre-EQ - see Params.h. Appended so every other parameter
+    // keeps its index. Everything defaults flat, and a flat band is not in the
+    // signal at all (ee::dsp::Equaliser), so a session from before it renders
+    // sample for sample as it did.
+    {
+        namespace eq = ee::dsp::eq;
+
+        layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::eqOn, 1 }, "EQ On", true));
+        layout.add (std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { id::eqMode, 1 }, "EQ Mode",
+                                                                  juce::StringArray { "Simple", "Advanced" }, 0));
+
+        const auto gainRange = juce::NormalisableRange<float> (-eq::kMaxGainDb, eq::kMaxGainDb, 0.1f);
+        for (const auto& [pid, name] : { std::pair { id::eqLow, "EQ Low" }, std::pair { id::eqMid, "EQ Mid" },
+                                         std::pair { id::eqHigh, "EQ High" } })
+            layout.add (std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { pid, 1 }, name, gainRange,
+                                                                     0.0f, withText (gainDbToText)));
+
+        juce::StringArray typeNames { "Low Cut 48", "Low Cut 12", "Low Shelf",   "Bell",
+                                      "Notch",      "High Shelf", "High Cut 12", "High Cut 48" };
+        jassert (typeNames.size() == eq::kNumTypes);
+
+        auto freqRange = juce::NormalisableRange<float> (eq::kMinHz, eq::kMaxHz);
+        freqRange.setSkewForCentre (eq::kHzSkewCentre);
+        auto qRange = juce::NormalisableRange<float> (eq::kMinQ, eq::kMaxQ, 0.01f);
+        qRange.setSkewForCentre (eq::kQSkewCentre);
+
+        for (int b = 0; b < eq::kAdvancedBands; ++b)
+        {
+            const auto& d = eq::kAdvancedDefaults[static_cast<size_t> (b)];
+            const auto name = "EQ " + juce::String (b + 1) + " ";
+
+            layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { eqBandId (b, id::eqBandOn), 1 },
+                                                                    name + "On", d.on));
+            layout.add (
+                std::make_unique<juce::AudioParameterChoice> (juce::ParameterID { eqBandId (b, id::eqBandType), 1 },
+                                                              name + "Type", typeNames, static_cast<int> (d.type)));
+            layout.add (
+                std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { eqBandId (b, id::eqBandFreq), 1 },
+                                                             name + "Freq", freqRange, d.hz, withText (hertzToText)));
+            layout.add (
+                std::make_unique<juce::AudioParameterFloat> (juce::ParameterID { eqBandId (b, id::eqBandGain), 1 },
+                                                             name + "Gain", gainRange, 0.0f, withText (gainDbToText)));
+            layout.add (std::make_unique<juce::AudioParameterFloat> (
+                juce::ParameterID { eqBandId (b, id::eqBandQ), 1 }, name + "Q", qRange,
+                ee::plugin::snapToRange (qRange, eq::kDefaultQ), withText (qToText)));
+        }
+    }
+
     layout.add (std::make_unique<juce::AudioParameterBool> (juce::ParameterID { id::artCompScFilter, 1 },
                                                             "Artifact Comp SC Filter", true));
 
@@ -800,6 +873,36 @@ void BitBitAlpineProcessor::pushSettings (double bpm) noexcept
                        raw (id::revSpaceHiCut), pct (id::revSpaceDamping));
     reverb.setStudio (raw (id::revStudioDecay), raw (id::revStudioPredelay), pct (id::revStudioDamping),
                       raw (id::revStudioLoCut), raw (id::revStudioHiCut), raw (id::revStudioSize));
+
+    // --------------------------------------------------------------------- eq
+    // One engine, both faces: bands 0..2 are Simple's, the rest Advanced's, and
+    // whichever face is not selected has every band off - which fades it out
+    // rather than cutting it (see ee::dsp::Equaliser).
+    {
+        namespace eq = ee::dsp::eq;
+        using Band = ee::dsp::Equaliser::BandSettings;
+
+        const bool eqOn = flag (id::eqOn);
+        const bool advanced = static_cast<int> (raw (id::eqMode)) == 1;
+        const bool simpleOn = eqOn && ! advanced;
+
+        equaliser.setBand (
+            0, Band { eq::FilterType::lowShelf, eq::kSimpleLowHz, raw (id::eqLow), eq::kSimpleShelfQ, simpleOn });
+        equaliser.setBand (1,
+                           Band { eq::FilterType::bell, eq::kSimpleMidHz, raw (id::eqMid), eq::kSimpleMidQ, simpleOn });
+        equaliser.setBand (
+            2, Band { eq::FilterType::highShelf, eq::kSimpleHighHz, raw (id::eqHigh), eq::kSimpleShelfQ, simpleOn });
+
+        for (int b = 0; b < eq::kAdvancedBands; ++b)
+        {
+            const auto& p = eqBandParams[static_cast<size_t> (b)];
+            const int type = juce::jlimit (0, eq::kNumTypes - 1, static_cast<int> (p.type->load()));
+
+            equaliser.setBand (kEqSimpleBands + b,
+                               Band { static_cast<eq::FilterType> (type), p.freq->load(), p.gain->load(), p.q->load(),
+                                      eqOn && advanced && p.on->load() > 0.5f });
+        }
+    }
     reverb.setSimple (pct (id::revSimpleAmount));
     reverb.setSpring (raw (id::revSpringDecay), pct (id::revSpringTension), raw (id::revSpringLoCut),
                       raw (id::revSpringHiCut));
@@ -823,6 +926,9 @@ void BitBitAlpineProcessor::prepareToPlay (double sampleRate, int maximumExpecte
     // prepareToPlay is one of the callbacks where the playhead is valid, so the
     // cache starts out holding the host's real tempo rather than 120.
     pushSettings (readPlayHeadBpm());
+
+    // After pushSettings: prepare lands every band on its target outright.
+    equaliser.prepare (sampleRate);
 
     delay.setFilterRestingPoints (kLoCutMinHz, kHiCutMaxHz);
 
@@ -952,6 +1058,11 @@ void BitBitAlpineProcessor::processBlock (juce::AudioBuffer<float>& buffer, juce
         for (int ch = 0; ch < numCh; ++ch)
             buffer.getWritePointer (ch)[i] *= g;
     }
+
+    // The header's pre-EQ, on what the whole chain is fed. After the tuner and
+    // the input meter, which read the instrument as it is played, and not on
+    // dryBuffer, so the global bypass is the untouched input still.
+    equaliser.process (buffer.getArrayOfWritePointers(), numCh, numSamples);
 
     // The Modulation module's two tempo-locked LFOs, kept on the host grid when
     // their Sync switches are on and the transport is rolling - see
@@ -1097,6 +1208,7 @@ BitBitAlpineProcessor::sanitizeOutput (juce::AudioBuffer<float>& buffer, int num
             // A run this long is not a transient - something has latched. Flush
             // every module's state and give the host one clear block rather
             // than a brickwalled roar.
+            equaliser.reset();
             artifact.reset();
             modulation.reset();
             delay.reset();

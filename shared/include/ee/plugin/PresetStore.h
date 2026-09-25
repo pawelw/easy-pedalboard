@@ -185,6 +185,12 @@ public:
         // same as a bare "level" (fromLastOccurrenceOf hands back the whole
         // string when there is no dot).
         const auto leaf = parameterID.fromLastOccurrenceOf (".", false, false);
+
+        // BitBit Alpine's pre-EQ fits the instrument to the pedal, the way the
+        // Input trim does - it is setup, not a sound to roll dice on.
+        if (parameterID.startsWith ("eq."))
+            return false;
+
         return leaf != "ingain" && leaf != "outgain" && leaf != "level"
             && leaf != "dry" && leaf != "grains" && leaf != "pmix" && leaf != "dmix" && leaf != "rmix";
     }

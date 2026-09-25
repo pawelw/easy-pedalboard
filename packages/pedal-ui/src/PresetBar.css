@@ -253,3 +253,14 @@
   border-radius: 8px;
   margin-left: 4px;
 }
+
+/* The pre-EQ is the third of the header's own controls, tight after the
+   theme switch the same way. */
+.pui-presetbar--joined > .pui-presetbar__eq {
+  margin-left: 2px;
+}
+
+.pui-presetbar--separated > .pui-presetbar__eq {
+  border-radius: 8px;
+  margin-left: 4px;
+}

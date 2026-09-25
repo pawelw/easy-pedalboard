@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import * as Juce from "juce-framework-frontend";
 import PresetBar from "./PresetBar.jsx";
 import TunerDialog from "./TunerDialog.jsx";
+import EqDialog from "./EqDialog.jsx";
 import { usePedalTheme, useSetPedalTheme } from "./Provider.jsx";
 
 // The six native functions ee/plugin/PresetBridge.h registers. Resolved once
@@ -123,10 +124,24 @@ function useTunerBridge() {
  * provider between its dark and light faces. Nothing native is involved and
  * nothing is remembered: it is a look, not a parameter, so it is not in the
  * state a host saves.
+ *
+ * `showEq` adds the pre-EQ button after it, and its dialog. Only for a pedal
+ * whose processor has the `eq.*` parameters (BitBit Alpine's - see its
+ * Params.h); the dialog binds them by id, so anywhere else it would draw a
+ * graph that moves nothing.
  */
-export default function JucePresetBar({ variant, showSteppers, showDice, showTuner = false, showThemeSwitch = false }) {
+export default function JucePresetBar({
+  variant,
+  showSteppers,
+  showDice,
+  showTuner = false,
+  showThemeSwitch = false,
+  showEq = false,
+}) {
   const { state, load, step, save, randomize } = usePresetBridge();
   const tuner = useTunerBridge();
+  const [eqOpen, setEqOpen] = useState(false);
+  const closeEq = useCallback(() => setEqOpen(false), []);
   const theme = usePedalTheme();
   const setTheme = useSetPedalTheme();
 
@@ -146,7 +161,9 @@ export default function JucePresetBar({ variant, showSteppers, showDice, showTun
         onRandomize={randomize}
         onTuner={showTuner ? tuner.show : undefined}
         onTheme={showThemeSwitch ? () => setTheme(theme === "onyx" ? "light" : "onyx") : undefined}
+        onEq={showEq ? () => setEqOpen(true) : undefined}
       />
+      {showEq && <EqDialog open={eqOpen} onClose={closeEq} />}
       {showTuner && (
         <TunerDialog
           open={tuner.open}

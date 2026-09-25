@@ -56,7 +56,7 @@
    the "click empty space to add a point" gesture. */
 .pg-lfo__midline,
 .pg-lfo__gridline {
-  stroke: #1b2529;
+  stroke: var(--pui-scope-grid);
   stroke-width: 1;
   pointer-events: none;
 }
@@ -100,7 +100,7 @@
    moving marker riding the curve rather than another editable point: no
    accent stroke, no hover state, no pointer events. */
 .pg-lfo__playhead {
-  fill: #ffffff;
+  fill: var(--pui-ink);
   opacity: 0.85;
 }
 

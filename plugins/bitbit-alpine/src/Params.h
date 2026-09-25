@@ -55,7 +55,7 @@ inline constexpr const char* artAmpMids = "art.amp.mids";
 inline constexpr const char* artAmpBit = "art.amp.bit";
 inline constexpr const char* artAmpTone = "art.amp.tone";
 inline constexpr const char* artCompSensitivity = "art.comp.sensitivity";
-inline constexpr const char* artCompAttack = "art.comp.attack"; // ms
+inline constexpr const char* artCompAttack = "art.comp.attack";     // ms
 inline constexpr const char* artCompScFilter = "art.comp.scfilter"; // sidechain high-pass on the detector
 
 // --------------------------------------------------------------- modulation
@@ -153,5 +153,23 @@ inline constexpr const char* revSimpleAmount = "rev.simple.amount";
 // A Lehmer-code index into the 24 permutations of the four modules - see
 // ChainOrder.h. Index 0 is Artifact, Modulation, Delay, Reverb: today's order.
 inline constexpr const char* chainOrder = "chain.order";
+
+// ----------------------------------------------------------------------- eq
+// The pre-EQ in the header: ee::dsp::Equaliser on the input, after the Input
+// trim and ahead of the whole chain. Two faces on one engine - Simple's three
+// fixed bands and Advanced's eight parametric ones - and eq.mode picks which
+// is in the signal. The Advanced bands are `eq.b1.` .. `eq.b8.` plus a leaf;
+// see eqBandId.
+inline constexpr const char* eqOn = "eq.on";
+inline constexpr const char* eqMode = "eq.mode"; // Simple / Advanced
+inline constexpr const char* eqLow = "eq.low";
+inline constexpr const char* eqMid = "eq.mid";
+inline constexpr const char* eqHigh = "eq.high";
+
+inline constexpr const char* eqBandOn = "on";
+inline constexpr const char* eqBandType = "type"; // ee::dsp::eq::FilterType, in its order
+inline constexpr const char* eqBandFreq = "freq";
+inline constexpr const char* eqBandGain = "gain";
+inline constexpr const char* eqBandQ = "q";
 
 } // namespace ee::alpine::id

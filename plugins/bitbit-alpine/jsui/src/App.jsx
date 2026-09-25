@@ -144,7 +144,7 @@ export default function App() {
         title="BitBit Alpine"
         subtitle="Artifact / Mod / Delay / Reverb machine"
         subtitlePlacement="below"
-        headerCenter={<JucePresetBar variant="separated" showTuner showThemeSwitch />}
+        headerCenter={<JucePresetBar variant="separated" showTuner showThemeSwitch showEq />}
         headerRight={<HostControls on={on} onToggle={setOn} />}
         className="pa-card"
       >
