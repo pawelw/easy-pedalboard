@@ -48,7 +48,7 @@ BitBitDelayWebEditor::BitBitDelayWebEditor (BitBitDelayProcessor& p)
       // more .withNativeFunction here is what keeps the next pedal's copy of
       // this line one line long.
       webView (ee::plugin::presetBridge (
-          juce::WebBrowserComponent::Options {}
+          resizeGrip.bridge (juce::WebBrowserComponent::Options {})
               .withNativeIntegrationEnabled()
               // WKWebView's own right-click context menu ("Reload" is
               // its only useful item here - there's no navigation
@@ -106,10 +106,6 @@ BitBitDelayWebEditor::BitBitDelayWebEditor (BitBitDelayProcessor& p)
 
                                            if (auto* c = getConstrainer())
                                                c->setFixedAspectRatio ((double)baseWidth / (double)baseHeight);
-
-                                           resizeGrip =
-                                               std::make_unique<ee::plugin::CornerResizer> (*this, *getConstrainer());
-                                           addAndMakeVisible (*resizeGrip);
                                        }
 
                                        setSize (width + panelWidth, height);
@@ -224,13 +220,6 @@ void BitBitDelayWebEditor::resized()
 #endif
 
     webView.setBounds (bounds);
-
-    if (resizeGrip != nullptr)
-    {
-        resizeGrip->setBounds (0, getHeight() - ee::plugin::CornerResizer::kSize, ee::plugin::CornerResizer::kSize,
-                               ee::plugin::CornerResizer::kSize);
-        resizeGrip->toFront (false);
-    }
 }
 
 std::optional<juce::WebBrowserComponent::Resource> BitBitDelayWebEditor::getResource (const juce::String& url)

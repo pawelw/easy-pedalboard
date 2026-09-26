@@ -83,7 +83,7 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
       // through, and where the page comes from.
       webView (ee::plugin::presetBridge (
           relays.apply (
-              withBuildStamp (juce::WebBrowserComponent::Options {})
+              resizeGrip.bridge (withBuildStamp (juce::WebBrowserComponent::Options {}))
                   .withNativeIntegrationEnabled()
                   // WKWebView's own right-click context menu has no dedicated
                   // JUCE option to turn off, so this suppresses it the ordinary
@@ -118,9 +118,6 @@ BitBitAlpineWebEditor::BitBitAlpineWebEditor (BitBitAlpineProcessor& p)
 
                               if (auto* c = getConstrainer())
                                   c->setFixedAspectRatio ((double)baseWidth / (double)baseHeight);
-
-                              resizeGrip = std::make_unique<ee::plugin::CornerResizer> (*this, *getConstrainer());
-                              addAndMakeVisible (*resizeGrip);
                           }
 #if EE_ALPINE_WATCHDOG
                           setSize (w + (watchdogPanel != nullptr ? AlpineWatchdogPanel::preferredWidth : 0), h);
@@ -357,13 +354,6 @@ void BitBitAlpineWebEditor::resized()
 #endif
     {
         webView.setBounds (getLocalBounds());
-    }
-
-    if (resizeGrip != nullptr)
-    {
-        resizeGrip->setBounds (0, getHeight() - ee::plugin::CornerResizer::kSize, ee::plugin::CornerResizer::kSize,
-                                ee::plugin::CornerResizer::kSize);
-        resizeGrip->toFront (false);
     }
 }
 
