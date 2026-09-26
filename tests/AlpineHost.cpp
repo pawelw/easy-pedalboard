@@ -294,6 +294,194 @@ void checkChainOrderRoundTrip()
                == std::array<int, kNumModules> { moduleArtifact, moduleModulation, moduleDelay, moduleReverb },
            "index 0 is Artifact, Modulation, Delay, Reverb - today's fixed order");
 }
+/** Reordering the chain while it plays must not click. chain.order is a drag
+    in the face and an automation lane in a host, and either can land while the
+    delay and the reverb are ringing - where swapping who feeds whom from one
+    sample to the next is a step in the output as large as the difference
+    between the two orders' signals.
+
+    A sine rather than the test signal, because what gives a click away is the
+    curvature of the output, and the test signal's own transients would hide
+    one. Measured as the largest second difference around the switch against
+    the largest over a stretch of steady playing before it. */
+void checkChainReorderIsSmooth()
+{
+    using namespace ee::alpine::chainOrder;
+
+    constexpr int kBlock = 512;
+    constexpr int kSwitchAt = kBlock * 188; // ~2 s, on a block boundary
+    const int reversedIndex = indexForPermutation ({ moduleReverb, moduleDelay, moduleModulation, moduleArtifact });
+
+    BitBitAlpineProcessor processor;
+    {
+        using namespace ee::alpine::id;
+        setFlag (processor.apvts, artOn, false);
+        setChoice (processor.apvts, modEngine, ee::fx::ModulationModule::Chorus);
+        setPercent (processor.apvts, modMix, 50.0f);
+        setPercent (processor.apvts, dlyMix, 50.0f);
+        setPercent (processor.apvts, dlyFeedback, 50.0f);
+        setPercent (processor.apvts, revMix, 50.0f);
+    }
+
+    FakePlayHead playHead { 120.0, kSampleRate };
+    processor.setPlayHead (&playHead);
+    processor.setPlayConfigDetails (2, 2, kSampleRate, 1024);
+    processor.prepareToPlay (kSampleRate, 1024);
+
+    juce::AudioBuffer<float> out (2, kLength);
+    for (int i = 0; i < kLength; ++i)
+    {
+        const float x = 0.3f * std::sin (juce::MathConstants<float>::twoPi * 220.0f * static_cast<float> (i) / static_cast<float> (kSampleRate));
+        out.setSample (0, i, x);
+        out.setSample (1, i, x);
+    }
+
+    juce::MidiBuffer midi;
+    for (int offset = 0; offset < kLength;)
+    {
+        // The switch lands on a block boundary, the way a host delivers a
+        // parameter change.
+        const int chunk = juce::jmin (kBlock, kLength - offset);
+
+        if (offset == kSwitchAt)
+            setChoice (processor.apvts, ee::alpine::id::chainOrder, reversedIndex);
+
+        juce::AudioBuffer<float> slice (out.getArrayOfWritePointers(), 2, offset, chunk);
+        processor.processBlock (slice, midi);
+
+        playHead.advance (chunk);
+        offset += chunk;
+    }
+    processor.setPlayHead (nullptr);
+
+    const auto worstCurvature = [&out] (int from, int to)
+    {
+        float worst = 0.0f;
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = juce::jmax (2, from); i < to; ++i)
+                worst = juce::jmax (worst, std::abs (out.getSample (ch, i) - 2.0f * out.getSample (ch, i - 1)
+                                                     + out.getSample (ch, i - 2)));
+        return worst;
+    };
+
+    const float steady = worstCurvature (static_cast<int> (kSampleRate * 1.0), kSwitchAt);
+    // To the end of the render, not just the moment of the swap: the delay's
+    // repeats and the chorus play back whatever went into them at the swap.
+    const float around = worstCurvature (kSwitchAt - 64, kLength);
+
+    std::printf ("Chain reorder mid-play:\n  steady %.5f  around the switch %.5f\n", steady, around);
+    check (allFinite (out), "reordering mid-play is finite");
+    check (around < 3.0f * steady, "...and does not click - the swap is faded, not stepped");
+}
+
+/** A module that is off stops running (MultiEngineModule::sleep,
+    DelayModule::sleep) and has to come back when it is switched on again - with
+    its wet side, and without a click. The Delay only sleeps once its trails
+    have been quiet for longer than its longest line, so it is left off for
+    long enough to get there before it is switched back on.
+
+    The same sine and the same curvature measure as the reorder check, against
+    a second render in which the modules never come back: after the last
+    switch-on the two must differ, or a module stayed asleep. */
+void checkModulesSleepAndWake()
+{
+    constexpr int kBlock = 512;
+    const int length = static_cast<int> (kSampleRate * 12.0);
+    const auto at = [] (double seconds) { return kBlock * static_cast<int> (seconds * kSampleRate / kBlock); };
+
+    struct Toggle
+    {
+        int sample;
+        const char* id;
+        bool on;
+    };
+
+    const auto renderWith = [length] (std::initializer_list<Toggle> toggles)
+    {
+        BitBitAlpineProcessor processor;
+        {
+            using namespace ee::alpine::id;
+            setFlag (processor.apvts, artOn, false);
+            setChoice (processor.apvts, modEngine, ee::fx::ModulationModule::Chorus);
+            setPercent (processor.apvts, modMix, 50.0f);
+            setPercent (processor.apvts, dlyMix, 50.0f);
+            setPercent (processor.apvts, dlyFeedback, 30.0f);
+            setPercent (processor.apvts, revMix, 40.0f);
+        }
+
+        FakePlayHead playHead { 120.0, kSampleRate };
+        processor.setPlayHead (&playHead);
+        processor.setPlayConfigDetails (2, 2, kSampleRate, kBlock);
+        processor.prepareToPlay (kSampleRate, kBlock);
+
+        juce::AudioBuffer<float> out (2, length);
+        for (int i = 0; i < length; ++i)
+        {
+            const float x = 0.3f * std::sin (juce::MathConstants<float>::twoPi * 220.0f * static_cast<float> (i)
+                                             / static_cast<float> (kSampleRate));
+            out.setSample (0, i, x);
+            out.setSample (1, i, x);
+        }
+
+        juce::MidiBuffer midi;
+        for (int offset = 0; offset < length; offset += kBlock)
+        {
+            for (const auto& t : toggles)
+                if (t.sample == offset)
+                    setFlag (processor.apvts, t.id, t.on);
+
+            juce::AudioBuffer<float> slice (out.getArrayOfWritePointers(), 2, offset, juce::jmin (kBlock, length - offset));
+            processor.processBlock (slice, midi);
+            playHead.advance (kBlock);
+        }
+
+        processor.setPlayHead (nullptr);
+        return out;
+    };
+
+    using namespace ee::alpine::id;
+    const Toggle dlyOff { at (0.5), dlyOn, false }, modOff { at (1.0), modOn, false }, revOff { at (3.0), revOn, false };
+    const Toggle modBack { at (2.0), modOn, true }, revBack { at (4.0), revOn, true }, dlyBack { at (11.0), dlyOn, true };
+
+    const auto woken = renderWith ({ dlyOff, modOff, modBack, revOff, revBack, dlyBack });
+
+    // One reference per module: everything the same except that module never
+    // comes back, so a difference in its window is that module and no other.
+    const auto noMod = renderWith ({ dlyOff, modOff, revOff, revBack, dlyBack });
+    const auto noRev = renderWith ({ dlyOff, modOff, modBack, revOff, dlyBack });
+    const auto noDly = renderWith ({ dlyOff, modOff, modBack, revOff, revBack });
+
+    const auto worstCurvature = [] (const juce::AudioBuffer<float>& b, int from, int to)
+    {
+        float worst = 0.0f;
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = juce::jmax (2, from); i < to; ++i)
+                worst = juce::jmax (worst, std::abs (b.getSample (ch, i) - 2.0f * b.getSample (ch, i - 1)
+                                                     + b.getSample (ch, i - 2)));
+        return worst;
+    };
+
+    const auto difference = [&woken] (const juce::AudioBuffer<float>& other, int from, int to)
+    {
+        float worst = 0.0f;
+        for (int ch = 0; ch < 2; ++ch)
+            for (int i = from; i < to; ++i)
+                worst = juce::jmax (worst, std::abs (woken.getSample (ch, i) - other.getSample (ch, i)));
+        return worst;
+    };
+
+    const float steady = worstCurvature (woken, at (0.2), at (0.5));
+    const float after = worstCurvature (woken, at (0.5), length);
+
+    std::printf ("Modules off and back on mid-play:\n  steady %.5f  across the toggles %.5f\n", steady, after);
+    check (allFinite (woken), "switching modules off and on mid-play is finite");
+    check (after < 3.0f * steady, "...and never clicks, going to sleep or waking");
+    check (difference (noMod, at (2.3), at (3.0)) > 0.01f, "...Modulation comes back after sleeping");
+    check (difference (noRev, at (4.3), at (11.0)) > 0.01f, "...so does Reverb");
+    check (difference (noDly, at (11.5), length) > 0.01f,
+           "...and so does the Delay, switched on long after its trails ran out");
+}
+
 /** The pre-EQ is machine-wide (GlobalEq): one instance's change is on disk and
     in the next instance, and neither a session nor a preset carries it in.
     Against a scratch file, so this never reads or writes the user's own. */
@@ -353,6 +541,12 @@ int main (int argc, char* argv[])
     std::printf ("\n");
 
     checkChainOrderRoundTrip();
+    std::printf ("\n");
+
+    checkChainReorderIsSmooth();
+    std::printf ("\n");
+
+    checkModulesSleepAndWake();
     std::printf ("\n");
 
     checkGlobalEq();

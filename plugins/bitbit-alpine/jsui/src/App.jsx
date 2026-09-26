@@ -92,7 +92,7 @@ const MODULE_RENDERERS = {
 };
 
 /**
- * BitBit Alpine: three effect modules under one chrome.
+ * BitBit Alpine: four effect modules under one chrome.
  *
  * The Delay module is not a re-drawing of BitBit Delay - it is BitBit Delay's own
  * face, the same `DelayFace` component that pedal renders, bound through a

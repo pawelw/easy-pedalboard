@@ -39,12 +39,12 @@
 /**
  * BitBit Alpine: four effect modules under one chrome.
  *
- * Artifact (Ring Mod / Bit Crush / Filter / Rust / Amp - `ee::fx::ArtifactModule`,
- * which is what BitBit Artifact runs), then Modulation (Tape / Tremolo / Chorus / Phaser),
- * then Delay - which is BitBit Delay's entire chain, the same `ee::fx::DelayModule`
- * that pedal runs - then Reverb (Spring / Shimmer / Studio). Every engine in here is the
- * engine its own pedal uses, so nothing can drift from the pedal it came from
- * and a fix lands in both.
+ * Artifact (Ring Mod / Bit Crush / Rust / Drive / Comp - `ee::fx::ArtifactModule`,
+ * which is what BitBit Artifact runs), then Modulation (Tape / Tremolo / Chorus /
+ * Phaser / Filter), then Delay - which is BitBit Delay's entire chain, the same
+ * `ee::fx::DelayModule` that pedal runs - then Reverb (Spring / Shimmer / Studio /
+ * Simple). Every engine in here is the engine its own pedal uses, so nothing can
+ * drift from the pedal it came from and a fix lands in both.
  *
  * Which runs first, second, third, fourth is `chain.order`, a Lehmer-coded
  * index into the 24 permutations of the four (see ChainOrder.h). Index 0 - its
@@ -52,7 +52,7 @@
  * so a session or preset that predates this parameter plays back unchanged.
  *
  * This class is parameters and plumbing. It owns no DSP of its own: what it
- * does is read the knobs, turn them into the real units the three modules take,
+ * does is read the knobs, turn them into the real units the four modules take,
  * and wrap the lot in a global bypass.
  */
 class BitBitAlpineProcessor : public juce::AudioProcessor, private juce::AudioProcessorValueTreeState::Listener
@@ -192,7 +192,7 @@ public:
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();
 
-    /** Every setting the three modules take, in real units, read off the
+    /** Every setting the four modules take, in real units, read off the
         parameters. One place rather than two: prepareToPlay and processBlock
         both need the whole set, and a control pushed from only one of them
         would be wrong until the next block. */
@@ -206,6 +206,26 @@ private:
         cannot catch the first bad block before it is heard, but it stops the
         sustained roar that follows. */
     SafetyVerdict sanitizeOutput (juce::AudioBuffer<float>& buffer, int numCh, int numSamples) noexcept;
+
+    /** The four modules, in place, in activeChainOrder. `dip`, when there is
+        one, is a per-sample gain put on every module's input and on the chain's
+        output - see runChainWithReorderFade. */
+    void runChain (juce::AudioBuffer<float>& block, int numCh, int numSamples, const float* dip) noexcept;
+
+    /** runChain, with a change of chain.order faded rather than stepped. The
+        modules carry one set of state each, so two orders cannot run side by
+        side and be crossfaded; instead the chain dips to silence over
+        kChainFadeSeconds, the order swaps at the bottom, and it comes back up.
+        Swapping on the spot put a step in the output as big as the difference
+        between the two orders - a click on every drag of a module, and on every
+        change of an automated chain.order. The global bypass's dry path is not
+        in the dip.
+
+        The dip is on every module's input, not only the output: a module's
+        input changes source at the swap too, and a delay line records that
+        step and plays it back later - the chorus ~10 ms on, after an
+        output-only dip had already come back up. */
+    void runChainWithReorderFade (juce::AudioBuffer<float>& buffer, int numCh, int numSamples) noexcept;
 
     bool tunerMuted() const noexcept { return tuner.isActive() && tunerMute.load (std::memory_order_relaxed); }
 
@@ -283,7 +303,7 @@ private:
 
     static constexpr int kMaxChannels = 2;
 
-    /** The host trims, and the global bypass. All three sit outside the three
+    /** The host trims, and the global bypass. All three sit outside the four
         modules and inside nothing, so a bypassed plugin is unity whatever the
         trims say - see processBlock. */
     juce::SmoothedValue<float> inGain;
@@ -308,6 +328,18 @@ private:
         something upstream has broken. Legit resonance and feedback peaks stay
         well under it. */
     static constexpr float kSafetyCeiling = 4.0f;
+
+    /** Each half of a reorder's dip - see runChainWithReorderFade. Long enough
+        not to click, short enough that the gap reads as the chain changing
+        rather than as a dropout. */
+    static constexpr double kChainFadeSeconds = 0.008;
+
+    int activeChainOrder = 0;  // the order the audio is actually running
+    int chainFadeLength = 384; // kChainFadeSeconds in samples, set in prepareToPlay
+    int chainFadeLeft = 0;     // samples left in the current half; 0 = at rest
+    bool chainFadingIn = false;
+    bool chainOrderPrimed = false; // false until the first block after prepare
+    std::vector<float> chainDip;   // one half's gain curve, chainFadeLength long
 
     /** Consecutive sanitised blocks before sanitizeOutput resets the modules.
         Set from the sample rate and block size in prepareToPlay to roughly

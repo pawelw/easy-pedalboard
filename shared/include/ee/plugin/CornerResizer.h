@@ -1,88 +1,117 @@
 #pragma once
 
-#include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+#include <juce_gui_extra/juce_gui_extra.h>
 
 namespace ee::plugin
 {
 
-/** The corner grip every resizable WebView face shows, bottom-left rather
-    than JUCE's own bottom-right default - it reads as part of the face
-    itself, in the corner nearest the header's own brand mark, rather than a
-    DAW-chrome afterthought bolted onto whichever corner the framework
-    happens to default to.
+/** The native half of the bottom-left resize grip every resizable WebView face
+    shows. The grip itself is drawn by the page (`installResizableFace` in
+    `@synthpeak/pedal-ui/juce`); this is what it drives.
 
-    juce::ResizableCornerComponent has no bottom-left mode to ask for: it is
-    built around growing the component from a fixed top-left, i.e. dragging
-    moves the bottom-right point and nothing else does. This is that same
-    idea mirrored - dragging moves the *left* edge and the *bottom* edge,
-    while the top and right stay where they are, so the top-right corner is
-    what holds still under a drag (the same feel a bottom-right grip gives,
-    just the other way round). It otherwise leans on the same
-    ComponentBoundsConstrainer every editor already sets up for its aspect
-    ratio and zoom range, via the same setBoundsForComponent() JUCE's own
-    corner resizer calls - only the isStretchingLeft/isStretchingBottom flags
-    differ. */
-class CornerResizer : public juce::Component
+    It used to be a juce::Component laid over the corner, and nobody could ever
+    see it or grab it: the WebView is a native view (WKWebView, WebView2), and a
+    native view sits on top of everything JUCE paints into the same window, so
+    a JUCE component "in front of" it is behind it on screen. The page is the
+    only thing that can draw over the page.
+
+    So the page owns the pointer and reports the drag here as a distance from
+    where it started, in screen pixels - which stays true while the window
+    changes size under the pointer, where page coordinates would not. This
+    applies it through the ComponentBoundsConstrainer every editor already sets
+    up for its zoom range and fixed aspect ratio, so a drag can never leave
+    them.
+
+    Bottom-left, and dragging it left or down makes the face bigger - but only
+    the size changes, never the editor's position. A plugin cannot move its
+    host's window, and an editor pushed off (0, 0) inside it is clipped by some
+    hosts' wrappers, so the window grows from its top-left like any other
+    plugin window does and the grip reads the drag as "this much bigger".
+
+    Wiring, in an editor: a member declared before the WebView -
+
+        ee::plugin::CornerResizer resizeGrip { *this };
+
+    - and its options passed through `resizeGrip.bridge (...)`. Nothing to lay
+    out in `resized()`. It does nothing until the editor has been made
+    resizable, which the faces do on their first size report. */
+class CornerResizer
 {
 public:
-    static constexpr int kSize = 18;
+    explicit CornerResizer (juce::AudioProcessorEditor& editorToResize) : editor (editorToResize) {}
 
-    CornerResizer (juce::Component& componentToResize, juce::ComponentBoundsConstrainer& boundsConstrainer)
-        : target (componentToResize), constrainer (boundsConstrainer)
+    /** `options` plus the three native functions the page's grip calls. */
+    juce::WebBrowserComponent::Options bridge (juce::WebBrowserComponent::Options options)
     {
-        setRepaintsOnMouseActivity (true);
-        setMouseCursor (juce::MouseCursor::BottomLeftCornerResizeCursor);
+        using Completion = juce::WebBrowserComponent::NativeFunctionCompletion;
+
+        return options
+            .withNativeFunction ("cornerResizeStart",
+                                 [this] (const juce::Array<juce::var>&, Completion complete)
+                                 {
+                                     start();
+                                     complete (true);
+                                 })
+            .withNativeFunction ("cornerResizeDrag",
+                                 [this] (const juce::Array<juce::var>& args, Completion complete)
+                                 {
+                                     if (args.size() >= 2)
+                                         drag (juce::roundToInt (static_cast<double> (args[0])),
+                                               juce::roundToInt (static_cast<double> (args[1])));
+                                     complete (true);
+                                 })
+            .withNativeFunction ("cornerResizeEnd",
+                                 [this] (const juce::Array<juce::var>&, Completion complete)
+                                 {
+                                     end();
+                                     complete (true);
+                                 });
     }
-
-    void paint (juce::Graphics& g) override
-    {
-        // Two parallel strokes at 45deg, the ordinary two-line "drag to
-        // resize" glyph - "/" rather than the bottom-right grip's stock "\",
-        // since this corner's diagonal runs the other way. Brighter while
-        // the pointer is over it or dragging, the same on/hover language
-        // PowerToggle-style chrome elsewhere in these faces uses.
-        const auto b = getLocalBounds().toFloat();
-        const float alpha = isMouseOverOrDragging() ? 0.85f : 0.45f;
-        g.setColour (juce::Colours::white.withAlpha (alpha));
-
-        const float thickness = 1.6f;
-        const float margin = 3.0f;
-        // Long stroke corner-to-corner, short one set in a few pixels toward
-        // the centre - the same two-stroke spacing every OS's own resize
-        // glyph uses, just drawn by hand rather than reached for a bitmap.
-        g.drawLine (margin, b.getBottom() - margin, b.getRight() - margin, margin, thickness);
-        g.drawLine (margin, b.getBottom() - margin * 3.2f, b.getRight() - margin * 3.2f, margin, thickness);
-    }
-
-    void mouseDown (const juce::MouseEvent&) override
-    {
-        originalBounds = target.getBounds();
-        constrainer.resizeStart();
-    }
-
-    void mouseDrag (const juce::MouseEvent& e) override
-    {
-        // Mirrored ResizableCornerComponent::mouseDrag: the left edge follows
-        // the drag (x, and width the opposite way) while the top and right
-        // stay put, and the bottom edge follows it exactly as it would for a
-        // bottom-right grip.
-        const int dx = e.getDistanceFromDragStartX();
-        const int dy = e.getDistanceFromDragStartY();
-
-        const juce::Rectangle<int> proposed (originalBounds.getX() + dx,
-                                              originalBounds.getY(),
-                                              originalBounds.getWidth() - dx,
-                                              originalBounds.getHeight() + dy);
-
-        constrainer.setBoundsForComponent (&target, proposed, false, true, true, false);
-    }
-
-    void mouseUp (const juce::MouseEvent&) override { constrainer.resizeEnd(); }
 
 private:
-    juce::Component& target;
-    juce::ComponentBoundsConstrainer& constrainer;
-    juce::Rectangle<int> originalBounds;
+    void start()
+    {
+        auto* constrainer = editor.getConstrainer();
+        if (constrainer == nullptr || ! editor.isResizable())
+            return;
+
+        startBounds = editor.getBounds();
+        dragging = true;
+        constrainer->resizeStart();
+    }
+
+    /** `dx`, `dy`: how far the pointer has moved since the drag began. Left
+        (negative dx) widens, down (positive dy) deepens - the corner is being
+        pulled away from the top-right. */
+    void drag (int dx, int dy)
+    {
+        auto* constrainer = editor.getConstrainer();
+        if (! dragging || constrainer == nullptr)
+            return;
+
+        const juce::Rectangle<int> proposed (startBounds.getX(), startBounds.getY(), startBounds.getWidth() - dx,
+                                             startBounds.getHeight() + dy);
+
+        // Constrained as a bottom-right stretch, because that is what the
+        // window actually does - see the class note.
+        constrainer->setBoundsForComponent (&editor, proposed, false, false, true, true);
+    }
+
+    void end()
+    {
+        if (! dragging)
+            return;
+
+        dragging = false;
+
+        if (auto* constrainer = editor.getConstrainer())
+            constrainer->resizeEnd();
+    }
+
+    juce::AudioProcessorEditor& editor;
+    juce::Rectangle<int> startBounds;
+    bool dragging = false;
 };
 
 } // namespace ee::plugin

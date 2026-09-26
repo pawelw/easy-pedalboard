@@ -1,0 +1,95 @@
+{
+  "_readme": [
+    "What ee_face_shots_<Target> photographs - see tests/FaceShots.cpp and scripts/face-shots.sh.",
+    "Keyed by CMake target. Per product:",
+    "  file       output name stem: <file>-<shot>-<theme>.png",
+    "  preset     a factory preset to load first (optional)",
+    "  set        parameter id -> value, applied after the preset: a number in the parameter's own units",
+    "             (a choice's index), true/false, or a choice name / the parameter's own text",
+    "  shots      each taken once per theme (dark, light):",
+    "               name       the <shot> in the file name",
+    "               click      CSS selectors clicked in order, before the shot",
+    "               clickText  buttons clicked by their visible text",
+    "               tunerHz    play one held note at this pitch instead of the arpeggio",
+    "               wait       ms to let meters and animations settle (default 1200)",
+    "               isolate    suffix -> selector: an extra PNG of just that element",
+    "Any float knob still at its default or at either end after this is turned to a position",
+    "seeded from its id, so nothing is caught at rest and a rerun is identical. Pin it in `set`",
+    "to keep a value."
+  ],
+
+  "BitBitAlpine": {
+    "file": "alpine",
+    "set": {
+      "eq.on": true,
+      "eq.mode": "Advanced",
+      "eq.b1.on": true, "eq.b1.type": "Low Cut 12", "eq.b1.freq": 60,
+      "eq.b2.on": true, "eq.b2.type": "Low Shelf", "eq.b2.freq": 140, "eq.b2.gain": -1.5,
+      "eq.b3.on": true, "eq.b3.type": "Bell", "eq.b3.freq": 380, "eq.b3.gain": -2.0, "eq.b3.q": 1.1,
+      "eq.b4.on": true, "eq.b4.type": "Bell", "eq.b4.freq": 900, "eq.b4.gain": 1.0, "eq.b4.q": 0.9,
+      "eq.b5.on": true, "eq.b5.type": "Bell", "eq.b5.freq": 2200, "eq.b5.gain": 2.0, "eq.b5.q": 0.8,
+      "eq.b6.on": true, "eq.b6.type": "Bell", "eq.b6.freq": 4200, "eq.b6.gain": -1.0, "eq.b6.q": 1.4,
+      "eq.b7.on": true, "eq.b7.type": "High Shelf", "eq.b7.freq": 8000, "eq.b7.gain": 1.5,
+      "eq.b8.on": false
+    },
+    "shots": [
+      { "name": "main" },
+      {
+        "name": "tuner",
+        "click": ["[aria-label='Tuner']"],
+        "tunerHz": 110.19,
+        "wait": 2500,
+        "isolate": { "dialog": ".pui-tuner__box" }
+      },
+      {
+        "name": "eq",
+        "click": ["[aria-label='Pre EQ']"],
+        "wait": 2500,
+        "isolate": { "dialog": ".pui-eq__box" }
+      }
+    ]
+  },
+
+  "BitBitGrain": {
+    "file": "grains",
+    "preset": "Wet 1",
+    "set": { "lfoon": true, "delon": true },
+    "lfoPoints": [
+      { "x": 0.0, "y": -0.8, "curve": 0.4, "hold": false },
+      { "x": 0.18, "y": 0.9, "curve": -0.3, "hold": false },
+      { "x": 0.4, "y": 0.25, "curve": 0.0, "hold": true },
+      { "x": 0.58, "y": 0.6, "curve": 0.5, "hold": false },
+      { "x": 0.8, "y": -0.55, "curve": -0.4, "hold": false }
+    ],
+    "lfoRouting": [
+      { "paramId": "size", "depth": 0.35 },
+      { "paramId": "scatter", "depth": 0.5 },
+      { "paramId": "filter", "depth": -0.25 }
+    ],
+    "shots": [
+      { "name": "effects", "clickText": ["Effects"] },
+      { "name": "mod", "clickText": ["Mod"] }
+    ]
+  },
+
+  "BitBitArtifact": {
+    "file": "artifact",
+    "shots": [{ "name": "main" }]
+  },
+
+  "BitBitModulation": {
+    "file": "modulation",
+    "shots": [{ "name": "main" }]
+  },
+
+  "BitBitDelay": {
+    "file": "delay",
+    "preset": "Tape Wash",
+    "shots": [{ "name": "main" }]
+  },
+
+  "BitBitReverb": {
+    "file": "reverb",
+    "shots": [{ "name": "main" }]
+  }
+}

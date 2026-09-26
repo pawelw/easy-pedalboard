@@ -197,6 +197,7 @@ option(EE_JSUI_DEV_SERVER "Point the WebView faces at their Vite dev server inst
 option(EE_PRESET_AUTHOR "Add the face's \"save into the shipped bank\" button, which writes to a pedal's presets/ source folder (development only)" OFF)
 option(EE_GRAIN_TUNER "Add the grain tuning panel to BitBit Grain (development only)" OFF)
 option(EE_GRAIN_TRACE "Log BitBit Grain's in/out levels when its output runs away (development only)" OFF)
+option(EE_BUILD_STAMP "Show the native build's compile time in a corner of the faces that wire it up, to tell a rebuilt plugin from a stale one (development only; on in the dev and fast presets)" OFF)
 
 include(cmake/AddBitBitPlugin.cmake)
 

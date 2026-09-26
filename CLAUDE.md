@@ -56,6 +56,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_module_stress_artefacts/Release/ee_module_stress    # BitBit Alpine's switchable modules
 ./build/tests/ee_bit_check_artefacts/Release/ee_bit_check [outDir] [dry.wav]  # Amp's Bit calibration and Drive's dB
 ./build/tests/ee_alpine_host_artefacts/Release/ee_alpine_host        # drives the real BitBit Alpine processor
+./build/tests/ee_alpine_bench_artefacts/Release/ee_alpine_bench [--seconds N] [--repeats N]  # Alpine's CPU per patch, % of one core - timing, not in the baselines
 ./build/tests/ee_modulation_host_artefacts/Release/ee_modulation_host  # the real BitBit Modulation, checksum per engine
 ./build/tests/ee_reverb_host_artefacts/Release/ee_reverb_host      # the real BitBit Reverb, all three engines
 ./build/tests/ee_spring_match_artefacts/Release/ee_spring_match in.wav out.wav 3.58 26  # A/B renderer
@@ -76,6 +77,7 @@ means "something you changed". The individual binaries, if you want one directly
 ./build/tests/ee_preset_fuzz_BitBitDelay_artefacts/Release/ee_preset_fuzz_BitBitDelay [--seed N] [--iterations N]  # hostile state/preset input, one per product
 ./build/tests/ee_soak_BitBitDelay_artefacts/Release/ee_soak_BitBitDelay [--hours 8] [--instances 32] [--editor-cycles]  # the overnight harness (release-plan.md 1.5), one per product - not in dev-check.sh
 ./build/tests/ee_latency_audit_BitBitDelay_artefacts/Release/ee_latency_audit_BitBitDelay [--rate HZ] [--verbose]  # does the dry path land on getLatencySamples(), every rate, every discrete state, host bypass (G5.3), one per product
+./build-fast/tests/ee_face_shots_BitBitDelay_artefacts/Release/ee_face_shots_BitBitDelay [--out dir] [--scale N] [--themes dark,light] [--only shot]  # the website's transparent PNGs, one per product - use scripts/face-shots.sh
 ```
 
 **`tests/baselines/<platform>/*.txt` are the frozen regression checksums** -
@@ -142,6 +144,11 @@ Factory**, which writes the preset into the pedal's own `presets/` folder in the
 source tree for committing. Off by default and refused by the bridge in a normal
 build; never ship one.
 
+`EE_BUILD_STAMP` (on in the `dev` and `fast` presets, off otherwise and in
+`release`) puts the native build's compile time in a corner of BitBit Alpine's
+face, to tell a rebuilt plugin from a stale one still loaded in a host. An
+existing `build/` picks it up when reconfigured with `cmake --preset dev`.
+
 Two pedals carry a development side panel that drives the part of their
 voicing that is not on the face, and prints the header lines for whatever you
 dial in: `-DEE_TAPE_TUNER=ON` (BitBit Delay), `-DEE_GRAIN_TUNER=ON` (BitBit Grain).
@@ -196,6 +203,20 @@ That is what an *additive* change needs - the pedal battery can only show the
 pedal did not move, which for a control it never calls is true by accident. The
 engine section asserts the harder thing: that setting the new controls to their
 documented defaults is bit-identical to never setting them at all.
+
+**The website's screenshots are `scripts/face-shots.sh [outDir]`** (default
+`build-fast/face-shots/`): it rebuilds the six products' `jsui/dist`, builds
+`ee_face_shots_<Target>` and runs each, for 22 PNGs with transparent
+backgrounds, dark and light. It is not `ee_ui_snapshot` - a WKWebView does not
+paint through `juce::Graphics` - but the real editor in a real window with
+audio running through it from a second thread, snapshotted by WebKit, so every
+value, the tuner reading, the EQ's spectrum and the scopes are the processor's
+own. Windows open on screen while it runs. What each product shows (preset,
+pinned knobs, which dialogs and tabs, the tuner's note) is
+`scripts/face-shots.json`, re-read on every run; a knob still at its default or
+at either end is turned to a position seeded from its id, so reruns match. A
+shot crops to `.pui-card` plus 64 px for the dark theme's shadow, not to the
+alpha, so a product's dark and light PNGs share dimensions. macOS only.
 
 The last two binaries above are diagnostic tools rather than pass/fail suites,
 for the class of bug that only appears in a host. `ee_grain_host` instantiates

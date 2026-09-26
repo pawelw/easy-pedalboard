@@ -22,6 +22,19 @@ Latency ledger (dry path, every Mix at 0):
   ok    ...and indexForPermutation is its exact inverse
   ok    index 0 is Artifact, Modulation, Delay, Reverb - today's fixed order
 
+Chain reorder mid-play:
+  steady 0.00070  around the switch 0.00102
+  ok    reordering mid-play is finite
+  ok    ...and does not click - the swap is faded, not stepped
+
+Modules off and back on mid-play:
+  steady 0.00448  across the toggles 0.00126
+  ok    switching modules off and on mid-play is finite
+  ok    ...and never clicks, going to sleep or waking
+  ok    ...Modulation comes back after sleeping
+  ok    ...so does Reverb
+  ok    ...and so does the Delay, switched on long after its trails ran out
+
   ok    pre-EQ: a new instance opens on the EQ the last one left on disk
   ok    ...a session's own EQ does not replace it
   ok    ...while the rest of the session loads
@@ -47,18 +60,23 @@ Engines:
   ok    mod 0 / rev 0  64a5f3c76892cdfa  peak 0.435238  rms 0.159362
   ok    mod 0 / rev 1  f5769ffa508a2c43  peak 0.634406  rms 0.207135
   ok    mod 0 / rev 2  b4b6caa000078bf0  peak 0.918950  rms 0.284879
+  ok    mod 0 / rev 3  def740c1177f6515  peak 0.812578  rms 0.277043
   ok    mod 1 / rev 0  a081fb55a32c860a  peak 1.702417  rms 0.431376
   ok    mod 1 / rev 1  54e6d8b6319d7e04  peak 2.389758  rms 0.617608
   ok    mod 1 / rev 2  437d3e767ac06c50  peak 2.761564  rms 0.834191
+  ok    mod 1 / rev 3  70409224f75d84db  peak 2.361598  rms 0.769860
   ok    mod 2 / rev 0  ec61481399b61f34  peak 0.733249  rms 0.174701
   ok    mod 2 / rev 1  7c6c2de8446826a2  peak 0.944466  rms 0.226394
   ok    mod 2 / rev 2  a866fe4afe326654  peak 1.244108  rms 0.343295
+  ok    mod 2 / rev 3  f12f96d4aeaf9412  peak 1.142656  rms 0.322085
   ok    mod 3 / rev 0  72d2d5f5f332a2be  peak 1.049753  rms 0.304091
   ok    mod 3 / rev 1  e7e7fb874b74335e  peak 1.561409  rms 0.461477
   ok    mod 3 / rev 2  18613d2f55a0dc1d  peak 1.931442  rms 0.580793
+  ok    mod 3 / rev 3  d379bfd823003033  peak 1.637541  rms 0.536261
   ok    mod 4 / rev 0  ed67850d9f652e0b  peak 1.140087  rms 0.315539
   ok    mod 4 / rev 1  dbf93816a0da595b  peak 1.645776  rms 0.452060
   ok    mod 4 / rev 2  2c9fb1c8c0e9f1d0  peak 1.847408  rms 0.618874
+  ok    mod 4 / rev 3  af9fc56413fa3967  peak 1.651674  rms 0.568441
 
 Synced LFOs:
   ok    Tremolo, synced  62868f9c4def7c2b  peak 2.430991  rms 0.659558

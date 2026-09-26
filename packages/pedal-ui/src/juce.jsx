@@ -595,10 +595,14 @@ export function installAutoResize({ padding = 4 } = {}) {
  * `window.innerWidth`, which is how big the native side has actually made the
  * WebView. Nothing inside ever reflows - it is one image, stretched - so nothing
  * about the face has to know it is being resized at all.
+ *
+ * It also puts the bottom-left resize grip on the page - see installCornerGrip.
  */
 export function installResizableFace({ padding = 4 } = {}) {
   if (typeof window.__JUCE__?.initialisationData?.__juce__functions?.includes !== "function") return;
   if (!window.__JUCE__.initialisationData.__juce__functions.includes("reportContentSize")) return;
+
+  installCornerGrip();
 
   const reportContentSize = Juce.getNativeFunction("reportContentSize");
   const card = document.querySelector(".pui-card");
@@ -631,6 +635,123 @@ export function installResizableFace({ padding = 4 } = {}) {
   observer.observe(card);
 
   window.addEventListener("resize", applyScale);
+}
+
+const GRIP_SIZE = 18;
+const GRIP_OPACITY = 0.6;
+const GRIP_OPACITY_LIT = 1;
+
+/** The bottom-left resize grip: two parallel strokes at 45 degrees, hugging the
+ * corner, that the window is dragged bigger or smaller by.
+ *
+ * Drawn here, by the page, because nothing else can be seen over it: the
+ * WebView is a native view, and a native view covers everything JUCE paints in
+ * the same window - a grip that was a JUCE component sat underneath the page,
+ * invisible and unclickable, in every one of these faces. The page only draws
+ * it and follows the pointer; the resizing is `ee::plugin::CornerResizer`'s,
+ * through the three native functions it registers, so it keeps to the editor's
+ * zoom range and aspect ratio. A processor that has not registered them gets
+ * no grip.
+ *
+ * The drag goes over as a distance from where it started, in screen pixels:
+ * the window changes size under the pointer while it moves, so page
+ * coordinates would drift and screen ones do not. Coalesced to one call per
+ * frame. On `<html>` rather than `<body>`, because `body` is the thing being
+ * scaled - a grip inside it would grow and shrink with the face and, `body`
+ * being transformed, would not be fixed to the window at all.
+ *
+ * A mid grey rather than a theme token: the theme's tokens live on a wrapper
+ * inside `body`, out of reach from here, and one grey reads on the cream
+ * panels and the dark ones alike. `--pui-resize-grip` on `:root` overrides it.
+ */
+function installCornerGrip() {
+  const functions = window.__JUCE__.initialisationData.__juce__functions;
+  const names = ["cornerResizeStart", "cornerResizeDrag", "cornerResizeEnd"];
+  if (!names.every((n) => functions.includes(n))) return;
+
+  // A face's effect can run twice (React's StrictMode does, in development).
+  if (document.getElementById("pui-resize-grip")) return;
+
+  const [start, drag, end] = names.map((n) => Juce.getNativeFunction(n));
+
+  const grip = document.createElement("div");
+  grip.id = "pui-resize-grip";
+  grip.setAttribute("aria-hidden", "true");
+  Object.assign(grip.style, {
+    position: "fixed",
+    left: "0",
+    bottom: "0",
+    width: `${GRIP_SIZE}px`,
+    height: `${GRIP_SIZE}px`,
+    cursor: "nesw-resize",
+    zIndex: "2147483647",
+    color: "var(--pui-resize-grip, #8a8a86)",
+    opacity: String(GRIP_OPACITY),
+    touchAction: "none",
+    userSelect: "none",
+    WebkitUserSelect: "none",
+  });
+  // "\" strokes in the bottom-left corner - the bottom-right grip's "/"
+  // mirrored - the long one corner-wide, the short one tucked into the corner.
+  grip.innerHTML =
+    `<svg width="${GRIP_SIZE}" height="${GRIP_SIZE}" viewBox="0 0 18 18" fill="none" ` +
+    `stroke="currentColor" stroke-width="1.6" stroke-linecap="round" style="display:block">` +
+    `<path d="M3 4 L14 15 M3 9.5 L8.5 15" /></svg>`;
+
+  let origin = null;
+  let pending = null;
+  let frame = 0;
+  let hovered = false;
+
+  const light = () => {
+    grip.style.opacity = String(hovered || origin ? GRIP_OPACITY_LIT : GRIP_OPACITY);
+  };
+
+  const flush = () => {
+    frame = 0;
+    if (pending) {
+      drag(pending[0], pending[1]);
+      pending = null;
+    }
+  };
+
+  grip.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    grip.setPointerCapture(e.pointerId);
+    origin = [e.screenX, e.screenY];
+    start();
+    light();
+  });
+
+  grip.addEventListener("pointermove", (e) => {
+    if (!origin) return;
+    pending = [e.screenX - origin[0], e.screenY - origin[1]];
+    if (!frame) frame = requestAnimationFrame(flush);
+  });
+
+  const finish = () => {
+    if (!origin) return;
+    if (frame) cancelAnimationFrame(frame);
+    flush();
+    origin = null;
+    end();
+    light();
+  };
+
+  grip.addEventListener("pointerup", finish);
+  grip.addEventListener("pointercancel", finish);
+  grip.addEventListener("lostpointercapture", finish);
+  grip.addEventListener("pointerenter", () => {
+    hovered = true;
+    light();
+  });
+  grip.addEventListener("pointerleave", () => {
+    hovered = false;
+    light();
+  });
+
+  document.documentElement.appendChild(grip);
 }
 
 /** The native build stamp - `getBuildInfo()`, when the processor registers it

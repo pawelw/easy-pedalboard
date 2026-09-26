@@ -13,6 +13,15 @@ bitbit_add_plugin(BitBitAlpine
 target_compile_definitions(BitBitAlpine PRIVATE
     BITBITALPINE_JSUI_DIR="${CMAKE_CURRENT_SOURCE_DIR}/jsui")
 
+# The corner build stamp (see EE_BUILD_STAMP in the top-level CMakeLists.txt):
+# a developer's way to tell a rebuilt plugin from a stale one, not something a
+# customer should see, so the release preset leaves it out.
+if(EE_BUILD_STAMP)
+    target_compile_definitions(BitBitAlpine PRIVATE EE_BUILD_STAMP=1)
+else()
+    target_compile_definitions(BitBitAlpine PRIVATE EE_BUILD_STAMP=0)
+endif()
+
 # Dev-only output-safety flight recorder + side panel (the safety net itself,
 # sanitizeOutput, is always compiled). Never ship one.
 if(EE_ALPINE_WATCHDOG)

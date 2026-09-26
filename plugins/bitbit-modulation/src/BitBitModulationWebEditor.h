@@ -52,9 +52,10 @@ private:
     int baseWidth = 0;
     int baseHeight = 0;
 
-    // Bottom-left grip, added once the first report above sizes the window -
-    // see CornerResizer's own note on why bottom-left.
-    std::unique_ptr<ee::plugin::CornerResizer> resizeGrip;
+    // The bottom-left resize grip's native half - the page draws the grip
+    // and drives this. Declared before the WebView, whose options it adds to;
+    // see CornerResizer.
+    ee::plugin::CornerResizer resizeGrip { *this };
 
     static constexpr bool kUseDevServer = EE_JSUI_DEV_SERVER != 0;
     static const juce::String devServerAddress;

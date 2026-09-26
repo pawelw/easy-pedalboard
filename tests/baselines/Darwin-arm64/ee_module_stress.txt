@@ -23,14 +23,21 @@ Engine switches:
   ok    Modulation 0 -> 2 (step across 0.01729, elsewhere 0.01886)
   ok    Reverb Spring -> Shimmer (step across 0.00825, elsewhere 0.00903)
   ok    Reverb Spring -> Studio (step across 0.00825, elsewhere 0.00917)
+  ok    Reverb Spring -> Simple (step across 0.00825, elsewhere 0.00866)
   ok    Reverb Shimmer -> Spring (step across 0.01052, elsewhere 0.00902)
   ok    Reverb Shimmer -> Studio (step across 0.00715, elsewhere 0.00917)
+  ok    Reverb Shimmer -> Simple (step across 0.00715, elsewhere 0.00866)
   ok    Reverb Studio -> Spring (step across 0.01061, elsewhere 0.00918)
   ok    Reverb Studio -> Shimmer (step across 0.00718, elsewhere 0.00918)
+  ok    Reverb Studio -> Simple (step across 0.00718, elsewhere 0.00918)
+  ok    Reverb Simple -> Spring (step across 0.01051, elsewhere 0.00902)
+  ok    Reverb Simple -> Shimmer (step across 0.00692, elsewhere 0.00903)
+  ok    Reverb Simple -> Studio (step across 0.00692, elsewhere 0.00917)
   ok    Artifact 0 -> 1 (step across 0.01778, elsewhere 0.01370)
   ok    Artifact 1 -> 2 (step across 0.01804, elsewhere 0.04523)
   ok    Artifact 2 -> 3 (step across 0.01873, elsewhere 0.02021)
-  ok    Artifact 3 -> 0 (step across 0.01782, elsewhere 0.01414)
+  ok    Artifact 3 -> 4 (step across 0.01599, elsewhere 0.01414)
+  ok    Artifact 4 -> 0 (step across 0.01487, elsewhere 0.01336)
   ok    Artifact 0 -> 2 (step across 0.01805, elsewhere 0.04523)
 
 Modulation sweep:
@@ -39,13 +46,25 @@ Modulation sweep:
   ok    nothing ran away
 
 Reverb sweep:
-  36 cases, worst peak 1.286
+  48 cases, worst peak 1.286
   ok    every Reverb case finite
   ok    nothing ran away
 
 Artifact sweep:
-  684 cases, worst peak 1.278
+  720 cases, worst peak 1.278
   ok    every Artifact case finite
   ok    nothing ran away
+
+Artifact Comp level through the module (output vs input rms, after 20 s):
+  ok    Sensitivity   0 %, Mix   0 %: +0.00 dB
+  ok    Sensitivity   0 %, Mix  25 %: -0.03 dB
+  ok    Sensitivity   0 %, Mix  50 %: -0.06 dB
+  ok    Sensitivity   0 %, Mix  75 %: -0.09 dB
+  ok    Sensitivity   0 %, Mix 100 %: -0.12 dB
+  ok    Sensitivity 100 %, Mix   0 %: +0.00 dB
+  ok    Sensitivity 100 %, Mix  25 %: -0.07 dB
+  ok    Sensitivity 100 %, Mix  50 %: -0.14 dB
+  ok    Sensitivity 100 %, Mix  75 %: -0.20 dB
+  ok    Sensitivity 100 %, Mix 100 %: -0.26 dB
 
 OK - all module checks passed

@@ -124,6 +124,8 @@ public:
 
         fadeSamplesLeft = 0;
         outgoingEngine = -1;
+        asleep = false;
+        wakeSamplesLeft = 0;
 
         prepareEngines (sr, maxBlock);
 
@@ -160,6 +162,7 @@ public:
 
         fadeSamplesLeft = 0;
         outgoingEngine = -1;
+        wakeSamplesLeft = 0;
     }
 
     /** Which engine is running. Out of range is ignored rather than clamped: it
@@ -208,11 +211,25 @@ public:
         // unchanged.
         const bool usesMix = engineUsesMix (engine);
 
+        // Off, and the power ramp has finished taking the wet out: the output
+        // is the dry path and nothing else, so nothing else needs to run. See
+        // sleep().
+        if (! engaged && engageGain.getCurrentValue() == 0.0f && ! engageGain.isSmoothing())
+        {
+            sleep (buffer, numCh, numSamples);
+            return;
+        }
+
+        if (asleep)
+            wake();
+
         dryGain.setTargetValue (usesMix ? dryTarget() : 0.0f);
         wetGain.setTargetValue (usesMix ? wetTarget() : 1.0f);
         levelGain.setTargetValue (level);
-        engageGain.setTargetValue (engaged ? 1.0f : 0.0f);
+        // Held off until the wake-up has fed the engines - see kWakeSeconds.
+        engageGain.setTargetValue (engaged && wakeSamplesLeft <= 0 ? 1.0f : 0.0f);
         toneAmount.setTargetValue (tone);
+        wakeSamplesLeft = juce::jmax (0, wakeSamplesLeft - numSamples);
 
         for (int offset = 0; offset < numSamples; offset += maxBlock)
         {
@@ -379,6 +396,78 @@ protected:
     int maxBlock = 512;
 
 private:
+    /** A module that is off costs only its dry path. Once the power ramp has
+        finished, the output is the dry signal delayed to the module's latency
+        (the `dry + (mixed - dry) * 0` of the mix below, which is exactly `dry`),
+        so the engines - all of them, when they run warm - are not rendered at
+        all. That was most of what BitBit Alpine cost with every module off:
+        exactly as much as with every module on.
+
+        Only the gains are carried along, so a knob moved while the module was
+        off is where it was left when it comes back on. */
+    void sleep (juce::AudioBuffer<float>& buffer, int numCh, int numSamples) noexcept
+    {
+        asleep = true;
+
+        // An engine switch in flight - or one asked for while asleep - has
+        // nobody listening to it. wake() resets every engine anyway.
+        outgoingEngine = -1;
+        fadeSamplesLeft = 0;
+
+        dryGain.setTargetValue (engineUsesMix (engine) ? dryTarget() : 0.0f);
+        wetGain.setTargetValue (engineUsesMix (engine) ? wetTarget() : 1.0f);
+        levelGain.setTargetValue (level);
+        toneAmount.setTargetValue (tone);
+
+        for (auto* g : { &dryGain, &wetGain, &levelGain, &toneAmount })
+            g->skip (numSamples);
+
+        for (int offset = 0; offset < numSamples; offset += maxBlock)
+        {
+            const int chunk = juce::jmin (maxBlock, numSamples - offset);
+
+            for (int ch = 0; ch < numCh; ++ch)
+                dryBuffer.copyFrom (ch, 0, buffer, ch, offset, chunk);
+
+            dryAlign.process (dryBuffer, numCh, chunk);
+
+            for (int ch = 0; ch < numCh; ++ch)
+            {
+                const float* dry = dryBuffer.getReadPointer (ch);
+                float* out = buffer.getWritePointer (ch, offset);
+
+                for (int i = 0; i < chunk; ++i)
+                    out[i] = std::isfinite (dry[i]) && std::abs (dry[i]) <= kRunawayCeiling ? dry[i] : 0.0f;
+            }
+        }
+    }
+
+    /** Coming back from sleep(). Every engine last heard the signal as it was
+        when the module went off - a chorus would play that back as the power
+        ramp opened - so they start from silence instead, and are fed the real
+        input for kWakeSeconds before the ramp is let go. */
+    void wake() noexcept
+    {
+        asleep = false;
+
+        for (int i = 0; i < engineCount(); ++i)
+            resetEngine (i);
+        for (auto& a : engineAlign)
+            a.reset();
+        toneLp.fill (0.0f);
+
+        wakeSamplesLeft = static_cast<int> (kWakeSeconds * sr);
+    }
+
+    /** How long a woken module's engines are fed before its power ramp opens:
+        long enough to fill the longest short delay line in any engine - the
+        Tape engine's transport, a chorus - so none of them opens on the silence
+        it was reset to. Heard as the switch-on arriving that much later. */
+    static constexpr double kWakeSeconds = 0.03;
+
+    bool asleep = false;
+    int wakeSamplesLeft = 0;
+
     /** Engine `index`'s output, padded out to the module's own latency. */
     void align (int index, juce::AudioBuffer<float>& buffer, int numChannels, int numSamples) noexcept
     {

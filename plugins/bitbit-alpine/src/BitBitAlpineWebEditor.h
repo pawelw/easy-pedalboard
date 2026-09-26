@@ -103,10 +103,10 @@ private:
     int baseWidth = 0;
     int baseHeight = 0;
 
-    // Bottom-left rather than juce::ResizableCornerComponent's fixed
-    // bottom-right - see CornerResizer's own note; every resizable release
-    // pedal shares this one grip, this being the first of them.
-    std::unique_ptr<ee::plugin::CornerResizer> resizeGrip;
+    // The bottom-left resize grip's native half - the page draws the grip
+    // and drives this. Declared before the WebView, whose options it adds to;
+    // see CornerResizer.
+    ee::plugin::CornerResizer resizeGrip { *this };
 
     // Where the page comes from - see EE_JSUI_DEV_SERVER above.
     static constexpr bool kUseDevServer = EE_JSUI_DEV_SERVER != 0;

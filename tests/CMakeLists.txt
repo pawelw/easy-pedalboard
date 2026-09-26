@@ -612,6 +612,24 @@ if(TARGET BitBitAlpine)
     target_link_libraries(ee_alpine_host
         PRIVATE BitBitAlpine ee_shared juce::juce_audio_formats
         PUBLIC juce::juce_recommended_config_flags)
+
+    # What the real processor costs per second of audio, over a few patches -
+    # the published CPU figure. Timing, so not in regress-baselines.sh.
+    juce_add_console_app(ee_alpine_bench PRODUCT_NAME "ee_alpine_bench")
+
+    target_sources(ee_alpine_bench PRIVATE AlpineBench.cpp)
+
+    target_compile_definitions(ee_alpine_bench PUBLIC
+        JUCE_WEB_BROWSER=0
+        JUCE_USE_CURL=0
+        JUCE_STANDALONE_APPLICATION=1)
+
+    target_include_directories(ee_alpine_bench
+        PRIVATE ${CMAKE_SOURCE_DIR}/plugins/bitbit-alpine/src)
+
+    target_link_libraries(ee_alpine_bench
+        PRIVATE BitBitAlpine ee_shared juce::juce_audio_formats
+        PUBLIC juce::juce_recommended_config_flags)
 endif()
 
 # The frozen parameter contract, one binary per shipping product. See
@@ -741,6 +759,47 @@ foreach(pluginTarget IN LISTS eeReleaseTargets)
         PRIVATE ${pluginTarget} ee_shared
         PUBLIC juce::juce_recommended_config_flags)
 endforeach()
+
+# The website's screenshots: the real editor in a real window, audio running,
+# snapshotted through WebKit with a transparent background. One binary per
+# shipping product, same duplicate-createPluginFilter() reason as above. macOS
+# only - the snapshot half is WKWebView. See FaceShots.cpp and
+# scripts/face-shots.sh; not in dev-check.sh, it puts windows on screen.
+if(APPLE)
+    foreach(pluginTarget IN LISTS eeReleaseTargets)
+        set(shotsApp ee_face_shots_${pluginTarget})
+
+        get_target_property(pluginDir ${pluginTarget} SOURCE_DIR)
+
+        if(pluginTarget STREQUAL "BitBitGrain")
+            set(shotsGrain 1)
+        else()
+            set(shotsGrain 0)
+        endif()
+
+        juce_add_console_app(${shotsApp} PRODUCT_NAME "${shotsApp}")
+
+        target_sources(${shotsApp} PRIVATE FaceShots.cpp FaceShotsMac.mm)
+
+        # No JUCE_WEB_BROWSER=0 here, unlike the loops above: the plugin
+        # target's own =1 is what gives the editor its WebView.
+        target_compile_definitions(${shotsApp} PUBLIC
+            JUCE_USE_CURL=0
+            JUCE_STANDALONE_APPLICATION=1
+            EE_SHOTS_PROCESSOR=${pluginTarget}Processor
+            EE_SHOTS_TARGET="${pluginTarget}"
+            EE_SHOTS_GRAIN=${shotsGrain}
+            EE_SHOTS_CONFIG="${CMAKE_SOURCE_DIR}/scripts/face-shots.json")
+
+        target_compile_options(${shotsApp} PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
+
+        target_include_directories(${shotsApp} PRIVATE ${pluginDir}/src)
+
+        target_link_libraries(${shotsApp}
+            PRIVATE ${pluginTarget} ee_shared "-framework WebKit" "-framework Cocoa" "-framework ImageIO"
+            PUBLIC juce::juce_recommended_config_flags)
+    endforeach()
+endif()
 
 # TEMP-PROBE
 juce_add_console_app(ee_filter_probe PRODUCT_NAME "ee_filter_probe")

@@ -32,7 +32,7 @@ BitBitArtifactWebEditor::BitBitArtifactWebEditor (BitBitArtifactProcessor& p)
     : juce::AudioProcessorEditor (&p), processorRef (p), relays (p.apvts),
       webView (ee::plugin::presetBridge (
           relays.apply (
-              juce::WebBrowserComponent::Options {}
+              resizeGrip.bridge (juce::WebBrowserComponent::Options {})
                   .withNativeIntegrationEnabled()
                   // Suppress WKWebView's own right-click menu the ordinary web
                   // way - it has no dedicated JUCE option - so a knob drag that
@@ -62,10 +62,6 @@ BitBitArtifactWebEditor::BitBitArtifactWebEditor (BitBitArtifactProcessor& p)
 
                                                if (auto* c = getConstrainer())
                                                    c->setFixedAspectRatio ((double) baseWidth / (double) baseHeight);
-
-                                               resizeGrip =
-                                                   std::make_unique<ee::plugin::CornerResizer> (*this, *getConstrainer());
-                                               addAndMakeVisible (*resizeGrip);
                                            }
 
                                            setSize (w, h);
@@ -125,13 +121,6 @@ void BitBitArtifactWebEditor::timerCallback()
 void BitBitArtifactWebEditor::resized()
 {
     webView.setBounds (getLocalBounds());
-
-    if (resizeGrip != nullptr)
-    {
-        resizeGrip->setBounds (0, getHeight() - ee::plugin::CornerResizer::kSize, ee::plugin::CornerResizer::kSize,
-                                ee::plugin::CornerResizer::kSize);
-        resizeGrip->toFront (false);
-    }
 }
 
 std::optional<juce::WebBrowserComponent::Resource> BitBitArtifactWebEditor::getResource (const juce::String& url)
